@@ -70,7 +70,7 @@ describe('themes constants', () => {
     })
 
     it('has correct isDark flags', () => {
-      expect(THEMES.system.isDark).toBe(false)
+      expect(THEMES.system.isDark).toBe(true) // System theme card uses dark styling for contrast on gray bg
       expect(THEMES.light.isDark).toBe(false)
       expect(THEMES.dark.isDark).toBe(true)
       expect(THEMES.dracula.isDark).toBe(true)
