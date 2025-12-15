@@ -204,9 +204,9 @@ describe('SettingsPage Component', () => {
     test('should have correct heading hierarchy', () => {
       renderWithProviders(<Settings />)
 
-      // h2 level heading for main title
-      const h2 = screen.getByRole('heading', { level: 2, name: 'Settings' })
-      expect(h2).toBeInTheDocument()
+      // h1 level heading for main title (BuildProject-style header)
+      const h1 = screen.getByRole('heading', { level: 1, name: 'Settings' })
+      expect(h1).toBeInTheDocument()
 
       // h3 level headings for sections
       const h3Elements = screen.getAllByRole('heading', { level: 3 })
