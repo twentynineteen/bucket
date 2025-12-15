@@ -1,3 +1,12 @@
+/**
+ * Settings Page Component
+ *
+ * Main page for application settings including AI providers, appearance,
+ * Trello integration, SproutVideo API, and background folder configuration.
+ * Follows BuildProject/Baker UI patterns with ErrorBoundary wrapper.
+ */
+
+import ErrorBoundary from '@components/ErrorBoundary'
 import { TrelloBoardSelector } from '@components/Settings/TrelloBoardSelector'
 import { ThemeSelector } from '@components/Settings/ThemeSelector'
 import {
@@ -18,13 +27,13 @@ import { open as openPath } from '@tauri-apps/plugin-dialog'
 import { open } from '@tauri-apps/plugin-shell'
 import ApiKeyInput from '@utils/ApiKeyInput'
 import { ApiKeys, loadApiKeys, saveApiKeys } from '@utils/storage'
-import { CheckCircle, Loader2, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
 import { logger } from '@/utils/logger'
 
-const Settings: React.FC = () => {
+const SettingsPageContent: React.FC = () => {
   const queryClient = useQueryClient()
   const location = useLocation()
 
@@ -434,6 +443,58 @@ const Settings: React.FC = () => {
         </section>
       </div>
     </div>
+  )
+}
+
+const Settings: React.FC = () => {
+  return (
+    <ErrorBoundary
+      fallback={(error, retry) => (
+        <div className="flex min-h-[400px] flex-col items-center justify-center p-8 text-center">
+          <div className="max-w-md">
+            <AlertTriangle className="text-destructive mx-auto mb-4 h-12 w-12" />
+            <h2 className="text-foreground mb-4 text-2xl font-semibold">Settings Error</h2>
+            <div className="text-muted-foreground mb-6">
+              <p>
+                An error occurred while loading the Settings page. This could be due to:
+              </p>
+              <ul className="mt-2 space-y-1 text-left">
+                <li>• Storage access issues</li>
+                <li>• Invalid configuration data</li>
+                <li>• Network connectivity problems</li>
+              </ul>
+              {error && process.env.NODE_ENV === 'development' && (
+                <details className="bg-muted/50 border-border mt-4 rounded-md border p-4 text-left text-sm">
+                  <summary className="text-foreground cursor-pointer font-medium">
+                    Technical Details
+                  </summary>
+                  <div className="mt-2">
+                    <p>
+                      <strong>Error:</strong> {error.message}
+                    </p>
+                  </div>
+                </details>
+              )}
+            </div>
+            <div className="flex justify-center gap-2">
+              <Button onClick={retry} className="flex-1">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Retry
+              </Button>
+              <Button
+                onClick={() => (window.location.href = '/ingest/build')}
+                variant="outline"
+                className="flex-1"
+              >
+                Back to Build
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    >
+      <SettingsPageContent />
+    </ErrorBoundary>
   )
 }
 
