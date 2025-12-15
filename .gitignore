@@ -192,4 +192,14 @@ playwright-report/
 # Claude Code
 .claude/
 
+# AI Planning Artifacts (regeneratable)
+*-plan.md
+*-test-plan.md
+*-tasks.md
+PERFORMANCE_OPTIMIZATION_PLAN.md
+BUILD_PROJECT_*.md
+
+# Backup files
+*.bak
+
 /templates/
