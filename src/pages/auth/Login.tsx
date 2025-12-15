@@ -1,7 +1,10 @@
-import { useAuth } from 'hooks/useAuth'
+import { useAuth } from '@hooks/useAuth'
+import { createNamespacedLogger } from '@utils/logger'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
+
+const logger = createNamespacedLogger('Login')
 
 const loginSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
@@ -24,7 +27,7 @@ const Login: React.FC = () => {
     }
 
     try {
-      console.log('Validating creds.')
+      logger.log('Validating creds.')
       loginSchema.parse({ username, password })
       const fakeToken = `token_${username}` // Simulating a token
       await login(fakeToken, username)
@@ -35,32 +38,32 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col p-6 max-w-sm mx-auto bg-white shadow-md rounded-xl">
-      <h2 className="text-xl font-semibold mb-4">Login</h2>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+    <div className="mx-auto flex max-w-sm flex-col rounded-xl bg-white p-6 shadow-md">
+      <h2 className="mb-4 text-xl font-semibold">Login</h2>
+      {error && <p className="text-destructive text-sm">{error}</p>}
       <input
         type="text"
         placeholder="Username"
         value={username}
-        onChange={e => setUsername(e.target.value)}
-        className="border p-2 rounded w-full mb-2"
+        onChange={(e) => setUsername(e.target.value)}
+        className="mb-2 w-full rounded border p-2"
       />
       <input
         type="password"
         placeholder="Password"
         value={password}
-        onChange={e => setPassword(e.target.value)}
-        className="border p-2 rounded w-full mb-2"
+        onChange={(e) => setPassword(e.target.value)}
+        className="mb-2 w-full rounded border p-2"
       />
       <button
         onClick={handleLogin}
-        className="bg-blue-500 text-white p-2 rounded w-full hover:bg-blue-600"
+        className="bg-primary text-primary-foreground hover:bg-primary/90 w-full rounded p-2"
       >
         Login
       </button>
       <p className="mt-3">
         No account? click{' '}
-        <Link to="/register" className="font-bold text-blue-600">
+        <Link to="/register" className="text-primary font-bold">
           here
         </Link>{' '}
         to register

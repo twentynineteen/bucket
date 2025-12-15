@@ -1,6 +1,8 @@
 import { open } from '@tauri-apps/plugin-dialog'
 import React from 'react'
 
+import { logger } from '@/utils/logger'
+
 type Props = {
   onSelect: (folderPath: string) => void
   selectedFolder: string
@@ -25,22 +27,31 @@ const FolderTree: React.FC<Props> = ({ onSelect, selectedFolder }) => {
         onSelect(newSelectedFolder)
       }
     } catch (error) {
-      console.error('Error selecting folder:', error)
+      logger.error('Error selecting folder:', error)
     }
   }
 
   return (
-    <div className="flex items-center justify-evenly rounded-lg py-3">
+    <div className="flex items-center gap-3 rounded-lg py-2">
       <button
         onClick={openFolderPicker}
-        className="text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-hidden focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center me-2 dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
+        className="text-primary-foreground bg-primary hover:bg-primary/90 focus:ring-ring inline-flex flex-shrink-0 items-center justify-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold shadow-sm transition-colors duration-200 hover:shadow focus:ring-4 focus:outline-none"
       >
         Select Destination
       </button>
       {selectedFolder ? (
-        <p className="text-sm text-gray-700 mt-2">Destination: {selectedFolder}</p>
+        <div className="bg-card border-border min-w-0 flex-1 overflow-hidden rounded-lg border px-3 py-2">
+          <p
+            className="text-foreground truncate text-sm font-medium"
+            title={selectedFolder}
+          >
+            {selectedFolder}
+          </p>
+        </div>
       ) : (
-        <p className="text-sm text-gray-700 mt-2"></p>
+        <div className="bg-muted/20 border-border min-w-0 flex-1 rounded-lg border border-dashed px-3 py-2">
+          <p className="text-muted-foreground text-sm italic">No destination selected</p>
+        </div>
       )}
     </div>
   )

@@ -5,9 +5,11 @@
  * Grid display of script examples with loading and empty states
  */
 
+import { FileText } from 'lucide-react'
+
 import { Skeleton } from '@/components/ui/skeleton'
 import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
-import { FileText } from 'lucide-react'
+
 import { ExampleCard } from './ExampleCard'
 
 interface ExampleListProps {
@@ -50,9 +52,9 @@ export function ExampleList({
   if (examples.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-        <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
+        <FileText className="text-muted-foreground mb-4 h-12 w-12" />
         <h3 className="mb-2 text-lg font-semibold">No examples found</h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Upload your first script example to get started with AI-powered formatting.
         </p>
       </div>
@@ -62,7 +64,7 @@ export function ExampleList({
   // Grid of examples
   return (
     <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-      {examples.map(example => (
+      {examples.map((example) => (
         <ExampleCard
           key={example.id}
           example={example}

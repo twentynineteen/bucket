@@ -2,7 +2,7 @@
 
 /**
  * Migration Validation Script
- * 
+ *
  * Validates the Legacy useEffect to React Query migration by:
  * - Checking that all hooks use React Query patterns
  * - Ensuring no legacy useEffect patterns remain for data fetching
@@ -10,10 +10,9 @@
  * - Checking error handling patterns
  * - Verifying cache configuration
  */
-
+import { exec } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
-import { exec } from 'child_process'
 import { promisify } from 'util'
 
 const execAsync = promisify(exec)
@@ -132,7 +131,9 @@ class MigrationValidator {
       return
     }
 
-    const hookFiles = fs.readdirSync(hooksDir).filter(f => f.endsWith('.ts') || f.endsWith('.tsx'))
+    const hookFiles = fs
+      .readdirSync(hooksDir)
+      .filter(f => f.endsWith('.ts') || f.endsWith('.tsx'))
 
     for (const hookFile of hookFiles) {
       await this.validateHookFile(path.join(hooksDir, hookFile), hookFile)
@@ -197,7 +198,7 @@ class MigrationValidator {
 
     try {
       const { stdout, stderr } = await execAsync('npx tsc --noEmit --skipLibCheck')
-      
+
       if (stderr) {
         this.results.push({
           passed: false,
@@ -270,7 +271,11 @@ class MigrationValidator {
       }
     } else if (content.includes('useEffect') && fileName.startsWith('use')) {
       // This is a custom hook with useEffect - check if it's doing data fetching
-      if (content.includes('fetch') || content.includes('invoke') || content.includes('axios')) {
+      if (
+        content.includes('fetch') ||
+        content.includes('invoke') ||
+        content.includes('axios')
+      ) {
         this.results.push({
           passed: false,
           message: `Hook still uses useEffect for data fetching: ${fileName}`,
@@ -289,7 +294,7 @@ class MigrationValidator {
 
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name)
-      
+
       if (entry.isDirectory()) {
         await this.validateComponentDir(fullPath, entry.name)
       } else if (entry.name.endsWith('.tsx') || entry.name.endsWith('.ts')) {
@@ -316,15 +321,16 @@ class MigrationValidator {
 
     // Check for potential legacy data fetching in useEffect
     const useEffectMatches = content.match(/useEffect\s*\([^)]*\)/g) || []
-    
+
     for (const match of useEffectMatches) {
       const fullEffectMatch = this.extractUseEffectContent(content, match)
-      
-      if (fullEffectMatch && (
-        fullEffectMatch.includes('fetch') || 
-        fullEffectMatch.includes('invoke') || 
-        fullEffectMatch.includes('axios')
-      )) {
+
+      if (
+        fullEffectMatch &&
+        (fullEffectMatch.includes('fetch') ||
+          fullEffectMatch.includes('invoke') ||
+          fullEffectMatch.includes('axios'))
+      ) {
         this.results.push({
           passed: false,
           message: `Component has useEffect with data fetching: ${fileName}`,
@@ -342,7 +348,10 @@ class MigrationValidator {
     const content = fs.readFileSync(filePath, 'utf-8')
 
     // Check for proper exports
-    if (content.includes('export') && (content.includes('default') || content.includes('export const'))) {
+    if (
+      content.includes('export') &&
+      (content.includes('default') || content.includes('export const'))
+    ) {
       this.results.push({
         passed: true,
         message: `File has proper exports: ${fileName}`,
@@ -365,16 +374,22 @@ class MigrationValidator {
   /**
    * Search for patterns across all source files
    */
-  private async searchPattern(pattern: string, description: string, severity: 'error' | 'warning' | 'info') {
+  private async searchPattern(
+    pattern: string,
+    description: string,
+    severity: 'error' | 'warning' | 'info'
+  ) {
     try {
-      const { stdout } = await execAsync(`grep -r "${pattern}" ${this.srcPath} --include="*.ts" --include="*.tsx" -n`)
-      
+      const { stdout } = await execAsync(
+        `grep -r "${pattern}" ${this.srcPath} --include="*.ts" --include="*.tsx" -n`
+      )
+
       if (stdout.trim()) {
         const lines = stdout.trim().split('\n')
         for (const line of lines) {
           const [filePath, lineNum, ...content] = line.split(':')
           const fileName = path.relative(this.srcPath, filePath)
-          
+
           this.results.push({
             passed: severity === 'info',
             message: `${description}: ${content.join(':')}`,
@@ -392,7 +407,10 @@ class MigrationValidator {
   /**
    * Extract full useEffect content for analysis
    */
-  private extractUseEffectContent(content: string, useEffectMatch: string): string | null {
+  private extractUseEffectContent(
+    content: string,
+    useEffectMatch: string
+  ): string | null {
     const startIndex = content.indexOf(useEffectMatch)
     if (startIndex === -1) return null
 
@@ -402,18 +420,18 @@ class MigrationValidator {
 
     for (let i = startIndex; i < content.length; i++) {
       const char = content[i]
-      
+
       if (char === '{') {
         braceCount++
         inEffect = true
       } else if (char === '}') {
         braceCount--
       }
-      
+
       if (inEffect) {
         result += char
       }
-      
+
       if (inEffect && braceCount === 0) {
         break
       }
@@ -440,16 +458,20 @@ class MigrationValidator {
       recommendations.push('Consider addressing warning patterns to improve code quality')
     }
 
-    const hasLegacyPatterns = this.results.some(r => 
-      r.message.includes('useEffect with') && r.severity === 'warning'
+    const hasLegacyPatterns = this.results.some(
+      r => r.message.includes('useEffect with') && r.severity === 'warning'
     )
 
     if (hasLegacyPatterns) {
-      recommendations.push('Replace remaining useEffect data fetching patterns with React Query')
+      recommendations.push(
+        'Replace remaining useEffect data fetching patterns with React Query'
+      )
     }
 
     if (this.results.every(r => r.passed || r.severity === 'warning')) {
-      recommendations.push('Migration appears successful! Consider running integration tests')
+      recommendations.push(
+        'Migration appears successful! Consider running integration tests'
+      )
     }
 
     return {
@@ -474,7 +496,9 @@ class MigrationValidator {
 
     console.log(`\n📊 Summary:`)
     console.log(`   Files analyzed: ${report.summary.totalFiles}`)
-    console.log(`   Validation: ${report.summary.passedValidation ? '✅ PASSED' : '❌ FAILED'}`)
+    console.log(
+      `   Validation: ${report.summary.passedValidation ? '✅ PASSED' : '❌ FAILED'}`
+    )
     console.log(`   Errors: ${report.summary.errorsCount}`)
     console.log(`   Warnings: ${report.summary.warningsCount}`)
 
@@ -497,8 +521,9 @@ class MigrationValidator {
           console.log(`   • ${r.message}`)
           if (r.file) console.log(`     File: ${r.file}${r.line ? `:${r.line}` : ''}`)
         })
-      
-      const remainingWarnings = report.results.filter(r => r.severity === 'warning').length - 10
+
+      const remainingWarnings =
+        report.results.filter(r => r.severity === 'warning').length - 10
       if (remainingWarnings > 0) {
         console.log(`   ... and ${remainingWarnings} more warnings`)
       }

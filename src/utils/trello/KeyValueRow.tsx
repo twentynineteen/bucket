@@ -7,7 +7,7 @@ interface Props {
 
 const KeyValueRow: React.FC<Props> = ({ label, value }) => (
   <p>
-    <span className="font-medium text-foreground">{label}:</span>{' '}
+    <span className="text-foreground font-medium">{label}:</span>{' '}
     <span className="text-muted-foreground">{value}</span>
   </p>
 )

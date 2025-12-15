@@ -1,23 +1,23 @@
 /**
  * Unit Test: useBakerScan React Hook
- * 
+ *
  * This test verifies the useBakerScan custom hook behavior.
  * It MUST FAIL initially until the hook implementation is complete.
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react'
-import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { useBakerScan } from '../../src/hooks/useBakerScan'
-import type { ScanOptions, ScanResult } from '../../src/types/baker'
+import type { ScanOptions, ScanResult } from '@/types/baker'
+import { useBakerScan } from '@hooks/useBakerScan'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock Tauri invoke function
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn()
 }))
 
-// Mock Tauri event listener
+// Mock Tauri event listener - must return unlisten function
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn()
+  listen: vi.fn().mockResolvedValue(vi.fn())
 }))
 
 describe('useBakerScan Hook', () => {
@@ -33,6 +33,7 @@ describe('useBakerScan Hook', () => {
     endTime: '2025-01-01T00:05:00Z',
     rootPath: '/test/path',
     totalFolders: 100,
+    totalFolderSize: 1024000,
     validProjects: 5,
     updatedBreadcrumbs: 3,
     createdBreadcrumbs: 2,
@@ -40,8 +41,12 @@ describe('useBakerScan Hook', () => {
     projects: []
   }
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+  beforeEach(async () => {
+    // Use mockClear instead of clearAllMocks to preserve mock implementations
+    const { invoke } = await import('@tauri-apps/api/core')
+    const { listen } = await import('@tauri-apps/api/event')
+    vi.mocked(invoke).mockClear()
+    vi.mocked(listen).mockClear()
   })
 
   test('should initialize with correct default state', () => {
@@ -76,12 +81,19 @@ describe('useBakerScan Hook', () => {
   test('should handle scan completion through events', async () => {
     const { invoke } = await import('@tauri-apps/api/core')
     const { listen } = await import('@tauri-apps/api/event')
-    
+
     vi.mocked(invoke).mockResolvedValue('test-scan-id')
-    
-    // Mock event listener for scan completion
+
+    // Mock event listener for scan completion - capture the handler
     const mockUnlisten = vi.fn()
-    vi.mocked(listen).mockResolvedValue(mockUnlisten)
+    let completeEventHandler: ((event: any) => void) | null = null
+
+    vi.mocked(listen).mockImplementation((eventName: string, handler: any) => {
+      if (eventName === 'baker_scan_complete') {
+        completeEventHandler = handler
+      }
+      return Promise.resolve(mockUnlisten)
+    })
 
     const { result } = renderHook(() => useBakerScan())
 
@@ -89,18 +101,21 @@ describe('useBakerScan Hook', () => {
       await result.current.startScan('/test/path', mockScanOptions)
     })
 
-    // Simulate scan completion event
-    const listenCall = vi.mocked(listen).mock.calls.find(call => 
-      call[0] === 'baker_scan_complete'
-    )
-    expect(listenCall).toBeDefined()
-    
-    const eventHandler = listenCall![1]
+    expect(result.current.isScanning).toBe(true)
+    expect(completeEventHandler).toBeDefined()
+
+    // Simulate scan completion event using the captured handler
     await act(async () => {
-      eventHandler({ payload: { scanId: 'test-scan-id', result: mockScanResult } })
+      completeEventHandler!({
+        payload: { scanId: 'test-scan-id', result: mockScanResult }
+      })
     })
 
-    expect(result.current.isScanning).toBe(false)
+    // Wait for state updates to complete
+    await waitFor(() => {
+      expect(result.current.isScanning).toBe(false)
+    })
+
     expect(result.current.scanResult).toEqual(mockScanResult)
   })
 
@@ -157,7 +172,7 @@ describe('useBakerScan Hook', () => {
   test('should handle progress updates during scan', async () => {
     const { invoke } = await import('@tauri-apps/api/core')
     const { listen } = await import('@tauri-apps/api/event')
-    
+
     vi.mocked(invoke).mockResolvedValue('test-scan-id')
     vi.mocked(listen).mockResolvedValue(vi.fn())
 

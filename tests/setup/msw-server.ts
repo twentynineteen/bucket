@@ -1,7 +1,7 @@
-import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
-import { trelloHandlers } from './trello-handlers'
+import { setupServer } from 'msw/node'
 import { sproutHandlers } from './sprout-handlers'
+import { trelloHandlers } from './trello-handlers'
 
 // Mock API responses based on the domains from query-keys
 const handlers = [
@@ -12,8 +12,8 @@ const handlers = [
     return HttpResponse.json({
       projects: [
         { id: '1', name: 'Test Project 1', status: 'active' },
-        { id: '2', name: 'Test Project 2', status: 'completed' },
-      ],
+        { id: '2', name: 'Test Project 2', status: 'completed' }
+      ]
     })
   }),
 
@@ -24,7 +24,7 @@ const handlers = [
       name: `Test Project ${id}`,
       status: 'active',
       files: [],
-      settings: {},
+      settings: {}
     })
   }),
 
@@ -34,7 +34,7 @@ const handlers = [
         id: '3',
         name: 'New Test Project',
         status: 'active',
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       },
       { status: 201 }
     )
@@ -47,9 +47,9 @@ const handlers = [
       projectId,
       files: [
         { id: '1', name: 'video1.mp4', size: 1024000, cameraNumber: 1 },
-        { id: '2', name: 'video2.mp4', size: 2048000, cameraNumber: 2 },
+        { id: '2', name: 'video2.mp4', size: 2048000, cameraNumber: 2 }
       ],
-      lastModified: new Date().toISOString(),
+      lastModified: new Date().toISOString()
     })
   }),
 
@@ -60,12 +60,12 @@ const handlers = [
       path,
       folders: [
         { name: 'subfolder1', type: 'directory' },
-        { name: 'subfolder2', type: 'directory' },
+        { name: 'subfolder2', type: 'directory' }
       ],
       files: [
         { name: 'file1.mp4', type: 'file', size: 1024000 },
-        { name: 'file2.mp4', type: 'file', size: 2048000 },
-      ],
+        { name: 'file2.mp4', type: 'file', size: 2048000 }
+      ]
     })
   }),
 
@@ -73,9 +73,17 @@ const handlers = [
   http.get('/api/trello/boards', () => {
     return HttpResponse.json({
       boards: [
-        { id: 'board1', name: 'Video Production Board', url: 'https://trello.com/b/board1' },
-        { id: 'board2', name: 'Post Production Board', url: 'https://trello.com/b/board2' },
-      ],
+        {
+          id: 'board1',
+          name: 'Video Production Board',
+          url: 'https://trello.com/b/board1'
+        },
+        {
+          id: 'board2',
+          name: 'Post Production Board',
+          url: 'https://trello.com/b/board2'
+        }
+      ]
     })
   }),
 
@@ -87,8 +95,8 @@ const handlers = [
       email: 'test@example.com',
       preferences: {
         theme: 'dark',
-        autoSave: true,
-      },
+        autoSave: true
+      }
     })
   }),
 
@@ -98,8 +106,8 @@ const handlers = [
       items: [
         { name: 'Projects', url: '/projects' },
         { name: 'Test Project', url: '/projects/test-project' },
-        { name: 'Videos', url: '/projects/test-project/videos' },
-      ],
+        { name: 'Videos', url: '/projects/test-project/videos' }
+      ]
     })
   }),
 
@@ -111,9 +119,9 @@ const handlers = [
           id: 'event1',
           type: 'upload_started',
           timestamp: new Date().toISOString(),
-          data: { filename: 'video1.mp4' },
-        },
-      ],
+          data: { filename: 'video1.mp4' }
+        }
+      ]
     })
   }),
 
@@ -123,7 +131,7 @@ const handlers = [
     return HttpResponse.json({
       id: imageId,
       url: `https://example.com/images/${imageId}.jpg?t=${Date.now()}`,
-      lastModified: new Date().toISOString(),
+      lastModified: new Date().toISOString()
     })
   }),
 
@@ -136,11 +144,11 @@ const handlers = [
     return HttpResponse.json(
       {
         error: 'Internal server error',
-        message: 'Something went wrong',
+        message: 'Something went wrong'
       },
       { status: 500 }
     )
-  }),
+  })
 ]
 
 export const server = setupServer(...handlers)
@@ -154,7 +162,11 @@ export const simulateNetworkError = (endpoint: string) => {
   )
 }
 
-export const simulateServerError = (endpoint: string, status: number = 500, message: string = 'Server error') => {
+export const simulateServerError = (
+  endpoint: string,
+  status: number = 500,
+  message: string = 'Server error'
+) => {
   server.use(
     http.get(endpoint, () => {
       return HttpResponse.json({ error: message }, { status })
@@ -162,7 +174,11 @@ export const simulateServerError = (endpoint: string, status: number = 500, mess
   )
 }
 
-export const mockApiResponse = (endpoint: string, responseData: unknown, status: number = 200) => {
+export const mockApiResponse = (
+  endpoint: string,
+  responseData: unknown,
+  status: number = 200
+) => {
   server.use(
     http.get(endpoint, () => {
       return HttpResponse.json(responseData, { status })

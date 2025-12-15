@@ -3,7 +3,7 @@
  * CRITICAL: Must FAIL before implementation (RED phase)
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 describe('Retry Logic Integration (T033)', () => {
   it('should retry failed requests 3 times (FR-014)', async () => {

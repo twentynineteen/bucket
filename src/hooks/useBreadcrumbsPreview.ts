@@ -3,15 +3,26 @@
  *
  * Custom hook for managing breadcrumbs preview functionality.
  * Generates previews of changes Baker will make to breadcrumbs files.
+ *
+ * Features:
+ * - Concurrency control to prevent system overload (max 5 concurrent operations)
+ * - Progress tracking for batch operations
+ * - Error handling and graceful fallbacks
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { useCallback, useState } from 'react'
-import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '../types/baker'
 import {
   compareBreadcrumbsMeaningful,
   generateBreadcrumbsPreview
-} from '../utils/breadcrumbsComparison'
+} from '@utils/breadcrumbsComparison'
+import pLimit from 'p-limit'
+import { useCallback, useMemo, useState } from 'react'
+
+import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '@/types/baker'
+import { logger } from '@/utils/logger'
+
+// Concurrency limit for batch operations to prevent system overload
+const CONCURRENCY_LIMIT = 5
 
 interface UseBreadcrumbsPreviewResult {
   // State
@@ -39,6 +50,9 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Create concurrency limiter (memoized to prevent recreation on each render)
+  const limit = useMemo(() => pLimit(CONCURRENCY_LIMIT), [])
+
   const generatePreview = useCallback(
     async (
       projectPath: string,
@@ -59,7 +73,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
               }
             )
           } catch (readError) {
-            console.warn(
+            logger.warn(
               `Failed to read existing breadcrumbs for ${projectPath}:`,
               readError
             )
@@ -78,7 +92,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
             projectPath
           })
         } catch (scanError) {
-          console.warn(
+          logger.warn(
             `Failed to scan current files for ${projectPath}, falling back to breadcrumbs/placeholder:`,
             scanError
           )
@@ -113,7 +127,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
 
           // Update the diff to reflect folder size changes
           const existingChange = preview.diff.changes.find(
-            c => c.field === 'folderSizeBytes'
+            (c) => c.field === 'folderSizeBytes'
           )
 
           if (existingChange) {
@@ -162,10 +176,10 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
           )
           preview.meaningfulDiff = meaningfulDiff
         } catch (sizeError) {
-          console.warn(`Failed to calculate folder size for ${projectPath}:`, sizeError)
+          logger.warn(`Failed to calculate folder size for ${projectPath}:`, sizeError)
         }
 
-        setPreviews(prev => new Map(prev.set(projectPath, preview)))
+        setPreviews((prev) => new Map(prev.set(projectPath, preview)))
         return preview
       } catch (previewError) {
         const errorMessage =
@@ -187,23 +201,29 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
       const newPreviews = new Map<string, BreadcrumbsPreview>()
 
       try {
-        // Generate previews in parallel for better performance
-        const previewPromises = projects.map(async project => {
-          const preview = await generatePreview(project.path, project)
-          if (preview) {
-            return [project.path, preview] as const
-          }
-          return null
-        })
+        // Generate previews with concurrency control to prevent system overload
+        // Uses p-limit to ensure max CONCURRENCY_LIMIT operations run simultaneously
+        const previewPromises = projects.map((project) =>
+          limit(async () => {
+            const preview = await generatePreview(project.path, project)
+            if (preview) {
+              // Update previews incrementally as each completes (for progress tracking)
+              setPreviews((prev) => new Map(prev.set(project.path, preview)))
+              return [project.path, preview] as const
+            }
+            return null
+          })
+        )
 
         const results = await Promise.all(previewPromises)
 
-        results.forEach(result => {
+        results.forEach((result) => {
           if (result) {
             newPreviews.set(result[0], result[1])
           }
         })
 
+        // Final update with all previews
         setPreviews(newPreviews)
         return newPreviews
       } catch (batchError) {
@@ -215,7 +235,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
         setIsGenerating(false)
       }
     },
-    [generatePreview]
+    [generatePreview, limit]
   )
 
   const clearPreviews = useCallback(() => {

@@ -1,8 +1,8 @@
-import * as React from 'react'
+import { type QueryKey } from '@lib/query-utils'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, RenderOptions, RenderResult } from '@testing-library/react'
+import * as React from 'react'
 import { ReactElement, ReactNode } from 'react'
-import { type QueryKey } from '../../src/lib/query-utils'
 
 export interface QueryTestOptions {
   queryClient?: QueryClient
@@ -18,24 +18,24 @@ export function createTestQueryClient(options: QueryTestOptions = {}): QueryClie
         retry: false,
         staleTime: 0,
         cacheTime: 0,
-        ...options,
+        ...options
       },
       mutations: {
         retry: false,
-        ...options,
-      },
+        ...options
+      }
     },
     logger: options.enableLogging
       ? {
           log: console.log,
           warn: console.warn,
-          error: console.error,
+          error: console.error
         }
       : {
           log: () => {},
           warn: () => {},
-          error: () => {},
-        },
+          error: () => {}
+        }
   })
 }
 
@@ -57,7 +57,8 @@ export function renderWithQueryClient(
   options: RenderWithQueryClientOptions = {}
 ): RenderResult & { queryClient: QueryClient } {
   const { queryTestOptions = {}, ...renderOptions } = options
-  const queryClient = queryTestOptions.queryClient || createTestQueryClient(queryTestOptions)
+  const queryClient =
+    queryTestOptions.queryClient || createTestQueryClient(queryTestOptions)
 
   // Pre-populate cache with initial data
   if (queryTestOptions.initialData) {
@@ -72,7 +73,7 @@ export function renderWithQueryClient(
 
   return {
     ...render(ui, { wrapper, ...renderOptions }),
-    queryClient,
+    queryClient
   }
 }
 
@@ -101,13 +102,13 @@ export function mockQuery<TData = any>(
           await new Promise(resolve => setTimeout(resolve, delay))
         }
         throw error
-      },
+      }
     })
-    
+
     // Trigger the query to populate error state
     query.fetch()
   } else {
-    // Set successful data immediately 
+    // Set successful data immediately
     queryClient.setQueryData(queryKey, data)
   }
 }
@@ -127,10 +128,14 @@ export async function waitForQuery(
 ): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      reject(new Error(`Query ${JSON.stringify(queryKey)} did not resolve within ${timeoutMs}ms`))
+      reject(
+        new Error(
+          `Query ${JSON.stringify(queryKey)} did not resolve within ${timeoutMs}ms`
+        )
+      )
     }, timeoutMs)
 
-    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+    const unsubscribe = queryClient.getQueryCache().subscribe(event => {
       if (event.type === 'updated' && event.query.queryKey === queryKey) {
         clearTimeout(timeout)
         unsubscribe()
@@ -151,17 +156,21 @@ export function assertQuerySuccess(
   expectedData?: unknown
 ): void {
   const query = queryClient.getQueryCache().find(queryKey)
-  
+
   if (!query) {
     throw new Error(`Query with key ${JSON.stringify(queryKey)} not found`)
   }
 
   if (query.state.status !== 'success') {
-    throw new Error(`Expected query to be successful, but status was ${query.state.status}`)
+    throw new Error(
+      `Expected query to be successful, but status was ${query.state.status}`
+    )
   }
 
   if (expectedData !== undefined && query.state.data !== expectedData) {
-    throw new Error(`Expected query data to be ${expectedData}, but got ${query.state.data}`)
+    throw new Error(
+      `Expected query data to be ${expectedData}, but got ${query.state.data}`
+    )
   }
 }
 
@@ -171,23 +180,27 @@ export function assertQueryError(
   expectedError?: Error
 ): void {
   const query = queryClient.getQueryCache().find(queryKey)
-  
+
   if (!query) {
     throw new Error(`Query with key ${JSON.stringify(queryKey)} not found`)
   }
 
   if (query.state.status !== 'error') {
-    throw new Error(`Expected query to be in error state, but status was ${query.state.status}`)
+    throw new Error(
+      `Expected query to be in error state, but status was ${query.state.status}`
+    )
   }
 
   if (expectedError && query.state.error?.message !== expectedError.message) {
-    throw new Error(`Expected error message "${expectedError.message}", but got "${query.state.error?.message}"`)
+    throw new Error(
+      `Expected error message "${expectedError.message}", but got "${query.state.error?.message}"`
+    )
   }
 }
 
 export function assertQueryLoading(queryClient: QueryClient, queryKey: QueryKey): void {
   const query = queryClient.getQueryCache().find(queryKey)
-  
+
   if (!query) {
     throw new Error(`Query with key ${JSON.stringify(queryKey)} not found`)
   }
@@ -212,8 +225,14 @@ export class QueryTestRunner {
 
   async run(): Promise<void> {
     const results = await Promise.allSettled(
-      this.assertions.map(async (assertion) => {
-        const { queryKey, expectedCallCount, expectedData, expectedError, timeoutMs = 5000 } = assertion
+      this.assertions.map(async assertion => {
+        const {
+          queryKey,
+          expectedCallCount,
+          expectedData,
+          expectedError,
+          timeoutMs = 5000
+        } = assertion
 
         if (expectedData !== undefined) {
           await waitForQuery(this.queryClient, queryKey, timeoutMs)
@@ -232,10 +251,13 @@ export class QueryTestRunner {
       .filter(({ result }) => result.status === 'rejected')
 
     if (failures.length > 0) {
-      const errorMessages = failures.map(({ result, assertion }) => 
-        `Query ${JSON.stringify(assertion.queryKey)}: ${(result as PromiseRejectedResult).reason.message}`
-      ).join('\n')
-      
+      const errorMessages = failures
+        .map(
+          ({ result, assertion }) =>
+            `Query ${JSON.stringify(assertion.queryKey)}: ${(result as PromiseRejectedResult).reason.message}`
+        )
+        .join('\n')
+
       throw new Error(`Query test assertions failed:\n${errorMessages}`)
     }
   }
@@ -274,7 +296,6 @@ export async function testHookContract<TData = unknown, TVariables = unknown>(
 
   // Run test scenarios
   for (const scenario of contract.testScenarios) {
-    
     if (scenario.setup) {
       scenario.setup()
     }
@@ -288,7 +309,7 @@ export async function testHookContract<TData = unknown, TVariables = unknown>(
       for (const expectation of scenario.expectations) {
         const { queryKey, expectedData } = expectation
         const cachedData = queryClient.getQueryData(queryKey)
-        
+
         if (expectedData) {
           expect(cachedData).toEqual(expectedData)
         }

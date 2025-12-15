@@ -51,7 +51,7 @@ body:
     id: info
     attributes:
       label: Platform and versions
-      description: "Output of `npm run tauri info` or `cargo tauri info`"
+      description: 'Output of `npm run tauri info` or `cargo tauri info`'
     validations:
       required: true
 
@@ -65,7 +65,7 @@ body:
         to the following link: https://docs.github.com/en/github/writing-on-github/working-with-advanced-formatting/attaching-files
       placeholder: |
         You can drag your video or image files inside of this editor ↓
-  
+
   - type: textarea
     id: context
     attributes:
@@ -77,5 +77,5 @@ body:
     attributes:
       label: Participation
       options:
-        - label:  I am willing to submit a pull request for this issue.
+        - label: I am willing to submit a pull request for this issue.
           required: false

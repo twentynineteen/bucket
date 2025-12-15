@@ -2,6 +2,8 @@ import { Button } from '@components/ui/button'
 import { QueryErrorResetBoundary } from '@tanstack/react-query'
 import React, { Component, ReactNode } from 'react'
 
+import { logger } from '@/utils/logger'
+
 interface ErrorBoundaryState {
   hasError: boolean
   error?: Error
@@ -26,7 +28,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log the error details
-    console.error('ErrorBoundary caught an error:', error, errorInfo)
+    logger.error('ErrorBoundary caught an error:', error, errorInfo)
 
     this.setState({
       error,
@@ -45,15 +47,15 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
       // Default error UI
       return (
-        <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center">
+        <div className="flex min-h-[400px] flex-col items-center justify-center p-8 text-center">
           <div className="max-w-md">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+            <h2 className="text-foreground mb-4 text-2xl font-semibold">
               Something went wrong
             </h2>
-            <div className="text-gray-600 mb-6 space-y-2">
+            <div className="text-muted-foreground mb-6 space-y-2">
               <p>An unexpected error occurred in the application.</p>
               {this.state.error && (
-                <details className="text-left bg-gray-50 p-4 rounded-md text-sm">
+                <details className="bg-muted rounded-md p-4 text-left text-sm">
                   <summary className="cursor-pointer font-medium">Error Details</summary>
                   <div className="mt-2 space-y-1">
                     <p>
@@ -65,7 +67,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                       </p>
                     )}
                     {this.state.errorInfo && (
-                      <pre className="text-xs overflow-x-auto">
+                      <pre className="overflow-x-auto text-xs">
                         {this.state.errorInfo.componentStack}
                       </pre>
                     )}
@@ -108,17 +110,17 @@ export const QueryErrorBoundary: React.FC<QueryErrorBoundaryProps> = ({
           fallback={
             fallback ||
             ((error, retry) => (
-              <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center">
+              <div className="flex min-h-[400px] flex-col items-center justify-center p-8 text-center">
                 <div className="max-w-md">
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                  <h2 className="text-foreground mb-4 text-2xl font-semibold">
                     Query Error
                   </h2>
-                  <div className="text-gray-600 mb-6">
+                  <div className="text-muted-foreground mb-6">
                     <p>
                       Failed to load data. Please check your connection and try again.
                     </p>
                     {error && (
-                      <details className="mt-4 text-left bg-gray-50 p-4 rounded-md text-sm">
+                      <details className="bg-muted mt-4 rounded-md p-4 text-left text-sm">
                         <summary className="cursor-pointer font-medium">
                           Error Details
                         </summary>
@@ -130,7 +132,7 @@ export const QueryErrorBoundary: React.FC<QueryErrorBoundaryProps> = ({
                       </details>
                     )}
                   </div>
-                  <div className="flex gap-2 justify-center">
+                  <div className="flex justify-center gap-2">
                     <Button
                       onClick={() => {
                         reset() // Reset React Query error state

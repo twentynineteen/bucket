@@ -1,10 +1,10 @@
 [package]
 name = "Bucket"
-version = "0.9.3"
+version = "0.12.1"
 description = "An app to streamline ingesting and uploading video content"
 authors = ["Daniel Mills"]
-license = "MIT"
-repository = "https://github.com/twentynineteen/ingest-tauri"
+license = "UNLICENSED"
+repository = "https://github.com/twentynineteen/bucket"
 default-run = "Bucket"
 edition = "2021"
 
@@ -31,6 +31,8 @@ rand = "0.8"
 jsonwebtoken = "9.3.1"
 chrono = "0.4.39"
 dotenv = "0.15.0"
+zip = "0.6"
+dirs = "5.0"
 tauri-plugin-http = "2.3.0"
 tauri-plugin-fs = "2.4.2"
 log = "0.4"

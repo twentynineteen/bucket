@@ -47,6 +47,40 @@ export interface TrelloCard {
 }
 
 /**
+ * Represents a Trello board with metadata
+ * Returned from fetch_trello_boards Tauri command
+ */
+export interface TrelloBoard {
+  /** Board ID (24-character alphanumeric) */
+  id: string
+
+  /** Board display name */
+  name: string
+
+  /** Organization details (if board belongs to an org) */
+  organization?: TrelloOrganization
+
+  /** Board preferences including visibility */
+  prefs: TrelloBoardPrefs
+}
+
+/**
+ * Trello organization information
+ */
+export interface TrelloOrganization {
+  /** Organization display name */
+  name: string
+}
+
+/**
+ * Trello board preferences
+ */
+export interface TrelloBoardPrefs {
+  /** Board permission level (e.g., "public", "private", "org") */
+  permissionLevel: string
+}
+
+/**
  * Sprout Video API response structure
  * Returned from fetch_sprout_video_details Tauri command
  */

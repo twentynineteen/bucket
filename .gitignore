@@ -181,3 +181,13 @@ camera-count-fixes.md
 
 # Github Spec Kit Files
 .sync-backups
+
+# Security reports
+/security-reports/
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+
+# Claude Code
+.claude/

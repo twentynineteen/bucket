@@ -3,7 +3,7 @@
  * CRITICAL: Must FAIL before implementation (RED phase)
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 describe('useDocxParser - Contract Tests (T024)', () => {
   it('should return { parseFile, isLoading, result, error }', () => {

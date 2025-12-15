@@ -1,17 +1,21 @@
+import { CACHE } from '@constants/timing'
+import { queryKeys } from '@lib/query-keys'
+import { createQueryError, createQueryOptions, shouldRetry } from '@lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
-import { loadApiKeys } from 'utils/storage'
+import { loadApiKeys } from '@utils/storage'
 import {
   fetchTrelloCards,
   fetchTrelloLists,
   groupCardsByList,
   TrelloCard
-} from 'utils/TrelloCards'
-import { queryKeys } from '../lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '../lib/query-utils'
+} from '@utils/TrelloCards'
+import { useMemo } from 'react'
+
+import { logger } from '@/utils/logger'
 
 interface TrelloBoardData {
   grouped: Record<string, TrelloCard[]>
+  allCards: TrelloCard[]
   isLoading: boolean
   apiKey: string | null
   token: string | null
@@ -22,13 +26,11 @@ interface TrelloBoardData {
  * then group the cards by their list.
  */
 export function useTrelloBoard(boardId: string): TrelloBoardData {
-  const [grouped, setGrouped] = useState<Record<string, TrelloCard[]>>({})
-
   // Use a simpler approach - direct query for credentials
   const { data: credentials, isLoading: credentialsLoading } = useQuery({
     queryKey: ['api-keys'],
     queryFn: loadApiKeys,
-    staleTime: 5 * 60 * 1000,
+    staleTime: CACHE.STANDARD,
     refetchOnWindowFocus: false
   })
 
@@ -47,7 +49,7 @@ export function useTrelloBoard(boardId: string): TrelloBoardData {
       'DYNAMIC',
       {
         enabled: !!apiKey && !!token && !credentialsLoading,
-        staleTime: 2 * 60 * 1000, // 2 minutes
+        staleTime: CACHE.QUICK, // 2 minutes
         retry: (failureCount, error) => shouldRetry(error, failureCount, 'external')
       }
     )
@@ -65,7 +67,7 @@ export function useTrelloBoard(boardId: string): TrelloBoardData {
       'DYNAMIC',
       {
         enabled: !!apiKey && !!token && !credentialsLoading,
-        staleTime: 2 * 60 * 1000, // 2 minutes
+        staleTime: CACHE.QUICK, // 2 minutes
         retry: (failureCount, error) => shouldRetry(error, failureCount, 'external')
       }
     )
@@ -75,25 +77,27 @@ export function useTrelloBoard(boardId: string): TrelloBoardData {
   const isDataReady = cards && lists && !cardsLoading && !listsLoading
   const isLoading = credentialsLoading || cardsLoading || listsLoading
 
-  // Group cards when data changes
-  useEffect(() => {
+  // Compute grouped cards as a derived value using useMemo
+  const grouped = useMemo(() => {
     if (isDataReady) {
       try {
-        const groupedCards = groupCardsByList(cards, lists)
-        setGrouped(groupedCards)
+        return groupCardsByList(cards, lists)
       } catch (error) {
-        console.error('Error grouping Trello cards:', error)
-        // Reset to empty state on error
-        setGrouped({})
+        logger.error('Error grouping Trello cards:', error)
+        return {}
       }
-    } else {
-      // Clear grouped data when dependencies are loading/missing
-      setGrouped({})
     }
+    return {}
   }, [cards, lists, isDataReady])
+
+  // Flatten all cards for search/filtering
+  const allCards = useMemo(() => {
+    return cards || []
+  }, [cards])
 
   return {
     grouped,
+    allCards,
     isLoading,
     apiKey,
     token

@@ -51,9 +51,9 @@ src/
 ### Basic Query Pattern
 
 ```typescript
+import { queryKeys } from '@lib/query-keys'
+import { createQueryError, createQueryOptions, shouldRetry } from '@lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
-import { createQueryOptions, createQueryError, shouldRetry } from '../lib/query-utils'
-import { queryKeys } from '../lib/query-keys'
 
 function useUserData(userId: string) {
   return useQuery({
@@ -65,16 +65,13 @@ function useUserData(userId: string) {
           if (!response.ok) throw new Error(`HTTP ${response.status}`)
           return await response.json()
         } catch (error) {
-          throw createQueryError(
-            `Failed to fetch user data: ${error}`,
-            'USER_FETCH'
-          )
+          throw createQueryError(`Failed to fetch user data: ${error}`, 'USER_FETCH')
         }
       },
       'DYNAMIC', // Cache strategy
       {
         staleTime: 5 * 60 * 1000, // 5 minutes
-        gcTime: 15 * 60 * 1000,   // 15 minutes
+        gcTime: 15 * 60 * 1000, // 15 minutes
         retry: (failureCount, error) => shouldRetry(error, failureCount, 'user')
       }
     )
@@ -101,10 +98,7 @@ function useFolders(apiKey: string, parentId: string | null) {
           })
           return result.folders
         } catch (error) {
-          throw createQueryError(
-            `Failed to fetch folders: ${error}`,
-            'FOLDERS_FETCH'
-          )
+          throw createQueryError(`Failed to fetch folders: ${error}`, 'FOLDERS_FETCH')
         }
       },
       'DYNAMIC',
@@ -130,13 +124,12 @@ function useImageRefresh(imagePath: string) {
       queryKeys.images.refresh(imagePath),
       async () => {
         try {
-          const response = await fetch(`/api/images/refresh?path=${encodeURIComponent(imagePath)}`)
+          const response = await fetch(
+            `/api/images/refresh?path=${encodeURIComponent(imagePath)}`
+          )
           return await response.json()
         } catch (error) {
-          throw createQueryError(
-            `Failed to refresh image: ${error}`,
-            'IMAGE_REFRESH'
-          )
+          throw createQueryError(`Failed to refresh image: ${error}`, 'IMAGE_REFRESH')
         }
       },
       'REALTIME',
@@ -167,20 +160,17 @@ function useSaveSettings() {
         await saveApiKeys(settings)
         return settings
       } catch (error) {
-        throw createQueryError(
-          `Failed to save settings: ${error}`,
-          'SETTINGS_SAVE'
-        )
+        throw createQueryError(`Failed to save settings: ${error}`, 'SETTINGS_SAVE')
       }
     },
-    onSuccess: (savedSettings) => {
+    onSuccess: savedSettings => {
       // Update the cache with new data
       queryClient.setQueryData(queryKeys.settings.apiKeys(), savedSettings)
-      
+
       // Or invalidate to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all() })
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Settings save failed:', error)
       // Could show toast notification here
     }
@@ -203,7 +193,7 @@ function useUpdateUserProfile() {
       if (!response.ok) throw new Error('Update failed')
       return response.json()
     },
-    onMutate: async (updates) => {
+    onMutate: async updates => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: queryKeys.user.profile() })
 
@@ -239,10 +229,10 @@ function useUpdateUserProfile() {
 The application uses a standardized error system:
 
 ```typescript
-export type QueryErrorType = 
+export type QueryErrorType =
   | 'NETWORK_ERROR'
   | 'AUTHENTICATION'
-  | 'AUTHORIZATION' 
+  | 'AUTHORIZATION'
   | 'VALIDATION'
   | 'NOT_FOUND'
   | 'SERVER_ERROR'
@@ -285,7 +275,7 @@ export interface QueryError extends Error {
 const shouldRetry = (error: Error, failureCount: number, context: string): boolean => {
   // Don't retry client errors (4xx)
   if (error.message.includes('4')) return false
-  
+
   // Different retry limits for different contexts
   const maxRetries = context === 'auth' ? 1 : 3
   return failureCount < maxRetries
@@ -303,19 +293,19 @@ const shouldRetry = (error: Error, failureCount: number, context: string): boole
 ```typescript
 const CacheStrategies = {
   STATIC: {
-    staleTime: 30 * 60 * 1000,  // 30 minutes
-    gcTime: 60 * 60 * 1000,     // 1 hour
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 60 * 60 * 1000, // 1 hour
     refetchOnWindowFocus: false
   },
   DYNAMIC: {
-    staleTime: 5 * 60 * 1000,   // 5 minutes
-    gcTime: 15 * 60 * 1000,     // 15 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes
     refetchOnWindowFocus: false
   },
   REALTIME: {
-    staleTime: 0,               // Always stale
-    gcTime: 2 * 60 * 1000,      // 2 minutes
-    refetchInterval: 30000,     // 30 seconds
+    staleTime: 0, // Always stale
+    gcTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 30000, // 30 seconds
     refetchIntervalInBackground: true
   }
 }
@@ -330,16 +320,16 @@ export const queryKeys = {
   user: {
     all: () => ['user'] as const,
     profile: (id?: string) => [...queryKeys.user.all(), 'profile', id] as const,
-    authentication: () => [...queryKeys.user.all(), 'auth'] as const,
+    authentication: () => [...queryKeys.user.all(), 'auth'] as const
   },
   settings: {
     all: () => ['settings'] as const,
-    apiKeys: () => [...queryKeys.settings.all(), 'apiKeys'] as const,
+    apiKeys: () => [...queryKeys.settings.all(), 'apiKeys'] as const
   },
   trello: {
     all: () => ['trello'] as const,
     board: (boardId: string) => [...queryKeys.trello.all(), 'board', boardId] as const,
-    card: (cardId: string) => [...queryKeys.trello.all(), 'card', cardId] as const,
+    card: (cardId: string) => [...queryKeys.trello.all(), 'card', cardId] as const
   }
 }
 ```
@@ -356,7 +346,7 @@ const prefetchManager = getPrefetchManager()
 await prefetchManager.prefetchForRoute('/settings')
 
 // Hover-based prefetching
-<button 
+<button
   onMouseEnter={() => prefetchManager.prefetchOnHover('trello-button')}
   onClick={() => navigate('/trello')}
 >
@@ -421,7 +411,7 @@ const createWrapper = () => {
       mutations: { retry: false }
     }
   })
-  
+
   return ({ children }) => (
     <QueryClientProvider client={queryClient}>
       {children}
@@ -443,14 +433,14 @@ test('should fetch user profile', async () => {
 
 ```typescript
 // tests/setup/msw-server.ts
-import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
+import { setupServer } from 'msw/node'
 
 export const server = setupServer(
   http.get('/api/user/:id', ({ params }) => {
     return HttpResponse.json({ id: params.id, name: 'Test User' })
   }),
-  
+
   http.get('https://api.trello.com/*', () => {
     return HttpResponse.json({ lists: [], cards: [] })
   })
@@ -462,6 +452,7 @@ export const server = setupServer(
 ### From useEffect to React Query
 
 **Before (Legacy Pattern):**
+
 ```typescript
 const [data, setData] = useState(null)
 const [loading, setLoading] = useState(false)
@@ -481,12 +472,13 @@ useEffect(() => {
       setLoading(false)
     }
   }
-  
+
   fetchData()
 }, [dependency])
 ```
 
 **After (React Query Pattern):**
+
 ```typescript
 const { data, isLoading, error } = useQuery({
   ...createQueryOptions(
@@ -527,9 +519,10 @@ npx ts-node scripts/validate-migration.ts
 ```
 
 This will check for:
+
 - Proper React Query usage
 - Remaining legacy patterns
-- Query key consistency  
+- Query key consistency
 - Error handling implementation
 - TypeScript compilation
 
@@ -549,22 +542,26 @@ This will check for:
 ### Common Issues
 
 **Query not updating:**
+
 - Check if query key includes all dependencies
 - Verify staleTime isn't too long
 - Ensure proper invalidation after mutations
 
 **Memory leaks:**
+
 - Use optimization tools to monitor cache size
 - Implement cleanup strategies for large datasets
 - Check for proper component unmounting
 
 **Performance issues:**
+
 - Review prefetching strategies
 - Monitor query performance metrics
 - Consider pagination for large datasets
 - Optimize query key structure
 
 **TypeScript errors:**
+
 - Ensure proper typing for query functions
 - Use createQueryOptions for type safety
 - Check query key factory types

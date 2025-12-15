@@ -6,10 +6,17 @@
  */
 
 // import { createOpenAI } from '@ai-sdk/openai' // Commented out for Phase 1
+import { SECONDS, TIMEOUTS } from '@constants/timing'
+import type { ProviderConfiguration } from '@types/scriptFormatter'
+import { createNamespacedLogger } from '@utils/logger'
 import type { LanguageModel } from 'ai'
 import { createOllama } from 'ollama-ai-provider-v2'
-import type { ProviderConfiguration } from '../../types/scriptFormatter'
+
+import { logger } from '@/utils/logger'
+
 import type { ModelInfo, ProviderAdapter, ProviderRegistry } from './types'
+
+const logger = createNamespacedLogger('Ollama')
 
 // ============================================================================
 // Ollama Provider Adapter
@@ -28,13 +35,25 @@ const ollamaAdapter: ProviderAdapter = {
     // Normalize URL: remove trailing slashes and ensure no /api suffix
     baseUrl = baseUrl.replace(/\/+$/, '').replace(/\/api$/, '')
 
-    console.log('[Ollama] Creating model with baseURL:', `${baseUrl}/api`)
+    logger.log('Creating model with baseURL:', `${baseUrl}/api`)
 
     // Custom fetch with extended timeout for AI generation (5 minutes)
     const customFetch = async (url: RequestInfo | URL, init?: RequestInit) => {
       const timeout = 300000 // 5 minutes for AI generation
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+      // Merge signals: abort if either the timeout or the passed signal is aborted
+      const existingSignal = init?.signal
+      if (existingSignal) {
+        // If the existing signal is already aborted, abort immediately
+        if (existingSignal.aborted) {
+          controller.abort()
+        } else {
+          // Listen for abort from the existing signal
+          existingSignal.addEventListener('abort', () => controller.abort())
+        }
+      }
 
       try {
         const response = await fetch(url, {
@@ -55,6 +74,7 @@ const ollamaAdapter: ProviderAdapter = {
     })
 
     // Return the model instance
+    // Note: num_ctx and other Ollama options are set via providerOptions in streamText
     return ollama(modelId)
   },
 
@@ -67,7 +87,7 @@ const ollamaAdapter: ProviderAdapter = {
       baseUrl = baseUrl.replace(/\/+$/, '').replace(/\/api$/, '')
       const apiUrl = `${baseUrl}/api/tags`
 
-      console.log('[Ollama] Validating connection to:', apiUrl)
+      logger.log('Validating connection to:', apiUrl)
 
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -75,7 +95,7 @@ const ollamaAdapter: ProviderAdapter = {
       })
 
       if (!response.ok) {
-        console.error('[Ollama] Validation failed:', response.status, response.statusText)
+        logger.error('[Ollama] Validation failed:', response.status, response.statusText)
         return {
           success: false,
           errorMessage: `HTTP ${response.status}: ${response.statusText}. Check if Ollama is running at ${baseUrl}`,
@@ -86,10 +106,7 @@ const ollamaAdapter: ProviderAdapter = {
 
       const data = await response.json()
 
-      console.log(
-        '[Ollama] Validation successful. Models found:',
-        data.models?.length || 0
-      )
+      logger.log('Validation successful. Models found:', data.models?.length || 0)
 
       return {
         success: true,
@@ -97,7 +114,7 @@ const ollamaAdapter: ProviderAdapter = {
         latencyMs: Date.now() - start
       }
     } catch (error) {
-      console.error('[Ollama] Validation error:', error)
+      logger.error('[Ollama] Validation error:', error)
       return {
         success: false,
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
@@ -114,7 +131,7 @@ const ollamaAdapter: ProviderAdapter = {
       baseUrl = baseUrl.replace(/\/+$/, '').replace(/\/api$/, '')
       const apiUrl = `${baseUrl}/api/tags`
 
-      console.log('[Ollama] Fetching models from:', apiUrl)
+      logger.log('Fetching models from:', apiUrl)
 
       const response = await fetch(apiUrl, {
         signal: AbortSignal.timeout(config.timeout || 5000)
@@ -134,21 +151,21 @@ const ollamaAdapter: ProviderAdapter = {
         }>
       }
 
-      console.log('[Ollama] Models fetched:', data.models?.length || 0)
+      logger.log('Models fetched:', data.models?.length || 0)
 
-      return (data.models || []).map(model => ({
+      return (data.models || []).map((model) => ({
         id: model.name,
         name: model.name.replace(':latest', ''),
         size: String(model.size),
         contextLength: model.details?.parameter_size || 4096,
         // Tool calling support detection
-        supportsToolCalling: ['llama3', 'mistral', 'qwen'].some(name =>
+        supportsToolCalling: ['llama3', 'mistral', 'qwen'].some((name) =>
           model.name.toLowerCase().includes(name)
         ),
         supportsStreaming: true // All Ollama models support streaming
       }))
     } catch (error) {
-      console.error('[Ollama] Failed to list models:', error)
+      logger.error('[Ollama] Failed to list models:', error)
       throw new Error(
         `Failed to list Ollama models: ${error instanceof Error ? error.message : 'Unknown error'}`
       )
@@ -225,11 +242,23 @@ const ollamaAdapter: ProviderAdapter = {
         throw new Error(`Failed to fetch models: HTTP ${response.status}`)
       }
 
-      const data = await response.json()
+      interface OpenAIModel {
+        id: string
+        object: string
+        created: number
+        owned_by: string
+      }
+
+      interface OpenAIModelsResponse {
+        data: OpenAIModel[]
+        object: string
+      }
+
+      const data = await response.json() as OpenAIModelsResponse
 
       return (data.data || [])
-        .filter((model: any) => model.id.startsWith('gpt-')) // Only GPT models
-        .map((model: any) => ({
+        .filter((model) => model.id.startsWith('gpt-')) // Only GPT models
+        .map((model) => ({
           id: model.id,
           name: model.id,
           contextLength: 128000, // GPT-4 context
@@ -284,12 +313,12 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, Partial<ProviderConfigurat
   ollama: {
     serviceUrl: 'http://localhost:11434',
     connectionStatus: 'not-configured',
-    timeout: 5000
+    timeout: 5 * SECONDS
   },
   openai: {
     serviceUrl: 'https://api.openai.com',
     connectionStatus: 'not-configured',
-    timeout: 30000
+    timeout: TIMEOUTS.DEFAULT
   }
 }
 
@@ -302,7 +331,7 @@ export function getDefaultConfig(providerId: string): ProviderConfiguration {
   return {
     serviceUrl: defaults.serviceUrl || '',
     connectionStatus: 'not-configured',
-    timeout: defaults.timeout || 5000,
+    timeout: defaults.timeout || 5 * SECONDS,
     ...defaults
   } as ProviderConfiguration
 }

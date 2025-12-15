@@ -1,14 +1,14 @@
 /**
  * Unit Test: useBakerPreferences React Hook
- * 
+ *
  * This test verifies the useBakerPreferences custom hook behavior.
  * It MUST FAIL initially until the hook implementation is complete.
  */
 
-import { renderHook, act } from '@testing-library/react'
-import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { useBakerPreferences } from '../../src/hooks/useBakerPreferences'
-import type { ScanPreferences } from '../../src/types/baker'
+import type { ScanPreferences } from '@/types/baker'
+import { useBakerPreferences } from '@hooks/useBakerPreferences'
+import { act, renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock localStorage
 const mockLocalStorage = {
@@ -208,7 +208,7 @@ describe('useBakerPreferences Hook', () => {
       autoUpdate: true,
       maxDepth: 20
     }
-    
+
     mockLocalStorage.getItem.mockReturnValue(JSON.stringify(initialPrefs))
 
     const { result } = renderHook(() => useBakerPreferences())

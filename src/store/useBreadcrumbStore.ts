@@ -10,7 +10,7 @@ interface BreadcrumbState {
   setBreadcrumbs: (items: BreadcrumbItem[]) => void
 }
 
-export const useBreadcrumbStore = create<BreadcrumbState>()(set => ({
+export const useBreadcrumbStore = create<BreadcrumbState>()((set) => ({
   breadcrumbs: [],
-  setBreadcrumbs: items => set({ breadcrumbs: items })
+  setBreadcrumbs: (items) => set({ breadcrumbs: items })
 }))

@@ -5,6 +5,8 @@
  * Confirmation dialog for deleting script examples
  */
 
+import { Loader2 } from 'lucide-react'
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +17,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { Loader2 } from 'lucide-react'
 
 interface DeleteConfirmProps {
   open: boolean

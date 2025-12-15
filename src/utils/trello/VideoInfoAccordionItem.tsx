@@ -3,8 +3,9 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@components/ui/accordion'
+import { VideoInfoData } from '@hooks/useVideoInfoBlock'
 import React from 'react'
-import { VideoInfoData } from '../../hooks/useVideoInfoBlock'
+
 import KeyValueRow from './KeyValueRow'
 import VideoThumbnail from './VideoThumbnail'
 
@@ -17,7 +18,7 @@ const VideoInfoAccordionItem: React.FC<Props> = ({ data }) => {
     <AccordionItem value="videoinfo">
       <AccordionTrigger className="font-semibold">Video Info</AccordionTrigger>
       <AccordionContent>
-        <div className="space-y-2 text-sm text-muted-foreground">
+        <div className="text-muted-foreground space-y-2 text-sm">
           <KeyValueRow label="Title" value={data.title} />
           <KeyValueRow label="Duration" value={data.duration} />
           <KeyValueRow label="Uploaded" value={data.uploaded} />
@@ -29,7 +30,7 @@ const VideoInfoAccordionItem: React.FC<Props> = ({ data }) => {
                 href={data.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
+                className="text-info hover:underline"
               >
                 Open Video
               </a>

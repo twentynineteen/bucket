@@ -5,7 +5,7 @@
  * and providing graceful fallbacks for edge cases.
  */
 
-import type { BreadcrumbsFile, FileInfo } from '../types/baker'
+import type { BreadcrumbsFile, FileInfo } from '@/types/baker'
 
 export interface ValidationError {
   field: string
@@ -19,6 +19,114 @@ export interface ValidationResult {
   warnings: ValidationError[]
   canRecover: boolean
   recoveredData?: Partial<BreadcrumbsFile>
+}
+
+/**
+ * Validate a single file info object
+ * Extracted to reduce nesting in validateBreadcrumbs
+ */
+function validateFileInfo(
+  file: unknown,
+  index: number,
+  warnings: ValidationError[]
+): FileInfo | null {
+  // Early return for invalid file objects
+  if (typeof file !== 'object' || file === null) {
+    warnings.push({
+      field: `files[${index}]`,
+      message: `File ${index}: Invalid file object, skipping`,
+      severity: 'warning'
+    })
+    return null
+  }
+
+  const fileObj = file as Record<string, unknown>
+  const validFile: Partial<FileInfo> = {}
+
+  // Validate camera number
+  validFile.camera = validateFileCamera(fileObj.camera, index, warnings)
+
+  // Validate file name
+  validFile.name = validateFileName(fileObj.name, index, warnings)
+
+  // Validate file path
+  validFile.path = validateFilePath(fileObj.path, validFile.name, index, warnings)
+
+  // Only return file if all required fields are present
+  if (validFile.camera && validFile.name && validFile.path) {
+    return validFile as FileInfo
+  }
+
+  return null
+}
+
+/**
+ * Validate file camera number
+ */
+function validateFileCamera(
+  camera: unknown,
+  index: number,
+  warnings: ValidationError[]
+): number {
+  if (typeof camera === 'number') {
+    if (camera >= 1) {
+      return camera
+    }
+    warnings.push({
+      field: `files[${index}].camera`,
+      message: `File ${index}: Invalid camera number, defaulting to 1`,
+      severity: 'warning'
+    })
+    return 1
+  }
+
+  warnings.push({
+    field: `files[${index}].camera`,
+    message: `File ${index}: Missing camera number, defaulting to 1`,
+    severity: 'warning'
+  })
+  return 1
+}
+
+/**
+ * Validate file name
+ */
+function validateFileName(
+  name: unknown,
+  index: number,
+  warnings: ValidationError[]
+): string {
+  if (typeof name === 'string' && name.trim()) {
+    return name.trim()
+  }
+
+  warnings.push({
+    field: `files[${index}].name`,
+    message: `File ${index}: Invalid or missing name, using placeholder`,
+    severity: 'warning'
+  })
+  return `Unknown_File_${index + 1}`
+}
+
+/**
+ * Validate file path
+ */
+function validateFilePath(
+  path: unknown,
+  fallbackName: string | undefined,
+  index: number,
+  warnings: ValidationError[]
+): string {
+  if (typeof path === 'string' && path.trim()) {
+    return path.trim()
+  }
+
+  warnings.push({
+    field: `files[${index}].path`,
+    message: `File ${index}: Missing path, will need to be rescanned`,
+    severity: 'warning'
+  })
+  return fallbackName || `Unknown_Path_${index + 1}`
 }
 
 /**
@@ -116,64 +224,9 @@ export function validateBreadcrumbs(data: unknown): ValidationResult {
     } else {
       const validFiles: FileInfo[] = []
       breadcrumbs.files.forEach((file, index) => {
-        if (typeof file === 'object' && file !== null) {
-          const fileObj = file as Record<string, unknown>
-          const validFile: Partial<FileInfo> = {}
-
-          // Validate camera number
-          if (typeof fileObj.camera === 'number') {
-            if (fileObj.camera >= 1) {
-              validFile.camera = fileObj.camera
-            } else {
-              warnings.push({
-                field: `files[${index}].camera`,
-                message: `File ${index}: Invalid camera number, defaulting to 1`,
-                severity: 'warning'
-              })
-              validFile.camera = 1
-            }
-          } else {
-            warnings.push({
-              field: `files[${index}].camera`,
-              message: `File ${index}: Missing camera number, defaulting to 1`,
-              severity: 'warning'
-            })
-            validFile.camera = 1
-          }
-
-          // Validate file name
-          if (typeof fileObj.name === 'string' && fileObj.name.trim()) {
-            validFile.name = fileObj.name.trim()
-          } else {
-            warnings.push({
-              field: `files[${index}].name`,
-              message: `File ${index}: Invalid or missing name, using placeholder`,
-              severity: 'warning'
-            })
-            validFile.name = `Unknown_File_${index + 1}`
-          }
-
-          // Validate file path
-          if (typeof fileObj.path === 'string' && fileObj.path.trim()) {
-            validFile.path = fileObj.path.trim()
-          } else {
-            warnings.push({
-              field: `files[${index}].path`,
-              message: `File ${index}: Missing path, will need to be rescanned`,
-              severity: 'warning'
-            })
-            validFile.path = validFile.name || `Unknown_Path_${index + 1}`
-          }
-
-          if (validFile.camera && validFile.name && validFile.path) {
-            validFiles.push(validFile as FileInfo)
-          }
-        } else {
-          warnings.push({
-            field: `files[${index}]`,
-            message: `File ${index}: Invalid file object, skipping`,
-            severity: 'warning'
-          })
+        const validatedFile = validateFileInfo(file, index, warnings)
+        if (validatedFile) {
+          validFiles.push(validatedFile)
         }
       })
       recoveredData.files = validFiles
@@ -352,7 +405,7 @@ export function hasSchemaIssues(data: unknown): boolean {
 export function getErrorMessage(validation: ValidationResult): string {
   if (validation.isValid) return ''
 
-  const criticalErrors = validation.errors.filter(e => e.severity === 'error')
+  const criticalErrors = validation.errors.filter((e) => e.severity === 'error')
 
   if (criticalErrors.length === 1) {
     return criticalErrors[0].message

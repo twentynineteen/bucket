@@ -1,9 +1,11 @@
+import { appStore } from '@store/useAppStore'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { open } from '@tauri-apps/plugin-dialog'
+import { SproutUploadResponse } from '@utils/types'
 import { useState } from 'react'
-import { appStore } from '../store/useAppStore'
-import { SproutUploadResponse } from '../utils/types'
+
+import { logger } from '@/utils/logger'
 
 interface UseFileUploadReturn {
   selectedFile: string | null
@@ -64,7 +66,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
               const unsub = await completeUnlisten
               unsub()
             } catch (e) {
-              console.warn('Failed to unsubscribe from upload_complete:', e)
+              logger.warn('Failed to unsubscribe from upload_complete:', e)
             }
           }
           if (errorUnlisten) {
@@ -72,7 +74,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
               const unsub = await errorUnlisten
               unsub()
             } catch (e) {
-              console.warn('Failed to unsubscribe from upload_error:', e)
+              logger.warn('Failed to unsubscribe from upload_error:', e)
             }
           }
         }
@@ -89,13 +91,13 @@ export const useFileUpload = (): UseFileUploadReturn => {
         ) // 45 minutes
 
         // Listen for the upload_complete event and resolve with its payload
-        completeUnlisten = listen('upload_complete', async event => {
+        completeUnlisten = listen('upload_complete', async (event) => {
           await cleanup()
           resolve(event.payload as SproutUploadResponse)
         })
 
         // Listen for the upload_error event and reject with its payload
-        errorUnlisten = listen('upload_error', async event => {
+        errorUnlisten = listen('upload_error', async (event) => {
           await cleanup()
           reject(event.payload)
         })
@@ -105,7 +107,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
           filePath: selectedFile,
           apiKey: apiKey,
           folderId: selectedFolder
-        }).catch(async error => {
+        }).catch(async (error) => {
           await cleanup()
           reject(error)
         })
@@ -114,10 +116,10 @@ export const useFileUpload = (): UseFileUploadReturn => {
       // Update the state with the final response from the backend upload
       setResponse(finalResponse)
       appStore.getState().setLatestSproutUpload(finalResponse)
-      console.log('Upload completed with response:', finalResponse)
+      // Upload completed successfully
     } catch (error) {
       // Log and display any error encountered during the upload process
-      console.error('Upload error:', error)
+      logger.error('Upload error:', error)
 
       // Provide more specific error messages based on error type
       let errorMessage = 'Upload failed: '

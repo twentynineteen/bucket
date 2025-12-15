@@ -3,6 +3,9 @@
  * Feature: 004-embed-multiple-video
  */
 
+import { AlertCircle, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -14,9 +17,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { AlertCircle, Loader2 } from 'lucide-react'
-import { useState } from 'react'
-import type { TrelloCard } from '../../types/baker'
+import type { TrelloCard } from '@/types/baker'
 
 interface TrelloCardUpdateDialogProps {
   open: boolean
@@ -38,8 +39,8 @@ export function TrelloCardUpdateDialog({
   const [error, setError] = useState<string | null>(null)
 
   const handleToggle = (index: number) => {
-    setSelectedIndexes(prev =>
-      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    setSelectedIndexes((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     )
   }
 
@@ -118,7 +119,7 @@ export function TrelloCardUpdateDialog({
 
         <div className="space-y-3">
           {trelloCards.map((card, index) => (
-            <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
+            <div key={index} className="flex items-start space-x-3 rounded-lg border p-3">
               <Checkbox
                 checked={selectedIndexes.includes(index)}
                 onCheckedChange={() => handleToggle(index)}
@@ -126,7 +127,7 @@ export function TrelloCardUpdateDialog({
               <div className="flex-1">
                 <p className="font-medium">{card.title}</p>
                 {card.boardName && (
-                  <p className="text-sm text-gray-500">{card.boardName}</p>
+                  <p className="text-muted-foreground text-sm">{card.boardName}</p>
                 )}
               </div>
             </div>

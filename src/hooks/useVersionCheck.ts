@@ -1,6 +1,7 @@
+import { CACHE } from '@constants/timing'
 import { useQuery } from '@tanstack/react-query'
 import { getVersion } from '@tauri-apps/api/app'
-import { isUpdateAvailable, normalizeVersion } from 'utils/versionUtils'
+import { isUpdateAvailable, normalizeVersion } from '@utils/versionUtils'
 
 interface GitHubRelease {
   tag_name: string
@@ -24,7 +25,7 @@ interface VersionCheckResult {
  */
 async function fetchLatestRelease(): Promise<GitHubRelease> {
   const response = await fetch(
-    'https://api.github.com/repos/twentynineteen/ingest-tauri/releases/latest'
+    'https://api.github.com/repos/twentynineteen/bucket/releases/latest'
   )
 
   if (!response.ok) {
@@ -64,7 +65,7 @@ export function useVersionCheck() {
         publishedAt: latestRelease.published_at
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: CACHE.STANDARD, // 5 minutes
     retry: 2
   })
 }

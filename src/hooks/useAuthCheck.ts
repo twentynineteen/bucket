@@ -1,5 +1,8 @@
+import { CACHE } from '@constants/timing'
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
+
+import { logger } from '@/utils/logger'
 
 interface AuthCheckResult {
   isAuthenticated: boolean
@@ -33,7 +36,7 @@ async function checkAuthStatus(): Promise<AuthCheckResult> {
       }
     }
   } catch (error) {
-    console.error('Auth check failed:', error)
+    logger.error('Auth check failed:', error)
     localStorage.removeItem('access_token')
     localStorage.removeItem('username')
     return {
@@ -47,7 +50,7 @@ export function useAuthCheck() {
   return useQuery({
     queryKey: ['authCheck'],
     queryFn: checkAuthStatus,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: CACHE.STANDARD, // 5 minutes
     retry: 1,
     refetchOnWindowFocus: false
   })

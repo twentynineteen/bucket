@@ -11,12 +11,12 @@
  * - At least one model must be available (e.g., llama3.1)
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 // Will fail during RED phase - components not implemented yet
-// import { ScriptFormatter } from '../../src/pages/AI/ScriptFormatter/ScriptFormatter'
+// import { ScriptFormatter } from '@pages/AI/ScriptFormatter/ScriptFormatter'
 
 describe('Script Formatter - Full Workflow Integration (T030)', () => {
   beforeAll(async () => {

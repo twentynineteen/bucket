@@ -3,10 +3,10 @@
  * Tests the embedding and vector search functionality
  */
 
-import { pipeline } from '@xenova/transformers'
-import Database from 'better-sqlite3'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { pipeline } from '@xenova/transformers'
+import Database from 'better-sqlite3'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -76,12 +76,16 @@ async function testRAG() {
   // Fetch all examples and calculate similarities
   console.log('🔍 Searching for similar examples...\n')
 
-  const examples = db.prepare(`
+  const examples = db
+    .prepare(
+      `
     SELECT e.script_id, s.title, s.category, s.before_text, e.embedding
     FROM embeddings e
     JOIN example_scripts s ON e.script_id = s.id
     ORDER BY s.quality_score DESC
-  `).all()
+  `
+    )
+    .all()
 
   const results = []
 
@@ -109,7 +113,9 @@ async function testRAG() {
 
     console.log(`${i + 1}. ${passesThreshold} ${result.title}`)
     console.log(`   Category: ${result.category}`)
-    console.log(`   Similarity: ${percentage}% ${result.similarity >= 0.65 ? '(PASS)' : '(FAIL - below 65% threshold)'}`)
+    console.log(
+      `   Similarity: ${percentage}% ${result.similarity >= 0.65 ? '(PASS)' : '(FAIL - below 65% threshold)'}`
+    )
     console.log(`   Preview: ${result.preview}`)
     console.log('')
   })

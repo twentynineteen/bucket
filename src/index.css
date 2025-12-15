@@ -31,6 +31,15 @@
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
 
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -69,6 +78,40 @@
       height: 0;
     }
   }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  --animate-fadeInUp: fadeInUp 0.4s ease-out;
+  --animate-scaleIn: scaleIn 0.3s ease-out;
 }
 
 /*
@@ -107,6 +150,12 @@
     --accent-foreground: 220.9 39.3% 11%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 20% 98%;
+    --success: 142 71% 45%;
+    --success-foreground: 144 61% 20%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
+    --info: 217 91% 60%;
+    --info-foreground: 222 47% 11%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
     --ring: 224 71.4% 4.1%;
@@ -116,14 +165,14 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
   }
   .dark {
     --background: 224 71.4% 4.1%;
@@ -140,8 +189,14 @@
     --muted-foreground: 217.9 10.6% 64.9%;
     --accent: 215 27.9% 16.9%;
     --accent-foreground: 210 20% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 20% 98%;
+    --success: 142 71% 50%;
+    --success-foreground: 144 61% 90%;
+    --warning: 38 92% 65%;
+    --warning-foreground: 48 96% 12%;
+    --info: 217 91% 60%;
+    --info-foreground: 222 47% 98%;
     --border: 215 27.9% 16.9%;
     --input: 215 27.9% 16.9%;
     --ring: 216 12.2% 83.9%;
@@ -150,14 +205,266 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
+
+  /* Dracula Theme - Dark theme with vibrant purple and pink accents */
+  .dracula {
+    --background: 231 15% 18%; /* #282a36 */
+    --foreground: 60 30% 96%; /* #f8f8f2 */
+    --card: 232 14% 21%; /* #2f3241 */
+    --card-foreground: 60 30% 96%;
+    --popover: 231 15% 18%;
+    --popover-foreground: 60 30% 96%;
+    --primary: 265 89% 78%; /* #bd93f9 purple */
+    --primary-foreground: 231 15% 18%;
+    --secondary: 232 14% 31%; /* #44475a */
+    --secondary-foreground: 60 30% 96%;
+    --muted: 232 14% 31%;
+    --muted-foreground: 60 15% 70%;
+    --accent: 326 100% 74%; /* #ff79c6 pink */
+    --accent-foreground: 231 15% 18%;
+    --destructive: 0 100% 67%; /* #ff5555 */
+    --destructive-foreground: 60 30% 96%;
+    --success: 135 94% 65%; /* #50fa7b */
+    --success-foreground: 231 15% 18%;
+    --warning: 31 100% 71%; /* #ffb86c */
+    --warning-foreground: 231 15% 18%;
+    --info: 191 97% 77%; /* #8be9fd cyan */
+    --info-foreground: 231 15% 18%;
+    --border: 232 14% 31%;
+    --input: 232 14% 31%;
+    --ring: 265 89% 78%;
+    --chart-1: 265 89% 78%; /* purple */
+    --chart-2: 326 100% 74%; /* pink */
+    --chart-3: 191 97% 77%; /* cyan */
+    --chart-4: 135 94% 65%; /* green */
+    --chart-5: 31 100% 71%; /* orange */
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
+
+  /* Tokyo Night - Deep blue dark theme inspired by Tokyo at night */
+  .tokyo-night {
+    --background: 219 28% 13%; /* #1a1b26 */
+    --foreground: 220 16% 78%; /* #c0caf5 */
+    --card: 220 23% 17%; /* #24283b */
+    --card-foreground: 220 16% 78%;
+    --popover: 219 28% 13%;
+    --popover-foreground: 220 16% 78%;
+    --primary: 187 71% 68%; /* #7dcfff cyan */
+    --primary-foreground: 219 28% 13%;
+    --secondary: 221 39% 26%; /* #3b4261 */
+    --secondary-foreground: 220 16% 78%;
+    --muted: 221 39% 26%;
+    --muted-foreground: 221 17% 56%; /* #787c99 */
+    --accent: 217 92% 76%; /* #7aa2f7 blue */
+    --accent-foreground: 219 28% 13%;
+    --destructive: 0 100% 67%; /* #f7768e red */
+    --destructive-foreground: 220 16% 78%;
+    --success: 158 64% 52%; /* #9ece6a green */
+    --success-foreground: 219 28% 13%;
+    --warning: 41 88% 61%; /* #e0af68 yellow */
+    --warning-foreground: 219 28% 13%;
+    --info: 187 71% 68%; /* #7dcfff cyan */
+    --info-foreground: 219 28% 13%;
+    --border: 221 39% 26%;
+    --input: 221 39% 26%;
+    --ring: 187 71% 68%;
+    --chart-1: 187 71% 68%; /* cyan */
+    --chart-2: 217 92% 76%; /* blue */
+    --chart-3: 267 84% 81%; /* purple */
+    --chart-4: 158 64% 52%; /* green */
+    --chart-5: 41 88% 61%; /* yellow */
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
+
+  /* Catppuccin Latte - Warm light theme with soft pastel colors */
+  .catppuccin-latte {
+    --background: 220 23% 95%; /* #eff1f5 */
+    --foreground: 234 16% 35%; /* #4c4f69 */
+    --card: 0 0% 100%; /* #ffffff */
+    --card-foreground: 234 16% 35%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 234 16% 35%;
+    --primary: 220 91% 54%; /* #1e66f5 blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 17% 88%; /* #dce0e8 */
+    --secondary-foreground: 234 16% 35%;
+    --muted: 220 17% 88%;
+    --muted-foreground: 233 13% 54%; /* #6c6f85 */
+    --accent: 266 85% 58%; /* #7287fd lavender */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 347 87% 44%; /* #d20f39 red */
+    --destructive-foreground: 0 0% 100%;
+    --success: 109 58% 40%; /* #40a02b green */
+    --success-foreground: 0 0% 100%;
+    --warning: 35 77% 49%; /* #df8e1d yellow */
+    --warning-foreground: 0 0% 100%;
+    --info: 197 97% 46%; /* #04a5e5 sky */
+    --info-foreground: 0 0% 100%;
+    --border: 220 17% 88%;
+    --input: 220 17% 88%;
+    --ring: 220 91% 54%;
+    --chart-1: 220 91% 54%; /* blue */
+    --chart-2: 266 85% 58%; /* lavender */
+    --chart-3: 11 59% 67%; /* rosewater */
+    --chart-4: 109 58% 40%; /* green */
+    --chart-5: 35 77% 49%; /* yellow */
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
+
+  /* Catppuccin Frappé - Medium-dark theme with cool blue-gray tones */
+  .catppuccin-frappe {
+    --background: 229 19% 23%; /* #303446 */
+    --foreground: 227 70% 87%; /* #c6d0f5 */
+    --card: 230 19% 26%; /* #363a4f */
+    --card-foreground: 227 70% 87%;
+    --popover: 229 19% 23%;
+    --popover-foreground: 227 70% 87%;
+    --primary: 222 74% 74%; /* #8caaee blue */
+    --primary-foreground: 229 19% 23%;
+    --secondary: 231 19% 33%; /* #414559 */
+    --secondary-foreground: 227 70% 87%;
+    --muted: 231 19% 33%;
+    --muted-foreground: 228 39% 80%; /* #b5bfe2 */
+    --accent: 239 68% 86%; /* #babbf1 lavender */
+    --accent-foreground: 229 19% 23%;
+    --destructive: 359 68% 71%; /* #e78284 red */
+    --destructive-foreground: 229 19% 23%;
+    --success: 136 57% 73%; /* #a6d189 green */
+    --success-foreground: 229 19% 23%;
+    --warning: 40 62% 73%; /* #e5c890 yellow */
+    --warning-foreground: 229 19% 23%;
+    --info: 199 76% 69%; /* #99d1db sky */
+    --info-foreground: 229 19% 23%;
+    --border: 231 19% 33%;
+    --input: 231 19% 33%;
+    --ring: 222 74% 74%;
+    --chart-1: 222 74% 74%; /* blue */
+    --chart-2: 239 68% 86%; /* lavender */
+    --chart-3: 7 54% 70%; /* rosewater */
+    --chart-4: 136 57% 73%; /* green */
+    --chart-5: 40 62% 73%; /* yellow */
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
+
+  /* Catppuccin Macchiato - Medium-dark theme with warm purple undertones */
+  .catppuccin-macchiato {
+    --background: 232 23% 18%; /* #24273a */
+    --foreground: 227 68% 88%; /* #cad3f5 */
+    --card: 233 23% 21%; /* #2d3146 */
+    --card-foreground: 227 68% 88%;
+    --popover: 232 23% 18%;
+    --popover-foreground: 227 68% 88%;
+    --primary: 220 78% 75%; /* #8aadf4 blue */
+    --primary-foreground: 232 23% 18%;
+    --secondary: 233 23% 28%; /* #363a4f */
+    --secondary-foreground: 227 68% 88%;
+    --muted: 233 23% 28%;
+    --muted-foreground: 227 46% 83%; /* #b8c0e0 */
+    --accent: 238 71% 87%; /* #b7bdf8 lavender */
+    --accent-foreground: 232 23% 18%;
+    --destructive: 358 66% 73%; /* #ed8796 red */
+    --destructive-foreground: 232 23% 18%;
+    --success: 137 58% 74%; /* #a6da95 green */
+    --success-foreground: 232 23% 18%;
+    --warning: 41 60% 74%; /* #eed49f yellow */
+    --warning-foreground: 232 23% 18%;
+    --info: 200 72% 70%; /* #91d7e3 sky */
+    --info-foreground: 232 23% 18%;
+    --border: 233 23% 28%;
+    --input: 233 23% 28%;
+    --ring: 220 78% 75%;
+    --chart-1: 220 78% 75%; /* blue */
+    --chart-2: 238 71% 87%; /* lavender */
+    --chart-3: 8 51% 72%; /* rosewater */
+    --chart-4: 137 58% 74%; /* green */
+    --chart-5: 41 60% 74%; /* yellow */
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
+
+  /* Catppuccin Mocha - Rich dark theme with deep blacks and vibrant accents */
+  .catppuccin-mocha {
+    --background: 240 21% 15%; /* #1e1e2e */
+    --foreground: 226 64% 88%; /* #cdd6f4 */
+    --card: 240 19% 18%; /* #282838 */
+    --card-foreground: 226 64% 88%;
+    --popover: 240 21% 15%;
+    --popover-foreground: 226 64% 88%;
+    --primary: 217 92% 76%; /* #89b4fa blue */
+    --primary-foreground: 240 21% 15%;
+    --secondary: 237 16% 23%; /* #313244 */
+    --secondary-foreground: 226 64% 88%;
+    --muted: 237 16% 23%;
+    --muted-foreground: 226 45% 84%; /* #bac2de */
+    --accent: 238 67% 86%; /* #b4befe lavender */
+    --accent-foreground: 240 21% 15%;
+    --destructive: 343 81% 75%; /* #f38ba8 red */
+    --destructive-foreground: 240 21% 15%;
+    --success: 115 54% 76%; /* #a6e3a1 green */
+    --success-foreground: 240 21% 15%;
+    --warning: 41 86% 83%; /* #f9e2af yellow */
+    --warning-foreground: 240 21% 15%;
+    --info: 189 71% 73%; /* #89dceb sky */
+    --info-foreground: 240 21% 15%;
+    --border: 237 16% 23%;
+    --input: 237 16% 23%;
+    --ring: 217 92% 76%;
+    --chart-1: 217 92% 76%; /* blue */
+    --chart-2: 238 67% 86%; /* lavender */
+    --chart-3: 10 56% 73%; /* rosewater */
+    --chart-4: 115 54% 76%; /* green */
+    --chart-5: 41 86% 83%; /* yellow */
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
   }
 }
 
@@ -169,4 +476,45 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+}
+
+/* Accessibility: Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* macOS custom title bar drag regions */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+[data-tauri-drag-region] button,
+[data-tauri-drag-region] a,
+[data-tauri-drag-region] input {
+  -webkit-app-region: no-drag;
+}
+
+/* Performance optimization for window dragging */
+[data-tauri-drag-region] {
+  will-change: transform;
+  transform: translateZ(0); /* Force GPU acceleration */
+}
+
+/* Smooth theme transitions */
+html {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+/* Disable transitions during window drag for better performance */
+html:active {
+  transition: none;
 }

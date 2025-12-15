@@ -7,8 +7,11 @@ import {
   DialogTitle
 } from '@components/ui/dialog'
 import { Input } from '@components/ui/input'
+import { appStore } from '@store/useAppStore'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { open } from '@tauri-apps/plugin-shell'
+import TrelloCardList from '@utils/trello/TrelloCardList'
+import { TrelloCard } from '@utils/TrelloCards'
 import {
   useAppendBreadcrumbs,
   useFuzzySearch,
@@ -17,9 +20,8 @@ import {
 } from 'hooks'
 import { ExternalLink, Search } from 'lucide-react'
 import React, { useEffect, useMemo, useState } from 'react'
-import { appStore } from 'store/useAppStore'
-import TrelloCardList from '../../utils/trello/TrelloCardList'
-import { TrelloCard } from '../../utils/TrelloCards'
+
+import { logger } from '@/utils/logger'
 
 interface TrelloIntegrationModalProps {
   isOpen: boolean
@@ -44,7 +46,7 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
   // Flatten all cards for search
   const allCards = useMemo(() => {
     const cards: TrelloCard[] = []
-    Object.values(grouped).forEach(cardList => {
+    Object.values(grouped).forEach((cardList) => {
       cards.push(...cardList)
     })
     return cards
@@ -67,9 +69,9 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
     }
 
     const result: Record<string, TrelloCard[]> = {}
-    filteredCards.forEach(card => {
+    filteredCards.forEach((card) => {
       Object.entries(grouped).forEach(([listName, cards]) => {
-        if (cards.some(c => c.id === card.id)) {
+        if (cards.some((c) => c.id === card.id)) {
           if (!result[listName]) {
             result[listName] = []
           }
@@ -144,7 +146,7 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
         setUpdateMessage('Failed to generate breadcrumbs block')
       }
     } catch (error) {
-      console.error('Error updating Trello card:', error)
+      logger.error('Error updating Trello card:', error)
       setUpdateMessage('Failed to update Trello card')
     } finally {
       setIsUpdating(false)
@@ -185,11 +187,11 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
         {!selectedCard ? (
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="text-muted-foreground/50 absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <Input
                 placeholder="Search cards by name or description..."
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -197,7 +199,7 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
               {Object.keys(filteredGrouped).length > 0 ? (
                 <TrelloCardList grouped={filteredGrouped} onSelect={setSelectedCard} />
               ) : (
-                <p className="text-center text-gray-500 py-8">
+                <p className="text-muted-foreground py-8 text-center">
                   {searchTerm.trim()
                     ? 'No cards found matching your search.'
                     : 'No cards available.'}
@@ -208,16 +210,16 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
         ) : (
           <div className="space-y-4">
             <div>
-              <h3 className="font-semibold text-lg">{selectedCard.name}</h3>
-              <p className="text-sm text-gray-600">Card ID: {selectedCard.id}</p>
+              <h3 className="text-lg font-semibold">{selectedCard.name}</h3>
+              <p className="text-muted-foreground text-sm">Card ID: {selectedCard.id}</p>
             </div>
 
             {updateMessage && (
               <div
-                className={`p-3 rounded-md ${
+                className={`rounded-md p-3 ${
                   updateMessage.includes('Success')
-                    ? 'bg-green-100 text-green-800 border border-green-200'
-                    : 'bg-red-100 text-red-800 border border-red-200'
+                    ? 'border border-green-200 bg-green-100 text-green-800'
+                    : 'border border-red-200 bg-red-100 text-red-800'
                 }`}
               >
                 {updateMessage}

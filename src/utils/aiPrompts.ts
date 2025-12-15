@@ -5,9 +5,13 @@
  * Based on: specs/006-i-wish-to/data-model.md section 6
  */
 
+import type { SimilarExample } from '@hooks/useScriptRetrieval'
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { SimilarExample } from '../hooks/useScriptRetrieval'
+
+import { createNamespacedLogger } from './logger'
+
+const logger = createNamespacedLogger('buildRAGPrompt')
 
 // ============================================================================
 // Autocue Prompt (v1.0.0)
@@ -80,7 +84,7 @@ export const formatParagraphTool = tool({
     if (capitalizationStyle === 'upper') {
       formatted = formatted.toUpperCase()
     } else if (capitalizationStyle === 'title') {
-      formatted = formatted.replace(/\b\w/g, char => char.toUpperCase())
+      formatted = formatted.replace(/\b\w/g, (char) => char.toUpperCase())
     }
 
     // Break into lines
@@ -165,7 +169,7 @@ export const highlightNamesCapsTool = tool({
 
     // Auto-detect names (words that start with capital letter)
     if (autoDetect) {
-      result = result.replace(/\b[A-Z][a-z]+\b/g, match => {
+      result = result.replace(/\b[A-Z][a-z]+\b/g, (match) => {
         // Skip common words
         const commonWords = [
           'The',
@@ -268,6 +272,27 @@ export const TOOL_DEFINITIONS = [
 // RAG-Enhanced Prompt Builder
 // ============================================================================
 
+// Maximum characters per example to prevent context window overflow
+// With 4096 token context (~16K chars), and 3 examples, each should be max ~4K chars
+const MAX_EXAMPLE_CHARS = 4000
+
+/**
+ * Truncate text if it exceeds the maximum character limit
+ */
+function truncateText(text: string, maxChars: number): string {
+  if (text.length <= maxChars) {
+    return text
+  }
+
+  const truncated = text.substring(0, maxChars)
+  const lastSpace = truncated.lastIndexOf(' ')
+
+  // Truncate at last space to avoid cutting mid-word
+  return lastSpace > maxChars * 0.9
+    ? truncated.substring(0, lastSpace) + '...\n[truncated]'
+    : truncated + '...\n[truncated]'
+}
+
 /**
  * Build an enhanced prompt with similar example scripts (RAG)
  * @param userScript - The script to be formatted
@@ -277,25 +302,35 @@ export const TOOL_DEFINITIONS = [
 export function buildRAGPrompt(userScript: string, examples: SimilarExample[]): string {
   // If no relevant examples found, use standard prompt
   if (examples.length === 0) {
-    console.log('[buildRAGPrompt] No examples provided, using standard prompt')
+    logger.log('No examples provided, using standard prompt')
     return AUTOCUE_PROMPT
   }
 
-  console.log(`[buildRAGPrompt] Building prompt with ${examples.length} examples`)
+  logger.log(`Building prompt with ${examples.length} examples`)
 
-  // Build examples section
+  // Build examples section with truncation protection
   const exampleSection = examples
     .map((ex, i) => {
       const similarityPercent = Math.round(ex.similarity * 100)
+
+      // Truncate very large examples to prevent context overflow
+      const beforeText = truncateText(ex.before_text, MAX_EXAMPLE_CHARS)
+      const afterText = truncateText(ex.after_text, MAX_EXAMPLE_CHARS)
+
+      // Log if truncation occurred
+      if (beforeText.includes('[truncated]') || afterText.includes('[truncated]')) {
+        logger.log(`Example "${ex.title}" was truncated to fit context window`)
+      }
+
       return `
 ### Example ${i + 1}: ${ex.title}
 **Category**: ${ex.category} | **Similarity**: ${similarityPercent}%
 
 **Original Script:**
-${ex.before_text}
+${beforeText}
 
 **Formatted for Autocue:**
-${ex.after_text}
+${afterText}
 `
     })
     .join('\n\n---\n\n')

@@ -32,7 +32,7 @@ interface FormattedDateProps {
 
 const FormattedDate: React.FC<FormattedDateProps> = ({ dateString }) => {
   return (
-    <div className="text-sm text-gray-600 pt-2">
+    <div className="text-muted-foreground pt-2 text-sm">
       {/* Render the formatted date */}
       Uploaded: {formatDate(dateString)}
     </div>

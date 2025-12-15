@@ -3,7 +3,7 @@
  * CRITICAL: Must FAIL before implementation (RED phase)
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 describe('Provider Switching Integration (T031)', () => {
   it('should switch from Ollama to OpenAI stub', async () => {

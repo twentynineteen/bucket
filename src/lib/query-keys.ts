@@ -186,11 +186,11 @@ export function isQueryKeyMatch(
 }
 
 export function getInvalidationQueries(triggerKey: QueryKey): QueryKey[] {
-  const matchingRules = invalidationRules.filter(rule =>
+  const matchingRules = invalidationRules.filter((rule) =>
     isQueryKeyMatch(triggerKey, rule.trigger, rule.strategy)
   )
 
-  return matchingRules.flatMap(rule => rule.invalidates)
+  return matchingRules.flatMap((rule) => rule.invalidates)
 }
 
 export function validateQueryKey(key: QueryKey): boolean {
@@ -221,7 +221,7 @@ export function validateQueryKey(key: QueryKey): boolean {
   // Validate identifiers are strings or numbers
   const identifiers = key.slice(2)
   return identifiers.every(
-    id => typeof id === 'string' || typeof id === 'number' || typeof id === 'object'
+    (id) => typeof id === 'string' || typeof id === 'number' || typeof id === 'object'
   )
 }
 

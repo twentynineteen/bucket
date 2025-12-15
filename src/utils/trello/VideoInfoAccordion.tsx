@@ -24,15 +24,15 @@ const VideoInfoAccordion: React.FC<VideoInfoAccordionProps> = ({
     <AccordionItem value="videoinfo">
       <AccordionTrigger className="font-semibold">Video Info</AccordionTrigger>
       <AccordionContent>
-        <div className="space-y-2 text-sm text-muted-foreground">
+        <div className="text-muted-foreground space-y-2 text-sm">
           <p>
-            <span className="font-medium text-foreground">Title:</span> {title}
+            <span className="text-foreground font-medium">Title:</span> {title}
           </p>
           <p>
-            <span className="font-medium text-foreground">Duration:</span> {duration}
+            <span className="text-foreground font-medium">Duration:</span> {duration}
           </p>
           <p>
-            <span className="font-medium text-foreground">Uploaded:</span> {uploaded}
+            <span className="text-foreground font-medium">Uploaded:</span> {uploaded}
           </p>
           {thumbnail && (
             <img
@@ -42,12 +42,12 @@ const VideoInfoAccordion: React.FC<VideoInfoAccordionProps> = ({
             />
           )}
           <p>
-            <span className="font-medium text-foreground">URL:</span>{' '}
+            <span className="text-foreground font-medium">URL:</span>{' '}
             <a
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+              className="text-info hover:underline"
             >
               Open Video
             </a>

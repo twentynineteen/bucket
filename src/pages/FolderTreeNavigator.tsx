@@ -1,10 +1,12 @@
 // FolderTreeNavigator.tsx
+import { CACHE } from '@constants/timing'
+import { queryKeys } from '@lib/query-keys'
+import { createQueryError, createQueryOptions, shouldRetry } from '@lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
+import { GetFoldersResponse, SproutFolder } from '@utils/types'
 import React, { useState } from 'react'
-import { queryKeys } from '../lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '../lib/query-utils'
-import { GetFoldersResponse, SproutFolder } from '../utils/types'
+
 import FolderTreeSprout from './FolderTreeSprout'
 
 interface FolderTreeNavigatorProps {
@@ -40,8 +42,8 @@ const FolderTreeNavigator: React.FC<FolderTreeNavigatorProps> = ({ apiKey }) => 
       'DYNAMIC',
       {
         enabled: !!apiKey, // Only run query if apiKey is provided
-        staleTime: 2 * 60 * 1000, // 2 minutes - folder structure doesn't change often
-        gcTime: 5 * 60 * 1000, // Keep cached for 5 minutes
+        staleTime: CACHE.QUICK, // 2 minutes - folder structure doesn't change often
+        gcTime: CACHE.GC_STANDARD, // Keep cached for 5 minutes
         retry: (failureCount, error) => shouldRetry(error, failureCount, 'sprout')
       }
     )
@@ -70,12 +72,12 @@ const FolderTreeNavigator: React.FC<FolderTreeNavigatorProps> = ({ apiKey }) => 
       <h3>Select a Folder</h3>
       {/* Render each root folder using the recursive FolderTreeSprout component */}
       {rootFolders.length > 0 ? (
-        rootFolders.map(folder => (
+        rootFolders.map((folder) => (
           <FolderTreeSprout
             key={folder.id}
             folder={folder}
             apiKey={apiKey}
-            onSelect={folder => setSelectedFolder(folder)}
+            onSelect={(folder) => setSelectedFolder(folder)}
           />
         ))
       ) : (

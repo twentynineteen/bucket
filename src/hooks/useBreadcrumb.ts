@@ -1,8 +1,9 @@
+import { CACHE } from '@constants/timing'
+import { queryKeys } from '@lib/query-keys'
+import { createQueryOptions } from '@lib/query-utils'
+import { useBreadcrumbStore } from '@store/useBreadcrumbStore'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'
-import { useBreadcrumbStore } from 'store/useBreadcrumbStore'
-import { queryKeys } from '../lib/query-keys'
-import { createQueryOptions } from '../lib/query-utils'
 
 interface BreadcrumbItem {
   label: string
@@ -16,7 +17,7 @@ interface BreadcrumbData {
 }
 
 export const useBreadcrumb = (items: BreadcrumbItem[]) => {
-  const setBreadcrumbs = useBreadcrumbStore(state => state.setBreadcrumbs)
+  const setBreadcrumbs = useBreadcrumbStore((state) => state.setBreadcrumbs)
   const queryClient = useQueryClient()
   const queryKey = queryKeys.user.breadcrumb()
 
@@ -26,8 +27,8 @@ export const useBreadcrumb = (items: BreadcrumbItem[]) => {
       queryKey,
       async (): Promise<BreadcrumbData> => {
         // Convert items to breadcrumb data format
-        const path = items.map(item => item.label).join(' > ')
-        const breadcrumbItems = items.map(item => ({
+        const path = items.map((item) => item.label).join(' > ')
+        const breadcrumbItems = items.map((item) => ({
           name: item.label,
           url: item.href || '#'
         }))
@@ -40,8 +41,8 @@ export const useBreadcrumb = (items: BreadcrumbItem[]) => {
       },
       'STATIC', // Breadcrumb data is relatively stable
       {
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        gcTime: 10 * 60 * 1000, // 10 minutes
+        staleTime: CACHE.STANDARD, // 5 minutes
+        gcTime: CACHE.GC_MEDIUM, // 10 minutes
         refetchOnWindowFocus: false
       }
     )
@@ -49,8 +50,8 @@ export const useBreadcrumb = (items: BreadcrumbItem[]) => {
 
   const updateBreadcrumbs = useCallback(() => {
     // Update both React Query cache and Zustand store
-    const path = items.map(item => item.label).join(' > ')
-    const breadcrumbItems = items.map(item => ({
+    const path = items.map((item) => item.label).join(' > ')
+    const breadcrumbItems = items.map((item) => ({
       name: item.label,
       url: item.href || '#'
     }))

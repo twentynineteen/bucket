@@ -1,6 +1,12 @@
+import { CACHE, getBackoffDelay, RETRY, SECONDS } from '@constants/timing'
 import { QueryClient } from '@tanstack/react-query'
 import { persistQueryClient } from '@tanstack/react-query-persist-client'
 import { del, get, set } from '@tauri-apps/plugin-store'
+import { createNamespacedLogger } from '@utils/logger'
+
+import { logger } from '@/utils/logger'
+
+const logger = createNamespacedLogger('QueryClient')
 
 /**
  * Advanced Query Client Configuration
@@ -20,7 +26,7 @@ class TauriStorePersister {
   private storeName: string
   private maxAge: number
 
-  constructor(storeName = 'react-query-cache', maxAge = 24 * 60 * 60 * 1000) {
+  constructor(storeName = 'react-query-cache', maxAge = CACHE.PERSISTENT) {
     // 24 hours default
     this.storeName = storeName
     this.maxAge = maxAge
@@ -34,7 +40,7 @@ class TauriStorePersister {
       }
       await set(this.storeName, JSON.stringify(dataToStore))
     } catch (error) {
-      console.error('Failed to persist query client:', error)
+      logger.error('Failed to persist query client:', error)
       // Don't throw error - persistence is non-critical
     }
   }
@@ -56,7 +62,7 @@ class TauriStorePersister {
       const { ...clientData } = data
       return clientData
     } catch (error) {
-      console.error('Failed to restore query client:', error)
+      logger.error('Failed to restore query client:', error)
       // Clean up corrupted data
       await this.removeClient()
       return undefined
@@ -67,7 +73,7 @@ class TauriStorePersister {
     try {
       await del(this.storeName)
     } catch (error) {
-      console.error('Failed to remove persisted client:', error)
+      logger.error('Failed to remove persisted client:', error)
     }
   }
 }
@@ -88,9 +94,9 @@ export interface CachePersistenceConfig {
  */
 export const DEFAULT_PERSISTENCE_CONFIG: CachePersistenceConfig = {
   enabled: true,
-  maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  maxAge: CACHE.PERSISTENT, // 24 hours
   storeName: 'bucket-query-cache',
-  throttleTime: 1000 // Save at most every 1 second
+  throttleTime: 1 * SECONDS // Save at most every 1 second
 }
 
 /**
@@ -105,9 +111,9 @@ export function createPersistedQueryClient(
     defaultOptions: {
       queries: {
         // Default stale time - data is considered fresh for 1 minute
-        staleTime: 60 * 1000,
+        staleTime: CACHE.BRIEF,
         // Default garbage collection time - keep unused data for 5 minutes
-        gcTime: 5 * 60 * 1000,
+        gcTime: CACHE.GC_STANDARD,
         // Enhanced retry configuration
         retry: (failureCount, error) => {
           // Don't retry on 4xx errors (client errors)
@@ -121,11 +127,11 @@ export function createPersistedQueryClient(
               return false
             }
           }
-          return failureCount < 3
+          return failureCount < RETRY.DEFAULT_ATTEMPTS
         },
         // Exponential backoff with jitter
-        retryDelay: attemptIndex => {
-          const baseDelay = Math.min(1000 * 2 ** attemptIndex, 30000)
+        retryDelay: (attemptIndex) => {
+          const baseDelay = getBackoffDelay(attemptIndex, RETRY.MAX_DELAY_DEFAULT)
           const jitter = Math.random() * 0.3 * baseDelay // 30% jitter
           return baseDelay + jitter
         },
@@ -149,8 +155,8 @@ export function createPersistedQueryClient(
           }
           return failureCount < 2
         },
-        retryDelay: attemptIndex => {
-          const baseDelay = Math.min(1000 * 2 ** attemptIndex, 10000)
+        retryDelay: (attemptIndex) => {
+          const baseDelay = getBackoffDelay(attemptIndex, RETRY.MAX_DELAY_MUTATION)
           const jitter = Math.random() * 0.3 * baseDelay
           return baseDelay + jitter
         }
@@ -190,7 +196,7 @@ export class QueryClientOptimizer {
   /**
    * Start automatic memory cleanup
    */
-  startAutoCleanup(intervalMs = 5 * 60 * 1000) {
+  startAutoCleanup(intervalMs = CACHE.STANDARD) {
     // 5 minutes default
     this.stopAutoCleanup() // Clear any existing interval
 
@@ -220,14 +226,14 @@ export class QueryClientOptimizer {
     let removedCount = 0
     let errorCount = 0
 
-    queries.forEach(query => {
+    queries.forEach((query) => {
       const hasActiveObservers = query.getObserversCount() > 0
       const queryAge = now - (query.state.dataUpdatedAt || 0)
       const isStale = query.isStale()
       const hasError = query.state.status === 'error'
 
       // Remove old error queries that aren't being observed
-      if (hasError && !hasActiveObservers && queryAge > 60000) {
+      if (hasError && !hasActiveObservers && queryAge > CACHE.BRIEF) {
         // 1 minute for errors
         queryCache.remove(query)
         errorCount++
@@ -235,7 +241,7 @@ export class QueryClientOptimizer {
       }
 
       // Remove very old unused queries
-      if (!hasActiveObservers && queryAge > 30 * 60 * 1000) {
+      if (!hasActiveObservers && queryAge > CACHE.LONG) {
         // 30 minutes
         queryCache.remove(query)
         removedCount++
@@ -243,7 +249,7 @@ export class QueryClientOptimizer {
       }
 
       // Remove stale queries that haven't been used recently
-      if (isStale && !hasActiveObservers && queryAge > 10 * 60 * 1000) {
+      if (isStale && !hasActiveObservers && queryAge > CACHE.MEDIUM) {
         // 10 minutes
         queryCache.remove(query)
         removedCount++
@@ -251,7 +257,7 @@ export class QueryClientOptimizer {
     })
 
     if (removedCount > 0 || errorCount > 0) {
-      console.log(
+      logger.log(
         `Query cleanup: removed ${removedCount} stale queries, ${errorCount} error queries`
       )
     }
@@ -266,7 +272,7 @@ export class QueryClientOptimizer {
     const queries = queryCache.getAll()
     const mutations = mutationCache.getAll()
 
-    const querySizes = queries.map(query => {
+    const querySizes = queries.map((query) => {
       try {
         return JSON.stringify(query.state.data).length * 2 // Rough estimate in bytes
       } catch {
@@ -279,10 +285,10 @@ export class QueryClientOptimizer {
     return {
       totalQueries: queries.length,
       totalMutations: mutations.length,
-      activeQueries: queries.filter(q => q.getObserversCount() > 0).length,
-      staleQueries: queries.filter(q => q.isStale()).length,
-      errorQueries: queries.filter(q => q.state.status === 'error').length,
-      loadingQueries: queries.filter(q => q.state.status === 'pending').length,
+      activeQueries: queries.filter((q) => q.getObserversCount() > 0).length,
+      staleQueries: queries.filter((q) => q.isStale()).length,
+      errorQueries: queries.filter((q) => q.state.status === 'error').length,
+      loadingQueries: queries.filter((q) => q.state.status === 'pending').length,
       estimatedSizeBytes: totalSize,
       estimatedSizeFormatted: this.formatBytes(totalSize)
     }
@@ -310,16 +316,16 @@ export class QueryClientOptimizer {
  */
 export const QueryClientProfiles = {
   development: {
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    retry: 3,
+    staleTime: CACHE.SHORT, // 30 seconds
+    gcTime: CACHE.GC_STANDARD, // 5 minutes
+    retry: RETRY.DEFAULT_ATTEMPTS,
     refetchOnWindowFocus: false
   },
 
   production: {
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 3,
+    staleTime: CACHE.QUICK, // 2 minutes
+    gcTime: CACHE.GC_MEDIUM, // 10 minutes
+    retry: RETRY.DEFAULT_ATTEMPTS,
     refetchOnWindowFocus: false
   },
 
@@ -368,7 +374,7 @@ export async function initializeOptimizedQueryClient(
 
   // Start auto-cleanup in production
   if (environment === 'production') {
-    optimizer.startAutoCleanup(5 * 60 * 1000) // 5 minutes
+    optimizer.startAutoCleanup(CACHE.STANDARD) // 5 minutes
   }
 
   return { queryClient, optimizer }

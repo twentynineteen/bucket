@@ -5,6 +5,8 @@
  * Modal dialog for viewing full script example content
  */
 
+import { FileText } from 'lucide-react'
+
 import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
@@ -15,7 +17,6 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
-import { FileText } from 'lucide-react'
 
 interface ViewExampleDialogProps {
   open: boolean
@@ -30,14 +31,14 @@ export function ViewExampleDialog({ open, example, onClose }: ViewExampleDialogP
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+      <DialogContent className="flex max-h-[80vh] max-w-4xl flex-col">
         <DialogHeader>
-          <DialogTitle className="text-xl flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-xl">
             <FileText className="h-5 w-5" />
             {example.title}
           </DialogTitle>
 
-          <div className="flex items-center gap-3 mt-2">
+          <div className="mt-2 flex items-center gap-3">
             <DialogDescription className="flex-1">
               {example.category}
               {example.wordCount && ` • ${example.wordCount} words`}
@@ -52,7 +53,7 @@ export function ViewExampleDialog({ open, example, onClose }: ViewExampleDialogP
           </div>
 
           {example.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-3">
+            <div className="mt-3 flex flex-wrap gap-1">
               {example.tags.map((tag, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
                   {tag}
@@ -62,23 +63,23 @@ export function ViewExampleDialog({ open, example, onClose }: ViewExampleDialogP
           )}
         </DialogHeader>
 
-        <Tabs defaultValue="before" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs defaultValue="before" className="flex flex-1 flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="before">Original Script</TabsTrigger>
             <TabsTrigger value="after">Formatted Script</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="before" className="flex-1 overflow-y-auto mt-4">
-            <div className="rounded-md border bg-muted/50 p-4">
-              <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+          <TabsContent value="before" className="mt-4 flex-1 overflow-y-auto">
+            <div className="bg-muted/50 rounded-md border p-4">
+              <pre className="font-mono text-sm leading-relaxed whitespace-pre-wrap">
                 {example.beforeText}
               </pre>
             </div>
           </TabsContent>
 
-          <TabsContent value="after" className="flex-1 overflow-y-auto mt-4">
-            <div className="rounded-md border bg-muted/50 p-4">
-              <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+          <TabsContent value="after" className="mt-4 flex-1 overflow-y-auto">
+            <div className="bg-muted/50 rounded-md border p-4">
+              <pre className="font-mono text-sm leading-relaxed whitespace-pre-wrap">
                 {example.afterText}
               </pre>
             </div>

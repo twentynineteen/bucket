@@ -1,6 +1,8 @@
 import { Button } from '@components/ui/button'
 import React, { useState } from 'react'
 
+import { logger } from './logger'
+
 interface EmbedCodeInputProps {
   embedCode: string
 }
@@ -17,7 +19,7 @@ const EmbedCodeInput: React.FC<EmbedCodeInputProps> = ({ embedCode }) => {
       // Reset the copied indicator after 2 seconds
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
-      console.error('Failed to copy text:', error)
+      logger.error('Failed to copy text:', error)
     }
   }
 

@@ -4,11 +4,11 @@
  * Run this before building the Tauri app
  */
 
-import { pipeline } from '@xenova/transformers'
-import Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { pipeline } from '@xenova/transformers'
+import Database from 'better-sqlite3'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -22,10 +22,7 @@ async function embedExamples() {
   console.log('✅ Model loaded successfully\n')
 
   // Create/open database
-  const dbPath = path.join(
-    __dirname,
-    '../src-tauri/resources/embeddings/examples.db'
-  )
+  const dbPath = path.join(__dirname, '../src-tauri/resources/embeddings/examples.db')
   const db = new Database(dbPath)
 
   console.log(`📂 Database: ${dbPath}\n`)
@@ -84,7 +81,11 @@ async function embedExamples() {
       const afterPath = path.join(examplePath, 'after.txt')
       const metadataPath = path.join(examplePath, 'metadata.json')
 
-      if (!fs.existsSync(beforePath) || !fs.existsSync(afterPath) || !fs.existsSync(metadataPath)) {
+      if (
+        !fs.existsSync(beforePath) ||
+        !fs.existsSync(afterPath) ||
+        !fs.existsSync(metadataPath)
+      ) {
         console.log(`   ⚠️  Skipping (missing files)\n`)
         errorCount++
         continue

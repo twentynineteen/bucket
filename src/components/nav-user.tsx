@@ -10,13 +10,14 @@ import {
 } from '@components/ui/dropdown-menu'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@components/ui/sidebar'
 import { useSidebar } from '@components/ui/use-sidebar'
+import { CACHE } from '@constants/timing'
+import { queryKeys } from '@lib/query-keys'
+import { createQueryError, createQueryOptions, shouldRetry } from '@lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
 import { core } from '@tauri-apps/api'
 import { getVersion } from '@tauri-apps/api/app'
 import { ChevronsUpDown, LogOut } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { queryKeys } from '../lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '../lib/query-utils'
 
 type Props = {
   user: {
@@ -44,8 +45,8 @@ export function NavUser({ user, onLogout, onUpdateClicked }: Props) {
       },
       'STATIC',
       {
-        staleTime: 10 * 60 * 1000, // 10 minutes - version doesn't change often
-        gcTime: 30 * 60 * 1000, // Keep cached for 30 minutes
+        staleTime: CACHE.MEDIUM, // 10 minutes - version doesn't change often
+        gcTime: CACHE.GC_EXTENDED, // Keep cached for 30 minutes
         retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
       }
     )
@@ -64,8 +65,8 @@ export function NavUser({ user, onLogout, onUpdateClicked }: Props) {
       },
       'STATIC',
       {
-        staleTime: 5 * 60 * 1000, // 5 minutes - username rarely changes
-        gcTime: 15 * 60 * 1000, // Keep cached for 15 minutes
+        staleTime: CACHE.STANDARD, // 5 minutes - username rarely changes
+        gcTime: CACHE.GC_LONG, // Keep cached for 15 minutes
         retry: (failureCount, error) => shouldRetry(error, failureCount, 'auth')
       }
     )

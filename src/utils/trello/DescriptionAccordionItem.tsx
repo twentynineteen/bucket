@@ -16,7 +16,7 @@ const DescriptionAccordionItem: React.FC<Props> = ({ description }) => {
         Description
       </AccordionTrigger>
       <AccordionContent>
-        <div className="max-h-48 w-[460px] overflow-auto rounded border bg-muted p-3 text-sm whitespace-pre-wrap break-words focus:outline-hidden focus-visible:outline-hidden">
+        <div className="bg-muted max-h-48 w-[460px] overflow-auto rounded border p-3 text-sm break-words whitespace-pre-wrap focus:outline-hidden focus-visible:outline-hidden">
           {description.trim() || 'No description.'}
         </div>
       </AccordionContent>

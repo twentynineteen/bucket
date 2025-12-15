@@ -69,6 +69,7 @@ fn main() {
             baker_associate_trello_card,
             baker_remove_trello_card,
             baker_fetch_trello_card_details,
+            fetch_trello_boards,
             // Feature 004 Phase 2: Sprout Video URL auto-fetch
             fetch_sprout_video_details,
             // Feature 006: AI-Powered Autocue Script Formatter
@@ -85,7 +86,14 @@ fn main() {
             get_all_examples_with_metadata,
             upload_example,
             replace_example,
-            delete_example
+            delete_example,
+            // Premiere Pro Plugin Management
+            get_available_plugins,
+            install_plugin,
+            check_plugin_installed,
+            get_cep_directory,
+            enable_cep_debug_mode,
+            open_cep_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");

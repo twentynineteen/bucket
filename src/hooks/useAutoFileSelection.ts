@@ -1,7 +1,8 @@
+import { CACHE } from '@constants/timing'
+import { queryKeys } from '@lib/query-keys'
+import { createQueryOptions } from '@lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { queryKeys } from '../lib/query-keys'
-import { createQueryOptions } from '../lib/query-utils'
 
 interface AutoFileSelectionProps {
   files: string[]
@@ -34,7 +35,7 @@ export function useAutoFileSelection({
         if (!selectedFilePath && files.length > 0) {
           // Auto-selection logic based on criteria
           if (criteria.preferVideo) {
-            const videoFiles = files.filter(file => /\.(mp4|mov|avi|mkv)$/i.test(file))
+            const videoFiles = files.filter((file) => /\.(mp4|mov|avi|mkv)$/i.test(file))
             if (videoFiles.length > 0) {
               selectFile(videoFiles[0])
               return videoFiles[0]
@@ -42,7 +43,7 @@ export function useAutoFileSelection({
           }
 
           if (criteria.preferImage) {
-            const imageFiles = files.filter(file =>
+            const imageFiles = files.filter((file) =>
               /\.(jpg|jpeg|png|gif|webp)$/i.test(file)
             )
             if (imageFiles.length > 0) {
@@ -61,7 +62,7 @@ export function useAutoFileSelection({
       'DYNAMIC',
       {
         enabled: files.length > 0,
-        staleTime: 30000, // Re-analyze after 30 seconds if files change
+        staleTime: CACHE.SHORT, // Re-analyze after 30 seconds if files change
         refetchOnWindowFocus: false
       }
     )

@@ -3,7 +3,9 @@
  * Feature: 004-embed-multiple-video
  */
 
-import type { TrelloCard, VideoLink } from '../types/media'
+import { LIMITS } from '@constants/timing'
+
+import type { TrelloCard, VideoLink } from '@/types/media'
 
 /**
  * Validates a VideoLink object
@@ -17,8 +19,8 @@ export function validateVideoLink(link: VideoLink): string[] {
     errors.push('Video URL must use HTTPS')
   }
 
-  if (link.url.length > 2048) {
-    errors.push('Video URL exceeds maximum length (2048 characters)')
+  if (link.url.length > LIMITS.URL_MAX_LENGTH) {
+    errors.push(`Video URL exceeds maximum length (${LIMITS.URL_MAX_LENGTH} characters)`)
   }
 
   // Validate title
@@ -93,7 +95,10 @@ export function extractTrelloCardId(url: string): string | null {
 /**
  * Helper: Validates if a string is a valid HTTPS URL
  */
-export function isValidHttpsUrl(url: string, maxLength: number = 2048): boolean {
+export function isValidHttpsUrl(
+  url: string,
+  maxLength: number = LIMITS.URL_MAX_LENGTH
+): boolean {
   return url.startsWith('https://') && url.length <= maxLength
 }
 

@@ -7,7 +7,8 @@
 
 import { invoke } from '@tauri-apps/api/core'
 import { useCallback, useState } from 'react'
-import type { BatchUpdateResult, UseBreadcrumbsManagerResult } from '../types/baker'
+
+import type { BatchUpdateResult, UseBreadcrumbsManagerResult } from '@/types/baker'
 
 export function useBreadcrumbsManager(): UseBreadcrumbsManagerResult {
   const [isUpdating, setIsUpdating] = useState(false)
@@ -20,11 +21,15 @@ export function useBreadcrumbsManager(): UseBreadcrumbsManagerResult {
       options: { createMissing: boolean; backupOriginals: boolean }
     ): Promise<BatchUpdateResult> => {
       if (isUpdating) {
-        throw new Error('Update operation already in progress')
+        const error = new Error('Update operation already in progress')
+        setError(error.message)
+        throw error
       }
 
       if (projectPaths.length === 0) {
-        throw new Error('Project paths array cannot be empty')
+        const error = new Error('Project paths array cannot be empty')
+        setError(error.message)
+        throw error
       }
 
       setIsUpdating(true)

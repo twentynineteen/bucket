@@ -7,11 +7,12 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
+
 import type {
   ExampleWithMetadata,
   ReplaceRequest,
   UploadRequest
-} from '../types/exampleEmbeddings'
+} from '@/types/exampleEmbeddings'
 
 export function useExampleManagement() {
   const queryClient = useQueryClient()

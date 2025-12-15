@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { createQueryError, inferErrorType, calculateProgress } from '../../src/lib/query-utils'
+import { calculateProgress, createQueryError, inferErrorType } from '@lib/query-utils'
+import { describe, expect, it } from 'vitest'
 
 describe('Query Utils', () => {
   describe('inferErrorType', () => {
@@ -26,7 +26,7 @@ describe('Query Utils', () => {
   describe('createQueryError', () => {
     it('should create error with inferred type', () => {
       const error = createQueryError('Network connection failed')
-      
+
       expect(error.type).toBe('network')
       expect(error.message).toBe('Network connection failed')
       expect(error.retryable).toBe(true)
@@ -34,7 +34,7 @@ describe('Query Utils', () => {
 
     it('should create error with explicit type', () => {
       const error = createQueryError('Custom error', 'validation')
-      
+
       expect(error.type).toBe('validation')
       expect(error.message).toBe('Custom error')
       expect(error.retryable).toBe(false)
@@ -54,7 +54,7 @@ describe('Query Utils', () => {
   describe('calculateProgress', () => {
     it('should calculate progress correctly', () => {
       const progress = calculateProgress(25, 100)
-      
+
       expect(progress.completed).toBe(25)
       expect(progress.total).toBe(100)
       expect(progress.percentage).toBe(25)

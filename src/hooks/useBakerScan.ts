@@ -8,6 +8,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useCallback, useEffect, useState } from 'react'
+
 import type {
   ScanCompleteEvent,
   ScanErrorEvent,
@@ -15,14 +16,13 @@ import type {
   ScanProgressEvent,
   ScanResult,
   UseBakerScanResult
-} from '../types/baker'
+} from '@/types/baker'
 
 export function useBakerScan(): UseBakerScanResult {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentScanId, setCurrentScanId] = useState<string | null>(null)
-  const [statusInterval, setStatusInterval] = useState<NodeJS.Timeout | null>(null)
 
   // Set up event listeners for scan progress and completion
   useEffect(() => {
@@ -30,10 +30,10 @@ export function useBakerScan(): UseBakerScanResult {
 
     // Progress event listener
     unlistenPromises.push(
-      listen<ScanProgressEvent>('baker_scan_progress', event => {
+      listen<ScanProgressEvent>('baker_scan_progress', (event) => {
         const progressData = event.payload
         if (currentScanId && progressData.scanId === currentScanId) {
-          setScanResult(prev =>
+          setScanResult((prev) =>
             prev
               ? {
                   ...prev,
@@ -48,7 +48,7 @@ export function useBakerScan(): UseBakerScanResult {
 
     // Completion event listener
     unlistenPromises.push(
-      listen<ScanCompleteEvent>('baker_scan_complete', event => {
+      listen<ScanCompleteEvent>('baker_scan_complete', (event) => {
         const completeData = event.payload
         if (currentScanId && completeData.scanId === currentScanId) {
           setScanResult(completeData.result)
@@ -60,7 +60,7 @@ export function useBakerScan(): UseBakerScanResult {
 
     // Error event listener
     unlistenPromises.push(
-      listen<ScanErrorEvent>('baker_scan_error', event => {
+      listen<ScanErrorEvent>('baker_scan_error', (event) => {
         const errorData = event.payload
         if (currentScanId && errorData.scanId === currentScanId) {
           setError(errorData.error.message)
@@ -72,9 +72,17 @@ export function useBakerScan(): UseBakerScanResult {
 
     // Clean up listeners on unmount or when currentScanId changes
     return () => {
-      Promise.all(unlistenPromises).then(unlisteners => {
-        unlisteners.forEach(unlisten => unlisten())
-      })
+      Promise.all(unlistenPromises)
+        .then((unlisteners) => {
+          unlisteners.forEach((unlisten) => {
+            if (unlisten && typeof unlisten === 'function') {
+              unlisten()
+            }
+          })
+        })
+        .catch(() => {
+          // Ignore cleanup errors in test environments
+        })
     }
   }, [currentScanId])
 
@@ -95,27 +103,8 @@ export function useBakerScan(): UseBakerScanResult {
         })
 
         setCurrentScanId(scanId)
-
-        // Poll for scan status updates
-        const interval = setInterval(async () => {
-          try {
-            const status = await invoke<ScanResult>('baker_get_scan_status', { scanId })
-            setScanResult(status)
-
-            if (status.endTime) {
-              setIsScanning(false)
-              setCurrentScanId(null)
-              clearInterval(interval)
-              setStatusInterval(null)
-            }
-          } catch {
-            // If status polling fails, scan might be complete or cancelled
-            clearInterval(interval)
-            setStatusInterval(null)
-          }
-        }, 500) // Poll every 500ms
-
-        setStatusInterval(interval)
+        // Note: Real-time updates are handled via event listeners (see useEffect above)
+        // No polling needed - events provide instant feedback
       } catch (scanError) {
         setError(scanError instanceof Error ? scanError.message : String(scanError))
         setIsScanning(false)
@@ -131,26 +120,11 @@ export function useBakerScan(): UseBakerScanResult {
         await invoke('baker_cancel_scan', { scanId: currentScanId })
         setIsScanning(false)
         setCurrentScanId(null)
-
-        // Clear status polling interval
-        if (statusInterval) {
-          clearInterval(statusInterval)
-          setStatusInterval(null)
-        }
       } catch (cancelError) {
         setError(cancelError instanceof Error ? cancelError.message : String(cancelError))
       }
     }
-  }, [currentScanId, statusInterval])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (statusInterval) {
-        clearInterval(statusInterval)
-      }
-    }
-  }, [statusInterval])
+  }, [currentScanId])
 
   const clearResults = useCallback(() => {
     setScanResult(null)

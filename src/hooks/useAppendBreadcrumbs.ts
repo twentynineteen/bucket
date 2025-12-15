@@ -1,9 +1,11 @@
+import { appStore } from '@store/useAppStore'
 import { useQueryClient } from '@tanstack/react-query'
 import { ask, confirm, open } from '@tauri-apps/plugin-dialog'
 import { readTextFile } from '@tauri-apps/plugin-fs'
-import { appStore } from 'store/useAppStore'
-import { TrelloCard as LegacyTrelloCard } from 'utils/TrelloCards'
-import type { Breadcrumb } from 'utils/types'
+import { TrelloCard as LegacyTrelloCard } from '@utils/TrelloCards'
+import type { Breadcrumb } from '@utils/types'
+
+import { logger } from '@/utils/logger'
 
 function formatBreadcrumbsForHumans(breadcrumbs: Breadcrumb): string {
   const lines = ['PROJECT DETAILS', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━']
@@ -58,7 +60,7 @@ function formatBreadcrumbsForHumans(breadcrumbs: Breadcrumb): string {
 
     // Group files by camera
     const filesByCamera: Record<number, number> = {}
-    breadcrumbs.files.forEach(file => {
+    breadcrumbs.files.forEach((file) => {
       filesByCamera[file.camera] = (filesByCamera[file.camera] || 0) + 1
     })
 
@@ -147,10 +149,10 @@ export async function updateTrelloCardWithBreadcrumbs(
     )
 
     if (!commentResponse.ok) {
-      console.warn(`Failed to add comment: ${commentResponse.statusText}`)
+      logger.warn(`Failed to add comment: ${commentResponse.statusText}`)
     }
   } catch (err) {
-    console.error('Failed to update Trello card with breadcrumbs:', err)
+    logger.error('Failed to update Trello card with breadcrumbs:', err)
     if (!options.silentErrors) {
       throw err
     }
@@ -223,7 +225,7 @@ export function useAppendBreadcrumbs(
 
       return breadcrumbsBlock
     } catch (err) {
-      console.error('Failed to prepare breadcrumbs:', err)
+      logger.error('Failed to prepare breadcrumbs:', err)
       if (options.silentErrors) {
         return null // Don't throw in batch mode
       }
@@ -306,12 +308,12 @@ export function useAppendBreadcrumbs(
       )
 
       if (!commentResponse.ok) {
-        console.warn(`Failed to add comment: ${commentResponse.statusText}`)
+        logger.warn(`Failed to add comment: ${commentResponse.statusText}`)
       }
 
       await queryClient.invalidateQueries({ queryKey: ['trello-card', card.id] })
     } catch (err) {
-      console.error('Failed to apply breadcrumbs to card:', err)
+      logger.error('Failed to apply breadcrumbs to card:', err)
       if (options.silentErrors) {
         // In batch mode, don't throw - let caller handle the error
         return

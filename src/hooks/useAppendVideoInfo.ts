@@ -1,6 +1,9 @@
-import { extractVideoInfoBlock } from 'utils/extractVideoInfoBlock'
-import { TrelloCard, updateCard } from 'utils/TrelloCards'
-import { SproutUploadResponse } from 'utils/types'
+import { extractVideoInfoBlock } from '@utils/extractVideoInfoBlock'
+import { createNamespacedLogger } from '@utils/logger'
+import { TrelloCard, updateCard } from '@utils/TrelloCards'
+import { SproutUploadResponse } from '@utils/types'
+
+const logger = createNamespacedLogger('useAppendVideoInfo')
 
 export function useAppendVideoInfo(apiKey: string | null, token: string | null) {
   const applyVideoInfoToCard = async (card: TrelloCard, video: SproutUploadResponse) => {
@@ -8,7 +11,7 @@ export function useAppendVideoInfo(apiKey: string | null, token: string | null) 
 
     const existingBlock = extractVideoInfoBlock(card.desc)
     if (existingBlock) {
-      console.log('Video info already appended.')
+      logger.log('Video info already appended.')
       return
     }
 
@@ -44,7 +47,7 @@ ${video.embed_code}
     const updatedDesc = `${card.desc.trim()}\n\n---\n\n${markdownBlock}`
 
     await updateCard(card.id, { desc: updatedDesc }, apiKey, token)
-    console.log('Video info block appended.')
+    logger.log('Video info block appended.')
   }
 
   return { applyVideoInfoToCard }

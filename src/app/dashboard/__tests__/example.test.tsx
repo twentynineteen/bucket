@@ -1,6 +1,18 @@
 // src/__tests__/example.test.tsx
 import { render } from '@testing-library/react'
 import React from 'react'
+import { vi } from 'vitest'
+
+// Mock next-themes before importing App to avoid matchMedia errors
+vi.mock('next-themes', () => ({
+  ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
+  useTheme: () => ({
+    theme: 'light',
+    setTheme: vi.fn(),
+    themes: ['light', 'dark']
+  })
+}))
+
 import App from '../../../App'
 
 it('renders without crashing', () => {

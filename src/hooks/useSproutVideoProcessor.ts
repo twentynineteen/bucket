@@ -6,9 +6,13 @@
  */
 
 import { useMutation } from '@tanstack/react-query'
+import { createNamespacedLogger } from '@utils/logger'
+import type { SproutUploadResponse } from '@utils/types'
 import { useEffect, useRef } from 'react'
-import type { VideoLink } from '../types/baker'
-import type { SproutUploadResponse } from '../utils/types'
+
+import type { VideoLink } from '@/types/baker'
+
+const logger = createNamespacedLogger('useSproutVideoProcessor')
 
 interface ProcessVideoResult {
   videoLink: VideoLink | null
@@ -52,7 +56,7 @@ function processUploadResponse(
     response.embedded_url || `https://sproutvideo.com/videos/${response.id}`
 
   if (!response.embedded_url) {
-    console.log(
+    logger.log(
       `Video ${response.id} state: ${response.state}, adding with constructed URL...`
     )
   }
@@ -94,7 +98,7 @@ export function useSproutVideoProcessor(options: UseSproutVideoProcessorOptions)
     }) => {
       return processUploadResponse(response, selectedFile)
     },
-    onSuccess: result => {
+    onSuccess: (result) => {
       if (result.error) {
         onError(result.error)
       } else if (result.shouldAdd && result.videoLink) {

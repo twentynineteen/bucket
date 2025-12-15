@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Bucket",
-  "version": "0.9.3",
+  "version": "0.12.1",
   "identifier": "com.bucket-app.dev",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -9,17 +9,26 @@
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
-
   "app": {
     "macOSPrivateApi": true,
     "withGlobalTauri": true,
     "windows": [
       {
         "title": "Bucket",
-        "width": 750,
-        "height": 525,
+        "width": 1200,
+        "height": 800,
         "resizable": true,
-        "dragDropEnabled": true
+        "dragDropEnabled": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "decorations": true,
+        "transparent": true,
+        "trafficLightPosition": {
+          "x": 20,
+          "y": 20
+        },
+        "acceptFirstMouse": false,
+        "tabbingIdentifier": "bucket-app"
       }
     ],
     "security": {
@@ -31,14 +40,18 @@
     "dialog": null,
     "deep-link": {
       "desktop": {
-        "schemes": ["bucket", "myapp", "Bucket"]
+        "schemes": [
+          "bucket",
+          "myapp",
+          "Bucket"
+        ]
       }
     },
     "fs": null,
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlEMTg1Njc4NjNDQjk2RUQKUldUdGxzdGplRllZbmZMN1ZWM3FXK2ROZ1luZEt2VktaVWRlajAyZGtpc2Y4TnRNS2s5U0VQL24K",
       "endpoints": [
-        "https://github.com/twentynineteen/ingest-tauri/releases/latest/download/latest.json"
+        "https://github.com/twentynineteen/bucket/releases/latest/download/latest.json"
       ]
     }
   },
@@ -46,6 +59,7 @@
     "createUpdaterArtifacts": true,
     "resources": {
       "assets/*": "resources/",
+      "assets/plugins/*": "plugins/",
       "resources/embeddings/*": "embeddings/"
     },
     "active": true,

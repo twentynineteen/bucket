@@ -1,7 +1,7 @@
+import { useAppStore } from '@store/useAppStore'
 import { useQuery } from '@tanstack/react-query'
 import { readDir } from '@tauri-apps/plugin-fs'
 import { useCallback, useState } from 'react'
-import { useAppStore } from 'store/useAppStore'
 
 interface BackgroundFolderData {
   files: string[]
@@ -12,7 +12,7 @@ interface BackgroundFolderData {
 }
 
 export function useBackgroundFolder(): BackgroundFolderData {
-  const defaultFolder = useAppStore(state => state.defaultBackgroundFolder)
+  const defaultFolder = useAppStore((state) => state.defaultBackgroundFolder)
   const [currentFolder, setCurrentFolder] = useState<string | null>(null)
 
   // Determine which folder to load (current folder takes precedence over default)
@@ -29,8 +29,8 @@ export function useBackgroundFolder(): BackgroundFolderData {
 
       const dirFiles = await readDir(folderToLoad)
       return dirFiles
-        .filter(f => f.name?.endsWith('.jpg'))
-        .map(f => `${folderToLoad}/${f.name}`)
+        .filter((f) => f.name?.endsWith('.jpg'))
+        .map((f) => `${folderToLoad}/${f.name}`)
         .sort((a, b) => a.localeCompare(b))
     },
     enabled: !!folderToLoad

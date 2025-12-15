@@ -4,16 +4,14 @@
  * Purpose: Monaco Editor for viewing and editing formatted output
  */
 
-import Editor, { loader } from '@monaco-editor/react'
+import Editor from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
-import React, { useEffect, useRef, useState } from 'react'
+import { useTheme } from 'next-themes'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 
-// Configure loader to use CDN
-loader.config({
-  paths: {
-    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.53.0/min/vs'
-  }
-})
+// Monaco is bundled locally via vite-plugin-monaco-editor
+// The plugin automatically configures workers for Tauri environment
+// No manual worker configuration needed
 
 interface DiffEditorProps {
   original: string // Kept for compatibility but not displayed
@@ -22,10 +20,20 @@ interface DiffEditorProps {
   height?: string
 }
 
+// Light themes that should use vs-light Monaco theme
+const LIGHT_THEMES = ['light', 'catppuccin-latte']
+
 export const DiffEditor: React.FC<DiffEditorProps> = ({ modified, onModifiedChange }) => {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isEditorReady, setIsEditorReady] = useState(false)
+  const { resolvedTheme } = useTheme()
+
+  // Determine Monaco editor theme based on app theme
+  const monacoTheme = useMemo(() => {
+    if (!resolvedTheme) return 'vs-dark'
+    return LIGHT_THEMES.includes(resolvedTheme) ? 'vs-light' : 'vs-dark'
+  }, [resolvedTheme])
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
@@ -56,21 +64,25 @@ export const DiffEditor: React.FC<DiffEditorProps> = ({ modified, onModifiedChan
   }, [])
 
   return (
-    <div className="border border-gray-300 rounded-lg overflow-hidden mb-2 flex flex-col h-[calc(100vh-300px)]">
-      <div className="bg-gray-100 px-4 py-2 border-b border-gray-300 flex items-center justify-between shrink-0">
-        <span className="text-sm font-medium text-gray-700">
+    <div className="border-border mb-2 flex h-[calc(100vh-300px)] flex-col overflow-hidden rounded-lg border">
+      <div className="bg-muted border-border flex shrink-0 items-center justify-between border-b px-4 py-2">
+        <span className="text-foreground text-sm font-medium">
           Formatted Script (Editable)
         </span>
-        <span className="text-xs text-gray-500">Use **text** for bold formatting</span>
+        <span className="text-muted-foreground text-xs">
+          Use **text** for bold formatting
+        </span>
       </div>
 
-      <div ref={containerRef} className="flex-1 relative">
+      <div ref={containerRef} className="relative flex-1">
         {!isEditorReady && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
+          <div className="bg-background absolute inset-0 z-10 flex items-center justify-center">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p className="text-sm text-gray-600">Loading editor...</p>
-              <p className="text-xs text-gray-500 mt-1">This may take a few seconds</p>
+              <div className="border-foreground mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2"></div>
+              <p className="text-muted-foreground text-sm">Loading editor...</p>
+              <p className="text-muted-foreground/70 mt-1 text-xs">
+                This may take a few seconds
+              </p>
             </div>
           </div>
         )}
@@ -83,11 +95,11 @@ export const DiffEditor: React.FC<DiffEditorProps> = ({ modified, onModifiedChan
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}
           loading={
-            <div className="flex items-center justify-center h-full">
+            <div className="flex h-full items-center justify-center">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                <p className="text-sm text-gray-600">Loading Monaco Editor...</p>
-                <p className="text-xs text-gray-500 mt-2">
+                <div className="border-foreground mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2"></div>
+                <p className="text-muted-foreground text-sm">Loading Monaco Editor...</p>
+                <p className="text-muted-foreground/70 mt-2 text-xs">
                   If this persists, check browser console for errors
                 </p>
               </div>
@@ -112,7 +124,7 @@ export const DiffEditor: React.FC<DiffEditorProps> = ({ modified, onModifiedChan
               nonBasicASCII: false
             }
           }}
-          theme="vs-light"
+          theme={monacoTheme}
         />
       </div>
     </div>

@@ -1,23 +1,28 @@
 name: Update NodeJS Dependencies
-on: 
+on:
   push:
     branches:
       - 'renovate/**'
     paths:
       - 'package.json'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout 🛎️
+      - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-        
+
       - name: Install dependencies
         run: bun install
 

@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { validateTrelloCard, extractTrelloCardId } from '../../src/utils/validation'
-import { createMockTrelloCard } from '../utils/test-helpers'
-import type { TrelloCard } from '../../src/types/media'
+import type { TrelloCard } from '@/types/media'
+import { createMockTrelloCard } from '@tests/utils/test-helpers'
+import { extractTrelloCardId, validateTrelloCard } from '@utils/validation'
+import { describe, expect, it } from 'vitest'
 
 describe('TrelloCard Validation Contract', () => {
   describe('Valid TrelloCard', () => {
@@ -72,7 +72,9 @@ describe('TrelloCard Validation Contract', () => {
       }
 
       const errors = validateTrelloCard(card)
-      expect(errors).toContain('Trello card title exceeds maximum length (200 characters)')
+      expect(errors).toContain(
+        'Trello card title exceeds maximum length (200 characters)'
+      )
     })
   })
 

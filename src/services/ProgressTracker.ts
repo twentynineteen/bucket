@@ -1,3 +1,5 @@
+import { logger } from '@/utils/logger'
+
 /**
  * Progress Tracker Service
  * Provides real-time progress tracking and user feedback during updates
@@ -158,7 +160,7 @@ export class ProgressTracker {
         try {
           subscription.callback(update)
         } catch (error) {
-          console.error(`Error in progress callback ${subscription.id}:`, error)
+          logger.error(`Error in progress callback ${subscription.id}:`, error)
         }
       }
     }
@@ -196,10 +198,10 @@ export class ProgressTracker {
     const overallProgress = this.calculateOverallProgress()
     const timeElapsed = this.startTime ? Date.now() - this.startTime.getTime() : 0
 
-    const errors = this.progressHistory.filter(p =>
+    const errors = this.progressHistory.filter((p) =>
       p.message.toLowerCase().includes('error')
     ).length
-    const warnings = this.progressHistory.filter(p =>
+    const warnings = this.progressHistory.filter((p) =>
       p.message.toLowerCase().includes('warning')
     ).length
 

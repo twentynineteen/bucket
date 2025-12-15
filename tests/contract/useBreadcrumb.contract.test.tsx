@@ -1,6 +1,10 @@
+import { queryKeys } from '@lib/query-keys'
 import { renderHook } from '@testing-library/react'
-import { renderWithQueryClient, testHookContract, type HookTestContract } from '../utils/query-test-utils.ts'
-import { queryKeys } from '../../src/lib/query-keys'
+import {
+  renderWithQueryClient,
+  testHookContract,
+  type HookTestContract
+} from '@tests/utils/query-test-utils'
 
 // This test defines the contract for migrating useBreadcrumb from useEffect to React Query
 describe('useBreadcrumb Contract Tests', () => {
@@ -10,21 +14,19 @@ describe('useBreadcrumb Contract Tests', () => {
       items: [
         { label: 'Projects', href: '/projects' },
         { label: 'Test Project', href: '/projects/test-project' },
-        { label: 'Videos', href: '/projects/test-project/videos' },
-      ],
+        { label: 'Videos', href: '/projects/test-project/videos' }
+      ]
     },
-    expectedQueries: [
-      queryKeys.user.breadcrumb(),
-    ],
+    expectedQueries: [queryKeys.user.breadcrumb()],
     mockResponses: {
       [JSON.stringify(queryKeys.user.breadcrumb())]: {
         path: '/projects/test-project/videos',
         items: [
           { name: 'Projects', url: '/projects' },
           { name: 'Test Project', url: '/projects/test-project' },
-          { name: 'Videos', url: '/projects/test-project/videos' },
-        ],
-      },
+          { name: 'Videos', url: '/projects/test-project/videos' }
+        ]
+      }
     },
     testScenarios: [
       {
@@ -37,11 +39,11 @@ describe('useBreadcrumb Contract Tests', () => {
               items: [
                 { name: 'Projects', url: '/projects' },
                 { name: 'Test Project', url: '/projects/test-project' },
-                { name: 'Videos', url: '/projects/test-project/videos' },
-              ],
-            },
-          },
-        ],
+                { name: 'Videos', url: '/projects/test-project/videos' }
+              ]
+            }
+          }
+        ]
       },
       {
         name: 'should update breadcrumb cache when items change',
@@ -54,12 +56,12 @@ describe('useBreadcrumb Contract Tests', () => {
             queryKey: queryKeys.user.breadcrumb(),
             expectedData: expect.objectContaining({
               path: expect.any(String),
-              items: expect.any(Array),
-            }),
-          },
-        ],
-      },
-    ],
+              items: expect.any(Array)
+            })
+          }
+        ]
+      }
+    ]
   }
 
   it('should fulfill the migration contract', async () => {
@@ -72,7 +74,7 @@ describe('useBreadcrumb Contract Tests', () => {
       const mockSetBreadcrumbs = vi.fn()
       const items = [
         { label: 'Projects', href: '/projects' },
-        { label: 'Test Project', href: '/projects/test-project' },
+        { label: 'Test Project', href: '/projects/test-project' }
       ]
 
       // Current implementation uses Zustand store directly
@@ -87,20 +89,20 @@ describe('useBreadcrumb Contract Tests', () => {
     it('EXPECTED: should use React Query to cache breadcrumb state', () => {
       // This test defines the expected behavior after migration
       const { queryClient } = renderWithQueryClient(<div />)
-      
+
       // After migration, breadcrumb data should be cached in React Query
       const expectedQuery = queryKeys.user.breadcrumb()
       const expectedData = {
         path: '/projects/test-project',
         items: [
           { name: 'Projects', url: '/projects' },
-          { name: 'Test Project', url: '/projects/test-project' },
-        ],
+          { name: 'Test Project', url: '/projects/test-project' }
+        ]
       }
 
       // Set expected data in cache
       queryClient.setQueryData(expectedQuery, expectedData)
-      
+
       // Verify cache contains the data
       const cachedData = queryClient.getQueryData(expectedQuery)
       expect(cachedData).toEqual(expectedData)
@@ -110,18 +112,18 @@ describe('useBreadcrumb Contract Tests', () => {
   describe('Error Handling Contract', () => {
     it('should handle breadcrumb fetch errors gracefully', () => {
       const { queryClient } = renderWithQueryClient(<div />)
-      
+
       // Simulate error state
       const errorState = new Error('Failed to fetch breadcrumb')
       const queryKey = queryKeys.user.breadcrumb()
-      
+
       // Simulate error by setting error state directly on cache
       const queryCache = queryClient.getQueryCache()
       const query = queryCache.build(queryClient, {
         queryKey,
-        queryFn: () => Promise.reject(errorState),
+        queryFn: () => Promise.reject(errorState)
       })
-      
+
       query.setData(undefined)
       query.setState({
         status: 'error',
@@ -136,7 +138,7 @@ describe('useBreadcrumb Contract Tests', () => {
         fetchMeta: null,
         isInvalidated: false,
         isPaused: false,
-        fetchStatus: 'idle',
+        fetchStatus: 'idle'
       })
 
       const foundQuery = queryClient.getQueryCache().find(queryKey)
@@ -148,13 +150,13 @@ describe('useBreadcrumb Contract Tests', () => {
   describe('Performance Contract', () => {
     it('should not refetch breadcrumb on every render', () => {
       const { queryClient } = renderWithQueryClient(<div />)
-      
+
       // Breadcrumb data should be considered static (staleTime: 5min)
       const queryKey = queryKeys.user.breadcrumb()
       const initialData = { path: '/test', items: [] }
-      
+
       queryClient.setQueryData(queryKey, initialData)
-      
+
       // Verify data is cached and won't refetch immediately
       const query = queryClient.getQueryCache().find(queryKey)
       expect(query?.state.data).toEqual(initialData)
@@ -166,17 +168,17 @@ describe('useBreadcrumb Contract Tests', () => {
       // After migration, the hook should still work with the Zustand store
       // but also sync with React Query cache
       const { queryClient } = renderWithQueryClient(<div />)
-      
+
       const breadcrumbData = {
         path: '/projects/new-project',
         items: [
           { name: 'Projects', url: '/projects' },
-          { name: 'New Project', url: '/projects/new-project' },
-        ],
+          { name: 'New Project', url: '/projects/new-project' }
+        ]
       }
-      
+
       queryClient.setQueryData(queryKeys.user.breadcrumb(), breadcrumbData)
-      
+
       // Verify cache integration
       const cachedData = queryClient.getQueryData(queryKeys.user.breadcrumb())
       expect(cachedData).toEqual(breadcrumbData)

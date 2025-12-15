@@ -174,10 +174,10 @@ fn open_folder_internal(destination: String) -> Result<(), String> {
     let result = Command::new("open").arg(&destination).spawn();
 
     #[cfg(target_os = "windows")]
-    let result = Command::new("explorer").arg(destination).spawn();
+    let result = Command::new("explorer").arg(&destination).spawn();
 
     #[cfg(target_os = "linux")]
-    let result = Command::new("xdg-open").arg(destination).spawn();
+    let result = Command::new("xdg-open").arg(&destination).spawn();
 
     match result {
         Ok(_) => {

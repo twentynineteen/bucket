@@ -6,7 +6,7 @@
  * CRITICAL: Must FAIL before implementation (RED phase)
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 describe('useAIProvider - Contract Tests (T023)', () => {
   it('should export useAIProvider hook', () => {

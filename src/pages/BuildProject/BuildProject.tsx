@@ -1,179 +1,188 @@
-import {
-  selectFiles,
-  useBreadcrumb,
-  useCameraAutoRemap,
-  useCopyProgress,
-  useCreateProject,
-  useUsername
-} from 'hooks'
-import { useTrelloApiKeys } from 'hooks/useApiKeys'
-import { FootageFile } from 'hooks/useCameraAutoRemap'
-import React, { useState } from 'react'
-import { TrelloCardsManager } from '../../components/Baker/TrelloCardsManager'
-import FolderSelector from './FolderSelector'
+import { useTrelloApiKeys } from '@hooks/useApiKeys'
+import { useBuildProjectMachine } from '@hooks/useBuildProjectMachine'
+import { useCreateProjectWithMachine } from '@hooks/useCreateProjectWithMachine'
+import { usePostProjectCompletion } from '@hooks/usePostProjectCompletion'
+import { createNamespacedLogger } from '@utils/logger'
+import { useEffect, useMemo } from 'react'
+import { toast } from 'sonner'
+
+import { useBreadcrumb, useCameraAutoRemap, useProjectState, useUsername } from '@/hooks'
+
+import { AddFootageStep } from './AddFootageStep'
+import { CreateProjectStep } from './CreateProjectStep'
 import ProgressBar from './ProgressBar'
-import ProjectActions from './ProjectActions'
-import ProjectFileList from './ProjectFileList'
-import ProjectInputs from './ProjectInputs'
+import { ProjectConfigurationStep } from './ProjectConfigurationStep'
+import { SuccessSection } from './SuccessSection'
+
+const logger = createNamespacedLogger('BuildProject')
 
 // The BuildProject component is used for uploading footage from camera cards
 // Footage can be marked with the relevant camera in order to place in the correct folder.
 
 const BuildProject: React.FC = () => {
-  const [title, setTitle] = useState('')
-  const [numCameras, setNumCameras] = useState(2)
-  const [files, setFiles] = useState<FootageFile[]>([])
-  const [selectedFolder, setSelectedFolder] = useState<string>('')
+  // Project state and business logic
+  const {
+    title,
+    numCameras,
+    files,
+    selectedFolder,
+    titleSanitized,
+    setNumCameras,
+    setSelectedFolder,
+    setFiles,
+    handleTitleChange,
+    handleSelectFiles,
+    updateFileCamera,
+    handleDeleteFile,
+    clearAllFields
+  } = useProjectState()
 
-  const [loading, setLoading] = useState(false)
-  const [, setMessage] = useState('')
+  // State machine
+  const machine = useBuildProjectMachine()
+  const {
+    state,
+    send,
+    isShowingSuccess,
+    isCreatingTemplate,
+    isIdle,
+    copyProgress,
+    error,
+    projectFolder
+  } = machine
 
-  // Track if title was sanitized to show warning
-  const [titleSanitized, setTitleSanitized] = useState(false)
+  // Use state machine's isShowingSuccess for displaying success section
+  const showSuccess = isShowingSuccess
 
-  // Page label - shadcn breadcrumb component
-  useBreadcrumb([
-    { label: 'Ingest footage', href: '/ingest/build' },
-    { label: 'Build a project' }
-  ])
+  // Page label - shadcn breadcrumb component (memoized to prevent infinite re-renders)
+  const breadcrumbItems = useMemo(
+    () => [
+      { label: 'Ingest footage', href: '/ingest/build' },
+      { label: 'Build a project' }
+    ],
+    []
+  )
+  useBreadcrumb(breadcrumbItems)
 
   const username = useUsername()
-
-  const { progress, completed } = useCopyProgress({
-    operationId: 'build-project'
-  })
-
   const { apiKey, apiToken } = useTrelloApiKeys()
 
-  console.log('BuildProject render - progress:', progress, 'completed:', completed)
-
+  // Auto-remap camera assignments when numCameras changes
   useCameraAutoRemap(files, numCameras, setFiles)
 
-  // Sanitize title to prevent folder creation from forward slashes and other OS-unsafe characters
-  const sanitizeTitle = (input: string): string => {
-    // Only replace OS-unsafe characters, preserve spaces as-is
-    return input.replace(/[/\\:*?"<>|]/g, '-')
-  }
+  // Handle post-completion tasks (premiere template + dialog)
+  usePostProjectCompletion({
+    isCreatingTemplate,
+    isShowingSuccess,
+    projectFolder,
+    projectTitle: title,
+    send,
+    isIdle
+  })
 
-  // Handle title change with sanitization
-  const handleTitleChange = (newTitle: string) => {
-    const sanitized = sanitizeTitle(newTitle)
-    const wasSanitized = sanitized !== newTitle
-    setTitle(sanitized)
-    setTitleSanitized(wasSanitized)
-  }
-
-  const handleSelectFiles = async () => {
-    const newFiles = await selectFiles()
-    setFiles(prev => [...prev, ...newFiles])
-  }
-
-  // Clears all the fields to their initial state
-  const clearFields = () => {
-    setTitle('')
-    setNumCameras(2)
-    setFiles([])
-    setSelectedFolder('')
-    setMessage('')
-    setTitleSanitized(false)
-  }
-
-  // Logic to mark a given file with the camera number
-  const updateFileCamera = (index: number, camera: number) => {
-    // Validate camera number is within valid range
-    if (camera < 1 || camera > numCameras) {
-      console.warn(`Invalid camera number ${camera}. Must be between 1 and ${numCameras}`)
-      return
-    }
-
-    const updatedFiles = files.map((item, idx) =>
-      idx === index ? { ...item, camera } : item
-    )
-    setFiles(updatedFiles)
-  }
-
-  // Removes the selected file from the folder tree
-  const handleDeleteFile = (index: number) => {
-    setFiles(prevFiles => {
-      const updatedFiles = prevFiles.filter((_, idx) => idx !== index)
-      console.log('Updated files:', updatedFiles) // Debugging
-      return updatedFiles
-    })
-  }
-
-  const { createProject } = useCreateProject()
+  const { createProject } = useCreateProjectWithMachine()
 
   const handleCreateProject = () => {
-    console.log('Create Project clicked!')
-    console.log('Parameters:', { title, files: files.length, selectedFolder, numCameras })
+    if (import.meta.env.DEV) {
+      logger.log('Create Project clicked!')
+      logger.log('Parameters:', {
+        title,
+        files: files.length,
+        selectedFolder,
+        numCameras
+      })
+    }
 
+    // Execute the project creation workflow
+    // createProject will send events to the machine as it progresses
     createProject({
       title,
       files,
       selectedFolder,
       numCameras,
       username: username.data || 'Unknown User',
-      setMessage,
-      setLoading
+      send
     })
   }
 
+  // Clears all fields and resets machine
+  const clearFields = () => {
+    clearAllFields()
+    send({ type: 'RESET' })
+  }
+
+  // Show error toasts
+  useEffect(() => {
+    if (error) {
+      toast.error(error, {
+        duration: 5000,
+        description: 'Please try again or contact support if the issue persists.'
+      })
+    }
+  }, [error])
+
   return (
-    <div className="">
+    <div className="h-full w-full overflow-x-hidden overflow-y-auto">
       {/* Project Configuration & File Explorer */}
-      <div className="w-full pb-4 border-b mb-4">
-        <h2 className="px-4 text-2xl font-semibold">Build a Project</h2>
-        <div className="px-4 mx-4">
-          <ProjectInputs
+      <div className="w-full max-w-full pb-4">
+        {/* Header */}
+        <div className="border-border bg-card/50 border-b px-6 py-4">
+          <h1 className="text-foreground text-2xl font-bold">Build a Project</h1>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            Configure project settings, select footage files, and create organized folder
+            structures
+          </p>
+        </div>
+
+        <div className="max-w-full space-y-4 px-6 py-4">
+          {/* Step 1: Project Configuration */}
+          <ProjectConfigurationStep
+            showSuccess={showSuccess}
             title={title}
             onTitleChange={handleTitleChange}
             numCameras={numCameras}
             onNumCamerasChange={setNumCameras}
-            showSanitizationWarning={titleSanitized}
+            titleSanitized={titleSanitized}
+            selectedFolder={selectedFolder}
+            onSelectFolder={setSelectedFolder}
           />
 
-          <FolderSelector selectedFolder={selectedFolder} onSelect={setSelectedFolder} />
-        </div>
-        <ProjectActions
-          onSelectFiles={handleSelectFiles}
-          onClearAll={clearFields}
-          onCreateProject={handleCreateProject}
-        />
-
-        <div className="pt-4 justify-center items-center text-center ">
-          <ProjectFileList
+          {/* Step 2: Add Files */}
+          <AddFootageStep
+            showSuccess={showSuccess}
             files={files}
             numCameras={numCameras}
+            onSelectFiles={handleSelectFiles}
             onUpdateCamera={updateFileCamera}
             onDeleteFile={handleDeleteFile}
+            onClearAll={clearFields}
+          />
+
+          {/* Step 3: Create Project */}
+          <CreateProjectStep
+            showSuccess={showSuccess}
+            title={title}
+            selectedFolder={selectedFolder}
+            onCreateProject={handleCreateProject}
           />
         </div>
 
-        <div>
-          <div className="progress mx-4">
-            {/* 🔹 Show progress bar */}
-            <ProgressBar progress={progress} completed={completed} />
-          </div>
-
-          {/* 🔹 Post-completion actions - shown after project completion */}
-          {completed && !loading && selectedFolder && title && (
-            <div className="pt-6 space-y-4 animate-fadeIn">
-              <div className="mx-4 p-6 bg-linear-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl shadow-xs">
-                <h3 className="text-lg font-semibold text-green-800 mb-4 text-center">
-                  Project Created Successfully! 🎉
-                </h3>
-
-                {/* Trello Cards Manager */}
-                <TrelloCardsManager
-                  projectPath={`${selectedFolder}/${title}`}
-                  trelloApiKey={apiKey}
-                  trelloApiToken={apiToken}
-                  autoSyncToTrello={true}
-                />
-              </div>
-            </div>
-          )}
+        {/* Progress Bar */}
+        <div className="mt-4 px-6">
+          <ProgressBar
+            progress={copyProgress}
+            completed={state.matches('showingSuccess') || state.matches('completed')}
+          />
         </div>
+
+        {/* Success Message & Post-completion Actions */}
+        <SuccessSection
+          showSuccess={showSuccess}
+          selectedFolder={projectFolder || selectedFolder}
+          title={title}
+          trelloApiKey={apiKey}
+          trelloApiToken={apiToken}
+          onStartNew={clearFields}
+        />
       </div>
     </div>
   )

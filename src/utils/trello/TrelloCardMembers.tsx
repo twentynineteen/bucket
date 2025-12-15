@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { useTrelloCardMembers } from '../TrelloCards' // adjust path as needed
 
 const TrelloCardMembers: React.FC<{ cardId: string; apiKey: string; token: string }> = ({
@@ -13,7 +14,7 @@ const TrelloCardMembers: React.FC<{ cardId: string; apiKey: string; token: strin
 
   return (
     <ul>
-      {members.map(member => (
+      {members.map((member) => (
         <li key={member.id}>{member.username}</li>
       ))}
     </ul>

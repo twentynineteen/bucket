@@ -4,7 +4,12 @@
  * Purpose: Generate embeddings using Ollama's nomic-embed-text model
  */
 
+import { createNamespacedLogger } from '@utils/logger'
 import { useEffect, useState } from 'react'
+
+import { logger } from '@/utils/logger'
+
+const logger = createNamespacedLogger('useOllamaEmbedding')
 
 interface UseOllamaEmbeddingResult {
   embed: (text: string) => Promise<number[]>
@@ -12,6 +17,22 @@ interface UseOllamaEmbeddingResult {
   isLoading: boolean
   error: Error | null
   modelName: string
+}
+
+interface OllamaModel {
+  name: string
+  modified_at: string
+  size: number
+  digest: string
+  details?: {
+    format?: string
+    family?: string
+    parameter_size?: string
+  }
+}
+
+interface OllamaTagsResponse {
+  models: OllamaModel[]
 }
 
 const OLLAMA_BASE_URL = 'http://localhost:11434'
@@ -29,7 +50,7 @@ export function useOllamaEmbedding(): UseOllamaEmbeddingResult {
       setError(null)
 
       try {
-        console.log('[useOllamaEmbedding] Checking Ollama connection...')
+        logger.log('Checking Ollama connection...')
 
         // Check if Ollama is running
         const tagsResponse = await fetch(`${OLLAMA_BASE_URL}/api/tags`, {
@@ -40,18 +61,16 @@ export function useOllamaEmbedding(): UseOllamaEmbeddingResult {
           throw new Error('Ollama is not running. Please start Ollama.')
         }
 
-        const data = await tagsResponse.json()
+        const data = (await tagsResponse.json()) as OllamaTagsResponse
         const models = data.models || []
 
-        console.log(
-          '[useOllamaEmbedding] Available models:',
-          models.map((m: any) => m.name)
+        logger.log(
+          'Available models:',
+          models.map((m) => m.name)
         )
 
         // Check if nomic-embed-text is installed
-        const hasEmbeddingModel = models.some((m: any) =>
-          m.name.includes(EMBEDDING_MODEL)
-        )
+        const hasEmbeddingModel = models.some((m) => m.name.includes(EMBEDDING_MODEL))
 
         if (!hasEmbeddingModel) {
           throw new Error(
@@ -59,10 +78,10 @@ export function useOllamaEmbedding(): UseOllamaEmbeddingResult {
           )
         }
 
-        console.log('[useOllamaEmbedding] Model available:', EMBEDDING_MODEL)
+        logger.log('Model available:', EMBEDDING_MODEL)
         setIsReady(true)
       } catch (err) {
-        console.error('[useOllamaEmbedding] Failed to check model availability:', err)
+        logger.error('[useOllamaEmbedding] Failed to check model availability:', err)
         setError(err instanceof Error ? err : new Error('Failed to connect to Ollama'))
         setIsReady(false)
       } finally {
@@ -83,9 +102,7 @@ export function useOllamaEmbedding(): UseOllamaEmbeddingResult {
     }
 
     try {
-      console.log(
-        `[useOllamaEmbedding] Generating embedding for text (${text.length} chars)...`
-      )
+      logger.log(`Generating embedding for text (${text.length} chars)...`)
 
       const response = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
         method: 'POST',
@@ -111,13 +128,11 @@ export function useOllamaEmbedding(): UseOllamaEmbeddingResult {
       }
 
       const embedding = data.embedding as number[]
-      console.log(
-        `[useOllamaEmbedding] Embedding generated (${embedding.length} dimensions)`
-      )
+      logger.log(`Embedding generated (${embedding.length} dimensions)`)
 
       return embedding
     } catch (err) {
-      console.error('[useOllamaEmbedding] Failed to generate embedding:', err)
+      logger.error('[useOllamaEmbedding] Failed to generate embedding:', err)
       throw err instanceof Error ? err : new Error('Failed to generate embedding')
     }
   }

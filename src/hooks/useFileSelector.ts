@@ -14,7 +14,7 @@ export async function selectFiles(): Promise<
 
   if (!selectedPaths) return []
 
-  return (Array.isArray(selectedPaths) ? selectedPaths : [selectedPaths]).map(path => ({
+  return (Array.isArray(selectedPaths) ? selectedPaths : [selectedPaths]).map((path) => ({
     file: { path, name: path.split('/').pop() || 'unknown' },
     camera: 1
   }))

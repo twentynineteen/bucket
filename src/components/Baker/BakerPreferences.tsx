@@ -15,7 +15,8 @@ import {
 } from '@components/ui/dialog'
 import { Settings } from 'lucide-react'
 import React from 'react'
-import type { ScanPreferences } from '../../types/baker'
+
+import type { ScanPreferences } from '@/types/baker'
 
 interface BakerPreferencesProps {
   preferences: ScanPreferences
@@ -35,8 +36,8 @@ export const BakerPreferences: React.FC<BakerPreferencesProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Settings className="h-4 w-4 mr-2" />
+        <Button variant="outline" size="sm" className="gap-1.5">
+          <Settings className="h-3.5 w-3.5" />
           Settings
         </Button>
       </DialogTrigger>
@@ -51,7 +52,7 @@ export const BakerPreferences: React.FC<BakerPreferencesProps> = ({
             <input
               type="checkbox"
               checked={preferences.createMissing}
-              onChange={e => onUpdatePreferences({ createMissing: e.target.checked })}
+              onChange={(e) => onUpdatePreferences({ createMissing: e.target.checked })}
             />
           </label>
           <label className="flex items-center justify-between">
@@ -59,7 +60,7 @@ export const BakerPreferences: React.FC<BakerPreferencesProps> = ({
             <input
               type="checkbox"
               checked={preferences.backupOriginals}
-              onChange={e => onUpdatePreferences({ backupOriginals: e.target.checked })}
+              onChange={(e) => onUpdatePreferences({ backupOriginals: e.target.checked })}
             />
           </label>
           <label className="flex items-center justify-between">
@@ -67,7 +68,7 @@ export const BakerPreferences: React.FC<BakerPreferencesProps> = ({
             <input
               type="checkbox"
               checked={preferences.includeHidden}
-              onChange={e => onUpdatePreferences({ includeHidden: e.target.checked })}
+              onChange={(e) => onUpdatePreferences({ includeHidden: e.target.checked })}
             />
           </label>
           <div>
@@ -77,7 +78,9 @@ export const BakerPreferences: React.FC<BakerPreferencesProps> = ({
               min="1"
               max="20"
               value={preferences.maxDepth}
-              onChange={e => onUpdatePreferences({ maxDepth: parseInt(e.target.value) })}
+              onChange={(e) =>
+                onUpdatePreferences({ maxDepth: parseInt(e.target.value) })
+              }
               className="w-full"
             />
           </div>

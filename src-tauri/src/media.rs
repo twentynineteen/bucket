@@ -48,6 +48,38 @@ pub struct TrelloCard {
     pub last_fetched: Option<String>,
 }
 
+/// Represents a Trello board with metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrelloBoard {
+    /// Board ID (24-character alphanumeric)
+    pub id: String,
+
+    /// Board display name
+    pub name: String,
+
+    /// Organization details (if board belongs to an org)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub organization: Option<TrelloOrganization>,
+
+    /// Board preferences including visibility
+    pub prefs: TrelloBoardPrefs,
+}
+
+/// Trello organization information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrelloOrganization {
+    /// Organization display name
+    pub name: String,
+}
+
+/// Trello board preferences
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrelloBoardPrefs {
+    /// Board permission level
+    #[serde(rename = "permissionLevel")]
+    pub permission_level: String,
+}
+
 /// Sprout Video API response structure
 /// Returned from fetch_sprout_video_details command
 #[derive(Debug, Clone, Serialize, Deserialize)]

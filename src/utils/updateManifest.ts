@@ -2,6 +2,10 @@
  * Utilities for converting GitHub release data to Tauri updater manifest format
  */
 
+import { createNamespacedLogger } from './logger'
+
+const log = createNamespacedLogger('UpdateManifest')
+
 interface GitHubRelease {
   tag_name: string
   name: string
@@ -53,9 +57,9 @@ export function convertGitHubReleaseToTauriManifest(
   const platforms: { [key: string]: { url: string; signature: string } } = {}
 
   // Look for signature files and their corresponding binaries
-  const signatureFiles = release.assets.filter(asset => asset.name.endsWith('.sig'))
+  const signatureFiles = release.assets.filter((asset) => asset.name.endsWith('.sig'))
   const updateFiles = release.assets.filter(
-    asset =>
+    (asset) =>
       asset.name.includes('.tar.gz') ||
       asset.name.includes('.zip') ||
       asset.name.includes('.msi') ||
@@ -98,7 +102,7 @@ export function convertGitHubReleaseToTauriManifest(
     if (updateFile) {
       // Find corresponding signature file
       const signatureFile = signatureFiles.find(
-        sig => sig.name === `${updateFile.name}.sig`
+        (sig) => sig.name === `${updateFile.name}.sig`
       )
 
       if (signatureFile) {
@@ -106,38 +110,35 @@ export function convertGitHubReleaseToTauriManifest(
           url: updateFile.browser_download_url,
           signature: signatureFile.browser_download_url // Will be converted to content later
         }
-        console.log(
+        log.info(
           `Matched asset for ${config.key}:`,
           updateFile.name,
           'with signature:',
           signatureFile.name
         )
       } else {
-        console.warn(
-          `Found update file but no signature for ${config.key}:`,
+        logger.warn(
+          `[UpdateManifest] Found update file but no signature for ${config.key}:`,
           updateFile.name
         )
-        console.warn(`Tauri requires signatures - skipping this asset`)
+        logger.warn(`[UpdateManifest] Tauri requires signatures - skipping this asset`)
       }
     } else {
-      console.log(`No matching asset found for ${config.key}`)
+      log.debug(`No matching asset found for ${config.key}`)
     }
   }
 
   // Return null if no platforms found
   if (Object.keys(platforms).length === 0) {
-    console.error('No compatible platforms found in release assets:', {
+    logger.error('[UpdateManifest] No compatible platforms found in release assets:', {
       totalAssets: release.assets.length,
-      updateFiles: updateFiles.map(f => f.name),
-      signatureFiles: signatureFiles.map(f => f.name)
+      updateFiles: updateFiles.map((f) => f.name),
+      signatureFiles: signatureFiles.map((f) => f.name)
     })
     return null
   }
 
-  console.log(
-    'Successfully created update manifest with platforms:',
-    Object.keys(platforms)
-  )
+  log.info('Successfully created update manifest with platforms:', Object.keys(platforms))
 
   return {
     version: release.tag_name.replace(/^v/, ''), // Remove leading 'v'
@@ -157,8 +158,8 @@ export function convertGitHubReleaseToTauriResponse(
   const manifest = convertGitHubReleaseToTauriManifest(release)
 
   if (!manifest) {
-    const assetNames = release.assets.map(a => a.name)
-    console.error('Failed to generate update manifest from release:', {
+    const assetNames = release.assets.map((a) => a.name)
+    logger.error('[UpdateManifest] Failed to generate update manifest from release:', {
       releaseName: release.name,
       tagName: release.tag_name,
       isDraft: release.draft,
@@ -170,8 +171,8 @@ export function convertGitHubReleaseToTauriResponse(
   }
 
   if (!manifest.platforms[platformKey]) {
-    const allAssets = release.assets.map(a => a.name)
-    console.error('No platform found for key:', {
+    const allAssets = release.assets.map((a) => a.name)
+    logger.error('[UpdateManifest] No platform found for key:', {
       requestedPlatform: platformKey,
       availablePlatforms: Object.keys(manifest.platforms),
       allAssets
@@ -180,7 +181,7 @@ export function convertGitHubReleaseToTauriResponse(
   }
 
   const platform = manifest.platforms[platformKey]
-  console.log('Found compatible update:', {
+  log.info('Found compatible update:', {
     platform: platformKey,
     version: manifest.version,
     url: platform.url,
@@ -203,13 +204,13 @@ export function getCurrentPlatformKey(): string {
   const platform = window.__TAURI_INTERNALS__?.metadata?.target
 
   if (platform) {
-    console.log('Platform from Tauri metadata:', platform)
+    log.debug('Platform from Tauri metadata:', platform)
     return platform
   }
 
   // Fallback detection
   const userAgent = navigator.userAgent.toLowerCase()
-  console.log('User Agent for platform detection:', userAgent)
+  log.debug('User Agent for platform detection:', userAgent)
 
   if (userAgent.includes('mac')) {
     // More reliable Apple Silicon detection
@@ -226,7 +227,7 @@ export function getCurrentPlatformKey(): string {
       (!userAgent.includes('x86_64') && !userAgent.includes('intel'))
 
     const detectedPlatform = isAppleSilicon ? 'darwin-aarch64' : 'darwin-x86_64'
-    console.log('Detected macOS platform:', detectedPlatform)
+    log.debug('Detected macOS platform:', detectedPlatform)
     return detectedPlatform
   } else if (userAgent.includes('linux')) {
     const arch = userAgent.includes('x86_64') ? 'x86_64' : 'aarch64'
@@ -254,7 +255,7 @@ function getWebGLVendor(): string {
       }
     }
   } catch (e) {
-    console.debug('WebGL vendor detection failed:', e)
+    logger.debug('WebGL vendor detection failed:', e)
   }
   return ''
 }
@@ -266,28 +267,28 @@ function findBestMatchingAsset(
   updateFiles: GitHubAsset[],
   config: { architectures: string[]; fileTypes: string[]; platform: string }
 ): GitHubAsset | undefined {
-  console.log(`Looking for assets matching platform config:`, {
+  log.debug(`Looking for assets matching platform config:`, {
     architectures: config.architectures,
     fileTypes: config.fileTypes,
     platform: config.platform,
-    availableFiles: updateFiles.map(f => f.name)
+    availableFiles: updateFiles.map((f) => f.name)
   })
 
   // Try each file type in priority order
   for (const fileType of config.fileTypes) {
     // Filter files by file type first
-    const filesOfType = updateFiles.filter(asset =>
+    const filesOfType = updateFiles.filter((asset) =>
       asset.name.toLowerCase().endsWith(fileType.toLowerCase())
     )
 
-    console.log(
+    log.debug(
       `Files matching type ${fileType}:`,
-      filesOfType.map(f => f.name)
+      filesOfType.map((f) => f.name)
     )
 
     // Then look for architecture match within those files
     for (const arch of config.architectures) {
-      const matchingFile = filesOfType.find(asset => {
+      const matchingFile = filesOfType.find((asset) => {
         const fileName = asset.name.toLowerCase()
         const archMatch = fileName.includes(arch.toLowerCase())
 
@@ -299,7 +300,7 @@ function findBestMatchingAsset(
           ((arch.includes('x64') || arch.includes('intel')) &&
             (fileName.includes('aarch64') || fileName.includes('arm64')))
 
-        console.log(`Checking ${asset.name} for arch ${arch}:`, {
+        log.trace(`Checking ${asset.name} for arch ${arch}:`, {
           archMatch,
           isOppositeArch,
           willMatch: archMatch && !isOppositeArch
@@ -309,7 +310,7 @@ function findBestMatchingAsset(
       })
 
       if (matchingFile) {
-        console.log(
+        log.debug(
           `Found best match: ${matchingFile.name} for ${config.architectures.join('/')}`
         )
         return matchingFile
@@ -317,8 +318,8 @@ function findBestMatchingAsset(
     }
   }
 
-  console.warn(
-    `No matching asset found for architectures: ${config.architectures.join(', ')}`
+  logger.warn(
+    `[UpdateManifest] No matching asset found for architectures: ${config.architectures.join(', ')}`
   )
   return undefined
 }

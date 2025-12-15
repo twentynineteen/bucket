@@ -42,7 +42,15 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }]
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      // DEBT-005: Prevent console statements - use logger utility instead
+      'no-console': 'error',
+      // Code quality rules to prevent technical debt accumulation
+      // Set to 'warn' initially to identify issues without blocking development
+      // Can be changed to 'error' once existing issues are resolved
+      complexity: ['warn', { max: 15 }], // Target: 10, current max: 40
+      'max-depth': ['warn', { max: 5 }], // Target: 4, current max: 8
+      'max-params': ['warn', { max: 6 }] // Target: 5, current max: 13
     }
   }
 )

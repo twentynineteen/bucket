@@ -1,12 +1,13 @@
+import { CACHE } from '@constants/timing'
 import { useQuery } from '@tanstack/react-query'
-import { ApiKeys, loadApiKeys } from '../utils/storage'
+import { ApiKeys, loadApiKeys } from '@utils/storage'
 
 export const useApiKeys = () => {
   return useQuery<ApiKeys>({
     queryKey: ['apiKeys'],
     queryFn: loadApiKeys,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime in v5)
+    staleTime: CACHE.STANDARD, // 5 minutes
+    gcTime: CACHE.GC_MEDIUM, // 10 minutes (renamed from cacheTime in v5)
     retry: 2,
     refetchOnWindowFocus: false
   })

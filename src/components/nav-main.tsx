@@ -13,6 +13,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem
 } from '@components/ui/sidebar'
+import { useSidebar } from '@components/ui/use-sidebar'
 import { ChevronRight, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -30,11 +31,14 @@ export function NavMain({
     }[]
   }[]
 }) {
+  const { state } = useSidebar()
+  const isCollapsed = state === 'collapsed'
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map(item => (
+        {items.map((item) => (
           <Collapsible
             key={item.title}
             asChild
@@ -43,15 +47,24 @@ export function NavMain({
           >
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title}>
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                <SidebarMenuButton tooltip={item.title} asChild={isCollapsed}>
+                  {isCollapsed ? (
+                    <Link to={item.url}>
+                      {item.icon && <item.icon />}
+                      <span>{item.title}</span>
+                    </Link>
+                  ) : (
+                    <>
+                      {item.icon && <item.icon />}
+                      <span>{item.title}</span>
+                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    </>
+                  )}
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <SidebarMenuSub>
-                  {item.items?.map(subItem => (
+                  {item.items?.map((subItem) => (
                     <SidebarMenuSubItem key={subItem.title}>
                       <SidebarMenuSubButton asChild>
                         <Link to={subItem.url}>

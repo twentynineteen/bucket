@@ -1,5 +1,5 @@
+import { SproutUploadResponse } from '@utils/types'
 import React from 'react'
-import { SproutUploadResponse } from 'utils/types'
 
 interface Props {
   video: SproutUploadResponse
@@ -27,7 +27,7 @@ ${embed_code}
 `
 
   return (
-    <pre className="text-xs whitespace-pre-wrap font-mono text-gray-600">
+    <pre className="text-muted-foreground font-mono text-xs whitespace-pre-wrap">
       {formattedBlock}
     </pre>
   )

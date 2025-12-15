@@ -3,10 +3,13 @@
  * Feature: 004-embed-multiple-video
  */
 
-import { Button } from '@/components/ui/button'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ChevronDown, ChevronUp, ExternalLink, Trash2, Video } from 'lucide-react'
-import type { VideoLink } from '../../types/baker'
+import React from 'react'
+
+import { Button } from '@/components/ui/button'
+import type { VideoLink } from '@/types/baker'
+import { logger } from '@/utils/logger'
 
 interface VideoLinkCardProps {
   videoLink: VideoLink
@@ -17,7 +20,7 @@ interface VideoLinkCardProps {
   canMoveDown: boolean
 }
 
-export function VideoLinkCard({
+function VideoLinkCardComponent({
   videoLink,
   onRemove,
   onMoveUp,
@@ -39,43 +42,79 @@ export function VideoLinkCard({
     try {
       await openUrl(videoLink.url)
     } catch (error) {
-      console.error('Failed to open video URL:', error)
+      logger.error('Failed to open video URL:', error)
     }
   }
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+    <div className="border-border bg-card group flex flex-col overflow-hidden rounded-lg border shadow-sm transition-shadow hover:shadow-md">
       {/* Thumbnail */}
-      <div className="flex-shrink-0">
+      <div className="bg-muted relative aspect-video w-full">
         {videoLink.thumbnailUrl ? (
           <img
             src={videoLink.thumbnailUrl}
             alt={videoLink.title}
-            className="h-20 w-32 rounded object-cover"
+            className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-20 w-32 items-center justify-center rounded bg-gray-100">
-            <Video className="h-8 w-8 text-gray-400" />
+          <div className="flex h-full w-full items-center justify-center">
+            <Video className="text-muted-foreground h-12 w-12" />
           </div>
         )}
+
+        {/* Action buttons overlay */}
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={onMoveUp}
+            disabled={!canMoveUp}
+            className="bg-background h-7 w-7"
+            title="Move up"
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={onMoveDown}
+            disabled={!canMoveDown}
+            className="bg-background h-7 w-7"
+            title="Move down"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={onRemove}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-7 w-7"
+            title="Remove video"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-gray-900 truncate">{videoLink.title}</h3>
+      <div className="flex-1 space-y-2 p-3">
+        <h3
+          className="text-foreground line-clamp-2 text-sm font-medium"
+          title={videoLink.title}
+        >
+          {videoLink.title}
+        </h3>
 
         {videoLink.sproutVideoId && (
-          <p className="text-sm text-gray-500 mt-1">ID: {videoLink.sproutVideoId}</p>
+          <p className="text-muted-foreground text-xs">ID: {videoLink.sproutVideoId}</p>
         )}
 
-        <div className="flex gap-4 mt-2 text-xs text-gray-500">
-          {videoLink.uploadDate && (
-            <span>Uploaded: {formatDate(videoLink.uploadDate)}</span>
-          )}
+        <div className="text-muted-foreground space-y-1 text-xs">
+          {videoLink.uploadDate && <p>Uploaded: {formatDate(videoLink.uploadDate)}</p>}
           {videoLink.sourceRenderFile && (
-            <span className="truncate" title={videoLink.sourceRenderFile}>
+            <p className="truncate" title={videoLink.sourceRenderFile}>
               Source: {videoLink.sourceRenderFile}
-            </span>
+            </p>
           )}
         </div>
 
@@ -83,45 +122,16 @@ export function VideoLinkCard({
           variant="ghost"
           size="sm"
           onClick={openInBrowser}
-          className="mt-2 h-7 text-xs"
+          className="mt-2 h-8 w-full text-xs"
         >
-          <ExternalLink className="mr-1 h-3 w-3" />
+          <ExternalLink className="mr-1.5 h-3 w-3" />
           Open in Sprout Video
-        </Button>
-      </div>
-
-      {/* Actions */}
-      <div className="flex flex-col gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMoveUp}
-          disabled={!canMoveUp}
-          className="h-8 w-8"
-          title="Move up"
-        >
-          <ChevronUp className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMoveDown}
-          disabled={!canMoveDown}
-          className="h-8 w-8"
-          title="Move down"
-        >
-          <ChevronDown className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onRemove}
-          className="h-8 w-8 text-red-600 hover:text-red-700"
-          title="Remove video"
-        >
-          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
     </div>
   )
 }
+
+// Wrap with React.memo for performance optimization (Phase 1.3)
+// Prevents unnecessary re-renders when props haven't changed
+export const VideoLinkCard = React.memo(VideoLinkCardComponent)

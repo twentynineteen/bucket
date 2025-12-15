@@ -2,26 +2,30 @@
  * ExampleEmbeddings Page
  * Feature: 007-frontend-script-example
  *
- * Main page for managing AI script example embeddings
+ * Main page for managing AI script example embeddings.
+ * Refactored to align with Baker/BuildProject UI patterns.
  */
 
-import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useBreadcrumb } from '@/hooks/useBreadcrumb'
-import { useExampleManagement } from '@/hooks/useExampleManagement'
-import type { ExampleCategory, ExampleSource } from '@/types/exampleEmbeddings'
+import ErrorBoundary from '@components/ErrorBoundary'
+import { Button } from '@components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
+import { useBreadcrumb } from '@hooks/useBreadcrumb'
+import { useExampleManagement } from '@hooks/useExampleManagement'
 import { save } from '@tauri-apps/plugin-dialog'
 import { mkdir, writeTextFile } from '@tauri-apps/plugin-fs'
-import { Download, Upload } from 'lucide-react'
-import { useState } from 'react'
+import { AlertTriangle, Download, RefreshCw, Upload } from 'lucide-react'
+import React, { useState } from 'react'
 import { toast } from 'sonner'
+
+import type { ExampleCategory, ExampleSource } from '@/types/exampleEmbeddings'
+
 import { DeleteConfirm } from './DeleteConfirm'
 import { ExampleList } from './ExampleList'
 import { ReplaceDialog } from './ReplaceDialog'
 import { UploadDialog } from './UploadDialog'
 import { ViewExampleDialog } from './ViewExampleDialog'
 
-export function ExampleEmbeddings() {
+const ExampleEmbeddingsContent: React.FC = () => {
   // Breadcrumb for navigation
   useBreadcrumb([
     { label: 'AI Tools', href: '/ai-tools' },
@@ -41,11 +45,13 @@ export function ExampleEmbeddings() {
 
   // Filter examples by source
   const filteredExamples =
-    filterSource === 'all' ? examples : examples.filter(ex => ex.source === filterSource)
+    filterSource === 'all'
+      ? examples
+      : examples.filter((ex) => ex.source === filterSource)
 
   // Count by source
-  const bundledCount = examples.filter(ex => ex.source === 'bundled').length
-  const uploadedCount = examples.filter(ex => ex.source === 'user-uploaded').length
+  const bundledCount = examples.filter((ex) => ex.source === 'bundled').length
+  const uploadedCount = examples.filter((ex) => ex.source === 'user-uploaded').length
 
   // Handle delete
   const handleDeleteClick = (id: string) => {
@@ -125,7 +131,7 @@ export function ExampleEmbeddings() {
 
   // Handle download individual example
   const handleDownloadClick = async (id: string) => {
-    const example = examples.find(ex => ex.id === id)
+    const example = examples.find((ex) => ex.id === id)
     if (!example) return
 
     try {
@@ -210,79 +216,93 @@ export function ExampleEmbeddings() {
     }
   }
 
-  const selectedExample = examples.find(ex => ex.id === selectedExampleId)
+  const selectedExample = examples.find((ex) => ex.id === selectedExampleId)
 
   return (
-    <div className="container mx-auto space-y-6 px-6">
-      {/* Header */}
-      <div className="w-full pb-4 border-b mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold flex flex-row gap-4 items-center">
-            Example Embeddings
-          </h2>
-          <p className="mt-2 text-muted-foreground">
-            Manage script examples for AI-powered autocue formatting.{' '}
-          </p>
-          <p className="mt-2 text-muted-foreground">
-            Upload your own examples or use bundled templates.
-          </p>
+    <div className="h-full w-full overflow-x-hidden overflow-y-auto">
+      <div className="w-full max-w-full pb-4">
+        {/* Header */}
+        <div className="border-border bg-card/50 border-b px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-foreground text-2xl font-bold">Example Embeddings</h1>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                Manage script examples for AI-powered autocue formatting
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleDownloadAll}>
+                <Download className="mr-2 h-4 w-4" />
+                Download All
+              </Button>
+              <Button size="sm" onClick={() => setUploadDialogOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Example
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleDownloadAll}>
-            <Download className="mr-2 h-4 w-4" />
-            Download All
-          </Button>
-          <Button onClick={() => setUploadDialogOpen(true)}>
-            <Upload className="mr-2 h-4 w-4" />
-            Upload Example
-          </Button>
+
+        <div className="max-w-full space-y-4 px-6 py-4">
+          {/* Example Library */}
+          <div className="bg-card border-border overflow-hidden rounded-xl border shadow-sm">
+            <div className="border-border border-b p-4">
+              <h2 className="text-foreground text-sm font-semibold">
+                Example Library ({examples.length} total)
+              </h2>
+            </div>
+
+            <div className="p-4">
+              {/* Tabs for filtering */}
+              <Tabs
+                value={filterSource}
+                onValueChange={(value) => setFilterSource(value as typeof filterSource)}
+              >
+                <TabsList>
+                  <TabsTrigger value="all">All ({examples.length})</TabsTrigger>
+                  <TabsTrigger value="bundled">Bundled ({bundledCount})</TabsTrigger>
+                  <TabsTrigger value="user-uploaded">
+                    Uploaded ({uploadedCount})
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="all" className="mt-4">
+                  <ExampleList
+                    examples={filteredExamples}
+                    isLoading={isLoading}
+                    onDelete={handleDeleteClick}
+                    onReplace={handleReplaceClick}
+                    onView={handleViewClick}
+                    onDownload={handleDownloadClick}
+                  />
+                </TabsContent>
+
+                <TabsContent value="bundled" className="mt-4">
+                  <ExampleList
+                    examples={filteredExamples}
+                    isLoading={isLoading}
+                    onDelete={handleDeleteClick}
+                    onReplace={handleReplaceClick}
+                    onView={handleViewClick}
+                    onDownload={handleDownloadClick}
+                  />
+                </TabsContent>
+
+                <TabsContent value="user-uploaded" className="mt-4">
+                  <ExampleList
+                    examples={filteredExamples}
+                    isLoading={isLoading}
+                    onDelete={handleDeleteClick}
+                    onReplace={handleReplaceClick}
+                    onView={handleViewClick}
+                    onDownload={handleDownloadClick}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Tabs for filtering */}
-      <Tabs
-        value={filterSource}
-        onValueChange={value => setFilterSource(value as typeof filterSource)}
-      >
-        <TabsList>
-          <TabsTrigger value="all">All ({examples.length})</TabsTrigger>
-          <TabsTrigger value="bundled">Bundled ({bundledCount})</TabsTrigger>
-          <TabsTrigger value="user-uploaded">Uploaded ({uploadedCount})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="mt-6">
-          <ExampleList
-            examples={filteredExamples}
-            isLoading={isLoading}
-            onDelete={handleDeleteClick}
-            onReplace={handleReplaceClick}
-            onView={handleViewClick}
-            onDownload={handleDownloadClick}
-          />
-        </TabsContent>
-
-        <TabsContent value="bundled" className="mt-6">
-          <ExampleList
-            examples={filteredExamples}
-            isLoading={isLoading}
-            onDelete={handleDeleteClick}
-            onReplace={handleReplaceClick}
-            onView={handleViewClick}
-            onDownload={handleDownloadClick}
-          />
-        </TabsContent>
-
-        <TabsContent value="user-uploaded" className="mt-6">
-          <ExampleList
-            examples={filteredExamples}
-            isLoading={isLoading}
-            onDelete={handleDeleteClick}
-            onReplace={handleReplaceClick}
-            onView={handleViewClick}
-            onDownload={handleDownloadClick}
-          />
-        </TabsContent>
-      </Tabs>
 
       {/* View example dialog */}
       <ViewExampleDialog
@@ -321,5 +341,60 @@ export function ExampleEmbeddings() {
         onUpload={handleUpload}
       />
     </div>
+  )
+}
+
+export function ExampleEmbeddings() {
+  return (
+    <ErrorBoundary
+      fallback={(error, retry) => (
+        <div className="flex min-h-[400px] flex-col items-center justify-center p-8 text-center">
+          <div className="max-w-md">
+            <AlertTriangle className="text-destructive mx-auto mb-4 h-12 w-12" />
+            <h2 className="text-foreground mb-4 text-2xl font-semibold">
+              Example Embeddings Error
+            </h2>
+            <div className="text-muted-foreground mb-6">
+              <p>
+                An error occurred while loading the example embeddings. This could be due
+                to:
+              </p>
+              <ul className="mt-2 space-y-1 text-left">
+                <li>• Database connection issues</li>
+                <li>• Invalid embedding data</li>
+                <li>• File system access problems</li>
+              </ul>
+              {error && process.env.NODE_ENV === 'development' && (
+                <details className="bg-muted/50 border-border mt-4 rounded-md border p-4 text-left text-sm">
+                  <summary className="text-foreground cursor-pointer font-medium">
+                    Technical Details
+                  </summary>
+                  <div className="text-muted-foreground mt-2">
+                    <p>
+                      <strong className="text-foreground">Error:</strong> {error.message}
+                    </p>
+                  </div>
+                </details>
+              )}
+            </div>
+            <div className="flex justify-center gap-2">
+              <Button onClick={retry} className="flex-1">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Retry
+              </Button>
+              <Button
+                onClick={() => (window.location.href = '/ai-tools')}
+                variant="outline"
+                className="flex-1"
+              >
+                Back to AI Tools
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    >
+      <ExampleEmbeddingsContent />
+    </ErrorBoundary>
   )
 }

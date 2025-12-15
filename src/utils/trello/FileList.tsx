@@ -1,5 +1,5 @@
+import { FootageData } from '@utils/types'
 import React from 'react'
-import { FootageData } from 'utils/types'
 
 interface Props {
   files: FootageData[]
@@ -8,10 +8,10 @@ interface Props {
 const FileList: React.FC<Props> = ({ files }) => (
   <>
     <p>
-      <span className="font-medium text-foreground">Files:</span> {files.length} file(s)
+      <span className="text-foreground font-medium">Files:</span> {files.length} file(s)
     </p>
-    <ul className="list-disc ml-5">
-      {files.map(file => (
+    <ul className="ml-5 list-disc">
+      {files.map((file) => (
         <li key={file.path}>
           {file.name} (Camera {file.camera})
         </li>

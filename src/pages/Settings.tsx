@@ -1,19 +1,46 @@
+import { TrelloBoardSelector } from '@components/Settings/TrelloBoardSelector'
+import { ThemeSelector } from '@components/Settings/ThemeSelector'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@components/ui/accordion'
 import { Button } from '@components/ui/button'
+import { CACHE } from '@constants/timing'
+import { useAIProvider } from '@hooks/useAIProvider'
+import { useBreadcrumb } from '@hooks/useBreadcrumb'
+import { queryKeys } from '@lib/query-keys'
+import { createQueryError, createQueryOptions, shouldRetry } from '@lib/query-utils'
+import { useAppStore } from '@store/useAppStore'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { open as openPath } from '@tauri-apps/plugin-dialog'
 import { open } from '@tauri-apps/plugin-shell'
-import { useBreadcrumb } from 'hooks/useBreadcrumb'
+import ApiKeyInput from '@utils/ApiKeyInput'
+import { ApiKeys, loadApiKeys, saveApiKeys } from '@utils/storage'
 import { CheckCircle, Loader2, XCircle } from 'lucide-react'
-import React, { useState } from 'react'
-import { useAppStore } from 'store/useAppStore'
-import ApiKeyInput from 'utils/ApiKeyInput'
-import { useAIProvider } from '../hooks/useAIProvider'
-import { queryKeys } from '../lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '../lib/query-utils'
-import { ApiKeys, loadApiKeys, saveApiKeys } from '../utils/storage'
+import React, { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+
+import { logger } from '@/utils/logger'
 
 const Settings: React.FC = () => {
   const queryClient = useQueryClient()
+  const location = useLocation()
+
+  // Scroll to section when hash changes
+  useEffect(() => {
+    if (location.hash) {
+      const elementId = location.hash.slice(1) // Remove the '#'
+      const element = document.getElementById(elementId)
+      if (element) {
+        // Small delay to ensure the page is rendered
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 100)
+      }
+    }
+  }, [location.hash])
 
   // Local state for form inputs (separate from cached data)
   const [localApiKeys, setLocalApiKeys] = useState<Partial<ApiKeys>>({})
@@ -43,8 +70,8 @@ const Settings: React.FC = () => {
       },
       'DYNAMIC',
       {
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        gcTime: 10 * 60 * 1000, // Keep cached for 10 minutes
+        staleTime: CACHE.STANDARD, // 5 minutes
+        gcTime: CACHE.GC_MEDIUM, // Keep cached for 10 minutes
         retry: (failureCount, error) => shouldRetry(error, failureCount, 'settings')
       }
     )
@@ -60,21 +87,21 @@ const Settings: React.FC = () => {
         throw createQueryError(`Failed to save API keys: ${error}`, 'SETTINGS_SAVE')
       }
     },
-    onSuccess: updatedKeys => {
+    onSuccess: (updatedKeys) => {
       // Update the cache with the new keys
       queryClient.setQueryData(queryKeys.settings.apiKeys(), updatedKeys)
     }
   })
 
   // Add default folder input and store in zustand app store
-  const defaultBackgroundFolder = useAppStore(state => state.defaultBackgroundFolder)
+  const defaultBackgroundFolder = useAppStore((state) => state.defaultBackgroundFolder)
   const setDefaultBackgroundFolder = useAppStore(
-    state => state.setDefaultBackgroundFolder
+    (state) => state.setDefaultBackgroundFolder
   )
 
   // Ollama URL setting
-  const ollamaUrl = useAppStore(state => state.ollamaUrl)
-  const setOllamaUrl = useAppStore(state => state.setOllamaUrl)
+  const ollamaUrl = useAppStore((state) => state.ollamaUrl)
+  const setOllamaUrl = useAppStore((state) => state.setOllamaUrl)
 
   const handleSelectDefaultBackgroundFolder = async () => {
     const folder = await openPath({
@@ -92,7 +119,7 @@ const Settings: React.FC = () => {
       alert('Default background folder saved!')
     } catch (error) {
       alert('Failed to save default background folder')
-      console.error('Save error:', error)
+      logger.error('Save error:', error)
     }
   }
 
@@ -102,7 +129,7 @@ const Settings: React.FC = () => {
       alert('Ollama URL saved successfully!')
     } catch (error) {
       alert('Failed to save Ollama URL')
-      console.error('Save error:', error)
+      logger.error('Save error:', error)
     }
   }
 
@@ -118,7 +145,7 @@ const Settings: React.FC = () => {
       await open(authUrl)
       alert('After authorizing, copy the token from the URL and paste it below.')
     } catch (err) {
-      console.error('Failed to open Trello authorization URL:', err)
+      logger.error('Failed to open Trello authorization URL:', err)
     }
   }
 
@@ -135,7 +162,7 @@ const Settings: React.FC = () => {
       alert('SproutVideo API Key saved successfully!')
     } catch (error) {
       alert('Failed to save SproutVideo API Key')
-      console.error('Save error:', error)
+      logger.error('Save error:', error)
     }
   }
 
@@ -145,7 +172,7 @@ const Settings: React.FC = () => {
       alert('Trello API Key saved successfully!')
     } catch (error) {
       alert('Failed to save Trello API Key')
-      console.error('Save error:', error)
+      logger.error('Save error:', error)
     }
   }
 
@@ -155,7 +182,7 @@ const Settings: React.FC = () => {
       alert('Trello API Token saved successfully!')
     } catch (error) {
       alert('Failed to save Trello API Token')
-      console.error('Save error:', error)
+      logger.error('Save error:', error)
     }
   }
 
@@ -195,35 +222,36 @@ const Settings: React.FC = () => {
 
   return (
     <div className="w-full pb-4">
-      <h2 className="px-4 text-2xl font-semibold mb-6">Settings</h2>
+      <h2 className="mb-6 px-4 text-2xl font-semibold">Settings</h2>
 
-      <div className="px-4 mx-4 space-y-8">
+      <div className="mx-4 space-y-8 px-4">
         {/* AI Models Section */}
-        <section className="space-y-4 border border-gray-300 rounded-lg p-6">
+        <section id="ai-models" className="border-border space-y-4 rounded-lg border p-6">
           <div className="border-b pb-2">
-            <h3 className="text-lg font-semibold text-gray-900">AI Models</h3>
-            <p className="text-sm text-gray-500">
+            <h3 className="text-foreground text-lg font-semibold">AI Models</h3>
+            <p className="text-muted-foreground text-sm">
               Configure AI provider settings for script formatting
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label htmlFor="ollama-url-input" className="mb-2 block text-sm font-medium">
               Ollama URL
-              <span className="text-xs text-gray-500 ml-2">
+              <span className="text-muted-foreground ml-2 text-xs">
                 (Default: http://localhost:11434)
               </span>
             </label>
             <div className="space-y-2">
               <ApiKeyInput
+                id="ollama-url-input"
                 apiKey={ollamaUrl || 'http://localhost:11434'}
                 setApiKey={handleOllamaUrlChange}
                 onSave={handleSaveOllamaUrl}
               />
-              <div className="flex gap-2 items-center">
+              <div className="flex items-center gap-2">
                 <Button
                   onClick={handleTestConnection}
                   disabled={connectionStatus.status === 'testing'}
-                  className="px-3 py-1 border rounded flex items-center gap-2"
+                  className="flex items-center gap-2 rounded border px-3 py-1"
                 >
                   {connectionStatus.status === 'testing' && (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -234,11 +262,11 @@ const Settings: React.FC = () => {
                 </Button>
 
                 {connectionStatus.status === 'success' && (
-                  <div className="flex items-center gap-2 text-green-600 text-sm">
+                  <div className="text-success flex items-center gap-2 text-sm">
                     <CheckCircle className="h-4 w-4" />
                     <span>{connectionStatus.message}</span>
                     {connectionStatus.latencyMs && (
-                      <span className="text-gray-500">
+                      <span className="text-muted-foreground">
                         ({connectionStatus.latencyMs}ms)
                       </span>
                     )}
@@ -246,7 +274,7 @@ const Settings: React.FC = () => {
                 )}
 
                 {connectionStatus.status === 'error' && (
-                  <div className="flex items-center gap-2 text-red-600 text-sm">
+                  <div className="text-destructive flex items-center gap-2 text-sm">
                     <XCircle className="h-4 w-4" />
                     <span>{connectionStatus.message}</span>
                   </div>
@@ -256,51 +284,86 @@ const Settings: React.FC = () => {
           </div>
         </section>
 
-        {/* Trello Section */}
-        <section className="space-y-4 border border-gray-300 rounded-lg p-6">
+        {/* Appearance Section */}
+        <section
+          id="appearance"
+          className="border-border space-y-4 rounded-lg border p-6"
+        >
           <div className="border-b pb-2">
-            <h3 className="text-lg font-semibold text-gray-900">Trello</h3>
-            <p className="text-sm text-gray-500">
-              Configure Trello API integration for project management
+            <h3 className="text-foreground text-lg font-semibold">Appearance</h3>
+            <p className="text-muted-foreground text-sm">
+              Customize the visual theme and color scheme
+            </p>
+          </div>
+          <Accordion type="single" collapsible>
+            <AccordionItem value="theme" className="border-b-0">
+              <AccordionTrigger className="hover:no-underline">
+                Theme Selection
+              </AccordionTrigger>
+              <AccordionContent>
+                <ThemeSelector label="" />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+
+        {/* Backgrounds Section */}
+        <section
+          id="backgrounds"
+          className="border-border space-y-4 rounded-lg border p-6"
+        >
+          <div className="border-b pb-2">
+            <h3 className="text-foreground text-lg font-semibold">Backgrounds</h3>
+            <p className="text-muted-foreground text-sm">
+              Set default folder for background assets
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Trello API Key</label>
-            <ApiKeyInput
-              apiKey={localApiKeys.trello || ''}
-              setApiKey={(newKey: string) =>
-                setLocalApiKeys({ ...localApiKeys, trello: newKey })
-              }
-              onSave={handleSaveTrelloKey}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Trello Auth</label>
-            <Button onClick={handleAuthorizeWithTrello}>Authorize with Trello</Button>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Trello API Token</label>
-            <ApiKeyInput
-              apiKey={localApiKeys.trelloToken || ''}
-              setApiKey={(newKey: string) =>
-                setLocalApiKeys({ ...localApiKeys, trelloToken: newKey })
-              }
-              onSave={handleSaveTrelloToken}
-            />
+            <label className="mb-2 block text-sm font-medium">
+              Default Background Folder
+            </label>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleSelectDefaultBackgroundFolder}
+                className="rounded border px-3 py-1"
+              >
+                Choose Folder
+              </Button>
+              <Button
+                onClick={handleSaveDefaultBackground}
+                className="rounded border px-3 py-1"
+              >
+                Save
+              </Button>
+            </div>
+            {defaultBackgroundFolder && (
+              <p className="text-muted-foreground mt-1 text-sm">
+                {defaultBackgroundFolder}
+              </p>
+            )}
           </div>
         </section>
 
         {/* SproutVideo Section */}
-        <section className="space-y-4 border border-gray-300 rounded-lg p-6">
+        <section
+          id="sproutvideo"
+          className="border-border space-y-4 rounded-lg border p-6"
+        >
           <div className="border-b pb-2">
-            <h3 className="text-lg font-semibold text-gray-900">SproutVideo</h3>
-            <p className="text-sm text-gray-500">
+            <h3 className="text-foreground text-lg font-semibold">SproutVideo</h3>
+            <p className="text-muted-foreground text-sm">
               Configure SproutVideo API for video hosting
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">SproutVideo API Key</label>
+            <label
+              htmlFor="sprout-video-api-key-input"
+              className="mb-2 block text-sm font-medium"
+            >
+              SproutVideo API Key
+            </label>
             <ApiKeyInput
+              id="sprout-video-api-key-input"
               apiKey={localApiKeys.sproutVideo || ''}
               setApiKey={(newKey: string) =>
                 setLocalApiKeys({ ...localApiKeys, sproutVideo: newKey })
@@ -310,38 +373,64 @@ const Settings: React.FC = () => {
           </div>
         </section>
 
-        {/* Backgrounds Section */}
-        <section className="space-y-4 border border-gray-300 rounded-lg p-6">
+        {/* Trello Section */}
+        <section id="trello" className="border-border space-y-4 rounded-lg border p-6">
           <div className="border-b pb-2">
-            <h3 className="text-lg font-semibold text-gray-900">Backgrounds</h3>
-            <p className="text-sm text-gray-500">
-              Set default folder for background assets
+            <h3 className="text-foreground text-lg font-semibold">Trello</h3>
+            <p className="text-muted-foreground text-sm">
+              Configure Trello API integration for project management
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Default Background Folder
+            <label
+              htmlFor="trello-api-key-input"
+              className="mb-2 block text-sm font-medium"
+            >
+              Trello API Key
             </label>
-            <div className="flex gap-2 items-center">
-              <Button
-                onClick={handleSelectDefaultBackgroundFolder}
-                className="px-3 py-1 border rounded"
-              >
-                Choose Folder
-              </Button>
-              <Button
-                onClick={handleSaveDefaultBackground}
-                className="px-3 py-1 border rounded"
-              >
-                Save
-              </Button>
-            </div>
-            {defaultBackgroundFolder && (
-              <p className="text-sm mt-1 text-muted-foreground">
-                {defaultBackgroundFolder}
-              </p>
-            )}
+            <ApiKeyInput
+              id="trello-api-key-input"
+              apiKey={localApiKeys.trello || ''}
+              setApiKey={(newKey: string) =>
+                setLocalApiKeys({ ...localApiKeys, trello: newKey })
+              }
+              onSave={handleSaveTrelloKey}
+            />
           </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium">Trello Auth</label>
+            <Button onClick={handleAuthorizeWithTrello}>Authorize with Trello</Button>
+          </div>
+          <div>
+            <label
+              htmlFor="trello-api-token-input"
+              className="mb-2 block text-sm font-medium"
+            >
+              Trello API Token
+            </label>
+            <ApiKeyInput
+              id="trello-api-token-input"
+              apiKey={localApiKeys.trelloToken || ''}
+              setApiKey={(newKey: string) =>
+                setLocalApiKeys({ ...localApiKeys, trelloToken: newKey })
+              }
+              onSave={handleSaveTrelloToken}
+            />
+          </div>
+          <TrelloBoardSelector
+            value={localApiKeys.trelloBoardId || ''}
+            onValueChange={async (boardId: string) => {
+              setLocalApiKeys({ ...localApiKeys, trelloBoardId: boardId })
+              // Auto-save when board is selected
+              try {
+                await saveApiKeysMutation.mutateAsync({ trelloBoardId: boardId })
+              } catch (error) {
+                logger.error('Failed to save board ID:', error)
+              }
+            }}
+            label="Trello Board"
+            placeholder="Select a board"
+          />
         </section>
       </div>
     </div>

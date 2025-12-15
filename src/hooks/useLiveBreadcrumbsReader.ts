@@ -7,7 +7,9 @@
 
 import { invoke } from '@tauri-apps/api/core'
 import { useCallback, useState } from 'react'
-import type { BreadcrumbsFile, FileInfo } from '../types/baker'
+
+import type { BreadcrumbsFile, FileInfo } from '@/types/baker'
+import { logger } from '@/utils/logger'
 
 // Constants
 const RAW_CONTENT_PREVIEW_LIMIT = 200
@@ -40,7 +42,7 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
           }
         )
       } catch (breadcrumbsError) {
-        console.warn(
+        logger.warn(
           `Failed to read existing breadcrumbs for ${projectPath}:`,
           breadcrumbsError
         )
@@ -54,7 +56,7 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
           projectPath
         })
       } catch (scanError) {
-        console.warn(
+        logger.warn(
           `Failed to scan current files for ${projectPath}, using cached data:`,
           scanError
         )
@@ -69,7 +71,7 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
         const liveBreadcrumbs: BreadcrumbsFile = {
           ...existingBreadcrumbs,
           files: actualFiles,
-          numberOfCameras: Math.max(1, Math.max(...actualFiles.map(f => f.camera), 0))
+          numberOfCameras: Math.max(1, Math.max(...actualFiles.map((f) => f.camera), 0))
         }
         setBreadcrumbs(liveBreadcrumbs)
       } else if (actualFiles.length > 0) {
@@ -77,7 +79,7 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
         const projectName = projectPath.split('/').pop() || 'Unknown Project'
         const liveBreadcrumbs: BreadcrumbsFile = {
           projectTitle: projectName,
-          numberOfCameras: Math.max(1, Math.max(...actualFiles.map(f => f.camera), 0)),
+          numberOfCameras: Math.max(1, Math.max(...actualFiles.map((f) => f.camera), 0)),
           files: actualFiles,
           parentFolder: projectPath.split('/').slice(0, -1).join('/'),
           createdBy: 'Unknown',
@@ -109,7 +111,10 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
           const projectName = projectPath.split('/').pop() || 'Unknown Project'
           const fallbackBreadcrumbs: BreadcrumbsFile = {
             projectTitle: projectName,
-            numberOfCameras: Math.max(1, Math.max(...actualFiles.map(f => f.camera), 0)),
+            numberOfCameras: Math.max(
+              1,
+              Math.max(...actualFiles.map((f) => f.camera), 0)
+            ),
             files: actualFiles,
             parentFolder: projectPath.split('/').slice(0, -1).join('/'),
             createdBy: 'Baker (recovered from file system)',

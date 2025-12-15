@@ -1,3 +1,5 @@
+import { PROJECT_LIMITS } from '@constants/project'
+import { AlertCircle, Camera, FileText } from 'lucide-react'
 import React from 'react'
 
 interface ProjectInputsProps {
@@ -16,60 +18,57 @@ const ProjectInputs: React.FC<ProjectInputsProps> = ({
   showSanitizationWarning = false
 }) => {
   return (
-    <div className="title-camera-inline flex flex-row gap-6 pt-3">
+    <div className="flex flex-row gap-4">
       {/* Project Title Input */}
-      <div className="title-input w-full">
+      <div className="flex-1">
         <label
           htmlFor="project-title"
-          className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+          className="text-foreground mb-1.5 flex items-center gap-1.5 text-xs font-semibold"
         >
-          Project title
+          <FileText className="text-primary h-3.5 w-3.5" />
+          Project Title
         </label>
         <input
           id="project-title"
           value={title}
-          onChange={e => onTitleChange(e.target.value)}
-          className="bg-gray-50 border border-gray-300 text-gray-900 
-            text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 
-            block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 
-            dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 
-            dark:focus:border-blue-500"
-          placeholder="Enter title here"
+          onChange={(e) => onTitleChange(e.target.value)}
+          className="bg-secondary border-input text-foreground focus:ring-info focus:border-info hover:border-input/80 block w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:ring-2"
+          placeholder="e.g. DBA - IB1234 - J Doe - Introductions 060626"
         />
         {showSanitizationWarning ? (
-          <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
-            Some characters were changed to hyphens (/ \ : * ? " &lt; &gt; |) to ensure
-            compatibility
-          </p>
+          <div className="bg-warning/20 border-warning/40 mt-1.5 flex items-start gap-1.5 rounded-md border p-1.5">
+            <AlertCircle className="text-warning mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+            <p className="text-warning-foreground text-xs">
+              Some characters were changed to hyphens (/ \ : * ? &quot; &lt; &gt; |) to
+              ensure compatibility
+            </p>
+          </div>
         ) : (
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            e.g. DBA - IB1234 - J Doe - Introductions 060626
-          </p>
+          <p className="text-muted-foreground mt-1 text-xs">Enter project title here</p>
         )}
       </div>
 
       {/* Number of Cameras Input */}
-      <div className="camera-input">
+      <div className="w-40 flex-shrink-0">
         <label
           htmlFor="number-input"
-          className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+          className="text-foreground mb-1.5 flex items-center gap-1.5 text-xs font-semibold"
         >
-          Number of cameras:
+          <Camera className="text-primary h-3.5 w-3.5" />
+          Number of Cameras
         </label>
         <input
           type="number"
           id="number-input"
-          className="bg-gray-50 border border-gray-300 
-            text-gray-900 text-sm rounded-lg focus:ring-blue-500 
-            focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 
-            dark:border-gray-600 dark:placeholder-gray-400 dark:text-white 
-            dark:focus:ring-blue-500 dark:focus:border-blue-500 font-semibold"
-          placeholder="2"
+          min={PROJECT_LIMITS.MIN_CAMERAS}
+          max={PROJECT_LIMITS.MAX_CAMERAS}
+          step="1"
+          className="bg-secondary border-input text-foreground focus:ring-info focus:border-info hover:border-input/80 block w-full rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-200 focus:ring-2"
+          placeholder={String(PROJECT_LIMITS.DEFAULT_CAMERAS)}
           value={numCameras}
-          onChange={e => onNumCamerasChange(Number(e.target.value))}
+          onChange={(e) => onNumCamerasChange(Number(e.target.value))}
           required
         />
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Default: 2</p>
       </div>
     </div>
   )

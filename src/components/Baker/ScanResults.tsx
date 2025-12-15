@@ -7,7 +7,8 @@
 import { formatFileSize } from '@utils/breadcrumbsComparison'
 import { RefreshCw } from 'lucide-react'
 import React from 'react'
-import type { ScanResult } from '../../types/baker'
+
+import type { ScanResult } from '@/types/baker'
 
 interface ScanResultsProps {
   scanResult: ScanResult | null
@@ -20,11 +21,17 @@ export const ScanResults: React.FC<ScanResultsProps> = ({ scanResult, isScanning
   // Show progress during scan
   if (isScanning) {
     return (
-      <div className="border rounded-lg p-6">
+      <div className="bg-card border-border rounded-xl border p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <div className="bg-primary/10 text-primary flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold">
+            2
+          </div>
+          <h2 className="text-foreground text-sm font-semibold">Scan Results</h2>
+        </div>
         <div className="flex items-center justify-between">
           <div>
             <p className="font-medium">Scanning in progress...</p>
-            <p className="text-sm text-gray-500">
+            <p className="text-muted-foreground text-sm">
               {scanResult.totalFolders} folders scanned • {scanResult.validProjects}{' '}
               projects found
             </p>
@@ -35,42 +42,78 @@ export const ScanResults: React.FC<ScanResultsProps> = ({ scanResult, isScanning
     )
   }
 
+  // Calculate stats
+  const validBreadcrumbs = scanResult.projects.filter(
+    (p) => p.hasBreadcrumbs && !p.invalidBreadcrumbs
+  ).length
+  const invalidBreadcrumbs = scanResult.projects.filter(
+    (p) => p.invalidBreadcrumbs
+  ).length
+  const missingBreadcrumbs = scanResult.projects.filter(
+    (p) => !p.hasBreadcrumbs && !p.invalidBreadcrumbs
+  ).length
+
   // Show results summary after scan
   return (
-    <div className="border rounded-lg p-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center">
-        <div>
-          <p className="text-2xl font-bold">{scanResult.totalFolders}</p>
-          <p className="text-sm text-gray-500">Folders Scanned</p>
+    <div className="bg-card border-border rounded-xl border p-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="bg-primary/10 text-primary flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold">
+            2
+          </div>
+          <h2 className="text-foreground text-sm font-semibold">Scan Results</h2>
         </div>
-        <div>
-          <p className="text-2xl font-bold text-green-600">{scanResult.validProjects}</p>
-          <p className="text-sm text-gray-500">Valid Projects</p>
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-blue-600">
-            {
-              scanResult.projects.filter(p => p.hasBreadcrumbs && !p.invalidBreadcrumbs)
-                .length
-            }
-          </p>
-          <p className="text-sm text-gray-500">Valid Breadcrumbs</p>
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-red-600">
-            {scanResult.projects.filter(p => p.invalidBreadcrumbs).length}
-          </p>
-          <p className="text-sm text-gray-500">Invalid Breadcrumbs</p>
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-purple-600">
-            {formatFileSize(scanResult.totalFolderSize)}
-          </p>
-          <p className="text-sm text-gray-500">Total Size</p>
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-orange-600">{scanResult.errors.length}</p>
-          <p className="text-sm text-gray-500">Errors</p>
+
+        {/* Compact stats inline */}
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">Scanned:</span>
+            <span className="text-foreground font-semibold">
+              {scanResult.totalFolders}
+            </span>
+          </div>
+          <div className="bg-border h-3 w-px" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">Projects:</span>
+            <span className="text-success font-semibold">{scanResult.validProjects}</span>
+          </div>
+          <div className="bg-border h-3 w-px" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">Breadcrumbs:</span>
+            <span className="text-success font-semibold">{validBreadcrumbs}</span>
+            {invalidBreadcrumbs > 0 && (
+              <>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-destructive font-semibold">
+                  {invalidBreadcrumbs}
+                </span>
+              </>
+            )}
+            {missingBreadcrumbs > 0 && (
+              <>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-warning font-semibold">{missingBreadcrumbs}</span>
+              </>
+            )}
+          </div>
+          <div className="bg-border h-3 w-px" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">Size:</span>
+            <span className="text-foreground font-semibold">
+              {formatFileSize(scanResult.totalFolderSize)}
+            </span>
+          </div>
+          {scanResult.errors.length > 0 && (
+            <>
+              <div className="bg-border h-3 w-px" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Errors:</span>
+                <span className="text-destructive font-semibold">
+                  {scanResult.errors.length}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

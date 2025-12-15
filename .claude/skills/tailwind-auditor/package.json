@@ -1,0 +1,11 @@
+{
+  "name": "@ai-labs-claude-skills/tailwind-auditor",
+  "version": "1.0.0",
+  "description": "Claude AI skill: tailwind-auditor",
+  "main": "index.js",
+  "files": [
+    "."
+  ],
+  "license": "MIT",
+  "author": "AI Labs"
+}

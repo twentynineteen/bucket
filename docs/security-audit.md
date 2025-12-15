@@ -39,6 +39,7 @@ bun audit --json  # Secondary source (if available)
 ```
 
 #### Supported Vulnerability Sources
+
 - **npm registry**: Primary source for Node.js packages
 - **GitHub Security Advisory**: Additional vulnerability data
 - **Snyk database**: Enhanced vulnerability intelligence
@@ -48,40 +49,44 @@ bun audit --json  # Secondary source (if available)
 
 Vulnerabilities are classified by severity:
 
-| Severity | Description | Auto-Resolution |
-|----------|-------------|----------------|
+| Severity     | Description                          | Auto-Resolution                  |
+| ------------ | ------------------------------------ | -------------------------------- |
 | **Critical** | Remote code execution, data exposure | Automatic with user notification |
-| **High** | Privilege escalation, DoS attacks | Automatic with approval prompt |
-| **Moderate** | Information disclosure, minor DoS | Queued for batch resolution |
-| **Low** | Minimal security impact | Optional resolution |
+| **High**     | Privilege escalation, DoS attacks    | Automatic with approval prompt   |
+| **Moderate** | Information disclosure, minor DoS    | Queued for batch resolution      |
+| **Low**      | Minimal security impact              | Optional resolution              |
 
 ### 3. Resolution Strategies
 
 The system employs multiple resolution strategies based on vulnerability characteristics:
 
 #### Automatic Patch Strategy
+
 ```typescript
 // Example: Automatic security patch
 const resolutionResult = await securityAuditor.resolveVulnerabilities(
   vulnerabilities,
-  'auto'  // Chooses best strategy automatically
+  'auto' // Chooses best strategy automatically
 )
 ```
 
 **Strategy Selection Logic:**
+
 - **Critical/High vulnerabilities**: Prefer version updates to latest secure version
 - **Moderate/Low vulnerabilities**: Prefer patches to minimize breaking changes
 - **No available patches**: Flag for manual intervention
 
 #### Resolution Methods
+
 1. **npm audit fix**: Applies automated fixes via npm
-2. **Version updates**: Updates to specific secure versions  
+2. **Version updates**: Updates to specific secure versions
 3. **Package replacement**: Suggests alternative packages if needed
 4. **Manual intervention**: Provides guidance for complex cases
 
 ### 4. Validation and Verification
 
 After resolution, the system validates:
+
 - ✅ Vulnerability is actually resolved
 - ✅ No new vulnerabilities introduced
 - ✅ Application still builds and tests pass
@@ -92,18 +97,20 @@ After resolution, the system validates:
 ### Running Security Audits
 
 #### Automated Workflow Integration
+
 ```typescript
 import { PackageUpdateWorkflow } from './src/services/PackageUpdateWorkflow'
 
 const workflow = new PackageUpdateWorkflow()
 const result = await workflow.executeWorkflow({
-  autoResolveVulnerabilities: true,  // Enable automatic resolution
-  skipSecurityAudit: false,          // Ensure audit runs
-  updateStrategy: 'conservative'     // Minimize breaking changes
+  autoResolveVulnerabilities: true, // Enable automatic resolution
+  skipSecurityAudit: false, // Ensure audit runs
+  updateStrategy: 'conservative' // Minimize breaking changes
 })
 ```
 
 #### Manual Audit
+
 ```typescript
 import { SecurityAuditor } from './src/services/SecurityAuditor'
 
@@ -124,6 +131,7 @@ if (auditResult.vulnerabilities.length > 0) {
 ```
 
 #### Script-based Audit
+
 ```bash
 # Quick security check
 ./scripts/security-audit.sh
@@ -138,22 +146,24 @@ if (auditResult.vulnerabilities.length > 0) {
 ### Configuration Options
 
 #### SecurityAuditor Options
+
 ```typescript
 interface SecurityAuditOptions {
-  sources: VulnerabilitySource[]     // ['npm', 'github', 'snyk']
-  severityThreshold: SeverityLevel   // Minimum severity to process
-  autoResolve: boolean               // Enable automatic resolution
-  createBackup: boolean              // Backup before changes
-  maxRetries: number                 // Resolution retry attempts
+  sources: VulnerabilitySource[] // ['npm', 'github', 'snyk']
+  severityThreshold: SeverityLevel // Minimum severity to process
+  autoResolve: boolean // Enable automatic resolution
+  createBackup: boolean // Backup before changes
+  maxRetries: number // Resolution retry attempts
 }
 ```
 
 #### Workflow Integration
+
 ```typescript
 interface WorkflowOptions {
-  skipSecurityAudit?: boolean           // Skip audit (not recommended)
-  autoResolveVulnerabilities?: boolean  // Auto-resolve found issues
-  securityFirst?: boolean               // Prioritize security over features
+  skipSecurityAudit?: boolean // Skip audit (not recommended)
+  autoResolveVulnerabilities?: boolean // Auto-resolve found issues
+  securityFirst?: boolean // Prioritize security over features
 }
 ```
 
@@ -167,7 +177,7 @@ The security audit generates comprehensive reports:
 interface SecurityAuditResult {
   vulnerabilityCount: {
     low: number
-    moderate: number  
+    moderate: number
     high: number
     critical: number
   }
@@ -207,7 +217,7 @@ Security Audit Report - 2024-01-15T10:30:00Z
 
 Summary:
 ✅ 0 Critical vulnerabilities
-⚠️  2 High vulnerabilities (resolved)  
+⚠️  2 High vulnerabilities (resolved)
 ℹ️  3 Moderate vulnerabilities (resolved)
 🔍 1 Low vulnerability (deferred)
 
@@ -224,18 +234,21 @@ Next Steps:
 ## Best Practices
 
 ### Security-First Development
+
 1. **Regular Audits**: Run audits before every release
 2. **Automated Integration**: Include in CI/CD pipeline
 3. **Prompt Resolution**: Address critical/high vulnerabilities immediately
 4. **Dependency Hygiene**: Regularly review and update dependencies
 
 ### Monitoring and Maintenance
+
 1. **Scheduled Audits**: Weekly automated scans
 2. **Alert Thresholds**: Immediate notification for critical vulnerabilities
 3. **Update Cadence**: Monthly dependency updates with security priority
 4. **Documentation**: Maintain audit logs and resolution history
 
 ### Integration with Development Workflow
+
 ```bash
 # Pre-commit hook example
 #!/bin/sh
@@ -251,11 +264,12 @@ fi
 ### Common Issues
 
 #### Audit Fails to Run
+
 ```bash
 # Clear npm cache
 npm cache clean --force
 
-# Verify network connectivity  
+# Verify network connectivity
 npm ping
 
 # Check registry configuration
@@ -263,6 +277,7 @@ npm config get registry
 ```
 
 #### Resolution Conflicts
+
 ```bash
 # Force resolution (use carefully)
 npm audit fix --force
@@ -272,6 +287,7 @@ npm install package@secure-version
 ```
 
 #### Lock File Issues
+
 ```bash
 # Synchronize lock files
 ./scripts/validate-lock-sync.sh
@@ -292,6 +308,7 @@ npm install && bun install
 ## Change Log
 
 ### Version 0.8.1 (Current)
+
 - ✅ Implemented comprehensive SecurityAuditor service
 - ✅ Added automatic vulnerability resolution
 - ✅ Integrated with package update workflow
@@ -299,6 +316,7 @@ npm install && bun install
 - ✅ Created rollback mechanism for failed resolutions
 
 ### Future Enhancements
+
 - 🔄 Real-time vulnerability monitoring
 - 🔄 Integration with additional vulnerability databases
 - 🔄 Advanced machine learning for vulnerability impact assessment

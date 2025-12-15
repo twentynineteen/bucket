@@ -1,0 +1,6 @@
+{
+  "name": "ux-animation-guru",
+  "version": "1.0.0",
+  "description": "Scan files for UX improvements and implement smooth, elegant animations with TDD methodology",
+  "type": "module"
+}

@@ -10,6 +10,12 @@ interface UseFuzzySearchOptions {
 export function useFuzzySearch<T>(items: T[], options: UseFuzzySearchOptions) {
   const [searchTerm, setSearchTerm] = useState('')
 
+  // Use JSON.stringify for deep comparison to prevent unnecessary Fuse.js rebuilds
+  // This is acceptable because the stringify operation is fast for typical use cases
+  // and prevents expensive Fuse.js re-initialization
+  const itemsKey = JSON.stringify(items)
+  const optionsKey = JSON.stringify(options)
+
   const fuse = useMemo(() => {
     return new Fuse(items, {
       keys: options.keys,
@@ -18,13 +24,14 @@ export function useFuzzySearch<T>(items: T[], options: UseFuzzySearchOptions) {
       ignoreLocation: true,
       minMatchCharLength: 2
     })
-  }, [items, options.keys, options.threshold, options.includeMatches])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemsKey, optionsKey])
 
   const results = useMemo(() => {
     if (!searchTerm.trim()) {
       return items
     }
-    return fuse.search(searchTerm).map(result => result.item)
+    return fuse.search(searchTerm).map((result) => result.item)
   }, [fuse, searchTerm, items])
 
   return {

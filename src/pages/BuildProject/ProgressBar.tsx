@@ -6,26 +6,28 @@ interface ProgressBarProps {
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({ progress, completed }) => {
-  console.log('ProgressBar received props:', { progress, completed })
-
   // Show progress bar when progress is 0 or greater, but hide when completed
   if (progress < 0 || completed) {
-    console.log(
-      'ProgressBar returning null - progress:',
-      progress,
-      'completed:',
-      completed
-    )
     return null
   }
 
   return (
-    <div className="w-full bg-gray-200 rounded-lg overflow-hidden mt-4">
+    <div
+      className="bg-secondary relative h-8 w-full overflow-hidden rounded-lg"
+      role="progressbar"
+      aria-valuenow={Math.round(progress)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label="Project creation progress"
+    >
       <div
-        className="bg-blue-600 text-xs leading-none py-1 text-center text-white"
+        className="bg-primary text-primary-foreground flex h-full items-center justify-center text-sm font-semibold transition-all duration-300"
         style={{ width: `${progress}%` }}
-      >
-        {progress.toFixed(1)}%
+      />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-foreground text-sm font-semibold drop-shadow-sm">
+          {progress.toFixed(1)}%
+        </span>
       </div>
     </div>
   )

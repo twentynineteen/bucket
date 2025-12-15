@@ -1,4 +1,4 @@
-import { SproutUploadResponse } from 'utils/types'
+import { SproutUploadResponse } from '@utils/types'
 
 export interface SelectedCard {
   id: string

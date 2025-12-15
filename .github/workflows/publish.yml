@@ -7,6 +7,10 @@ on:
 
 # This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish-tauri:
     permissions:
@@ -25,13 +29,47 @@ jobs:
           #   args: ''
 
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-
-      - name: setup node
-        uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Get the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          # Generate changelog
+          if [ -z "$LATEST_TAG" ]; then
+            # First release - get all commits
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            # Get commits since last tag
+            CHANGELOG=$(git log ${LATEST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+
+          # Create release body
+          RELEASE_BODY="## What's Changed
+
+          ${CHANGELOG}
+
+          ## Installation
+
+          Download the appropriate installer for your platform from the assets below.
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${LATEST_TAG}...app-v__VERSION__"
+
+          # Save to output (handle multiline)
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -53,7 +91,7 @@ jobs:
         # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
 
       - name: install frontend dependencies
-        run: npm install # change this to npm, pnpm or bun depending on which one you use.
+        run: bun install
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -64,12 +102,12 @@ jobs:
         with:
           tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
           releaseName: 'v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
-          tauriScript: 'npm run tauri'
-      - uses: peaceiris/actions-gh-pages@v3
+          tauriScript: 'bun run tauri'
+      - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./latest.json

@@ -3,7 +3,7 @@
  * CRITICAL: Must FAIL before implementation (RED phase)
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 describe('ProviderSelector - Contract Tests (T029)', () => {
   it('should accept props: providers, activeProvider, onSelect, onValidate', () => {

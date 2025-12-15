@@ -7,16 +7,16 @@
  * IMPORTANT: Use MockLanguageModelV2 from ai/test for deterministic, fast tests
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
-import { MockLanguageModelV1, simulateReadableStream } from 'ai/test'
+import { MockLanguageModelV2, simulateReadableStream } from 'ai/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Import the hook (will fail during RED phase - not implemented yet)
-// import { useScriptProcessor } from '../../../src/hooks/useScriptProcessor'
+// import { useScriptProcessor } from '@hooks/useScriptProcessor'
 
 // Mock language model for testing
 const createMockModel = () => {
-  return new MockLanguageModelV1({
+  return new MockLanguageModelV2({
     doStream: async () => ({
       stream: simulateReadableStream({
         chunks: [
@@ -26,12 +26,12 @@ const createMockModel = () => {
           {
             type: 'finish',
             finishReason: 'stop',
-            usage: { promptTokens: 10, completionTokens: 20 },
-          },
-        ],
+            usage: { promptTokens: 10, completionTokens: 20 }
+          }
+        ]
       }),
-      rawCall: { rawPrompt: null, rawSettings: {} },
-    }),
+      rawCall: { rawPrompt: null, rawSettings: {} }
+    })
   })
 }
 
@@ -120,10 +120,10 @@ describe('useScriptProcessor - Contract Tests (T021)', () => {
   it('should implement retry logic (3 attempts, FR-014)', async () => {
     // Contract: Hook must retry failed requests up to 3 times
 
-    const mockModelWithFailure = new MockLanguageModelV1({
+    const mockModelWithFailure = new MockLanguageModelV2({
       doStream: async () => {
         throw new Error('Connection timeout')
-      },
+      }
     })
 
     // const { result } = renderHook(() => useScriptProcessor())
@@ -179,18 +179,31 @@ describe('useScriptProcessor - Contract Tests (T021)', () => {
   it('should use tool calling for agent-based formatting', async () => {
     // Contract: Hook must pass autocue formatting tools to AI SDK
 
-    const mockModelWithTools = new MockLanguageModelV1({
+    const mockModelWithTools = new MockLanguageModelV2({
       doStream: async () => ({
         stream: simulateReadableStream({
           chunks: [
-            { type: 'tool-call', toolCallId: 'call-1', toolName: 'formatParagraph', args: { originalText: 'test' } },
-            { type: 'tool-result', toolCallId: 'call-1', result: { formattedText: 'TEST' } },
+            {
+              type: 'tool-call',
+              toolCallId: 'call-1',
+              toolName: 'formatParagraph',
+              args: { originalText: 'test' }
+            },
+            {
+              type: 'tool-result',
+              toolCallId: 'call-1',
+              result: { formattedText: 'TEST' }
+            },
             { type: 'text-delta', textDelta: 'Formatted with tools' },
-            { type: 'finish', finishReason: 'stop', usage: { promptTokens: 10, completionTokens: 20 } },
-          ],
+            {
+              type: 'finish',
+              finishReason: 'stop',
+              usage: { promptTokens: 10, completionTokens: 20 }
+            }
+          ]
         }),
-        rawCall: { rawPrompt: null, rawSettings: {} },
-      }),
+        rawCall: { rawPrompt: null, rawSettings: {} }
+      })
     })
 
     // const { result } = renderHook(() => useScriptProcessor())
@@ -214,10 +227,10 @@ describe('useScriptProcessor - Contract Tests (T021)', () => {
   it('should return proper error messages (FR-015, FR-025)', async () => {
     // Contract: Hook must provide clear error messages
 
-    const mockModelWithError = new MockLanguageModelV1({
+    const mockModelWithError = new MockLanguageModelV2({
       doStream: async () => {
         throw new Error('Provider not available')
-      },
+      }
     })
 
     // const { result } = renderHook(() => useScriptProcessor())

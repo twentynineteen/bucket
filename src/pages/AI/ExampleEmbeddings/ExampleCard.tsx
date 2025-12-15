@@ -5,6 +5,8 @@
  * Displays a single script example with metadata and actions
  */
 
+import { Download, RefreshCw, Trash2 } from 'lucide-react'
+
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,7 +18,6 @@ import {
   CardTitle
 } from '@/components/ui/card'
 import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
-import { Download, RefreshCw, Trash2 } from 'lucide-react'
 
 interface ExampleCardProps {
   example: ExampleWithMetadata
@@ -43,7 +44,7 @@ export function ExampleCard({
 
   return (
     <Card
-      className="flex flex-col cursor-pointer hover:bg-accent/50 transition-colors @container"
+      className="hover:bg-accent/50 @container flex cursor-pointer flex-col transition-colors"
       onClick={() => onView(example.id)}
     >
       <CardHeader>
@@ -59,7 +60,7 @@ export function ExampleCard({
       </CardHeader>
 
       <CardContent className="flex-1">
-        <p className="text-sm text-muted-foreground line-clamp-4">{previewText}</p>
+        <p className="text-muted-foreground line-clamp-4 text-sm">{previewText}</p>
 
         {example.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1">
@@ -71,7 +72,7 @@ export function ExampleCard({
           </div>
         )}
 
-        <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="text-muted-foreground mt-3 flex items-center gap-3 text-xs">
           {example.wordCount && <span>{example.wordCount} words</span>}
           {example.qualityScore && <span>Quality: {example.qualityScore}/5</span>}
         </div>
@@ -81,7 +82,7 @@ export function ExampleCard({
         <Button
           variant="outline"
           size="sm"
-          onClick={e => {
+          onClick={(e) => {
             e.stopPropagation()
             onDownload(example.id)
           }}
@@ -96,7 +97,7 @@ export function ExampleCard({
             <Button
               variant="outline"
               size="sm"
-              onClick={e => {
+              onClick={(e) => {
                 e.stopPropagation()
                 onReplace(example.id)
               }}
@@ -109,7 +110,7 @@ export function ExampleCard({
             <Button
               variant="destructive"
               size="sm"
-              onClick={e => {
+              onClick={(e) => {
                 e.stopPropagation()
                 onDelete(example.id)
               }}

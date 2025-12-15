@@ -3,10 +3,12 @@
  * Feature: 004-embed-multiple-video
  */
 
-import { Button } from '@/components/ui/button'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink, RefreshCw, Trash2 } from 'lucide-react'
-import type { TrelloCard } from '../../types/baker'
+
+import { Button } from '@/components/ui/button'
+import type { TrelloCard } from '@/types/baker'
+import { logger } from '@/utils/logger'
 
 interface TrelloCardItemProps {
   trelloCard: TrelloCard
@@ -43,73 +45,90 @@ export function TrelloCardItem({ trelloCard, onRemove, onRefresh }: TrelloCardIt
     try {
       await openUrl(trelloCard.url)
     } catch (error) {
-      console.error('Failed to open Trello URL:', error)
+      logger.error('Failed to open Trello URL:', error)
     }
   }
 
   const stale = isStale(trelloCard.lastFetched)
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
-      {/* Trello icon placeholder */}
-      <div className="flex-shrink-0">
-        <div className="flex h-12 w-12 items-center justify-center rounded bg-blue-100">
-          <svg viewBox="0 0 24 24" className="h-6 w-6 text-blue-600" fill="currentColor">
-            <path d="M21 0H3C1.343 0 0 1.343 0 3v18c0 1.656 1.343 3 3 3h18c1.656 0 3-1.344 3-3V3c0-1.657-1.344-3-3-3zM10.44 18.18c0 .795-.645 1.44-1.44 1.44H4.56c-.795 0-1.44-.646-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44H9c.795 0 1.44.645 1.44 1.44v13.62zm10.44-6c0 .794-.645 1.44-1.44 1.44H15c-.795 0-1.44-.646-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44h4.44c.795 0 1.44.645 1.44 1.44v7.62z" />
-          </svg>
+    <tr className="hover:bg-accent/50 transition-colors">
+      {/* Title */}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="flex-shrink-0">
+            <div className="bg-info/10 flex h-8 w-8 items-center justify-center rounded">
+              <svg viewBox="0 0 24 24" className="text-info h-4 w-4" fill="currentColor">
+                <path d="M21 0H3C1.343 0 0 1.343 0 3v18c0 1.656 1.343 3 3 3h18c1.656 0 3-1.344 3-3V3c0-1.657-1.344-3-3-3zM10.44 18.18c0 .795-.645 1.44-1.44 1.44H4.56c-.795 0-1.44-.646-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44H9c.795 0 1.44.645 1.44 1.44v13.62zm10.44-6c0 .794-.645 1.44-1.44 1.44H15c-.795 0-1.44-.646-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44h4.44c.795 0 1.44.645 1.44 1.44v7.62z" />
+              </svg>
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-foreground truncate text-sm font-medium">
+              {trelloCard.title}
+            </p>
+            <p className="text-muted-foreground text-xs">ID: {trelloCard.cardId}</p>
+          </div>
         </div>
-      </div>
+      </td>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-gray-900 truncate">{trelloCard.title}</h3>
+      {/* Board */}
+      <td className="px-4 py-3">
+        <p className="text-foreground truncate text-sm">
+          {trelloCard.boardName || (
+            <span className="text-muted-foreground italic">Unknown</span>
+          )}
+        </p>
+      </td>
 
-        <div className="flex gap-4 mt-1 text-xs text-gray-500">
-          <span>ID: {trelloCard.cardId}</span>
-          {trelloCard.boardName && <span>Board: {trelloCard.boardName}</span>}
-        </div>
-
-        {trelloCard.lastFetched && (
-          <p className={`text-xs mt-1 ${stale ? 'text-orange-600' : 'text-gray-500'}`}>
-            Last updated: {getRelativeTime(trelloCard.lastFetched)}
-            {stale && ' (stale)'}
-          </p>
+      {/* Last Updated */}
+      <td className="px-4 py-3">
+        {trelloCard.lastFetched ? (
+          <div>
+            <p className={`text-sm ${stale ? 'text-warning' : 'text-foreground'}`}>
+              {getRelativeTime(trelloCard.lastFetched)}
+            </p>
+            {stale && <p className="text-warning text-xs">Stale</p>}
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm italic">Never</span>
         )}
-
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={openInBrowser}
-          className="mt-2 h-7 text-xs"
-        >
-          <ExternalLink className="mr-1 h-3 w-3" />
-          Open in Trello
-        </Button>
-      </div>
+      </td>
 
       {/* Actions */}
-      <div className="flex gap-1">
-        {onRefresh && (
+      <td className="px-4 py-3">
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={openInBrowser}
+            className="h-7 text-xs"
+          >
+            <ExternalLink className="mr-1 h-3 w-3" />
+            Open
+          </Button>
+          {onRefresh && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRefresh}
+              className={`h-7 w-7 ${stale ? 'text-warning hover:text-warning/90' : 'text-muted-foreground hover:text-foreground'}`}
+              title={stale ? 'Refresh stale card details' : 'Refresh card details'}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
-            onClick={onRefresh}
-            className={`h-8 w-8 ${stale ? 'text-orange-600 hover:text-orange-700' : 'text-gray-600 hover:text-gray-700'}`}
-            title={stale ? 'Refresh stale card details' : 'Refresh card details'}
+            onClick={onRemove}
+            className="text-destructive hover:text-destructive/90 h-7 w-7"
+            title="Remove card"
           >
-            <RefreshCw className="h-4 w-4" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onRemove}
-          className="h-8 w-8 text-red-600 hover:text-red-700"
-          title="Remove card"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
+        </div>
+      </td>
+    </tr>
   )
 }

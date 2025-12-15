@@ -6,7 +6,9 @@
 
 import mammoth from 'mammoth'
 import { useState } from 'react'
-import type { FormattingMetadata, ScriptDocument } from '../types/scriptFormatter'
+
+import type { FormattingMetadata, ScriptDocument } from '@/types/scriptFormatter'
+import { logger } from '@/utils/logger'
 
 interface UseDocxParserResult {
   parseFile: (file: File) => Promise<ScriptDocument>
@@ -138,7 +140,7 @@ function extractFormattingMetadata(html: string): FormattingMetadata {
     let currentPosition = 0
 
     // Extract bold ranges
-    doc.querySelectorAll('strong, b').forEach(element => {
+    doc.querySelectorAll('strong, b').forEach((element) => {
       const text = element.textContent || ''
       metadata.boldRanges.push({
         start: currentPosition,
@@ -148,7 +150,7 @@ function extractFormattingMetadata(html: string): FormattingMetadata {
     })
 
     // Extract italic ranges
-    doc.querySelectorAll('em, i').forEach(element => {
+    doc.querySelectorAll('em, i').forEach((element) => {
       const text = element.textContent || ''
       metadata.italicRanges.push({
         start: currentPosition,
@@ -158,7 +160,7 @@ function extractFormattingMetadata(html: string): FormattingMetadata {
     })
 
     // Extract underline ranges
-    doc.querySelectorAll('u').forEach(element => {
+    doc.querySelectorAll('u').forEach((element) => {
       const text = element.textContent || ''
       metadata.underlineRanges.push({
         start: currentPosition,
@@ -168,7 +170,7 @@ function extractFormattingMetadata(html: string): FormattingMetadata {
     })
 
     // Extract headings
-    doc.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(element => {
+    doc.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((element) => {
       const level = parseInt(element.tagName[1]) as 1 | 2 | 3 | 4 | 5 | 6
       const text = element.textContent || ''
       metadata.headings.push({
@@ -179,9 +181,9 @@ function extractFormattingMetadata(html: string): FormattingMetadata {
     })
 
     // Extract lists
-    doc.querySelectorAll('ul, ol').forEach(listElement => {
+    doc.querySelectorAll('ul, ol').forEach((listElement) => {
       const isOrdered = listElement.tagName === 'OL'
-      listElement.querySelectorAll('li').forEach(item => {
+      listElement.querySelectorAll('li').forEach((item) => {
         const text = item.textContent || ''
         metadata.lists.push({
           type: isOrdered ? 'ordered' : 'unordered',
@@ -193,7 +195,7 @@ function extractFormattingMetadata(html: string): FormattingMetadata {
     })
 
     // Extract paragraphs
-    doc.querySelectorAll('p').forEach(element => {
+    doc.querySelectorAll('p').forEach((element) => {
       const text = element.textContent || ''
       metadata.paragraphs.push({
         text,
@@ -206,7 +208,7 @@ function extractFormattingMetadata(html: string): FormattingMetadata {
     return metadata
   } catch (error) {
     // If metadata extraction fails, return empty metadata
-    console.warn('Failed to extract formatting metadata:', error)
+    logger.warn('Failed to extract formatting metadata:', error)
     return metadata
   }
 }

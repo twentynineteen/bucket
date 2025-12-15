@@ -1,8 +1,9 @@
+import { CACHE } from '@constants/timing'
+import { queryKeys } from '@lib/query-keys'
+import { createQueryError, createQueryOptions, shouldRetry } from '@lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
+import { debounce } from '@utils/debounce'
 import { useEffect, useMemo, useRef } from 'react'
-import { debounce } from 'utils/debounce'
-import { queryKeys } from '../lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '../lib/query-utils'
 
 interface AutoRedrawProps {
   draw: (imageUrl: string, title: string) => Promise<void>
@@ -44,8 +45,8 @@ export function usePosterframeAutoRedraw({
       'STATIC', // Use static profile for draw operations
       {
         enabled: false, // Only run when manually triggered
-        staleTime: 5 * 60 * 1000, // 5 minutes - don't redraw same content too often
-        gcTime: 10 * 60 * 1000, // Keep cached for 10 minutes
+        staleTime: CACHE.STANDARD, // 5 minutes - don't redraw same content too often
+        gcTime: CACHE.GC_MEDIUM, // Keep cached for 10 minutes
         retry: (failureCount, error) => shouldRetry(error, failureCount, 'canvas')
       }
     )

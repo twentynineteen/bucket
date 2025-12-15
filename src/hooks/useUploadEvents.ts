@@ -1,8 +1,11 @@
+import { CACHE } from '@constants/timing'
+import { queryKeys } from '@lib/query-keys'
+import { createQueryOptions } from '@lib/query-utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { listen } from '@tauri-apps/api/event'
 import { useCallback, useEffect, useRef } from 'react'
-import { queryKeys } from '../lib/query-keys'
-import { createQueryOptions } from '../lib/query-utils'
+
+import { logger } from '@/utils/logger'
 
 interface UseUploadEventsReturn {
   progress: number
@@ -29,7 +32,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
       'REALTIME',
       {
         staleTime: 0, // Always fresh for real-time updates
-        gcTime: 1 * 60 * 1000, // Keep cached for 1 minute
+        gcTime: CACHE.GC_BRIEF, // Keep cached for 1 minute
         refetchInterval: false // Don't auto-refetch, use event updates
       }
     )
@@ -96,7 +99,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
     // Prevent double setup in StrictMode
     if (listenersSetup.current) return
 
-    console.log('Setting up upload event listeners with React Query integration...')
+    // Setting up upload event listeners with React Query integration
     listenersSetup.current = true
 
     let unlistenProgress: (() => void) | null = null
@@ -106,7 +109,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
 
     const setupListeners = async () => {
       try {
-        unlistenProgress = await listen('upload_progress', event => {
+        unlistenProgress = await listen('upload_progress', (event) => {
           if (isMounted) {
             const progressValue = event.payload as number
             updateUploadState({ progress: progressValue })
@@ -125,7 +128,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
           }
         })
 
-        unlistenError = await listen('upload_error', event => {
+        unlistenError = await listen('upload_error', (event) => {
           if (isMounted) {
             const errorMessage = event.payload as string
             updateUploadState({
@@ -135,7 +138,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
           }
         })
       } catch (error) {
-        console.error('Failed to setup upload event listeners:', error)
+        logger.error('Failed to setup upload event listeners:', error)
         updateUploadState({
           message: 'Failed to setup event listeners',
           uploading: false
@@ -157,7 +160,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
           if (unlistenError) unlistenError()
         } catch (error) {
           // Silently handle cleanup errors to avoid console spam
-          console.debug('Event listener cleanup encountered errors:', error)
+          logger.debug('Event listener cleanup encountered errors:', error)
         }
       }, 0)
     }

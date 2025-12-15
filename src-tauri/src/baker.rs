@@ -8,7 +8,7 @@ use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
 // Import media types
-use app_lib::media::{TrelloCard, VideoLink};
+use app_lib::media::{TrelloBoard, TrelloCard, VideoLink};
 
 // Performance optimization constants
 const PROGRESS_UPDATE_INTERVAL: Duration = Duration::from_millis(100); // Update UI every 100ms
@@ -1493,4 +1493,38 @@ pub async fn baker_fetch_trello_card_details(
         board_name,
         last_fetched: Some(chrono::Utc::now().to_rfc3339()),
     })
+}
+
+/// Fetch all boards the authenticated user is a member of
+#[tauri::command]
+pub async fn fetch_trello_boards(
+    api_key: String,
+    api_token: String,
+) -> Result<Vec<TrelloBoard>, String> {
+    let client = reqwest::Client::new();
+    let url = format!(
+        "https://api.trello.com/1/members/me/boards?key={}&token={}&fields=id,name,prefs&organization_fields=name",
+        api_key, api_token
+    );
+
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if response.status() == 401 {
+        return Err("Unauthorized: Invalid API credentials".to_string());
+    }
+
+    if !response.status().is_success() {
+        return Err(format!("API error: {}", response.status()));
+    }
+
+    let boards: Vec<TrelloBoard> = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse API response: {}", e))?;
+
+    Ok(boards)
 }

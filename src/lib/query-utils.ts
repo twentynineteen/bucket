@@ -1,4 +1,7 @@
+import { CACHE, getBackoffDelay, MINUTES, RETRY, SECONDS } from '@constants/timing'
 import type { UseMutationOptions, UseQueryOptions } from '@tanstack/react-query'
+
+import { logger } from '@/utils/logger'
 
 export type QueryKey =
   | readonly [
@@ -74,27 +77,27 @@ export interface RetryConfiguration {
 
 export const QUERY_PROFILES = {
   STATIC: {
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-    retry: 3,
+    staleTime: CACHE.STANDARD,
+    cacheTime: CACHE.MEDIUM,
+    retry: RETRY.DEFAULT_ATTEMPTS,
     refetchOnWindowFocus: false
   },
   DYNAMIC: {
-    staleTime: 1 * 60 * 1000, // 1 minute
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1 * MINUTES,
+    cacheTime: CACHE.GC_STANDARD,
     retry: 2,
     refetchOnWindowFocus: true
   },
   REALTIME: {
-    staleTime: 30 * 1000, // 30 seconds
-    cacheTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: CACHE.SHORT,
+    cacheTime: CACHE.GC_SHORT,
     retry: 1,
     refetchOnWindowFocus: true
   },
   EXTERNAL: {
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    cacheTime: 5 * 60 * 1000, // 5 minutes
-    retry: 3,
+    staleTime: 2 * MINUTES,
+    cacheTime: CACHE.GC_STANDARD,
+    retry: RETRY.DEFAULT_ATTEMPTS,
     refetchOnWindowFocus: false
   }
 } as const
@@ -133,14 +136,14 @@ export function createMutationOptions<
 
 export const retryStrategies: Record<string, RetryConfiguration> = {
   network: {
-    attempts: 3,
-    delay: (attempt: number) => Math.min(1000 * Math.pow(2, attempt), 30000),
+    attempts: RETRY.DEFAULT_ATTEMPTS,
+    delay: (attempt: number) => getBackoffDelay(attempt, RETRY.MAX_DELAY_DEFAULT),
     condition: (error: Error) =>
       error.name === 'NetworkError' || error.message.includes('network')
   },
   server: {
     attempts: 2,
-    delay: (attempt: number) => 1000 * attempt,
+    delay: (attempt: number) => SECONDS * attempt,
     condition: (error: Error) =>
       error.message.includes('5') && error.message.includes('server')
   },
@@ -148,6 +151,48 @@ export const retryStrategies: Record<string, RetryConfiguration> = {
     attempts: 0,
     delay: () => 0,
     condition: () => false
+  },
+  system: {
+    attempts: 2,
+    delay: (attempt: number) => 500 * attempt,
+    condition: (error: Error) =>
+      error.message.includes('system') || error.message.includes('app version')
+  },
+  auth: {
+    attempts: 1,
+    delay: () => SECONDS,
+    condition: (error: Error) =>
+      error.message.includes('auth') || error.message.includes('unauthorized')
+  },
+  external: {
+    attempts: RETRY.DEFAULT_ATTEMPTS,
+    delay: (attempt: number) => getBackoffDelay(attempt, RETRY.MAX_DELAY_MUTATION),
+    condition: (error: Error) =>
+      error.name === 'NetworkError' || error.message.includes('network')
+  },
+  canvas: {
+    attempts: 2,
+    delay: (attempt: number) => SECONDS * attempt,
+    condition: (error: Error) =>
+      error.message.includes('canvas') || error.message.includes('render')
+  },
+  settings: {
+    attempts: 1,
+    delay: () => 500,
+    condition: (error: Error) =>
+      error.message.includes('read') || error.message.includes('parse')
+  },
+  trello: {
+    attempts: RETRY.DEFAULT_ATTEMPTS,
+    delay: (attempt: number) => getBackoffDelay(attempt, RETRY.MAX_DELAY_MUTATION),
+    condition: (error: Error) =>
+      error.name === 'NetworkError' || error.message.includes('network')
+  },
+  sprout: {
+    attempts: RETRY.DEFAULT_ATTEMPTS,
+    delay: (attempt: number) => getBackoffDelay(attempt, RETRY.MAX_DELAY_MUTATION),
+    condition: (error: Error) =>
+      error.name === 'NetworkError' || error.message.includes('network')
   }
 }
 
@@ -157,6 +202,10 @@ export function shouldRetry(
   strategy: keyof typeof retryStrategies
 ): boolean {
   const config = retryStrategies[strategy]
+  if (!config) {
+    logger.warn(`Unknown retry strategy: ${strategy}, using default`)
+    return attempt < 3 // Default to 3 attempts
+  }
   return attempt < config.attempts && config.condition(error)
 }
 
@@ -165,6 +214,10 @@ export function getRetryDelay(
   strategy: keyof typeof retryStrategies
 ): number {
   const config = retryStrategies[strategy]
+  if (!config) {
+    logger.warn(`Unknown retry strategy: ${strategy}, using default delay`)
+    return getBackoffDelay(attempt, RETRY.MAX_DELAY_MUTATION)
+  }
   return config.delay(attempt)
 }
 

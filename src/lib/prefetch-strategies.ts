@@ -1,10 +1,15 @@
+import { CACHE } from '@constants/timing'
 import { QueryClient } from '@tanstack/react-query'
 import { core } from '@tauri-apps/api'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
-import { loadApiKeys } from '../utils/storage'
+import { createNamespacedLogger } from '@utils/logger'
+import { loadApiKeys } from '@utils/storage'
+
 import { queryKeys } from './query-keys'
 import { createQueryError, createQueryOptions, shouldRetry } from './query-utils'
+
+const logger = createNamespacedLogger('Prefetch')
 
 /**
  * Query Prefetching Strategies
@@ -33,9 +38,9 @@ export class QueryPrefetchManager {
     // Run all prefetches concurrently, but don't block app startup on failures
     const results = await Promise.allSettled(prefetchPromises)
 
-    const failures = results.filter(result => result.status === 'rejected')
+    const failures = results.filter((result) => result.status === 'rejected')
     if (failures.length > 0) {
-      console.warn('Some startup data prefetching failed:', failures)
+      logger.log('Some startup data prefetching failed:', failures)
     }
 
     return results
@@ -64,8 +69,8 @@ export class QueryPrefetchManager {
         },
         'STATIC',
         {
-          staleTime: 10 * 60 * 1000, // 10 minutes
-          gcTime: 30 * 60 * 1000, // Keep cached for 30 minutes
+          staleTime: CACHE.MEDIUM, // 10 minutes
+          gcTime: CACHE.GC_EXTENDED, // Keep cached for 30 minutes
           retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
         }
       )
@@ -88,8 +93,8 @@ export class QueryPrefetchManager {
         },
         'STATIC',
         {
-          staleTime: 5 * 60 * 1000, // 5 minutes
-          gcTime: 15 * 60 * 1000, // Keep cached for 15 minutes
+          staleTime: CACHE.STANDARD, // 5 minutes
+          gcTime: CACHE.GC_LONG, // Keep cached for 15 minutes
           retry: (failureCount, error) => shouldRetry(error, failureCount, 'auth')
         }
       )
@@ -112,8 +117,8 @@ export class QueryPrefetchManager {
         },
         'DYNAMIC',
         {
-          staleTime: 5 * 60 * 1000, // 5 minutes
-          gcTime: 10 * 60 * 1000, // Keep cached for 10 minutes
+          staleTime: CACHE.STANDARD, // 5 minutes
+          gcTime: CACHE.GC_MEDIUM, // Keep cached for 10 minutes
           retry: (failureCount, error) => shouldRetry(error, failureCount, 'settings')
         }
       )
@@ -130,7 +135,7 @@ export class QueryPrefetchManager {
         | Record<string, string>
         | undefined
       if (!apiKeys?.trello || !apiKeys?.trelloToken) {
-        console.log('Trello prefetch skipped: missing API credentials')
+        logger.log('Trello prefetch skipped: missing API credentials')
         return
       }
       apiKey = apiKeys.trello
@@ -158,8 +163,8 @@ export class QueryPrefetchManager {
         },
         'DYNAMIC',
         {
-          staleTime: 2 * 60 * 1000, // 2 minutes
-          gcTime: 10 * 60 * 1000, // Keep cached for 10 minutes
+          staleTime: CACHE.QUICK, // 2 minutes
+          gcTime: CACHE.GC_MEDIUM, // Keep cached for 10 minutes
           retry: (failureCount, error) => shouldRetry(error, failureCount, 'trello')
         }
       )
@@ -176,7 +181,7 @@ export class QueryPrefetchManager {
         | Record<string, string>
         | undefined
       if (!apiKeys?.sproutVideo) {
-        console.log('Sprout prefetch skipped: missing API key')
+        logger.log('Sprout prefetch skipped: missing API key')
         return
       }
       apiKey = apiKeys.sproutVideo
@@ -201,8 +206,8 @@ export class QueryPrefetchManager {
         },
         'DYNAMIC',
         {
-          staleTime: 2 * 60 * 1000, // 2 minutes
-          gcTime: 5 * 60 * 1000, // Keep cached for 5 minutes
+          staleTime: CACHE.QUICK, // 2 minutes
+          gcTime: CACHE.GC_STANDARD, // Keep cached for 5 minutes
           retry: (failureCount, error) => shouldRetry(error, failureCount, 'sprout')
         }
       )
@@ -340,7 +345,7 @@ export class QueryPrefetchManager {
     // If user has visited settings recently, they might go back
     const hasVisitedSettingsRecently = previousRoutes
       .slice(-5) // Check last 5 routes
-      .some(route => route.includes('settings'))
+      .some((route) => route.includes('settings'))
 
     // If user is on build project page, they might need to configure settings
     const onBuildProjectPage = currentRoute.includes('build-project')
@@ -356,10 +361,10 @@ export class QueryPrefetchManager {
     const queries = queryCache.getAll()
     const now = Date.now()
 
-    queries.forEach(query => {
+    queries.forEach((query) => {
       // Remove queries that are very old and not actively used
       const queryAge = now - (query.state.dataUpdatedAt || 0)
-      const maxAge = 60 * 60 * 1000 // 1 hour
+      const maxAge = CACHE.EXTENDED // 1 hour
 
       if (queryAge > maxAge && query.getObserversCount() === 0) {
         queryCache.remove(query)

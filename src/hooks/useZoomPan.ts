@@ -1,7 +1,8 @@
+import { CACHE } from '@constants/timing'
+import { queryKeys } from '@lib/query-keys'
+import { createQueryOptions } from '@lib/query-utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
-import { queryKeys } from '../lib/query-keys'
-import { createQueryOptions } from '../lib/query-utils'
 
 interface ZoomPanState {
   zoomLevel: number
@@ -35,7 +36,7 @@ export function useZoomPan(
       'STATIC', // Long cache time for UI state
       {
         staleTime: Infinity, // UI state doesn't go stale
-        gcTime: 10 * 60 * 1000, // 10 minutes cache
+        gcTime: CACHE.GC_MEDIUM, // 10 minutes cache
         refetchOnWindowFocus: false,
         refetchOnMount: false,
         refetchOnReconnect: false

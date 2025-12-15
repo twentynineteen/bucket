@@ -15,7 +15,7 @@ const TrelloIntegrationButton: React.FC<TrelloIntegrationButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       size="lg"
-      className="bg-blue-500 hover:bg-blue-600 text-white focus:ring-4 focus:ring-blue-300 font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+      className="bg-info hover:bg-info/90 focus:ring-info/30 font-medium text-white shadow-lg transition-all duration-200 hover:shadow-xl focus:ring-4"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

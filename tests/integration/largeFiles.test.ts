@@ -3,7 +3,7 @@
  * CRITICAL: Must FAIL before implementation (RED phase)
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 describe('Large File Integration (T032)', () => {
   it('should parse 100MB .docx file in <30 seconds (FR-Performance)', async () => {

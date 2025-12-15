@@ -6,7 +6,11 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
+import { createNamespacedLogger } from '@utils/logger'
+
 import { useEmbedding } from './useEmbedding'
+
+const logger = createNamespacedLogger('useScriptRetrieval')
 
 export interface SimilarExample {
   id: string
@@ -40,23 +44,23 @@ export function useScriptRetrieval(
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['script-retrieval', scriptText.slice(0, 100), topK, minSimilarity],
     queryFn: async (): Promise<SimilarExample[]> => {
-      console.log('[useScriptRetrieval] Starting retrieval...')
+      logger.log('Starting retrieval...')
 
       // 1. Generate embedding for user script
-      console.log('[useScriptRetrieval] Generating embedding...')
+      logger.log('Generating embedding...')
       const embedding = await embed(scriptText)
 
       // 2. Call Tauri command to search database
-      console.log('[useScriptRetrieval] Searching for similar examples...')
+      logger.log('Searching for similar examples...')
       const results = await invoke<SimilarExample[]>('search_similar_scripts', {
         queryEmbedding: embedding,
         topK,
         minSimilarity
       })
 
-      console.log(`[useScriptRetrieval] Found ${results.length} similar examples`)
+      logger.log(`Found ${results.length} similar examples`)
       results.forEach((r, i) => {
-        console.log(`  ${i + 1}. ${r.title} (${Math.round(r.similarity * 100)}% similar)`)
+        logger.log(`  ${i + 1}. ${r.title} (${Math.round(r.similarity * 100)}% similar)`)
       })
 
       return results

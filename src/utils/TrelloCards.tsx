@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
+import { logger } from './logger'
+
 // Define an interface for a Trello card (adjust fields as needed)
 export interface TrelloCard {
   id: string
@@ -37,7 +39,7 @@ export async function fetchTrelloLists(
     const lists: TrelloList[] = await response.json()
     return lists
   } catch (error) {
-    console.error('Error fetching Trello lists:', error)
+    logger.error('Error fetching Trello lists:', error)
     throw error
   }
 }
@@ -66,7 +68,7 @@ export async function fetchTrelloCards(
     const cards: TrelloCard[] = await response.json()
     return cards
   } catch (error) {
-    console.error('Error fetching Trello cards:', error)
+    logger.error('Error fetching Trello cards:', error)
     throw error
   }
 }
@@ -82,13 +84,13 @@ export function groupCardsByList(
   lists: TrelloList[]
 ): Record<string, TrelloCard[]> {
   const listMap = new Map<string, string>()
-  lists.forEach(list => {
+  lists.forEach((list) => {
     listMap.set(list.id, list.name)
   })
 
   const grouped: Record<string, TrelloCard[]> = {}
 
-  cards.forEach(card => {
+  cards.forEach((card) => {
     const listName = listMap.get(card.idList) || 'Unknown List'
     if (!grouped[listName]) {
       grouped[listName] = []

@@ -9,6 +9,8 @@ import { readFile } from '@tauri-apps/plugin-fs'
 import { AlertCircle, FileText, Upload } from 'lucide-react'
 import React, { useState } from 'react'
 
+import { logger } from '@/utils/logger'
+
 interface FileUploaderProps {
   onFileSelect: (file: File) => void
   isLoading?: boolean
@@ -61,46 +63,48 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       setSelectedFileName(filename)
       onFileSelect(file)
     } catch (err) {
-      console.error('File upload error:', err)
+      logger.error('File upload error:', err)
       // Error is handled by parent component
     }
   }
 
   return (
     <div className="space-y-4">
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+      <div className="border-border hover:border-border/60 rounded-lg border-2 border-dashed p-8 text-center transition-colors">
         <button
           onClick={handleUploadClick}
           disabled={isLoading}
-          className="w-full flex flex-col items-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex w-full flex-col items-center gap-4 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? (
             <>
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black" />
-              <p className="text-sm text-gray-600">Processing file...</p>
+              <div className="border-primary h-12 w-12 animate-spin rounded-full border-b-2" />
+              <p className="text-muted-foreground text-sm">Processing file...</p>
             </>
           ) : (
             <>
               {selectedFileName ? (
                 <>
-                  <FileText className="h-12 w-12 text-green-500" />
+                  <FileText className="text-success h-12 w-12" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-foreground text-sm font-medium">
                       {selectedFileName}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-muted-foreground mt-1 text-xs">
                       Click to select a different file
                     </p>
                   </div>
                 </>
               ) : (
                 <>
-                  <Upload className="h-12 w-12 text-gray-400" />
+                  <Upload className="text-muted-foreground h-12 w-12" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-foreground text-sm font-medium">
                       Click to upload .docx script
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Maximum file size: 1GB</p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Maximum file size: 1GB
+                    </p>
                   </div>
                 </>
               )}
@@ -111,11 +115,11 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
       {/* Display validation errors */}
       {error && (
-        <div className="flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+        <div className="bg-destructive/10 border-destructive/20 flex items-start gap-2 rounded-lg border p-4">
+          <AlertCircle className="text-destructive mt-0.5 h-5 w-5 flex-shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-red-800">Upload Error</p>
-            <p className="text-sm text-red-700 mt-1">{error.message}</p>
+            <p className="text-destructive text-sm font-medium">Upload Error</p>
+            <p className="text-destructive/90 mt-1 text-sm">{error.message}</p>
           </div>
         </div>
       )}
