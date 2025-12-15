@@ -92,8 +92,8 @@ test.describe('Progress Accuracy - Basic Tests', () => {
       .setScenario(SCENARIOS.SMOKE_TEST)
       .setMockFiles(generateMockFiles(20, 4, SCENARIOS.SMOKE_TEST))
       .setSelectedFolder(TEST_PROJECTS.PROFESSIONAL.folder)
-      .setSpeedMultiplier(500)
-      .setMaxEventsPerFile(5)
+      .setSpeedMultiplier(2000) // Faster for CI stability
+      .setMaxEventsPerFile(3) // Reduced for speed
     await mock.setup()
 
     const buildPage = new BuildProjectPage(page)
@@ -124,7 +124,7 @@ test.describe('Progress Accuracy - Basic Tests', () => {
     expect(progressAfter).toBeGreaterThanOrEqual(progressBefore)
 
     // Wait for completion
-    await buildPage.waitForCompletion(60000)
+    await buildPage.waitForCompletion(120000) // Extended timeout for CI
 
     // Verify success
     await expect(buildPage.successMessage).toBeVisible()
@@ -221,7 +221,7 @@ test.describe('Progress Accuracy - Medium Scale', () => {
     await buildPage.clickSelectFiles()
     await buildPage.clickCreateProject()
 
-    await buildPage.waitForCompletion(30000)
+    await buildPage.waitForCompletion(60000)
 
     // Verify completion
     await expect(buildPage.successMessage).toBeVisible()

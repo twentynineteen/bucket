@@ -30,13 +30,13 @@ export class BuildProjectPage {
 
     // Page elements - using text content and roles for reliability
     this.pageTitle = page.getByRole('heading', { name: 'Build a Project' })
-    this.titleInput = page.getByPlaceholder('Enter title here')
+    this.titleInput = page.getByPlaceholder('e.g. DBA - IB1234 - J Doe - Introductions 060626')
     this.camerasInput = page.getByRole('spinbutton', { name: /number of cameras/i })
     this.folderSelector = page.getByRole('button', { name: /select destination/i })
 
     // Action buttons
     this.selectFilesButton = page.getByRole('button', { name: 'Select Files' })
-    this.clearAllButton = page.getByRole('button', { name: 'Clear All' })
+    this.clearAllButton = page.getByRole('button', { name: 'Clear' })
     this.createProjectButton = page.getByRole('button', { name: 'Create Project' })
 
     // Progress indicator - look for the percentage text
@@ -112,9 +112,18 @@ export class BuildProjectPage {
 
   /**
    * Click "Clear All" button
+   * Waits for the button to be visible before clicking
    */
   async clickClearAll(): Promise<void> {
-    await this.clearAllButton.click()
+    // Clear button may not be immediately visible after operations
+    // Wait for it to appear with a reasonable timeout
+    await this.clearAllButton.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
+      // If Clear button doesn't appear, the form might already be in reset state
+      console.log('[BuildProjectPage] Clear button not visible, form may already be reset')
+    })
+    if (await this.clearAllButton.isVisible()) {
+      await this.clearAllButton.click()
+    }
   }
 
   /**

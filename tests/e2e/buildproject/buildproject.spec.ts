@@ -71,14 +71,17 @@ test.describe('BuildProject E2E Workflow', () => {
     await expect(buildPage.sanitizationWarning).toBeVisible()
   })
 
-  test('clears all fields when Clear All is clicked', async ({ page }) => {
+  test('clears all fields when Clear is clicked', async ({ page }) => {
     const buildPage = new BuildProjectPage(page)
     await buildPage.goto()
 
     // Fill in details
     await buildPage.fillProjectDetails('Test Project', 4)
 
-    // Click Clear All
+    // Select files first so Clear button becomes visible
+    await buildPage.clickSelectFiles()
+
+    // Click Clear
     await buildPage.clickClearAll()
 
     // Fields should be reset
@@ -150,7 +153,10 @@ test.describe('BuildProject E2E Workflow', () => {
 test.describe('BuildProject Edge Cases', () => {
   test('handles empty title gracefully', async ({ page }) => {
     const mock = createTauriMock(page)
-    mock.setScenario(SCENARIOS.SMOKE_TEST).setMockFiles(TEST_FILE_SETS.SMOKE)
+    mock
+      .setScenario(SCENARIOS.SMOKE_TEST)
+      .setMockFiles(TEST_FILE_SETS.SMOKE)
+      .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
     await mock.setup()
 
     const buildPage = new BuildProjectPage(page)
@@ -159,13 +165,14 @@ test.describe('BuildProject Edge Cases', () => {
 
     // Leave title empty
     await buildPage.fillProjectDetails('', 2)
+    await buildPage.clickSelectDestination()
     await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
 
-    // Should show validation error or dialog
-    // The exact behavior depends on implementation
-    // At minimum, success message should NOT appear
-    await page.waitForTimeout(1000)
+    // With empty title, the Create Project button should be disabled
+    const createButton = page.getByRole('button', { name: 'Create Project' })
+    await expect(createButton).toBeDisabled()
+
+    // Success message should NOT appear since we can't proceed
     const isComplete = await buildPage.isComplete()
     expect(isComplete).toBe(false)
   })

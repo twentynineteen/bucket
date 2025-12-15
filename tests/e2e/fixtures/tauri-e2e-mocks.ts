@@ -397,10 +397,60 @@ export class TauriE2EMock {
             return cfg.scenario.totalSize
           }
 
+          // App plugin commands
+          if (cmd === 'plugin:app|version') {
+            console.log('[E2E Mock] Mocking app version')
+            return '0.0.0-test'
+          }
+
+          if (cmd === 'plugin:app|name') {
+            console.log('[E2E Mock] Mocking app name')
+            return 'Bucket'
+          }
+
+          if (cmd === 'plugin:app|tauri_version') {
+            console.log('[E2E Mock] Mocking tauri version')
+            return '2.0.0'
+          }
+
+          // Custom commands
+          if (cmd === 'get_username') {
+            console.log('[E2E Mock] Mocking get_username')
+            return 'test-user'
+          }
+
+          if (cmd === 'check_authentication') {
+            console.log('[E2E Mock] Mocking check_authentication')
+            return { authenticated: true, user: 'test-user' }
+          }
+
           // Path plugin commands
           if (cmd === 'plugin:path|resolve_directory') {
             console.log('[E2E Mock] Mocking resolve_directory')
             return '/mock/app/data'
+          }
+
+          if (
+            cmd === 'plugin:path|app_data_dir' ||
+            cmd === 'plugin:path|app_config_dir' ||
+            cmd === 'plugin:path|app_local_data_dir' ||
+            cmd === 'plugin:path|app_cache_dir' ||
+            cmd === 'plugin:path|app_log_dir'
+          ) {
+            console.log('[E2E Mock] Mocking', cmd)
+            return '/mock/app/data/'
+          }
+
+          if (
+            cmd === 'plugin:path|resource_dir' ||
+            cmd === 'plugin:path|temp_dir' ||
+            cmd === 'plugin:path|home_dir' ||
+            cmd === 'plugin:path|desktop_dir' ||
+            cmd === 'plugin:path|document_dir' ||
+            cmd === 'plugin:path|download_dir'
+          ) {
+            console.log('[E2E Mock] Mocking', cmd)
+            return '/mock/user/'
           }
 
           // Filesystem plugin commands
@@ -429,6 +479,41 @@ export class TauriE2EMock {
             return '{}'
           }
 
+          // Window plugin commands
+          if (cmd === 'plugin:window|current') {
+            console.log('[E2E Mock] Mocking window|current')
+            return { label: 'main', kind: 'WebviewWindow' }
+          }
+
+          if (cmd.startsWith('plugin:window|')) {
+            const windowCmd = cmd.replace('plugin:window|', '')
+            console.log('[E2E Mock] Mocking window command:', windowCmd)
+            // Handle common window commands
+            if (windowCmd === 'outer_position' || windowCmd === 'inner_position') {
+              return { x: 100, y: 100 }
+            }
+            if (windowCmd === 'outer_size' || windowCmd === 'inner_size') {
+              return { width: 1280, height: 720 }
+            }
+            if (windowCmd === 'is_fullscreen' || windowCmd === 'is_maximized' || windowCmd === 'is_minimized') {
+              return false
+            }
+            if (windowCmd === 'is_visible' || windowCmd === 'is_focused' || windowCmd === 'is_decorated') {
+              return true
+            }
+            if (windowCmd === 'scale_factor') {
+              return 1.0
+            }
+            // For setter methods, just return null (success)
+            return null
+          }
+
+          // Webview plugin commands (window operations)
+          if (cmd.startsWith('plugin:webview|')) {
+            console.log('[E2E Mock] Mocking webview command:', cmd)
+            return null
+          }
+
           // Default: return undefined for unknown commands
           console.log('[E2E Mock] Unknown command, returning undefined:', cmd)
           return undefined
@@ -454,6 +539,17 @@ export class TauriE2EMock {
 
         unregisterCallback: (id: number) => {
           delete callbacks[id]
+        },
+
+        metadata: {
+          target: 'darwin', // macOS target (can be 'windows' or 'linux')
+          currentWindow: {
+            label: 'main'
+          },
+          currentWebview: {
+            label: 'main',
+            windowLabel: 'main'
+          }
         }
       }
 

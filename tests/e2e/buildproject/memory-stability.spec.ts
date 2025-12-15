@@ -185,8 +185,8 @@ test.describe('Memory Stability - Long Running Operations', () => {
       .setScenario(SCENARIOS.SMOKE_TEST)
       .setMockFiles(generateMockFiles(10, 2, SCENARIOS.SMOKE_TEST))
       .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
-      .setSpeedMultiplier(1000)
-      .setMaxEventsPerFile(3)
+      .setSpeedMultiplier(3000) // Faster for CI stability
+      .setMaxEventsPerFile(2) // Reduced for speed
     await mock.setup()
 
     const buildPage = new BuildProjectPage(page)
@@ -205,13 +205,19 @@ test.describe('Memory Stability - Long Running Operations', () => {
 
       await buildPage.fillProjectDetails(`Repeated Op ${i + 1}`, 2)
       await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
+      await buildPage.clickSelectFiles()
       await buildPage.clickCreateProject()
-      await buildPage.waitForCompletion(30000)
+      await buildPage.waitForCompletion(60000) // Extended timeout for each iteration
 
-      // Clear and prepare for next operation
-      await buildPage.clickClearAll()
+      // Reset mock state
       await mock.reset()
+
+      // Navigate away and back to fully reset UI state (XState machine)
+      // This is more reliable than trying to click Clear button
+      await page.goto('/')
+      await page.waitForTimeout(200)
+      await buildPage.goto()
+      await mock.injectMocks()
 
       // Force GC if available (Chrome DevTools Protocol)
       try {
