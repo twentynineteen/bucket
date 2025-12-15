@@ -186,7 +186,7 @@ camera-count-fixes.md
 /security-reports/
 
 # Playwright test artifacts
-test-results/
+/test-results/
 playwright-report/
 
 # Claude Code
@@ -201,3 +201,5 @@ BUILD_PROJECT_*.md
 
 # Backup files
 *.bak
+
+/templates/
