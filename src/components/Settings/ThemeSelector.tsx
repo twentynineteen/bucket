@@ -8,15 +8,55 @@
  * - Grouped themes (System, Light, Dark)
  * - Auto-save on selection
  * - Visual card layout with checkmark for selected theme
+ * - Theme cards use inline styles to remain stable during preview
  */
 
 import { ThemeColorSwatch } from '@/components/Settings/ThemeColorSwatch'
 import { Label } from '@/components/ui/label'
-import { getGroupedThemes } from '@/constants/themes'
+import { getGroupedThemes, type ThemeMetadata } from '@/constants/themes'
 import { useThemePreview } from '@/hooks/useThemePreview'
 import { Check } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import React from 'react'
+
+/**
+ * Get stable inline styles for a theme card based on the theme's own colors.
+ * This ensures the card appearance doesn't change when previewing other themes.
+ */
+function getThemeCardStyles(themeMetadata: ThemeMetadata, isSelected: boolean) {
+  const { colorSwatch, isDark } = themeMetadata
+
+  // Use the theme's own colors for the card styling
+  const bgColor = `hsl(${colorSwatch.background})`
+  const borderColor = isSelected
+    ? `hsl(${colorSwatch.primary})`
+    : isDark
+      ? 'hsl(0 0% 30%)'
+      : 'hsl(0 0% 80%)'
+  const textColor = `hsl(${colorSwatch.foreground})`
+  const mutedTextColor = isDark ? 'hsl(0 0% 60%)' : 'hsl(0 0% 45%)'
+  const hoverBorderColor = `hsl(${colorSwatch.primary})`
+  const checkBgColor = `hsl(${colorSwatch.primary})`
+  const checkTextColor = isDark ? 'hsl(0 0% 10%)' : 'hsl(0 0% 100%)'
+
+  return {
+    card: {
+      backgroundColor: bgColor,
+      borderColor: borderColor,
+      '--hover-border-color': hoverBorderColor
+    } as React.CSSProperties,
+    text: {
+      color: textColor
+    } as React.CSSProperties,
+    mutedText: {
+      color: mutedTextColor
+    } as React.CSSProperties,
+    check: {
+      backgroundColor: checkBgColor,
+      color: checkTextColor
+    } as React.CSSProperties
+  }
+}
 
 export interface ThemeSelectorProps {
   /** Optional label for the selector */
@@ -74,6 +114,7 @@ export function ThemeSelector({ label = 'Theme', className }: ThemeSelectorProps
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
               {group.themes.map((themeMetadata) => {
                 const isSelected = theme === themeMetadata.id
+                const styles = getThemeCardStyles(themeMetadata, isSelected)
 
                 return (
                   <button
@@ -81,17 +122,17 @@ export function ThemeSelector({ label = 'Theme', className }: ThemeSelectorProps
                     onClick={() => setTheme(themeMetadata.id)}
                     onMouseEnter={() => startPreview(themeMetadata.id)}
                     onMouseLeave={stopPreview}
-                    className={`relative flex flex-col gap-3 rounded-lg border-2 p-4 text-left transition-all hover:border-primary ${
-                      isSelected
-                        ? 'border-primary bg-accent'
-                        : 'border-border bg-card hover:bg-accent/50'
-                    }`}
+                    className="theme-card relative flex flex-col gap-3 rounded-lg border-2 p-4 text-left transition-all"
+                    style={styles.card}
                     aria-label={`Select ${themeMetadata.name} theme`}
                     aria-pressed={isSelected}
                   >
                     {/* Selected indicator */}
                     {isSelected && (
-                      <div className="bg-primary text-primary-foreground absolute right-2 top-2 rounded-full p-1">
+                      <div
+                        className="absolute right-2 top-2 rounded-full p-1"
+                        style={styles.check}
+                      >
                         <Check className="h-3 w-3" />
                       </div>
                     )}
@@ -104,8 +145,10 @@ export function ThemeSelector({ label = 'Theme', className }: ThemeSelectorProps
 
                     {/* Theme info */}
                     <div className="flex flex-col gap-1">
-                      <span className="text-sm font-medium">{themeMetadata.name}</span>
-                      <span className="text-muted-foreground text-xs leading-tight">
+                      <span className="text-sm font-medium" style={styles.text}>
+                        {themeMetadata.name}
+                      </span>
+                      <span className="text-xs leading-tight" style={styles.mutedText}>
                         {themeMetadata.description}
                       </span>
                     </div>
