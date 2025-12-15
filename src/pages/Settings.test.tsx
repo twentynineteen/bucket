@@ -2,14 +2,18 @@
  * Settings Page Tests
  *
  * Tests for the Settings page including:
+ * - BuildProject-style header with title and description
  * - Section ID presence for scroll-to-section navigation
+ * - Scroll margin on sections for proper anchor navigation
+ * - Theme accordion default open state
+ * - Scroll behavior for hash navigation and return to top
  * - Settings sections rendering correctly
  */
 
 import '@testing-library/jest-dom'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -228,6 +232,132 @@ describe('Settings Page', () => {
       const trigger = screen.getByText('Theme Selection')
       expect(trigger).toBeInTheDocument()
       expect(trigger.closest('button')).toHaveAttribute('data-state')
+    })
+
+    it('should have Theme Selection accordion open by default', () => {
+      renderSettings()
+
+      const trigger = screen.getByText('Theme Selection')
+      const button = trigger.closest('button')
+
+      // Accordion should be expanded by default (data-state="open")
+      expect(button).toHaveAttribute('data-state', 'open')
+    })
+  })
+
+  // ==========================================
+  // BuildProject-style Header Tests
+  // ==========================================
+  describe('BuildProject-style Header', () => {
+    it('should render Settings as h1 heading with proper styling', () => {
+      renderSettings()
+
+      const heading = screen.getByRole('heading', { name: 'Settings', level: 1 })
+      expect(heading).toBeInTheDocument()
+      expect(heading).toHaveClass('text-2xl', 'font-bold')
+    })
+
+    it('should render page description subtitle', () => {
+      renderSettings()
+
+      expect(
+        screen.getByText(
+          'Configure application settings, API integrations, and preferences'
+        )
+      ).toBeInTheDocument()
+    })
+
+    it('should have header with border and background styling', () => {
+      renderSettings()
+
+      const heading = screen.getByRole('heading', { name: 'Settings', level: 1 })
+      const headerContainer = heading.parentElement
+
+      expect(headerContainer).toHaveClass('border-border', 'bg-card/50', 'border-b')
+    })
+  })
+
+  // ==========================================
+  // Scroll Margin Tests (for anchor navigation)
+  // ==========================================
+  describe('Scroll Margin for Anchor Navigation', () => {
+    it('should have scroll-mt-16 on all section elements', () => {
+      renderSettings()
+
+      const sectionIds = [
+        'ai-models',
+        'appearance',
+        'backgrounds',
+        'sproutvideo',
+        'trello'
+      ]
+
+      sectionIds.forEach((id) => {
+        const section = document.getElementById(id)
+        expect(section).toBeInTheDocument()
+        expect(section).toHaveClass('scroll-mt-16')
+      })
+    })
+  })
+
+  // ==========================================
+  // Page Layout Structure Tests
+  // ==========================================
+  describe('Page Layout Structure', () => {
+    it('should have proper scroll container structure', () => {
+      const { container } = renderSettings()
+
+      // Find the outermost div with scroll classes
+      const scrollContainer = container.querySelector('.overflow-y-auto')
+      expect(scrollContainer).toBeInTheDocument()
+      expect(scrollContainer).toHaveClass('h-full', 'w-full', 'overflow-x-hidden')
+    })
+
+    it('should have content wrapper with proper max-width and padding', () => {
+      const { container } = renderSettings()
+
+      // Find the content area with sections
+      const contentArea = container.querySelector('.space-y-8')
+      expect(contentArea).toBeInTheDocument()
+      expect(contentArea).toHaveClass('px-6', 'py-4')
+    })
+  })
+
+  // ==========================================
+  // Hash Navigation Scroll Behavior Tests
+  // ==========================================
+  describe('Hash Navigation Scroll Behavior', () => {
+    it('should call scrollIntoView when navigating to hash', async () => {
+      // Mock scrollIntoView
+      const scrollIntoViewMock = vi.fn()
+      Element.prototype.scrollIntoView = scrollIntoViewMock
+
+      renderSettings('/settings/general#appearance')
+
+      await waitFor(
+        () => {
+          expect(scrollIntoViewMock).toHaveBeenCalled()
+        },
+        { timeout: 200 }
+      )
+    })
+
+    it('should call window.scrollTo when navigating without hash', async () => {
+      // Mock window.scrollTo
+      const scrollToMock = vi.fn()
+      window.scrollTo = scrollToMock
+
+      renderSettings('/settings/general')
+
+      await waitFor(
+        () => {
+          expect(scrollToMock).toHaveBeenCalledWith({
+            top: 0,
+            behavior: 'smooth'
+          })
+        },
+        { timeout: 200 }
+      )
     })
   })
 })
