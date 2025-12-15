@@ -29,43 +29,47 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lockb') }}
+          restore-keys: ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
-        run: npx playwright install chromium
+        run: bunx playwright install chromium
 
       - name: Start dev server
-        run: npm run dev &
+        run: bun run dev &
         env:
           CI: true
 
       - name: Wait for dev server
-        run: npx wait-on http://localhost:1422 --timeout 120000
+        run: bunx wait-on http://localhost:1422 --timeout 120000
 
       - name: Run E2E tests (smoke)
-        run: npm run test:e2e -- --project=smoke
+        run: bun run test:e2e -- --project=smoke
         env:
           CI: true
 
       - name: Run E2E tests (progress)
-        run: npm run test:e2e -- --project=progress
+        run: bun run test:e2e -- --project=progress
         env:
           CI: true
 
       - name: Run E2E tests (memory)
-        run: npm run test:e2e -- --project=memory
+        run: bun run test:e2e -- --project=memory
         env:
           CI: true
 
       - name: Run E2E tests (errors)
-        run: npm run test:e2e -- --project=errors
+        run: bun run test:e2e -- --project=errors
         env:
           CI: true
 
@@ -96,40 +100,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lockb') }}
+          restore-keys: ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
-        run: npx playwright install chromium
+        run: bunx playwright install chromium
 
       - name: Start dev server
-        run: npm run dev &
+        run: bun run dev &
         env:
           CI: true
 
       - name: Wait for dev server
-        run: npx wait-on http://localhost:1422 --timeout 120000
+        run: bunx wait-on http://localhost:1422 --timeout 120000
 
       - name: Run large file E2E tests (realistic progress)
-        run: npm run test:e2e -- --project=large-files
+        run: bun run test:e2e -- --project=large-files
         env:
           CI: true
           E2E_SPEED_MULTIPLIER: 100
 
       - name: Run cancellation tests
-        run: npm run test:e2e -- --project=cancellation
+        run: bun run test:e2e -- --project=cancellation
         env:
           CI: true
           E2E_SPEED_MULTIPLIER: 50
 
       - name: Run long operation tests
-        run: npm run test:e2e -- --project=long-operations
+        run: bun run test:e2e -- --project=long-operations
         env:
           CI: true
           E2E_SPEED_MULTIPLIER: 100
