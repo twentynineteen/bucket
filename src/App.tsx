@@ -86,7 +86,11 @@ const App: React.FC = () => {
         'catppuccin-latte',
         'catppuccin-frappe',
         'catppuccin-macchiato',
-        'catppuccin-mocha'
+        'catppuccin-mocha',
+        'solarized-light',
+        'github-light',
+        'nord-light',
+        'one-light'
       ]}
       enableSystem
       storageKey="theme"

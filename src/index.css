@@ -466,6 +466,174 @@
     --sidebar-border: var(--border);
     --sidebar-ring: var(--ring);
   }
+
+  /* Solarized Light - Classic warm light theme by Ethan Schoonover */
+  .solarized-light {
+    --background: 44 87% 94%; /* #fdf6e3 base3 */
+    --foreground: 192 81% 14%; /* #073642 base02 */
+    --card: 44 100% 96%; /* #fffbf0 lighter */
+    --card-foreground: 192 81% 14%;
+    --popover: 44 87% 94%;
+    --popover-foreground: 192 81% 14%;
+    --primary: 205 69% 49%; /* #268bd2 blue */
+    --primary-foreground: 44 87% 94%;
+    --secondary: 46 42% 88%; /* #eee8d5 base2 */
+    --secondary-foreground: 192 81% 14%;
+    --muted: 46 42% 88%;
+    --muted-foreground: 194 14% 40%; /* #657b83 base00 */
+    --accent: 175 59% 40%; /* #2aa198 cyan */
+    --accent-foreground: 44 87% 94%;
+    --destructive: 1 71% 52%; /* #dc322f red */
+    --destructive-foreground: 44 87% 94%;
+    --success: 68 100% 30%; /* #859900 green */
+    --success-foreground: 44 87% 94%;
+    --warning: 45 100% 35%; /* #b58900 yellow */
+    --warning-foreground: 44 87% 94%;
+    --info: 175 59% 40%; /* #2aa198 cyan */
+    --info-foreground: 44 87% 94%;
+    --border: 46 42% 88%;
+    --input: 46 42% 88%;
+    --ring: 205 69% 49%;
+    --chart-1: 205 69% 49%; /* blue */
+    --chart-2: 175 59% 40%; /* cyan */
+    --chart-3: 331 64% 52%; /* magenta */
+    --chart-4: 68 100% 30%; /* green */
+    --chart-5: 18 89% 55%; /* orange */
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
+
+  /* GitHub Light - Clean minimal theme inspired by GitHub's interface */
+  .github-light {
+    --background: 0 0% 100%; /* #ffffff */
+    --foreground: 210 12% 16%; /* #24292f */
+    --card: 210 17% 98%; /* #f6f8fa */
+    --card-foreground: 210 12% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 12% 16%;
+    --primary: 212 92% 45%; /* #0969da blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 14% 93%; /* #eaeef2 */
+    --secondary-foreground: 210 12% 16%;
+    --muted: 210 14% 93%;
+    --muted-foreground: 210 9% 40%; /* #57606a */
+    --accent: 137 66% 32%; /* #1a7f37 green */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 356 72% 44%; /* #cf222e red */
+    --destructive-foreground: 0 0% 100%;
+    --success: 137 66% 32%; /* #1a7f37 green */
+    --success-foreground: 0 0% 100%;
+    --warning: 39 100% 43%; /* #bf8700 yellow */
+    --warning-foreground: 0 0% 100%;
+    --info: 212 92% 45%; /* #0969da blue */
+    --info-foreground: 0 0% 100%;
+    --border: 210 18% 87%; /* #d0d7de */
+    --input: 210 18% 87%;
+    --ring: 212 92% 45%;
+    --chart-1: 212 92% 45%; /* blue */
+    --chart-2: 137 66% 32%; /* green */
+    --chart-3: 262 52% 47%; /* purple */
+    --chart-4: 39 100% 43%; /* yellow */
+    --chart-5: 356 72% 44%; /* red */
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
+
+  /* Nord Light (Snow Storm) - Cool arctic-inspired light theme */
+  .nord-light {
+    --background: 219 28% 96%; /* #eceff4 nord6 */
+    --foreground: 220 16% 22%; /* #2e3440 nord0 */
+    --card: 218 27% 94%; /* #e5e9f0 nord5 */
+    --card-foreground: 220 16% 22%;
+    --popover: 219 28% 96%;
+    --popover-foreground: 220 16% 22%;
+    --primary: 213 32% 52%; /* #5e81ac nord10 */
+    --primary-foreground: 219 28% 96%;
+    --secondary: 218 27% 88%; /* #d8dee9 nord4 */
+    --secondary-foreground: 220 16% 22%;
+    --muted: 218 27% 88%;
+    --muted-foreground: 220 17% 32%; /* #434c5e nord1 */
+    --accent: 179 25% 65%; /* #8fbcbb nord7 */
+    --accent-foreground: 220 16% 22%;
+    --destructive: 354 42% 56%; /* #bf616a nord11 */
+    --destructive-foreground: 219 28% 96%;
+    --success: 92 28% 65%; /* #a3be8c nord14 */
+    --success-foreground: 220 16% 22%;
+    --warning: 40 71% 73%; /* #ebcb8b nord13 */
+    --warning-foreground: 220 16% 22%;
+    --info: 193 43% 67%; /* #88c0d0 nord8 */
+    --info-foreground: 220 16% 22%;
+    --border: 218 27% 88%;
+    --input: 218 27% 88%;
+    --ring: 213 32% 52%;
+    --chart-1: 213 32% 52%; /* nord10 blue */
+    --chart-2: 179 25% 65%; /* nord7 teal */
+    --chart-3: 311 20% 63%; /* nord15 purple */
+    --chart-4: 92 28% 65%; /* nord14 green */
+    --chart-5: 14 51% 63%; /* nord12 orange */
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
+
+  /* One Light - Atom editor's popular warm light theme */
+  .one-light {
+    --background: 230 15% 97%; /* #fafafa */
+    --foreground: 230 8% 24%; /* #383a42 */
+    --card: 0 0% 100%; /* #ffffff */
+    --card-foreground: 230 8% 24%;
+    --popover: 230 15% 97%;
+    --popover-foreground: 230 8% 24%;
+    --primary: 230 80% 52%; /* #4078f2 blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 230 13% 91%; /* #e5e5e6 */
+    --secondary-foreground: 230 8% 24%;
+    --muted: 230 13% 91%;
+    --muted-foreground: 230 8% 53%; /* #a0a1a7 */
+    --accent: 286 60% 40%; /* #a626a4 purple */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 5 64% 50%; /* #ca1243 red */
+    --destructive-foreground: 0 0% 100%;
+    --success: 99 28% 36%; /* #50a14f green */
+    --success-foreground: 0 0% 100%;
+    --warning: 35 99% 36%; /* #c18401 yellow */
+    --warning-foreground: 0 0% 100%;
+    --info: 198 99% 37%; /* #0184bc cyan */
+    --info-foreground: 0 0% 100%;
+    --border: 230 13% 87%; /* #dcdcdc */
+    --input: 230 13% 87%;
+    --ring: 230 80% 52%;
+    --chart-1: 230 80% 52%; /* blue */
+    --chart-2: 286 60% 40%; /* purple */
+    --chart-3: 198 99% 37%; /* cyan */
+    --chart-4: 99 28% 36%; /* green */
+    --chart-5: 35 99% 36%; /* yellow */
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
 }
 
 @layer base {

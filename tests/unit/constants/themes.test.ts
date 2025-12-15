@@ -16,9 +16,9 @@ import { describe, expect, it } from 'vitest'
 
 describe('themes constants', () => {
   describe('THEMES registry', () => {
-    it('contains all 9 themes', () => {
+    it('contains all 13 themes', () => {
       const themeIds = Object.keys(THEMES)
-      expect(themeIds).toHaveLength(9)
+      expect(themeIds).toHaveLength(13)
       expect(themeIds).toEqual([
         'system',
         'light',
@@ -29,6 +29,10 @@ describe('themes constants', () => {
         'catppuccin-frappe',
         'catppuccin-macchiato',
         'catppuccin-mocha',
+        'solarized-light',
+        'github-light',
+        'nord-light',
+        'one-light',
       ])
     })
 
@@ -59,6 +63,10 @@ describe('themes constants', () => {
       expect(THEMES['catppuccin-frappe'].category).toBe('dark')
       expect(THEMES['catppuccin-macchiato'].category).toBe('dark')
       expect(THEMES['catppuccin-mocha'].category).toBe('dark')
+      expect(THEMES['solarized-light'].category).toBe('light')
+      expect(THEMES['github-light'].category).toBe('light')
+      expect(THEMES['nord-light'].category).toBe('light')
+      expect(THEMES['one-light'].category).toBe('light')
     })
 
     it('has correct isDark flags', () => {
@@ -71,6 +79,10 @@ describe('themes constants', () => {
       expect(THEMES['catppuccin-frappe'].isDark).toBe(true)
       expect(THEMES['catppuccin-macchiato'].isDark).toBe(true)
       expect(THEMES['catppuccin-mocha'].isDark).toBe(true)
+      expect(THEMES['solarized-light'].isDark).toBe(false)
+      expect(THEMES['github-light'].isDark).toBe(false)
+      expect(THEMES['nord-light'].isDark).toBe(false)
+      expect(THEMES['one-light'].isDark).toBe(false)
     })
 
     it('includes author credits for third-party themes', () => {
@@ -80,6 +92,10 @@ describe('themes constants', () => {
       expect(THEMES['catppuccin-frappe'].author).toBe('Catppuccin')
       expect(THEMES['catppuccin-macchiato'].author).toBe('Catppuccin')
       expect(THEMES['catppuccin-mocha'].author).toBe('Catppuccin')
+      expect(THEMES['solarized-light'].author).toBe('Ethan Schoonover')
+      expect(THEMES['github-light'].author).toBe('GitHub')
+      expect(THEMES['nord-light'].author).toBe('Arctic Ice Studio')
+      expect(THEMES['one-light'].author).toBe('Atom')
     })
   })
 
@@ -96,6 +112,10 @@ describe('themes constants', () => {
         'catppuccin-frappe',
         'catppuccin-macchiato',
         'catppuccin-mocha',
+        'solarized-light',
+        'github-light',
+        'nord-light',
+        'one-light',
       ])
     })
 
@@ -135,10 +155,17 @@ describe('themes constants', () => {
       expect(systemThemes[0].id).toBe('system')
     })
 
-    it('returns 2 light themes', () => {
+    it('returns 6 light themes', () => {
       const lightThemes = getThemesByCategory('light')
-      expect(lightThemes).toHaveLength(2)
-      expect(lightThemes.map((t) => t.id)).toEqual(['light', 'catppuccin-latte'])
+      expect(lightThemes).toHaveLength(6)
+      expect(lightThemes.map((t) => t.id)).toEqual([
+        'light',
+        'catppuccin-latte',
+        'solarized-light',
+        'github-light',
+        'nord-light',
+        'one-light',
+      ])
     })
 
     it('returns 6 dark themes', () => {
@@ -199,8 +226,15 @@ describe('themes constants', () => {
     it('groups light themes correctly', () => {
       const groups = getGroupedThemes()
       const lightGroup = groups[1]
-      expect(lightGroup.themes).toHaveLength(2)
-      expect(lightGroup.themes.map((t) => t.id)).toEqual(['light', 'catppuccin-latte'])
+      expect(lightGroup.themes).toHaveLength(6)
+      expect(lightGroup.themes.map((t) => t.id)).toEqual([
+        'light',
+        'catppuccin-latte',
+        'solarized-light',
+        'github-light',
+        'nord-light',
+        'one-light',
+      ])
     })
 
     it('groups dark themes correctly', () => {

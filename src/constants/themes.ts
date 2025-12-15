@@ -16,6 +16,10 @@ export type ThemeId =
   | 'catppuccin-frappe'
   | 'catppuccin-macchiato'
   | 'catppuccin-mocha'
+  | 'solarized-light'
+  | 'github-light'
+  | 'nord-light'
+  | 'one-light'
 
 export type ThemeCategory = 'system' | 'light' | 'dark' | 'custom'
 
@@ -162,6 +166,62 @@ export const THEMES: Record<ThemeId, ThemeMetadata> = {
     },
     author: 'Catppuccin',
     isDark: true
+  },
+  'solarized-light': {
+    id: 'solarized-light',
+    name: 'Solarized Light',
+    description: 'Classic warm theme with cream tones and blue accents',
+    category: 'light',
+    colorSwatch: {
+      background: '44 87% 94%', // #fdf6e3 (base3)
+      foreground: '192 81% 14%', // #073642 (base02)
+      primary: '205 69% 49%', // #268bd2 (blue)
+      accent: '175 59% 40%' // #2aa198 (cyan)
+    },
+    author: 'Ethan Schoonover',
+    isDark: false
+  },
+  'github-light': {
+    id: 'github-light',
+    name: 'GitHub Light',
+    description: 'Clean minimal theme inspired by GitHub',
+    category: 'light',
+    colorSwatch: {
+      background: '0 0% 100%', // #ffffff
+      foreground: '210 12% 16%', // #24292f
+      primary: '212 92% 45%', // #0969da (blue)
+      accent: '137 66% 32%' // #1a7f37 (green)
+    },
+    author: 'GitHub',
+    isDark: false
+  },
+  'nord-light': {
+    id: 'nord-light',
+    name: 'Nord Light',
+    description: 'Cool arctic-inspired theme with muted tones',
+    category: 'light',
+    colorSwatch: {
+      background: '219 28% 96%', // #eceff4 (nord6)
+      foreground: '220 16% 22%', // #2e3440 (nord0)
+      primary: '213 32% 52%', // #5e81ac (nord10)
+      accent: '179 25% 65%' // #8fbcbb (nord7)
+    },
+    author: 'Arctic Ice Studio',
+    isDark: false
+  },
+  'one-light': {
+    id: 'one-light',
+    name: 'One Light',
+    description: "Atom editor's popular warm light theme",
+    category: 'light',
+    colorSwatch: {
+      background: '230 15% 97%', // #fafafa
+      foreground: '230 8% 24%', // #383a42
+      primary: '230 80% 52%', // #4078f2 (blue)
+      accent: '286 60% 40%' // #a626a4 (purple)
+    },
+    author: 'Atom',
+    isDark: false
   }
 }
 
@@ -177,7 +237,11 @@ export const getAllThemeIds = (): ThemeId[] => [
   'catppuccin-latte',
   'catppuccin-frappe',
   'catppuccin-macchiato',
-  'catppuccin-mocha'
+  'catppuccin-mocha',
+  'solarized-light',
+  'github-light',
+  'nord-light',
+  'one-light'
 ]
 
 /**
@@ -217,7 +281,14 @@ export const getGroupedThemes = (): ThemeGroup[] => {
     },
     {
       label: 'Light Themes',
-      themes: [THEMES.light, THEMES['catppuccin-latte']]
+      themes: [
+        THEMES.light,
+        THEMES['catppuccin-latte'],
+        THEMES['solarized-light'],
+        THEMES['github-light'],
+        THEMES['nord-light'],
+        THEMES['one-light']
+      ]
     },
     {
       label: 'Dark Themes',
