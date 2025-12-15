@@ -45,10 +45,15 @@ export function useThemePreview({
           'light',
           'dark',
           'dracula',
+          'tokyo-night',
           'catppuccin-latte',
           'catppuccin-frappe',
           'catppuccin-macchiato',
-          'catppuccin-mocha'
+          'catppuccin-mocha',
+          'solarized-light',
+          'github-light',
+          'nord-light',
+          'one-light'
         )
 
         // Apply preview theme (skip 'system' as it's not a CSS class)
@@ -64,16 +69,15 @@ export function useThemePreview({
    * Stop theme preview and restore active theme
    */
   const stopPreview = useCallback(() => {
-    // Clear pending preview
+    // Clear pending preview first - this prevents race conditions where
+    // a pending timeout fires after we've already restored the theme
     if (previewTimeoutRef.current) {
       clearTimeout(previewTimeoutRef.current)
       previewTimeoutRef.current = null
     }
 
-    if (!isPreviewingRef.current) {
-      return
-    }
-
+    // Always restore the active theme to ensure consistency,
+    // even if isPreviewingRef is false (handles edge cases)
     const html = document.documentElement
 
     // Remove all theme classes
@@ -81,10 +85,15 @@ export function useThemePreview({
       'light',
       'dark',
       'dracula',
+      'tokyo-night',
       'catppuccin-latte',
       'catppuccin-frappe',
       'catppuccin-macchiato',
-      'catppuccin-mocha'
+      'catppuccin-mocha',
+      'solarized-light',
+      'github-light',
+      'nord-light',
+      'one-light'
     )
 
     // Restore active theme (skip 'system' as it's handled by next-themes)

@@ -686,3 +686,8 @@ html {
 html:active {
   transition: none;
 }
+
+/* Theme card hover effect using CSS variable for stable preview */
+.theme-card:hover {
+  border-color: var(--hover-border-color) !important;
+}
