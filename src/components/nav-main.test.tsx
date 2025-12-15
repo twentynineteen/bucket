@@ -813,6 +813,123 @@ describe('NavMain', () => {
   })
 
   // ==========================================
+  // Settings Navigation Structure Tests
+  // ==========================================
+  describe('Settings Navigation Structure', () => {
+    it('should render Settings section with General link as first sub-item', () => {
+      const items = [
+        createMockItem({
+          title: 'Settings',
+          url: '/settings/general',
+          icon: Settings,
+          isActive: true,
+          items: [
+            { title: 'General', url: '/settings/general' },
+            { title: 'AI Models', url: '/settings/general#ai-models' },
+            { title: 'Appearance', url: '/settings/general#appearance' },
+            { title: 'Backgrounds', url: '/settings/general#backgrounds' },
+            { title: 'SproutVideo', url: '/settings/general#sproutvideo' },
+            { title: 'Trello', url: '/settings/general#trello' }
+          ]
+        })
+      ]
+
+      renderNavMain(items)
+
+      // General should be the first link in the Settings section
+      const generalLink = screen.getByRole('link', { name: 'General' })
+      expect(generalLink).toBeInTheDocument()
+      expect(generalLink).toHaveAttribute('href', '/settings/general')
+    })
+
+    it('should render all Settings sub-navigation items in correct order', () => {
+      const items = [
+        createMockItem({
+          title: 'Settings',
+          url: '/settings/general',
+          icon: Settings,
+          isActive: true,
+          items: [
+            { title: 'General', url: '/settings/general' },
+            { title: 'AI Models', url: '/settings/general#ai-models' },
+            { title: 'Appearance', url: '/settings/general#appearance' },
+            { title: 'Backgrounds', url: '/settings/general#backgrounds' },
+            { title: 'SproutVideo', url: '/settings/general#sproutvideo' },
+            { title: 'Trello', url: '/settings/general#trello' }
+          ]
+        })
+      ]
+
+      renderNavMain(items)
+
+      // All sub-items should be rendered
+      expect(screen.getByText('General')).toBeInTheDocument()
+      expect(screen.getByText('AI Models')).toBeInTheDocument()
+      expect(screen.getByText('Appearance')).toBeInTheDocument()
+      expect(screen.getByText('Backgrounds')).toBeInTheDocument()
+      expect(screen.getByText('SproutVideo')).toBeInTheDocument()
+      expect(screen.getByText('Trello')).toBeInTheDocument()
+    })
+
+    it('should have correct href for Settings hash navigation links', () => {
+      const items = [
+        createMockItem({
+          title: 'Settings',
+          url: '/settings/general',
+          icon: Settings,
+          isActive: true,
+          items: [
+            { title: 'General', url: '/settings/general' },
+            { title: 'AI Models', url: '/settings/general#ai-models' },
+            { title: 'Appearance', url: '/settings/general#appearance' }
+          ]
+        })
+      ]
+
+      renderNavMain(items)
+
+      expect(screen.getByRole('link', { name: 'General' })).toHaveAttribute(
+        'href',
+        '/settings/general'
+      )
+      expect(screen.getByRole('link', { name: 'AI Models' })).toHaveAttribute(
+        'href',
+        '/settings/general#ai-models'
+      )
+      expect(screen.getByRole('link', { name: 'Appearance' })).toHaveAttribute(
+        'href',
+        '/settings/general#appearance'
+      )
+    })
+
+    it('should distinguish General link (no hash) from section links (with hash)', () => {
+      const items = [
+        createMockItem({
+          title: 'Settings',
+          url: '/settings/general',
+          icon: Settings,
+          isActive: true,
+          items: [
+            { title: 'General', url: '/settings/general' },
+            { title: 'AI Models', url: '/settings/general#ai-models' }
+          ]
+        })
+      ]
+
+      renderNavMain(items)
+
+      const generalLink = screen.getByRole('link', { name: 'General' })
+      const aiModelsLink = screen.getByRole('link', { name: 'AI Models' })
+
+      // General link should NOT have a hash
+      expect(generalLink.getAttribute('href')).not.toContain('#')
+
+      // AI Models link should have a hash
+      expect(aiModelsLink.getAttribute('href')).toContain('#')
+    })
+  })
+
+  // ==========================================
   // Multiple Active Items Tests
   // ==========================================
   describe('Multiple Active Items', () => {

@@ -37,19 +37,22 @@ const SettingsPageContent: React.FC = () => {
   const queryClient = useQueryClient()
   const location = useLocation()
 
-  // Scroll to section when hash changes
+  // Scroll to section when hash changes, or to top when no hash
   useEffect(() => {
-    if (location.hash) {
-      const elementId = location.hash.slice(1) // Remove the '#'
-      const element = document.getElementById(elementId)
-      if (element) {
-        // Small delay to ensure the page is rendered
-        setTimeout(() => {
+    // Small delay to ensure the page is rendered
+    setTimeout(() => {
+      if (location.hash) {
+        const elementId = location.hash.slice(1) // Remove the '#'
+        const element = document.getElementById(elementId)
+        if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }, 100)
+        }
+      } else {
+        // No hash - scroll to top of page
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       }
-    }
-  }, [location.hash])
+    }, 100)
+  }, [location.hash, location.key])
 
   // Local state for form inputs (separate from cached data)
   const [localApiKeys, setLocalApiKeys] = useState<Partial<ApiKeys>>({})
@@ -230,217 +233,234 @@ const SettingsPageContent: React.FC = () => {
   }
 
   return (
-    <div className="w-full pb-4">
-      <h2 className="mb-6 px-4 text-2xl font-semibold">Settings</h2>
+    <div className="h-full w-full overflow-x-hidden overflow-y-auto">
+      <div className="w-full max-w-full pb-4">
+        {/* Header */}
+        <div className="border-border bg-card/50 border-b px-6 py-4">
+          <h1 className="text-foreground text-2xl font-bold">Settings</h1>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            Configure application settings, API integrations, and preferences
+          </p>
+        </div>
 
-      <div className="mx-4 space-y-8 px-4">
-        {/* AI Models Section */}
-        <section id="ai-models" className="border-border space-y-4 rounded-lg border p-6">
-          <div className="border-b pb-2">
-            <h3 className="text-foreground text-lg font-semibold">AI Models</h3>
-            <p className="text-muted-foreground text-sm">
-              Configure AI provider settings for script formatting
-            </p>
-          </div>
-          <div>
-            <label htmlFor="ollama-url-input" className="mb-2 block text-sm font-medium">
-              Ollama URL
-              <span className="text-muted-foreground ml-2 text-xs">
-                (Default: http://localhost:11434)
-              </span>
-            </label>
-            <div className="space-y-2">
-              <ApiKeyInput
-                id="ollama-url-input"
-                apiKey={ollamaUrl || 'http://localhost:11434'}
-                setApiKey={handleOllamaUrlChange}
-                onSave={handleSaveOllamaUrl}
-              />
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={handleTestConnection}
-                  disabled={connectionStatus.status === 'testing'}
-                  className="flex items-center gap-2 rounded border px-3 py-1"
-                >
-                  {connectionStatus.status === 'testing' && (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  )}
-                  {connectionStatus.status === 'testing'
-                    ? 'Testing...'
-                    : 'Test Connection'}
-                </Button>
-
-                {connectionStatus.status === 'success' && (
-                  <div className="text-success flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>{connectionStatus.message}</span>
-                    {connectionStatus.latencyMs && (
-                      <span className="text-muted-foreground">
-                        ({connectionStatus.latencyMs}ms)
-                      </span>
+        <div className="max-w-full space-y-8 px-6 py-4">
+          {/* AI Models Section */}
+          <section
+            id="ai-models"
+            className="border-border space-y-4 rounded-lg border p-6 scroll-mt-16"
+          >
+            <div className="border-b pb-2">
+              <h3 className="text-foreground text-lg font-semibold">AI Models</h3>
+              <p className="text-muted-foreground text-sm">
+                Configure AI provider settings for script formatting
+              </p>
+            </div>
+            <div>
+              <label
+                htmlFor="ollama-url-input"
+                className="mb-2 block text-sm font-medium"
+              >
+                Ollama URL
+                <span className="text-muted-foreground ml-2 text-xs">
+                  (Default: http://localhost:11434)
+                </span>
+              </label>
+              <div className="space-y-2">
+                <ApiKeyInput
+                  id="ollama-url-input"
+                  apiKey={ollamaUrl || 'http://localhost:11434'}
+                  setApiKey={handleOllamaUrlChange}
+                  onSave={handleSaveOllamaUrl}
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleTestConnection}
+                    disabled={connectionStatus.status === 'testing'}
+                    className="flex items-center gap-2 rounded border px-3 py-1"
+                  >
+                    {connectionStatus.status === 'testing' && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     )}
-                  </div>
-                )}
+                    {connectionStatus.status === 'testing'
+                      ? 'Testing...'
+                      : 'Test Connection'}
+                  </Button>
 
-                {connectionStatus.status === 'error' && (
-                  <div className="text-destructive flex items-center gap-2 text-sm">
-                    <XCircle className="h-4 w-4" />
-                    <span>{connectionStatus.message}</span>
-                  </div>
-                )}
+                  {connectionStatus.status === 'success' && (
+                    <div className="text-success flex items-center gap-2 text-sm">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>{connectionStatus.message}</span>
+                      {connectionStatus.latencyMs && (
+                        <span className="text-muted-foreground">
+                          ({connectionStatus.latencyMs}ms)
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {connectionStatus.status === 'error' && (
+                    <div className="text-destructive flex items-center gap-2 text-sm">
+                      <XCircle className="h-4 w-4" />
+                      <span>{connectionStatus.message}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Appearance Section */}
-        <section
-          id="appearance"
-          className="border-border space-y-4 rounded-lg border p-6"
-        >
-          <div className="border-b pb-2">
-            <h3 className="text-foreground text-lg font-semibold">Appearance</h3>
-            <p className="text-muted-foreground text-sm">
-              Customize the visual theme and color scheme
-            </p>
-          </div>
-          <Accordion type="single" collapsible>
-            <AccordionItem value="theme" className="border-b-0">
-              <AccordionTrigger className="hover:no-underline">
-                Theme Selection
-              </AccordionTrigger>
-              <AccordionContent>
-                <ThemeSelector label="" />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </section>
-
-        {/* Backgrounds Section */}
-        <section
-          id="backgrounds"
-          className="border-border space-y-4 rounded-lg border p-6"
-        >
-          <div className="border-b pb-2">
-            <h3 className="text-foreground text-lg font-semibold">Backgrounds</h3>
-            <p className="text-muted-foreground text-sm">
-              Set default folder for background assets
-            </p>
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Default Background Folder
-            </label>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={handleSelectDefaultBackgroundFolder}
-                className="rounded border px-3 py-1"
-              >
-                Choose Folder
-              </Button>
-              <Button
-                onClick={handleSaveDefaultBackground}
-                className="rounded border px-3 py-1"
-              >
-                Save
-              </Button>
-            </div>
-            {defaultBackgroundFolder && (
-              <p className="text-muted-foreground mt-1 text-sm">
-                {defaultBackgroundFolder}
+          {/* Appearance Section */}
+          <section
+            id="appearance"
+            className="border-border space-y-4 rounded-lg border p-6 scroll-mt-16"
+          >
+            <div className="border-b pb-2">
+              <h3 className="text-foreground text-lg font-semibold">Appearance</h3>
+              <p className="text-muted-foreground text-sm">
+                Customize the visual theme and color scheme
               </p>
-            )}
-          </div>
-        </section>
+            </div>
+            <Accordion type="single" collapsible defaultValue="theme">
+              <AccordionItem value="theme" className="border-b-0">
+                <AccordionTrigger className="hover:no-underline">
+                  Theme Selection
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ThemeSelector label="" />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </section>
 
-        {/* SproutVideo Section */}
-        <section
-          id="sproutvideo"
-          className="border-border space-y-4 rounded-lg border p-6"
-        >
-          <div className="border-b pb-2">
-            <h3 className="text-foreground text-lg font-semibold">SproutVideo</h3>
-            <p className="text-muted-foreground text-sm">
-              Configure SproutVideo API for video hosting
-            </p>
-          </div>
-          <div>
-            <label
-              htmlFor="sprout-video-api-key-input"
-              className="mb-2 block text-sm font-medium"
-            >
-              SproutVideo API Key
-            </label>
-            <ApiKeyInput
-              id="sprout-video-api-key-input"
-              apiKey={localApiKeys.sproutVideo || ''}
-              setApiKey={(newKey: string) =>
-                setLocalApiKeys({ ...localApiKeys, sproutVideo: newKey })
-              }
-              onSave={handleSaveSproutKey}
-            />
-          </div>
-        </section>
+          {/* Backgrounds Section */}
+          <section
+            id="backgrounds"
+            className="border-border space-y-4 rounded-lg border p-6 scroll-mt-16"
+          >
+            <div className="border-b pb-2">
+              <h3 className="text-foreground text-lg font-semibold">Backgrounds</h3>
+              <p className="text-muted-foreground text-sm">
+                Set default folder for background assets
+              </p>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Default Background Folder
+              </label>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleSelectDefaultBackgroundFolder}
+                  className="rounded border px-3 py-1"
+                >
+                  Choose Folder
+                </Button>
+                <Button
+                  onClick={handleSaveDefaultBackground}
+                  className="rounded border px-3 py-1"
+                >
+                  Save
+                </Button>
+              </div>
+              {defaultBackgroundFolder && (
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {defaultBackgroundFolder}
+                </p>
+              )}
+            </div>
+          </section>
 
-        {/* Trello Section */}
-        <section id="trello" className="border-border space-y-4 rounded-lg border p-6">
-          <div className="border-b pb-2">
-            <h3 className="text-foreground text-lg font-semibold">Trello</h3>
-            <p className="text-muted-foreground text-sm">
-              Configure Trello API integration for project management
-            </p>
-          </div>
-          <div>
-            <label
-              htmlFor="trello-api-key-input"
-              className="mb-2 block text-sm font-medium"
-            >
-              Trello API Key
-            </label>
-            <ApiKeyInput
-              id="trello-api-key-input"
-              apiKey={localApiKeys.trello || ''}
-              setApiKey={(newKey: string) =>
-                setLocalApiKeys({ ...localApiKeys, trello: newKey })
-              }
-              onSave={handleSaveTrelloKey}
+          {/* SproutVideo Section */}
+          <section
+            id="sproutvideo"
+            className="border-border space-y-4 rounded-lg border p-6 scroll-mt-16"
+          >
+            <div className="border-b pb-2">
+              <h3 className="text-foreground text-lg font-semibold">SproutVideo</h3>
+              <p className="text-muted-foreground text-sm">
+                Configure SproutVideo API for video hosting
+              </p>
+            </div>
+            <div>
+              <label
+                htmlFor="sprout-video-api-key-input"
+                className="mb-2 block text-sm font-medium"
+              >
+                SproutVideo API Key
+              </label>
+              <ApiKeyInput
+                id="sprout-video-api-key-input"
+                apiKey={localApiKeys.sproutVideo || ''}
+                setApiKey={(newKey: string) =>
+                  setLocalApiKeys({ ...localApiKeys, sproutVideo: newKey })
+                }
+                onSave={handleSaveSproutKey}
+              />
+            </div>
+          </section>
+
+          {/* Trello Section */}
+          <section
+            id="trello"
+            className="border-border space-y-4 rounded-lg border p-6 scroll-mt-16"
+          >
+            <div className="border-b pb-2">
+              <h3 className="text-foreground text-lg font-semibold">Trello</h3>
+              <p className="text-muted-foreground text-sm">
+                Configure Trello API integration for project management
+              </p>
+            </div>
+            <div>
+              <label
+                htmlFor="trello-api-key-input"
+                className="mb-2 block text-sm font-medium"
+              >
+                Trello API Key
+              </label>
+              <ApiKeyInput
+                id="trello-api-key-input"
+                apiKey={localApiKeys.trello || ''}
+                setApiKey={(newKey: string) =>
+                  setLocalApiKeys({ ...localApiKeys, trello: newKey })
+                }
+                onSave={handleSaveTrelloKey}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Trello Auth</label>
+              <Button onClick={handleAuthorizeWithTrello}>Authorize with Trello</Button>
+            </div>
+            <div>
+              <label
+                htmlFor="trello-api-token-input"
+                className="mb-2 block text-sm font-medium"
+              >
+                Trello API Token
+              </label>
+              <ApiKeyInput
+                id="trello-api-token-input"
+                apiKey={localApiKeys.trelloToken || ''}
+                setApiKey={(newKey: string) =>
+                  setLocalApiKeys({ ...localApiKeys, trelloToken: newKey })
+                }
+                onSave={handleSaveTrelloToken}
+              />
+            </div>
+            <TrelloBoardSelector
+              value={localApiKeys.trelloBoardId || ''}
+              onValueChange={async (boardId: string) => {
+                setLocalApiKeys({ ...localApiKeys, trelloBoardId: boardId })
+                // Auto-save when board is selected
+                try {
+                  await saveApiKeysMutation.mutateAsync({ trelloBoardId: boardId })
+                } catch (error) {
+                  logger.error('Failed to save board ID:', error)
+                }
+              }}
+              label="Trello Board"
+              placeholder="Select a board"
             />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium">Trello Auth</label>
-            <Button onClick={handleAuthorizeWithTrello}>Authorize with Trello</Button>
-          </div>
-          <div>
-            <label
-              htmlFor="trello-api-token-input"
-              className="mb-2 block text-sm font-medium"
-            >
-              Trello API Token
-            </label>
-            <ApiKeyInput
-              id="trello-api-token-input"
-              apiKey={localApiKeys.trelloToken || ''}
-              setApiKey={(newKey: string) =>
-                setLocalApiKeys({ ...localApiKeys, trelloToken: newKey })
-              }
-              onSave={handleSaveTrelloToken}
-            />
-          </div>
-          <TrelloBoardSelector
-            value={localApiKeys.trelloBoardId || ''}
-            onValueChange={async (boardId: string) => {
-              setLocalApiKeys({ ...localApiKeys, trelloBoardId: boardId })
-              // Auto-save when board is selected
-              try {
-                await saveApiKeysMutation.mutateAsync({ trelloBoardId: boardId })
-              } catch (error) {
-                logger.error('Failed to save board ID:', error)
-              }
-            }}
-            label="Trello Board"
-            placeholder="Select a board"
-          />
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   )
