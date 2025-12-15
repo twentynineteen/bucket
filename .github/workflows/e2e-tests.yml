@@ -88,7 +88,7 @@ jobs:
   e2e-large-files:
     name: E2E Large File Tests (250GB Simulation)
     runs-on: macos-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     # Run only on push to main branches, not on every PR
     if: github.event_name == 'push'
 
@@ -116,11 +116,20 @@ jobs:
       - name: Wait for dev server
         run: npx wait-on http://localhost:1422 --timeout 120000
 
-      - name: Run large file E2E tests
-        run: |
-          npm run test:e2e -- \
-            --grep "250GB|2500 files|500 files" \
-            --timeout 300000
+      - name: Run large file E2E tests (realistic progress)
+        run: npm run test:e2e -- --project=large-files
+        env:
+          CI: true
+          E2E_SPEED_MULTIPLIER: 100
+
+      - name: Run cancellation tests
+        run: npm run test:e2e -- --project=cancellation
+        env:
+          CI: true
+          E2E_SPEED_MULTIPLIER: 50
+
+      - name: Run long operation tests
+        run: npm run test:e2e -- --project=long-operations
         env:
           CI: true
           E2E_SPEED_MULTIPLIER: 100
@@ -131,4 +140,12 @@ jobs:
         with:
           name: playwright-report-large-files
           path: playwright-report/
+          retention-days: 7
+
+      - name: Upload test videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-videos
+          path: test-results/
           retention-days: 7

@@ -58,6 +58,27 @@ export default defineConfig({
       name: 'errors',
       testMatch: /error-recovery\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] }
+    },
+    // New projects for large file testing
+    {
+      name: 'large-files',
+      testMatch: /realistic-progress\.spec\.ts|external-drive\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+      timeout: 600000 // 10 minutes for large file tests
+    },
+    {
+      name: 'cancellation',
+      testMatch: /cancellation\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] }
+    },
+    {
+      name: 'long-operations',
+      testMatch: /long-operation-states\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        video: 'retain-on-failure' // Capture video for visual debugging
+      },
+      timeout: 300000 // 5 minutes
     }
   ],
 

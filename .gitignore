@@ -186,8 +186,10 @@ camera-count-fixes.md
 /security-reports/
 
 # Playwright test artifacts
-test-results/
+/test-results/
 playwright-report/
 
 # Claude Code
 .claude/
+
+/templates/

@@ -8,7 +8,7 @@
  *   overall_progress = (files_completed + file_progress) / total_files * 100
  */
 
-import type { SimulatedFileSet, MockFile } from './large-file-simulator'
+import type { SimulatedFileSet } from './large-file-simulator'
 
 export interface ProgressEvent {
   percent: number

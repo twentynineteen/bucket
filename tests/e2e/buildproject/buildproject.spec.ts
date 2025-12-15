@@ -8,7 +8,7 @@
 import { test, expect } from '@playwright/test'
 import { BuildProjectPage } from '../pages/BuildProjectPage'
 import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
-import { SCENARIOS, generateMockFiles } from '../utils/large-file-simulator'
+import { SCENARIOS } from '../utils/large-file-simulator'
 import { TEST_PROJECTS, TEST_FILE_SETS } from '../fixtures/mock-file-data'
 
 test.describe('BuildProject E2E Workflow', () => {
@@ -21,7 +21,8 @@ test.describe('BuildProject E2E Workflow', () => {
       .setScenario(SCENARIOS.SMOKE_TEST)
       .setMockFiles(TEST_FILE_SETS.SMOKE)
       .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
-      .setSpeedMultiplier(10) // Speed up for tests
+      .setSpeedMultiplier(50) // Speed up for faster smoke tests
+      .setMaxEventsPerFile(5) // Limit events for faster completion
     await tauriMock.setup()
 
     // Navigate to page first, then inject mocks after Tauri APIs are loaded
@@ -143,57 +144,8 @@ test.describe('BuildProject E2E Workflow', () => {
   })
 })
 
-test.describe('BuildProject with Large Files (250GB Simulation)', () => {
-  test('handles 500 files @ 500MB simulation', async ({ page }) => {
-    // Setup with large file scenario
-    const mock = createTauriMock(page)
-    mock
-      .setScenario(SCENARIOS.LARGE_FILES)
-      .setMockFiles(generateMockFiles(500, 4, SCENARIOS.LARGE_FILES))
-      .setSelectedFolder(TEST_PROJECTS.PROFESSIONAL.folder)
-      .setSpeedMultiplier(500) // Speed up significantly for test - real delay ~1ms per event
-    await mock.setup()
-
-    const buildPage = new BuildProjectPage(page)
-    await buildPage.goto()
-    await mock.injectMocks()
-
-    await buildPage.fillProjectDetails(TEST_PROJECTS.PROFESSIONAL.title, 4)
-    await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
-
-    // Wait for completion with extended timeout
-    await buildPage.waitForCompletion(120000)
-
-    await expect(buildPage.successMessage).toBeVisible()
-  })
-
-  test('handles 2500 files @ 100MB simulation', async ({ page }) => {
-    // Setup with many files scenario
-    const mock = createTauriMock(page)
-    mock
-      .setScenario(SCENARIOS.MANY_FILES)
-      .setMockFiles(generateMockFiles(2500, 4, SCENARIOS.MANY_FILES))
-      .setSelectedFolder(TEST_PROJECTS.PROFESSIONAL.folder)
-      .setSpeedMultiplier(1000) // Very fast for this large test - ~1ms per event
-    await mock.setup()
-
-    const buildPage = new BuildProjectPage(page)
-    await buildPage.goto()
-    await mock.injectMocks()
-
-    await buildPage.fillProjectDetails('Large Project 2500', 4)
-    await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
-
-    // Wait for completion with extended timeout
-    await buildPage.waitForCompletion(180000)
-
-    await expect(buildPage.successMessage).toBeVisible()
-  })
-})
+// NOTE: Large file tests (500/2500 files) are in realistic-progress.spec.ts
+// They run under the 'large-files' project with extended timeouts
 
 test.describe('BuildProject Edge Cases', () => {
   test('handles empty title gracefully', async ({ page }) => {
@@ -224,7 +176,8 @@ test.describe('BuildProject Edge Cases', () => {
       .setScenario(SCENARIOS.SMOKE_TEST)
       .setMockFiles(TEST_FILE_SETS.SMOKE)
       .setSelectedFolder(TEST_PROJECTS.MANY_CAMERAS.folder)
-      .setSpeedMultiplier(10)
+      .setSpeedMultiplier(100) // Fast for smoke tests
+      .setMaxEventsPerFile(5) // Limit events
     await mock.setup()
 
     const buildPage = new BuildProjectPage(page)

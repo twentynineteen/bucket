@@ -116,6 +116,7 @@ export class MemorySampler {
   private page: Page
   private samples: MemoryMetrics[] = []
   private intervalId: ReturnType<typeof setInterval> | null = null
+  private stopped = false
 
   constructor(page: Page) {
     this.page = page
@@ -126,9 +127,18 @@ export class MemorySampler {
    */
   start(intervalMs: number = 1000): void {
     this.samples = []
+    this.stopped = false
     this.intervalId = setInterval(async () => {
-      const sample = await measureMemory(this.page)
-      this.samples.push(sample)
+      if (this.stopped) return
+      try {
+        const sample = await measureMemory(this.page)
+        if (!this.stopped) {
+          this.samples.push(sample)
+        }
+      } catch {
+        // Page was closed, stop sampling
+        this.stop()
+      }
     }, intervalMs)
   }
 
@@ -136,6 +146,7 @@ export class MemorySampler {
    * Stop sampling
    */
   stop(): void {
+    this.stopped = true
     if (this.intervalId) {
       clearInterval(this.intervalId)
       this.intervalId = null

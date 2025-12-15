@@ -21,6 +21,12 @@ export interface TauriMockConfig {
   selectedFolder: string
   speedMultiplier: number
   failureInjection?: FailureInjection
+  /** Maximum events to emit per file (caps for performance while maintaining realism) */
+  maxEventsPerFile?: number
+  /** External drive path for dialog returns (e.g., /Volumes/Production) */
+  externalDrivePath?: string
+  /** Enable intra-file progress (emit events within each file, not just per-file) */
+  enableIntraFileProgress?: boolean
 }
 
 /**
@@ -44,7 +50,9 @@ export class TauriE2EMock {
       },
       mockFiles: [],
       selectedFolder: '/mock/project/folder',
-      speedMultiplier: 1
+      speedMultiplier: 100, // Default speed for faster tests
+      maxEventsPerFile: 10, // Default to 10 events per file
+      enableIntraFileProgress: true
     }
   }
 
@@ -97,6 +105,30 @@ export class TauriE2EMock {
   }
 
   /**
+   * Set max events per file (caps for performance while maintaining realism)
+   */
+  setMaxEventsPerFile(max: number): this {
+    this.config.maxEventsPerFile = max
+    return this
+  }
+
+  /**
+   * Set external drive path for dialog returns
+   */
+  setExternalDrivePath(path: string): this {
+    this.config.externalDrivePath = path
+    return this
+  }
+
+  /**
+   * Enable or disable intra-file progress (emit events within each file)
+   */
+  setEnableIntraFileProgress(enable: boolean): this {
+    this.config.enableIntraFileProgress = enable
+    return this
+  }
+
+  /**
    * Setup mocks - call this before navigating to the page
    * ALL mock logic is in addInitScript to ensure it runs before React loads
    */
@@ -117,10 +149,12 @@ export class TauriE2EMock {
 
       interface E2EWindow extends Window {
         __E2E_CONFIG__: typeof cfg
-        __E2E_EVENTS__: Array<{ percent: number; fileIndex: number }>
+        __E2E_EVENTS__: Array<{ percent: number; fileIndex: number; fileProgress?: number }>
         __E2E_LISTENERS__: Map<string, Map<number, EventCallback>>
         __E2E_NEXT_EVENT_ID__: number
         __E2E_CALLBACKS__: Record<number, (response: unknown) => void>
+        __E2E_CANCELLED__: boolean
+        __E2E_OPERATION_IN_PROGRESS__: boolean
         __TAURI_INTERNALS__?: TauriInternals
         __TAURI_EVENT_PLUGIN_INTERNALS__?: {
           unregisterListener: (event: string, eventId: number) => void
@@ -135,6 +169,8 @@ export class TauriE2EMock {
       win.__E2E_EVENTS__ = []
       win.__E2E_LISTENERS__ = new Map()
       win.__E2E_NEXT_EVENT_ID__ = 1
+      win.__E2E_CANCELLED__ = false
+      win.__E2E_OPERATION_IN_PROGRESS__ = false
 
       // Callback registry for transformCallback
       let callbackId = 0
@@ -176,8 +212,10 @@ export class TauriE2EMock {
           if (cmd === 'plugin:dialog|open') {
             const options = args?.options as { directory?: boolean } | undefined
             if (options?.directory) {
-              console.log('[E2E Mock] Returning folder:', cfg.selectedFolder)
-              return cfg.selectedFolder
+              // Use external drive path if configured, otherwise selected folder
+              const folder = cfg.externalDrivePath || cfg.selectedFolder
+              console.log('[E2E Mock] Returning folder:', folder)
+              return folder
             }
             const files = cfg.mockFiles.map((f) => f.file.path)
             console.log('[E2E Mock] Returning files:', files.length)
@@ -222,54 +260,123 @@ export class TauriE2EMock {
             return
           }
 
-          // Handle move_files
+          // Handle cancel_copy command
+          if (cmd === 'cancel_copy') {
+            console.log('[E2E Mock] Cancelling copy operation')
+            win.__E2E_CANCELLED__ = true
+            return { success: true }
+          }
+
+          // Handle move_files with intra-file progress simulation
           if (cmd === 'move_files') {
             console.log('[E2E Mock] Mocking move_files')
 
-            // Start async simulation
-            const totalFiles = cfg.mockFiles.length || 10
+            // Reset cancellation flag
+            win.__E2E_CANCELLED__ = false
+            win.__E2E_OPERATION_IN_PROGRESS__ = true
 
-            // For tests, batch multiple files per tick to avoid browser setTimeout throttling
-            // Browser min setTimeout is often 4ms+ even with 0ms specified
-            // For large tests we use fewer updates to complete in reasonable time
-            const targetUpdates = totalFiles <= 20 ? totalFiles : totalFiles <= 100 ? 20 : 10
-            const filesPerBatch = Math.max(1, Math.ceil(totalFiles / targetUpdates))
-            const batchIntervalMs = Math.max(1, 50 / cfg.speedMultiplier) // With speedMultiplier=500, this is 1ms
+            const totalFiles = cfg.mockFiles.length || 10
+            const enableIntraFile = cfg.enableIntraFileProgress !== false
+            const maxEventsPerFile = cfg.maxEventsPerFile || 100
+            const BUFFER_SIZE = 8192 // 8KB - matches Rust backend
+
+            // Calculate base interval (adjusted by speed multiplier)
+            const baseIntervalMs = Math.max(1, cfg.scenario.progressIntervalMs / cfg.speedMultiplier)
 
             setTimeout(async () => {
-              console.log('[E2E Mock] Starting file copy simulation, files:', totalFiles, 'filesPerBatch:', filesPerBatch, 'batchInterval:', batchIntervalMs)
+              console.log('[E2E Mock] Starting file copy simulation', {
+                totalFiles,
+                enableIntraFile,
+                maxEventsPerFile,
+                baseIntervalMs,
+                speedMultiplier: cfg.speedMultiplier
+              })
 
-              let processedFiles = 0
+              const movedFiles: string[] = []
 
-              while (processedFiles < totalFiles) {
-                const batchEnd = Math.min(processedFiles + filesPerBatch, totalFiles)
-
-                // Process batch
-                for (let fileIndex = processedFiles; fileIndex < batchEnd; fileIndex++) {
-                  // Check for failure
-                  if (
-                    cfg.failureInjection?.type === 'partial' &&
-                    cfg.failureInjection.failingFileIndices?.includes(fileIndex)
-                  ) {
-                    continue
-                  }
+              for (let fileIndex = 0; fileIndex < totalFiles; fileIndex++) {
+                // Check for cancellation
+                if (win.__E2E_CANCELLED__) {
+                  console.log('[E2E Mock] Operation cancelled at file', fileIndex)
+                  emitEvent('copy_cancelled', { filesCompleted: fileIndex, movedFiles })
+                  win.__E2E_OPERATION_IN_PROGRESS__ = false
+                  return
                 }
 
-                processedFiles = batchEnd
-                const percent = (processedFiles / totalFiles) * 100
+                // Check for failure injection
+                if (cfg.failureInjection?.type === 'complete') {
+                  console.log('[E2E Mock] Complete failure injected')
+                  emitEvent('copy_error', { error: cfg.failureInjection.errorMessage })
+                  win.__E2E_OPERATION_IN_PROGRESS__ = false
+                  return
+                }
 
-                win.__E2E_EVENTS__.push({ percent, fileIndex: processedFiles - 1 })
-                emitEvent('copy_progress', percent)
+                if (
+                  cfg.failureInjection?.type === 'partial' &&
+                  cfg.failureInjection.failingFileIndices?.includes(fileIndex)
+                ) {
+                  console.log('[E2E Mock] Partial failure at file', fileIndex)
+                  // Skip this file but continue
+                  continue
+                }
 
-                // Yield to browser with batched interval
-                if (processedFiles < totalFiles) {
-                  await new Promise((r) => setTimeout(r, batchIntervalMs))
+                const mockFile = cfg.mockFiles[fileIndex]
+                const fileSize = mockFile?.simulatedSize || cfg.scenario.averageFileSize
+
+                if (enableIntraFile) {
+                  // Intra-file progress: emit events as if reading 8KB chunks
+                  // Cap the number of events per file for performance
+                  const theoreticalChunks = Math.ceil(fileSize / BUFFER_SIZE)
+                  const eventsPerFile = Math.min(maxEventsPerFile, theoreticalChunks)
+                  // Note: bytesPerEvent = fileSize / eventsPerFile (used for simulation timing)
+
+                  for (let chunk = 0; chunk < eventsPerFile; chunk++) {
+                    // Check for cancellation within file
+                    if (win.__E2E_CANCELLED__) {
+                      console.log('[E2E Mock] Operation cancelled during file', fileIndex)
+                      emitEvent('copy_cancelled', { filesCompleted: fileIndex, movedFiles })
+                      win.__E2E_OPERATION_IN_PROGRESS__ = false
+                      return
+                    }
+
+                    // Calculate progress matching Rust formula:
+                    // overall_progress = (files_completed + file_progress) / total_files * 100
+                    const fileProgress = (chunk + 1) / eventsPerFile
+                    const overallProgress = ((fileIndex + fileProgress) / totalFiles) * 100
+
+                    win.__E2E_EVENTS__.push({
+                      percent: overallProgress,
+                      fileIndex,
+                      fileProgress
+                    })
+                    emitEvent('copy_progress', overallProgress)
+
+                    // Only wait between chunks, not after the last one
+                    if (chunk < eventsPerFile - 1) {
+                      await new Promise((r) => setTimeout(r, baseIntervalMs))
+                    }
+                  }
+                } else {
+                  // Legacy mode: one event per file (for backward compatibility)
+                  const percent = ((fileIndex + 1) / totalFiles) * 100
+                  win.__E2E_EVENTS__.push({ percent, fileIndex })
+                  emitEvent('copy_progress', percent)
+                }
+
+                movedFiles.push(mockFile?.file.path || `file_${fileIndex}`)
+
+                // Small delay between files
+                if (fileIndex < totalFiles - 1) {
+                  await new Promise((r) => setTimeout(r, baseIntervalMs))
                 }
               }
 
+              // Ensure we emit exactly 100% at the end
+              win.__E2E_EVENTS__.push({ percent: 100, fileIndex: totalFiles - 1 })
               emitEvent('copy_progress', 100)
-              emitEvent('copy_complete', [])
-              console.log('[E2E Mock] move_files complete')
+              emitEvent('copy_complete', movedFiles)
+              win.__E2E_OPERATION_IN_PROGRESS__ = false
+              console.log('[E2E Mock] move_files complete, files moved:', movedFiles.length)
             }, 10)
 
             return { success: true }
@@ -408,9 +515,54 @@ export class TauriE2EMock {
    */
   async reset(): Promise<void> {
     await this.page.evaluate(() => {
-      ;(window as Window & { __E2E_EVENTS__?: unknown[] }).__E2E_EVENTS__ = []
+      const win = window as Window & {
+        __E2E_EVENTS__?: unknown[]
+        __E2E_CANCELLED__?: boolean
+        __E2E_OPERATION_IN_PROGRESS__?: boolean
+      }
+      win.__E2E_EVENTS__ = []
+      win.__E2E_CANCELLED__ = false
+      win.__E2E_OPERATION_IN_PROGRESS__ = false
     })
     this.config.failureInjection = undefined
+  }
+
+  /**
+   * Cancel the current operation
+   */
+  async cancelOperation(): Promise<void> {
+    await this.page.evaluate(() => {
+      ;(window as Window & { __E2E_CANCELLED__?: boolean }).__E2E_CANCELLED__ = true
+    })
+  }
+
+  /**
+   * Check if an operation is currently in progress
+   */
+  async isOperationActive(): Promise<boolean> {
+    return this.page.evaluate(() => {
+      return (
+        (window as Window & { __E2E_OPERATION_IN_PROGRESS__?: boolean })
+          .__E2E_OPERATION_IN_PROGRESS__ || false
+      )
+    })
+  }
+
+  /**
+   * Get detailed progress events including intra-file progress
+   */
+  async getDetailedEvents(): Promise<
+    Array<{ percent: number; fileIndex: number; fileProgress?: number }>
+  > {
+    return this.page.evaluate(() => {
+      return (
+        (
+          window as Window & {
+            __E2E_EVENTS__?: Array<{ percent: number; fileIndex: number; fileProgress?: number }>
+          }
+        ).__E2E_EVENTS__ || []
+      )
+    })
   }
 }
 
