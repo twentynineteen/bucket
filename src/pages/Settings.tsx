@@ -453,7 +453,9 @@ const Settings: React.FC = () => {
         <div className="flex min-h-[400px] flex-col items-center justify-center p-8 text-center">
           <div className="max-w-md">
             <AlertTriangle className="text-destructive mx-auto mb-4 h-12 w-12" />
-            <h2 className="text-foreground mb-4 text-2xl font-semibold">Settings Error</h2>
+            <h2 className="text-foreground mb-4 text-2xl font-semibold">
+              Settings Error
+            </h2>
             <div className="text-muted-foreground mb-6">
               <p>
                 An error occurred while loading the Settings page. This could be due to:
