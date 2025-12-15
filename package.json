@@ -1,6 +1,6 @@
 {
   "name": "bucket",
-  "version": "0.12.1",
+  "version": "0.13.0",
   "description": "A desktop video editing workflow application that streamlines video ingest, project creation, and integrates with professional video production tools.",
   "author": "Dan Mills",
   "type": "module",
