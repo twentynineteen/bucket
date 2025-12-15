@@ -50,12 +50,12 @@ export const THEMES: Record<ThemeId, ThemeMetadata> = {
     description: 'Follow system light/dark preference',
     category: 'system',
     colorSwatch: {
-      background: '0 0% 50%',
-      foreground: '0 0% 50%',
-      primary: '0 0% 50%',
-      accent: '0 0% 50%'
+      background: '220 13% 18%',
+      foreground: '210 20% 98%',
+      primary: '217 91% 60%',
+      accent: '220 14.3% 95.9%'
     },
-    isDark: false
+    isDark: true
   },
   light: {
     id: 'light',
