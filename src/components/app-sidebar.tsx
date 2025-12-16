@@ -105,6 +105,10 @@ const data = {
       isActive: false,
       items: [
         {
+          title: 'General',
+          url: '/settings/general'
+        },
+        {
           title: 'AI Models',
           url: '/settings/general#ai-models'
         },
