@@ -47,6 +47,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={onOpenSaveDialog}
             className="bg-primary text-primary-foreground hover:bg-primary/90 flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 whitespace-nowrap disabled:opacity-50 lg:flex-initial"
             title="Save this script as an example for future RAG-enhanced formatting"
@@ -55,6 +56,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             <span className="hidden md:inline">Save as Example</span>
           </button>
           <button
+            type="button"
             onClick={onDownload}
             disabled={isGenerating}
             className="bg-success text-success-foreground hover:bg-success/90 flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 whitespace-nowrap disabled:opacity-50 lg:flex-initial"
