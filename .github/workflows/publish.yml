@@ -19,12 +19,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest' # for Arm based macs (M1 and above).
+          - platform: 'macos-14' # Apple Silicon runner for native arm64 builds
             args: '--target aarch64-apple-darwin'
-          # Intel Macs can run arm64 binaries via Rosetta 2 (built into macOS)
-          # Disabled x86_64 build to avoid cross-compilation issues on arm64 runners
-          # - platform: 'macos-latest' # for Intel based macs.
-          #   args: '--target x86_64-apple-darwin'
+          - platform: 'macos-13' # Intel runner for native x86_64 builds
+            args: '--target x86_64-apple-darwin'
           # - platform: 'ubuntu-22.04' # for Tauri v1 you could replace this with ubuntu-20.04.
           #   args: ''
           # - platform: 'windows-latest'
@@ -76,11 +74,11 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Only build for aarch64 (Apple Silicon). Intel Macs use Rosetta 2.
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
+          # Install the target matching the runner architecture
+          targets: ${{ contains(matrix.platform, 'macos') && (matrix.platform == 'macos-14' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin') || '' }}
 
       - name: install dependencies (macOS only)
-        if: matrix.platform == 'macos-latest'
+        if: contains(matrix.platform, 'macos')
         run: |
           brew install pkg-config
 
@@ -96,7 +94,7 @@ jobs:
         run: bun install
 
       - name: Import Apple Code Signing Certificate (macOS only)
-        if: matrix.platform == 'macos-latest'
+        if: contains(matrix.platform, 'macos')
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -141,7 +139,7 @@ jobs:
           args: ${{ matrix.args }}
           tauriScript: 'bun run tauri'
       - name: Clean up keychain (macOS only)
-        if: always() && matrix.platform == 'macos-latest'
+        if: always() && contains(matrix.platform, 'macos')
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           security delete-keychain $KEYCHAIN_PATH || true
