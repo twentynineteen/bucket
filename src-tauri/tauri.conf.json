@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Bucket",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "identifier": "com.bucket-app.dev",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -90,7 +90,8 @@
       },
       "entitlements": "tauri.entitlements.mac.plist",
       "exceptionDomain": "localhost",
-      "signingIdentity": null
+      "signingIdentity": null,
+      "providerShortName": null
     }
   }
 }

@@ -45,6 +45,7 @@ const BuildProject: React.FC = () => {
     isShowingSuccess,
     isCreatingTemplate,
     isIdle,
+    isLoading,
     copyProgress,
     error,
     projectFolder
@@ -163,6 +164,7 @@ const BuildProject: React.FC = () => {
             title={title}
             selectedFolder={selectedFolder}
             onCreateProject={handleCreateProject}
+            isLoading={isLoading}
           />
         </div>
 

@@ -532,6 +532,8 @@ ProjectFolder/
 - **[PREMIERE_PLUGINS.md](./PREMIERE_PLUGINS.md)** - Install and manage Premiere Pro CEP extensions
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Detailed system architecture and design decisions
 - **[API_COMMANDS.md](./API_COMMANDS.md)** - Complete Tauri command reference
+- **[apple-code-signing.md](./apple-code-signing.md)** - Apple Developer code signing and notarization setup
+- **[apple-code-signing-checklist.md](./apple-code-signing-checklist.md)** - Quick reference for code signing setup
 - **[CLAUDE.md](../CLAUDE.md)** - Instructions for Claude Code when working with this codebase
 - **[CHANGELOG.md](../CHANGELOG.md)** - Version history and release notes
 - **[specs/](../specs/)** - Feature specifications and PRDs for each major feature

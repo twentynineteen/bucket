@@ -7,15 +7,17 @@ interface CreateProjectStepProps {
   title: string
   selectedFolder: string
   onCreateProject: () => void
+  isLoading?: boolean
 }
 
 export const CreateProjectStep: React.FC<CreateProjectStepProps> = ({
   showSuccess,
   title,
   selectedFolder,
-  onCreateProject
+  onCreateProject,
+  isLoading = false
 }) => {
-  const isDisabled = !title.trim() || !selectedFolder
+  const isDisabled = !title.trim() || !selectedFolder || isLoading
 
   return (
     <div
@@ -53,19 +55,23 @@ export const CreateProjectStep: React.FC<CreateProjectStepProps> = ({
               aria-disabled={isDisabled}
               aria-describedby={isDisabled ? 'create-btn-requirements' : undefined}
               title={
-                isDisabled
-                  ? 'Please enter a project title and select a folder'
-                  : undefined
+                isLoading
+                  ? 'Project creation in progress...'
+                  : isDisabled
+                    ? 'Please enter a project title and select a folder'
+                    : undefined
               }
               animationStyle="glow"
               className="from-chart-4 to-chart-5 disabled:from-muted disabled:to-muted bg-gradient-to-r px-6 py-2.5 font-semibold text-white shadow-md"
             >
               <FolderPlus className="h-4 w-4" />
-              Create Project
+              {isLoading ? 'Creating Project...' : 'Create Project'}
             </Button>
             {isDisabled && (
               <span id="create-btn-requirements" className="sr-only">
-                Requires project title and selected folder
+                {isLoading
+                  ? 'Project creation in progress'
+                  : 'Requires project title and selected folder'}
               </span>
             )}
           </>

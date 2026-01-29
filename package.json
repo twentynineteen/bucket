@@ -1,6 +1,6 @@
 {
   "name": "bucket",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "description": "A desktop video editing workflow application that streamlines video ingest, project creation, and integrates with professional video production tools.",
   "author": "Dan Mills",
   "type": "module",
@@ -125,6 +125,7 @@
     "docx": "^9.5.1",
     "framer-motion": "^12.23.25",
     "fuse.js": "^7.1.0",
+    "hls.js": "^1.6.15",
     "lucide-react": "^0.545.0",
     "mammoth": "^1.11.0",
     "monaco-editor": "^0.53.0",

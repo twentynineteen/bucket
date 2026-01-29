@@ -13,6 +13,16 @@ vi.mock('next-themes', () => ({
   })
 }))
 
+// Mock DiffEditor component to avoid Monaco Editor dependencies
+vi.mock('@/pages/AI/ScriptFormatter/DiffEditor', () => ({
+  DiffEditor: ({ original, modified }: { original: string; modified: string }) => (
+    <div data-testid="diff-editor">
+      <div>Original: {original}</div>
+      <div>Modified: {modified}</div>
+    </div>
+  )
+}))
+
 import App from '../../../App'
 
 it('renders without crashing', () => {

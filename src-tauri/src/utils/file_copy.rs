@@ -38,5 +38,13 @@ pub fn copy_file_with_overall_progress(
     }
 
     writer.flush()?;
+
+    // CRITICAL: Ensure all data is written to disk before completing.
+    // This is especially important for large files and network drives where
+    // OS buffers may take significant time to flush. Without this, the
+    // copy_complete event can fire before files are fully written, causing
+    // subsequent operations (like Premiere template creation) to fail or hang.
+    writer.get_mut().sync_all()?;
+
     Ok(())
 }
