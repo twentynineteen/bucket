@@ -12,7 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish-tauri:
+  build-tauri:
+    name: Build Tauri App
     permissions:
       contents: write
     strategy:
@@ -21,19 +22,31 @@ jobs:
         include:
           - platform: 'macos-14' # Apple Silicon runner for native arm64 builds
             args: '--target aarch64-apple-darwin'
-          - platform: 'macos-13' # Intel runner for native x86_64 builds
+            target: 'aarch64-apple-darwin'
+          - platform: 'macos-14' # Intel builds on Apple Silicon runner with cross-compilation
             args: '--target x86_64-apple-darwin'
+            target: 'x86_64-apple-darwin'
           # - platform: 'ubuntu-22.04' # for Tauri v1 you could replace this with ubuntu-20.04.
           #   args: ''
           # - platform: 'windows-latest'
           #   args: ''
 
     runs-on: ${{ matrix.platform }}
-    timeout-minutes: 120
+    timeout-minutes: 90
+    outputs:
+      release-notes: ${{ steps.release_notes.outputs.body }}
+      app-version: ${{ steps.get_version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Get app version
+        id: get_version
+        run: |
+          VERSION=$(grep '"version"' src-tauri/tauri.conf.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "App version: $VERSION"
 
       - name: Generate release notes
         id: release_notes
@@ -59,7 +72,7 @@ jobs:
 
           Download the appropriate installer for your platform from the assets below.
 
-          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${LATEST_TAG}...app-v__VERSION__"
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${LATEST_TAG}...app-v${{ steps.get_version.outputs.version }}"
 
           # Save to output (handle multiline)
           echo "body<<EOF" >> $GITHUB_OUTPUT
@@ -74,8 +87,7 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Install the target matching the runner architecture
-          targets: ${{ contains(matrix.platform, 'macos') && (matrix.platform == 'macos-14' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin') || '' }}
+          targets: ${{ matrix.target }}
 
       - name: install dependencies (macOS only)
         if: contains(matrix.platform, 'macos')
@@ -119,30 +131,85 @@ jobs:
           # Clean up certificate file
           rm -f $CERTIFICATE_PATH
 
-      - uses: tauri-apps/tauri-action@v0
+      - name: Build Tauri App (Signed, No Notarization)
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Apple Code Signing
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # Apple Notarization
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # NOTE: Notarization env vars intentionally omitted - handled in separate job
         with:
-          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: 'v__VERSION__'
-          releaseBody: ${{ steps.release_notes.outputs.body }}
-          releaseDraft: true
-          prerelease: false
           args: ${{ matrix.args }}
           tauriScript: 'bun run tauri'
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dmg-${{ matrix.target }}
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          retention-days: 1
+
       - name: Clean up keychain (macOS only)
         if: always() && contains(matrix.platform, 'macos')
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           security delete-keychain $KEYCHAIN_PATH || true
+
+  notarize-and-release:
+    name: Notarize and Release
+    needs: build-tauri
+    runs-on: macos-14
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all DMG artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Display artifact structure
+        run: ls -R ./artifacts
+
+      - name: Notarize DMGs
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "Starting notarization process..."
+
+          for dmg in ./artifacts/dmg-*/*.dmg; do
+            echo "Notarizing: $dmg"
+
+            # Submit for notarization
+            xcrun notarytool submit "$dmg" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait
+
+            # Staple the notarization ticket
+            echo "Stapling: $dmg"
+            xcrun stapler staple "$dmg"
+
+            echo "Notarization complete for: $dmg"
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: app-v${{ needs.build-tauri.outputs.app-version }}
+          name: v${{ needs.build-tauri.outputs.app-version }}
+          body: ${{ needs.build-tauri.outputs.release-notes }}
+          draft: true
+          prerelease: false
+          files: ./artifacts/dmg-*/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: peaceiris/actions-gh-pages@v4
         with:
