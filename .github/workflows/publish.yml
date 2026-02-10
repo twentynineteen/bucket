@@ -12,30 +12,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-tauri:
-    name: Build Tauri App
-    permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: 'macos-14' # Apple Silicon runner for native arm64 builds
-            args: '--target aarch64-apple-darwin'
-            target: 'aarch64-apple-darwin'
-          - platform: 'macos-14' # Intel builds on Apple Silicon runner with cross-compilation
-            args: '--target x86_64-apple-darwin'
-            target: 'x86_64-apple-darwin'
-          # - platform: 'ubuntu-22.04' # for Tauri v1 you could replace this with ubuntu-20.04.
-          #   args: ''
-          # - platform: 'windows-latest'
-          #   args: ''
-
-    runs-on: ${{ matrix.platform }}
-    timeout-minutes: 90
+  prepare:
+    name: Prepare Release Metadata
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
-      release-notes: ${{ steps.release_notes.outputs.body }}
       app-version: ${{ steps.get_version.outputs.version }}
+      release-notes: ${{ steps.release_notes.outputs.body }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -79,6 +62,27 @@ jobs:
           echo "$RELEASE_BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+  build-tauri:
+    name: Build Tauri App
+    needs: prepare
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-14' # Apple Silicon runner for native arm64 builds
+            args: '--target aarch64-apple-darwin'
+            target: 'aarch64-apple-darwin'
+          - platform: 'macos-14' # Intel builds on Apple Silicon runner with cross-compilation
+            args: '--target x86_64-apple-darwin'
+            target: 'x86_64-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
       - name: setup bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -88,6 +92,19 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Set up cargo cache
+        uses: actions/cache@v4
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            src-tauri/target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-
 
       - name: install dependencies (macOS only)
         if: contains(matrix.platform, 'macos')
@@ -99,8 +116,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-        # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
-        # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
 
       - name: install frontend dependencies
         run: bun install
@@ -150,6 +165,15 @@ jobs:
           path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
           retention-days: 1
 
+      - name: Upload updater artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-${{ matrix.target }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+          retention-days: 1
+
       - name: Clean up keychain (macOS only)
         if: always() && contains(matrix.platform, 'macos')
         run: |
@@ -158,7 +182,7 @@ jobs:
 
   notarize-and-release:
     name: Notarize and Release
-    needs: build-tauri
+    needs: [prepare, build-tauri]
     runs-on: macos-14
     timeout-minutes: 120
     permissions:
@@ -166,7 +190,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all DMG artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
@@ -185,12 +209,29 @@ jobs:
           for dmg in ./artifacts/dmg-*/*.dmg; do
             echo "Notarizing: $dmg"
 
-            # Submit for notarization
-            xcrun notarytool submit "$dmg" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
-              --wait
+            # Retry loop for notarization (Apple's service can be flaky)
+            MAX_ATTEMPTS=3
+            ATTEMPT=1
+            while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+              echo "Notarization attempt $ATTEMPT of $MAX_ATTEMPTS..."
+              if xcrun notarytool submit "$dmg" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" \
+                --wait; then
+                echo "Notarization succeeded on attempt $ATTEMPT"
+                break
+              fi
+
+              if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+                echo "Notarization failed after $MAX_ATTEMPTS attempts"
+                exit 1
+              fi
+
+              echo "Notarization failed, retrying in 30 seconds..."
+              sleep 30
+              ATTEMPT=$((ATTEMPT + 1))
+            done
 
             # Staple the notarization ticket
             echo "Stapling: $dmg"
@@ -199,20 +240,65 @@ jobs:
             echo "Notarization complete for: $dmg"
           done
 
+      - name: Generate latest.json for Tauri updater
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app-version }}
+          RELEASE_NOTES: ${{ needs.prepare.outputs.release-notes }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Read signature file contents
+          AARCH64_SIG=$(cat ./artifacts/updater-aarch64-apple-darwin/*.app.tar.gz.sig)
+          X86_64_SIG=$(cat ./artifacts/updater-x86_64-apple-darwin/*.app.tar.gz.sig)
+
+          # Get updater artifact filenames
+          AARCH64_FILE=$(basename ./artifacts/updater-aarch64-apple-darwin/*.app.tar.gz)
+          X86_64_FILE=$(basename ./artifacts/updater-x86_64-apple-darwin/*.app.tar.gz)
+
+          # Generate latest.json using jq for safe JSON encoding
+          jq -n \
+            --arg version "$APP_VERSION" \
+            --arg notes "$RELEASE_NOTES" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg aarch64_url "https://github.com/${REPO}/releases/download/app-v${APP_VERSION}/${AARCH64_FILE}" \
+            --arg aarch64_sig "$AARCH64_SIG" \
+            --arg x86_64_url "https://github.com/${REPO}/releases/download/app-v${APP_VERSION}/${X86_64_FILE}" \
+            --arg x86_64_sig "$X86_64_SIG" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "darwin-aarch64": { url: $aarch64_url, signature: $aarch64_sig },
+                "darwin-x86_64": { url: $x86_64_url, signature: $x86_64_sig }
+              }
+            }' > latest.json
+
+          echo "Generated latest.json:"
+          cat latest.json
+
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: app-v${{ needs.build-tauri.outputs.app-version }}
-          name: v${{ needs.build-tauri.outputs.app-version }}
-          body: ${{ needs.build-tauri.outputs.release-notes }}
+          tag_name: app-v${{ needs.prepare.outputs.app-version }}
+          name: v${{ needs.prepare.outputs.app-version }}
+          body: ${{ needs.prepare.outputs.release-notes }}
           draft: true
           prerelease: false
-          files: ./artifacts/dmg-*/*.dmg
+          files: |
+            ./artifacts/dmg-*/*.dmg
+            ./artifacts/updater-*/*.app.tar.gz
+            ./artifacts/updater-*/*.app.tar.gz.sig
+            latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare gh-pages directory
+        run: |
+          mkdir -p gh-pages
+          cp latest.json gh-pages/
 
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./latest.json
+          publish_dir: ./gh-pages
           force_orphan: true
