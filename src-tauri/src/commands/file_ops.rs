@@ -17,6 +17,7 @@ pub fn move_files(
     // Run file moving in a separate thread
     thread::spawn(move || {
         let mut moved_files = Vec::new();
+        let mut failed_files: Vec<(String, String)> = Vec::new();
         let total_files = files.len();
 
         for (index, (file_path, camera_number)) in files.iter().enumerate() {
@@ -27,7 +28,16 @@ pub fn move_files(
             // Ensure the Camera folder exists
             if !camera_folder.exists() {
                 if let Err(e) = fs::create_dir_all(&camera_folder) {
-                    eprintln!("Failed to create camera folder {}: {}", camera_number, e);
+                    let error_msg = format!("Failed to create camera folder {}: {}", camera_number, e);
+                    eprintln!("{}", error_msg);
+
+                    // Emit individual error event
+                    let _ = app_handle.emit("copy_file_error", serde_json::json!({
+                        "file": file_path,
+                        "error": error_msg
+                    }));
+
+                    failed_files.push((file_path.clone(), error_msg));
                     continue;
                 }
             }
@@ -42,15 +52,34 @@ pub fn move_files(
                 index,
                 total_files,
             ) {
-                eprintln!("Failed to copy file {}: {}", file_path, e);
+                let error_msg = format!("Failed to copy file: {}", e);
+                eprintln!("{} {}", file_path, error_msg);
+
+                // Emit individual error event
+                let _ = app_handle.emit("copy_file_error", serde_json::json!({
+                    "file": file_path,
+                    "error": error_msg
+                }));
+
+                failed_files.push((file_path.clone(), error_msg));
                 continue;
             }
 
             moved_files.push(dest_file_path.to_string_lossy().to_string());
         }
 
-        // Emit completion event when done
-        let _ = app_handle.emit("copy_complete", moved_files);
+        // Emit completion event based on whether there were errors
+        if failed_files.is_empty() {
+            let _ = app_handle.emit("copy_complete", moved_files);
+        } else {
+            let _ = app_handle.emit("copy_complete_with_errors", serde_json::json!({
+                "successful_files": moved_files,
+                "failed_files": failed_files,
+                "failure_count": failed_files.len(),
+                "success_count": moved_files.len(),
+                "total_files": total_files
+            }));
+        }
     });
 
     Ok(()) // Return immediately so UI remains responsive
