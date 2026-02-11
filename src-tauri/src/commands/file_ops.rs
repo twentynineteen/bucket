@@ -52,8 +52,8 @@ pub fn move_files(
                 index,
                 total_files,
             ) {
-                let error_msg = format!("Failed to copy file: {}", e);
-                eprintln!("{} {}", file_path, error_msg);
+                let error_msg = format!("Failed to copy file {}: {}", file_path, e);
+                eprintln!("{}", error_msg);
 
                 // Emit individual error event
                 let _ = app_handle.emit("copy_file_error", serde_json::json!({
@@ -72,9 +72,15 @@ pub fn move_files(
         if failed_files.is_empty() {
             let _ = app_handle.emit("copy_complete", moved_files);
         } else {
+            // Convert failed_files to array of objects for consistent frontend format
+            let failed_files_json: Vec<serde_json::Value> = failed_files
+                .iter()
+                .map(|(file, error)| serde_json::json!({"file": file, "error": error}))
+                .collect();
+
             let _ = app_handle.emit("copy_complete_with_errors", serde_json::json!({
                 "successful_files": moved_files,
-                "failed_files": failed_files,
+                "failed_files": failed_files_json,
                 "failure_count": failed_files.len(),
                 "success_count": moved_files.len(),
                 "total_files": total_files
