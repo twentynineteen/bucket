@@ -3,6 +3,20 @@ import { listen } from '@tauri-apps/api/event'
 import { useMachine } from '@xstate/react'
 import { useEffect, useMemo, useRef } from 'react'
 
+// Type definitions for Tauri error events
+interface CopyFileError {
+  file: string
+  error: string
+}
+
+interface CopyCompleteWithErrors {
+  successful_files: string[]
+  failed_files: CopyFileError[]
+  failure_count: number
+  success_count: number
+  total_files: number
+}
+
 /**
  * Hook that manages the BuildProject state machine and connects it to Tauri events
  */
@@ -18,6 +32,8 @@ export function useBuildProjectMachine() {
 
     let unlistenProgress: (() => void) | null = null
     let unlistenComplete: (() => void) | null = null
+    let unlistenFileError: (() => void) | null = null
+    let unlistenCompleteWithErrors: (() => void) | null = null
     let isMounted = true
 
     const setupListeners = async () => {
@@ -28,9 +44,53 @@ export function useBuildProjectMachine() {
           send({ type: 'COPY_PROGRESS', progress: event.payload })
         })
 
-        // Listen for copy complete events
-        unlistenComplete = await listen<string[]>('copy_complete', () => {
+        // Listen for individual file copy errors
+        unlistenFileError = await listen<CopyFileError>(
+          'copy_file_error',
+          (event) => {
+            if (!isMounted) return
+            // Log individual errors for debugging - the final error state
+            // will be set by copy_complete_with_errors
+            console.error(
+              `[BuildProject] File copy error: ${event.payload.file} - ${event.payload.error}`
+            )
+          }
+        )
+
+        // Listen for copy complete with errors (partial failure)
+        unlistenCompleteWithErrors = await listen<CopyCompleteWithErrors>(
+          'copy_complete_with_errors',
+          (event) => {
+            if (!isMounted) return
+            const { failure_count, success_count, total_files, failed_files } =
+              event.payload
+
+            // Build descriptive error message
+            const failedFileNames = failed_files
+              .map((f) => f.file.split('/').pop())
+              .join(', ')
+
+            const errorMessage =
+              `Copy completed with errors: ${failure_count} of ${total_files} files failed. ` +
+              `Successfully copied: ${success_count}. ` +
+              `Failed files: ${failedFileNames}`
+
+            send({ type: 'COPY_ERROR', error: errorMessage })
+          }
+        )
+
+        // Listen for copy complete events (full success)
+        unlistenComplete = await listen<string[]>('copy_complete', (event) => {
           if (!isMounted) return
+          const movedFiles = event.payload
+
+          // Validate that we received files (basic sanity check)
+          if (!movedFiles || movedFiles.length === 0) {
+            console.warn(
+              '[BuildProject] copy_complete received with empty file list'
+            )
+          }
+
           send({ type: 'COPY_COMPLETE' })
         })
       } catch {
@@ -48,6 +108,8 @@ export function useBuildProjectMachine() {
         try {
           if (unlistenProgress) unlistenProgress()
           if (unlistenComplete) unlistenComplete()
+          if (unlistenFileError) unlistenFileError()
+          if (unlistenCompleteWithErrors) unlistenCompleteWithErrors()
         } catch {
           // Silently handle cleanup errors
         }
