@@ -10,6 +10,7 @@ import { useBreadcrumb, useCameraAutoRemap, useProjectState, useUsername } from 
 
 import { AddFootageStep } from './AddFootageStep'
 import { CreateProjectStep } from './CreateProjectStep'
+import { ErrorSection } from './ErrorSection'
 import ProgressBar from './ProgressBar'
 import { ProjectConfigurationStep } from './ProjectConfigurationStep'
 import { SuccessSection } from './SuccessSection'
@@ -46,9 +47,12 @@ const BuildProject: React.FC = () => {
     isCreatingTemplate,
     isIdle,
     isLoading,
+    isError,
     copyProgress,
     error,
-    projectFolder
+    projectFolder,
+    expectedFiles,
+    movedFiles
   } = machine
 
   // Use state machine's isShowingSuccess for displaying success section
@@ -111,15 +115,15 @@ const BuildProject: React.FC = () => {
     send({ type: 'RESET' })
   }
 
-  // Show error toasts
+  // Show error toasts (brief notification, details shown in ErrorSection)
   useEffect(() => {
-    if (error) {
-      toast.error(error, {
-        duration: 5000,
-        description: 'Please try again or contact support if the issue persists.'
+    if (error && isError) {
+      toast.error('An error occurred', {
+        duration: 3000,
+        description: 'See details below'
       })
     }
-  }, [error])
+  }, [error, isError])
 
   return (
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
@@ -184,6 +188,15 @@ const BuildProject: React.FC = () => {
           trelloApiKey={apiKey}
           trelloApiToken={apiToken}
           onStartNew={clearFields}
+        />
+
+        {/* Error State with File Details */}
+        <ErrorSection
+          showError={isError}
+          error={error}
+          expectedFiles={expectedFiles}
+          movedFiles={movedFiles}
+          onRetry={clearFields}
         />
       </div>
     </div>
