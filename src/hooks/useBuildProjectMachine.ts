@@ -29,9 +29,9 @@ export function useBuildProjectMachine() {
         })
 
         // Listen for copy complete events
-        unlistenComplete = await listen<string[]>('copy_complete', () => {
+        unlistenComplete = await listen<string[]>('copy_complete', (event) => {
           if (!isMounted) return
-          send({ type: 'COPY_COMPLETE' })
+          send({ type: 'COPY_COMPLETE', movedFiles: event.payload })
         })
       } catch {
         // Silently handle listener setup errors

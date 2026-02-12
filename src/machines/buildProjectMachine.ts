@@ -16,6 +16,9 @@ export interface BuildProjectContext {
   // Project paths
   projectFolder: string | null
 
+  // Copy results
+  movedFiles: string[]
+
   // Error handling
   error: string | null
 }
@@ -31,7 +34,7 @@ export type BuildProjectEvent =
   | { type: 'BREADCRUMBS_ERROR'; error: string }
   | { type: 'FILES_MOVING' }
   | { type: 'COPY_PROGRESS'; progress: number }
-  | { type: 'COPY_COMPLETE' }
+  | { type: 'COPY_COMPLETE'; movedFiles: string[] }
   | { type: 'COPY_ERROR'; error: string }
   | { type: 'TEMPLATE_COMPLETE' }
   | { type: 'TEMPLATE_ERROR'; error: string }
@@ -56,6 +59,26 @@ export const buildProjectMachine = setup({
         event.type === 'VALIDATION_SUCCESS' ? event.projectFolder : null
     }),
 
+    // Store moved files from copy_complete
+    storeMovedFiles: assign({
+      movedFiles: ({ event }) =>
+        event.type === 'COPY_COMPLETE' ? event.movedFiles : []
+    }),
+
+    // Store partial copy error with details
+    storePartialCopyError: assign({
+      error: ({ context, event }) => {
+        if (event.type === 'COPY_COMPLETE') {
+          const expected = context.files.length
+          const actual = event.movedFiles.length
+          return `Partial copy failure: only ${actual} of ${expected} files were copied successfully.`
+        }
+        return null
+      },
+      movedFiles: ({ event }) =>
+        event.type === 'COPY_COMPLETE' ? event.movedFiles : []
+    }),
+
     // Store error message
     storeError: assign({
       error: ({ event }) => {
@@ -76,6 +99,7 @@ export const buildProjectMachine = setup({
     resetContext: assign({
       copyProgress: 0,
       projectFolder: null,
+      movedFiles: [],
       error: null
     }),
 
@@ -86,6 +110,15 @@ export const buildProjectMachine = setup({
       }
       return context
     })
+  },
+  guards: {
+    // Check if all expected files were copied
+    allFilesCopied: ({ context, event }) => {
+      if (event.type === 'COPY_COMPLETE') {
+        return event.movedFiles.length >= context.files.length
+      }
+      return false
+    }
   }
 }).createMachine({
   id: 'buildProject',
@@ -98,6 +131,7 @@ export const buildProjectMachine = setup({
     username: '',
     copyProgress: 0,
     projectFolder: null,
+    movedFiles: [],
     error: null
   },
   states: {
@@ -153,9 +187,17 @@ export const buildProjectMachine = setup({
         COPY_PROGRESS: {
           actions: 'updateProgress'
         },
-        COPY_COMPLETE: {
-          target: 'creatingTemplate'
-        },
+        COPY_COMPLETE: [
+          {
+            target: 'creatingTemplate',
+            guard: 'allFilesCopied',
+            actions: 'storeMovedFiles'
+          },
+          {
+            target: 'error',
+            actions: 'storePartialCopyError'
+          }
+        ],
         COPY_ERROR: {
           target: 'error',
           actions: 'storeError'
