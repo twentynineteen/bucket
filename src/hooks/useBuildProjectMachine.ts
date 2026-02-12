@@ -47,12 +47,9 @@ export function useBuildProjectMachine() {
         // Listen for individual file copy errors
         // Individual errors are logged by the backend; the final error state
         // will be set by copy_complete_with_errors
-        unlistenFileError = await listen<CopyFileError>(
-          'copy_file_error',
-          () => {
-            // Event received - errors accumulated and reported in copy_complete_with_errors
-          }
-        )
+        unlistenFileError = await listen<CopyFileError>('copy_file_error', () => {
+          // Event received - errors accumulated and reported in copy_complete_with_errors
+        })
 
         // Listen for copy complete with errors (partial failure)
         unlistenCompleteWithErrors = await listen<CopyCompleteWithErrors>(
