@@ -45,15 +45,12 @@ export function useBuildProjectMachine() {
         })
 
         // Listen for individual file copy errors
+        // Individual errors are logged by the backend; the final error state
+        // will be set by copy_complete_with_errors
         unlistenFileError = await listen<CopyFileError>(
           'copy_file_error',
-          (event) => {
-            if (!isMounted) return
-            // Log individual errors for debugging - the final error state
-            // will be set by copy_complete_with_errors
-            console.error(
-              `[BuildProject] File copy error: ${event.payload.file} - ${event.payload.error}`
-            )
+          () => {
+            // Event received - errors accumulated and reported in copy_complete_with_errors
           }
         )
 
@@ -80,17 +77,8 @@ export function useBuildProjectMachine() {
         )
 
         // Listen for copy complete events (full success)
-        unlistenComplete = await listen<string[]>('copy_complete', (event) => {
+        unlistenComplete = await listen<string[]>('copy_complete', () => {
           if (!isMounted) return
-          const movedFiles = event.payload
-
-          // Validate that we received files (basic sanity check)
-          if (!movedFiles || movedFiles.length === 0) {
-            console.warn(
-              '[BuildProject] copy_complete received with empty file list'
-            )
-          }
-
           send({ type: 'COPY_COMPLETE' })
         })
       } catch {
