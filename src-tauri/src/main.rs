@@ -45,6 +45,7 @@ fn main() {
             check_auth,
             add_token,
             move_files,
+            check_disk_space,
             copy_premiere_project,
             show_confirmation_dialog,
             open_resource_file,

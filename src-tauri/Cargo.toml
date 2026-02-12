@@ -56,6 +56,7 @@ uuid = { version = "1.0", features = ["v4"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 regex = "1.10"
 glib = "0.20.0"
+fs2 = "0.4"
 
 
 

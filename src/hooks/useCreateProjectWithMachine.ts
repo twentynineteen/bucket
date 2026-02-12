@@ -4,12 +4,20 @@ import type { BuildProjectEvent } from '@machines/buildProjectMachine'
 import { appStore } from '@store/useAppStore'
 import { invoke } from '@tauri-apps/api/core'
 import { confirm } from '@tauri-apps/plugin-dialog'
-import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
+import { exists, mkdir, remove, stat, writeTextFile } from '@tauri-apps/plugin-fs'
 import { Breadcrumb } from '@utils/types'
 
 import { logger } from '@/utils/logger'
 
 import { FootageFile } from './useCameraAutoRemap'
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
 
 interface CreateProjectParams {
   title: string
@@ -131,6 +139,42 @@ export function useCreateProjectWithMachine() {
         file.path,
         camera
       ])
+
+      // Calculate total size of files to copy
+      let totalBytes = 0
+      try {
+        const fileSizes = await Promise.all(
+          files.map(async ({ file }) => {
+            const metadata = await stat(file.path)
+            return metadata.size
+          })
+        )
+        totalBytes = fileSizes.reduce((sum, size) => sum + size, 0)
+      } catch (sizeError) {
+        logger.warn('Failed to calculate total file size:', sizeError)
+        // Continue anyway - the copy will fail if there's not enough space
+      }
+
+      // Check disk space before starting copy
+      if (totalBytes > 0) {
+        try {
+          const hasSpace = await invoke<boolean>('check_disk_space', {
+            path: projectFolder,
+            requiredBytes: totalBytes
+          })
+
+          if (!hasSpace) {
+            send({
+              type: 'COPY_ERROR',
+              error: `Insufficient disk space. Need ${formatBytes(totalBytes)} to copy files.`
+            })
+            return
+          }
+        } catch (spaceError) {
+          logger.warn('Failed to check disk space:', spaceError)
+          // Continue anyway - better to try and fail than to block on a check error
+        }
+      }
 
       try {
         if (import.meta.env.DEV) {

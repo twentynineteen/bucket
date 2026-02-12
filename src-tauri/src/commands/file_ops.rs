@@ -1,9 +1,36 @@
 use crate::utils::file_copy::copy_file_with_overall_progress;
+use fs2::available_space;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
 use tauri::{command, AppHandle, Emitter};
+
+/// Check if there is sufficient disk space at the given path for the required bytes.
+///
+/// # Arguments
+/// * `path` - The path to check available space (will use the mount point containing this path)
+/// * `required_bytes` - The number of bytes needed
+///
+/// # Returns
+/// * `Ok(true)` - Sufficient space available
+/// * `Ok(false)` - Insufficient space
+/// * `Err(String)` - Error checking disk space
+#[command]
+pub fn check_disk_space(path: String, required_bytes: u64) -> Result<bool, String> {
+    let path = Path::new(&path);
+
+    // Get available space at the path
+    let available = available_space(path).map_err(|e| {
+        format!(
+            "Failed to check disk space for '{}': {}",
+            path.display(),
+            e
+        )
+    })?;
+
+    Ok(available >= required_bytes)
+}
 
 #[command]
 pub fn move_files(
