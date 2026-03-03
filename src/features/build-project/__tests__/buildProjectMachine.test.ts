@@ -8,7 +8,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
-import { createActor, waitFor } from 'xstate'
+import { createActor } from 'xstate'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {

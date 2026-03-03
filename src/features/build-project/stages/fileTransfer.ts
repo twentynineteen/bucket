@@ -22,8 +22,7 @@ import {
   createStageFailure,
   createStageSuccess,
   DEFAULT_STAGE_CONFIGS,
-  ErrorKind,
-  TAURI_EVENTS
+  ErrorKind
 } from '../types'
 
 // =============================================================================

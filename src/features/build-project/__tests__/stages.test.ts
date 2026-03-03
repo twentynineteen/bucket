@@ -29,9 +29,7 @@ import {
   createStageSuccess,
   DEFAULT_STAGE_CONFIGS,
   type StageConfig,
-  type StageFailure,
-  type StageResult,
-  type StageSuccess
+  type StageResult
 } from '../types/stages'
 
 describe('Stage Types and Helpers', () => {
