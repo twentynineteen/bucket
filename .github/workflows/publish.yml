@@ -240,13 +240,34 @@ jobs:
             echo "Notarization complete for: $dmg"
           done
 
+      - name: Rename updater artifacts to include architecture
+        run: |
+          # Rename updater files to include architecture to avoid filename conflicts
+          for dir in ./artifacts/updater-*; do
+            arch=$(basename "$dir" | sed 's/updater-//')
+            for file in "$dir"/*.app.tar.gz; do
+              if [ -f "$file" ]; then
+                newname="${file%.app.tar.gz}_${arch}.app.tar.gz"
+                mv "$file" "$newname"
+              fi
+            done
+            for file in "$dir"/*.app.tar.gz.sig; do
+              if [ -f "$file" ]; then
+                newname="${file%.app.tar.gz.sig}_${arch}.app.tar.gz.sig"
+                mv "$file" "$newname"
+              fi
+            done
+          done
+          echo "Renamed updater artifacts:"
+          ls -la ./artifacts/updater-*
+
       - name: Generate latest.json for Tauri updater
         env:
           APP_VERSION: ${{ needs.prepare.outputs.app-version }}
           RELEASE_NOTES: ${{ needs.prepare.outputs.release-notes }}
           REPO: ${{ github.repository }}
         run: |
-          # Read signature file contents
+          # Read signature file contents (files already renamed with architecture suffix)
           AARCH64_SIG=$(cat ./artifacts/updater-aarch64-apple-darwin/*.app.tar.gz.sig)
           X86_64_SIG=$(cat ./artifacts/updater-x86_64-apple-darwin/*.app.tar.gz.sig)
 
