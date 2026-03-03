@@ -226,7 +226,8 @@ const saveBreadcrumbs = fromPromise<void, SaveBreadcrumbsParams>(async ({ input 
 
 /**
  * Transfers files to camera folders
- * Note: Progress events are emitted by the Tauri backend and handled separately
+ * The move_files command returns immediately and spawns a background thread.
+ * We must wait for the copy_complete event before resolving.
  */
 const transferFiles = fromPromise<void, TransferFilesParams>(async ({ input }) => {
   const { files, projectFolder } = input
@@ -236,11 +237,32 @@ const transferFiles = fromPromise<void, TransferFilesParams>(async ({ input }) =
     camera
   ])
 
-  // This invokes the Tauri backend which emits copy_progress and copy_complete events
-  await invoke('move_files', {
-    files: filesToMove,
-    baseDest: projectFolder
+  // Import listen function
+  const { listen } = await import('@tauri-apps/api/event')
+
+  // Set up listener FIRST and wait for it to be registered
+  let resolveCompletion: () => void
+  const copyComplete = new Promise<void>((resolve) => {
+    resolveCompletion = resolve
   })
+
+  const unlisten = await listen<string[]>('copy_complete', () => {
+    resolveCompletion()
+  })
+
+  try {
+    // Start the file transfer (returns immediately)
+    await invoke('move_files', {
+      files: filesToMove,
+      baseDest: projectFolder
+    })
+
+    // Wait for the actual copy to complete
+    await copyComplete
+  } finally {
+    // Clean up the listener
+    unlisten()
+  }
 })
 
 // =============================================================================

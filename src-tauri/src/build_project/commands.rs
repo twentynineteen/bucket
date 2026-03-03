@@ -20,8 +20,6 @@ const BUFFER_SIZE: usize = 65536;
 /// Progress update interval (100ms throttling)
 const PROGRESS_UPDATE_INTERVAL: Duration = Duration::from_millis(100);
 
-/// Stall timeout per file (30 seconds)
-const STALL_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Request structure for file transfer operations
 #[derive(Debug, Clone, Deserialize)]
@@ -270,7 +268,6 @@ pub async fn transfer_files_with_progress(
             let mut reader = BufReader::new(src_file);
             let mut writer = BufWriter::new(dest_file);
             let mut buffer = vec![0u8; BUFFER_SIZE];
-            let mut last_activity = Instant::now();
 
             // Copy file in chunks
             loop {
@@ -296,10 +293,7 @@ pub async fn transfer_files_with_progress(
                 // Read chunk
                 let bytes_read = match reader.read(&mut buffer) {
                     Ok(0) => break,
-                    Ok(n) => {
-                        last_activity = Instant::now();
-                        n
-                    }
+                    Ok(n) => n,
                     Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
                     Err(e) => {
                         let _ = fs::remove_file(dest_path);
@@ -330,20 +324,6 @@ pub async fn transfer_files_with_progress(
                 }
 
                 bytes_transferred += bytes_read as u64;
-
-                // Check for stall timeout
-                if last_activity.elapsed() > STALL_TIMEOUT {
-                    let _ = fs::remove_file(dest_path);
-                    let complete_event = TransferComplete::failed(
-                        operation_id.clone(),
-                        files_completed,
-                        format!("Transfer stalled for file: {}", item.source),
-                    );
-                    let _ = app.emit("file-transfer-complete", &complete_event);
-                    let rt = tokio::runtime::Handle::current();
-                    rt.block_on(async { registry_clone.complete(&operation_id).await });
-                    return;
-                }
 
                 // Emit throttled progress update
                 if last_progress_update.elapsed() >= PROGRESS_UPDATE_INTERVAL {
