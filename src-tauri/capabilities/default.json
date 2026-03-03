@@ -183,6 +183,7 @@
     "fs:allow-video-write",
     "fs:allow-video-write-recursive",
     "fs:write-files",
+    "fs:allow-stat",
     "dialog:allow-open",
     "opener:default",
     "deep-link:default"

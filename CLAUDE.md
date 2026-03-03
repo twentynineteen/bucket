@@ -106,8 +106,19 @@ All file operations go through Tauri backend with progress tracking. Key pattern
 
 1. **File Selection**: Multi-select files via Tauri dialog
 2. **Camera Assignment**: Validate and assign camera numbers to footage
-3. **Project Creation**: Generate folder structure + Adobe Premiere integration
-4. **Progress Tracking**: Real-time progress during file operations
+3. **Pre-flight Validation**: Disk space check before copy begins
+4. **Project Creation**: Generate folder structure + Adobe Premiere integration
+5. **Progress Tracking**: Real-time progress during file operations
+6. **Error Handling**: Comprehensive error detection and user feedback
+
+**Error Handling Features**:
+- **Disk Space Validation**: Checks available space before starting copy
+- **Timeout Protection**: 30-second timeout per file operation (prevents network drive hangs)
+- **Partial Failure Detection**: Validates all files copied successfully
+- **Detailed Error UI**: Shows failed files list, success/failure counts, remediation suggestions
+- **Backend Events**: `copy_progress`, `copy_complete`, `copy_error` events for UI updates
+
+See [docs/buildproject-error-handling.md](docs/buildproject-error-handling.md) for detailed troubleshooting guide.
 
 ### Baker Workflow (NEW - Branch: 003-a-new-feature)
 

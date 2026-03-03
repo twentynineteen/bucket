@@ -4,12 +4,28 @@ import type { BuildProjectEvent } from '@machines/buildProjectMachine'
 import { appStore } from '@store/useAppStore'
 import { invoke } from '@tauri-apps/api/core'
 import { confirm } from '@tauri-apps/plugin-dialog'
-import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
+import { exists, mkdir, remove, stat, writeTextFile } from '@tauri-apps/plugin-fs'
 import { Breadcrumb } from '@utils/types'
 
 import { logger } from '@/utils/logger'
 
 import { FootageFile } from './useCameraAutoRemap'
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+// Helper to add timeout to promises
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms))
+  ])
+}
 
 interface CreateProjectParams {
   title: string
@@ -29,7 +45,10 @@ export function useCreateProjectWithMachine() {
     username,
     send
   }: CreateProjectParams) => {
+    console.log('[DEBUG] createProject called with:', { title, filesCount: files.length, selectedFolder, numCameras })
+
     // Step 1: Validate inputs
+    console.log('[DEBUG] Step 1: Validating inputs...')
     if (!selectedFolder) {
       send({ type: 'VALIDATION_ERROR', error: 'Please select a destination folder.' })
       return
@@ -41,9 +60,11 @@ export function useCreateProjectWithMachine() {
     }
 
     if (files.length === 0) {
+      console.log('[DEBUG] No files - showing confirm dialog...')
       const confirmNoFiles = await confirm(
         'No files have been added to the drag and drop section. Are you sure you want to create the project?'
       )
+      console.log('[DEBUG] Confirm dialog result:', confirmNoFiles)
       if (!confirmNoFiles) {
         send({ type: 'VALIDATION_ERROR', error: 'Project creation cancelled' })
         return
@@ -51,7 +72,9 @@ export function useCreateProjectWithMachine() {
     }
 
     const projectFolder = `${selectedFolder}/${title.trim()}`
+    console.log('[DEBUG] Project folder:', projectFolder)
 
+    console.log('[DEBUG] Checking if folder exists...')
     if (await exists(projectFolder)) {
       const overwrite = await confirm(
         `The folder "${projectFolder}" already exists. Do you want to overwrite it?`
@@ -64,9 +87,11 @@ export function useCreateProjectWithMachine() {
     }
 
     // Validation passed
+    console.log('[DEBUG] Validation passed, sending VALIDATION_SUCCESS')
     send({ type: 'VALIDATION_SUCCESS', projectFolder })
 
     // Step 2: Create folder structure
+    console.log('[DEBUG] Step 2: Creating folder structure...')
     try {
       await mkdir(projectFolder, { recursive: true })
 
@@ -81,6 +106,7 @@ export function useCreateProjectWithMachine() {
         mkdir(`${projectFolder}/Scripts`, { recursive: true })
       ])
 
+      console.log('[DEBUG] Folders created, sending FOLDERS_CREATED')
       send({ type: 'FOLDERS_CREATED' })
     } catch (mkdirError) {
       logger.error('Error creating folders:', mkdirError)
@@ -89,6 +115,7 @@ export function useCreateProjectWithMachine() {
     }
 
     // Step 3: Create and save breadcrumbs
+    console.log('[DEBUG] Step 3: Creating breadcrumbs...')
     try {
       const now = new Date()
       const formattedDateTime = now.toISOString()
@@ -124,15 +151,66 @@ export function useCreateProjectWithMachine() {
         JSON.stringify(projectData, null, 2)
       )
 
+      console.log('[DEBUG] Breadcrumbs saved, sending BREADCRUMBS_SAVED')
       send({ type: 'BREADCRUMBS_SAVED' })
 
       // Step 4: Move files
+      console.log('[DEBUG] Step 4: Moving files...')
       const filesToMove: [string, number][] = files.map(({ file, camera }) => [
         file.path,
         camera
       ])
 
+      // Calculate total size of files to copy (with 5s timeout to prevent hanging)
+      console.log('[DEBUG] Calculating file sizes...')
+      let totalBytes = 0
       try {
+        const fileSizes = await withTimeout(
+          Promise.all(
+            files.map(async ({ file }) => {
+              const metadata = await stat(file.path)
+              return metadata.size
+            })
+          ),
+          5000,
+          'Timeout calculating file sizes'
+        )
+        totalBytes = fileSizes.reduce((sum, size) => sum + size, 0)
+        console.log('[DEBUG] Total file size:', totalBytes)
+      } catch (sizeError) {
+        console.log('[DEBUG] Failed to calculate file sizes:', sizeError)
+        logger.warn('Failed to calculate total file size:', sizeError)
+        // Continue anyway - the copy will fail if there's not enough space
+      }
+
+      // Check disk space before starting copy (with 5s timeout)
+      console.log('[DEBUG] Checking disk space, totalBytes:', totalBytes)
+      if (totalBytes > 0) {
+        try {
+          const hasSpace = await withTimeout(
+            invoke<boolean>('check_disk_space', {
+              path: projectFolder,
+              requiredBytes: totalBytes
+            }),
+            5000,
+            'Timeout checking disk space'
+          )
+
+          if (!hasSpace) {
+            send({
+              type: 'COPY_ERROR',
+              error: `Insufficient disk space. Need ${formatBytes(totalBytes)} to copy files.`
+            })
+            return
+          }
+        } catch (spaceError) {
+          logger.warn('Failed to check disk space:', spaceError)
+          // Continue anyway - better to try and fail than to block on a check error
+        }
+      }
+
+      try {
+        console.log('[DEBUG] Calling move_files with', filesToMove.length, 'files')
         if (import.meta.env.DEV) {
           logger.log(
             'Starting move_files, expecting copy_progress and copy_complete events...'
@@ -144,6 +222,7 @@ export function useCreateProjectWithMachine() {
           files: filesToMove,
           baseDest: projectFolder
         })
+        console.log('[DEBUG] move_files completed')
         if (import.meta.env.DEV) {
           logger.log('move_files invoke completed')
         }

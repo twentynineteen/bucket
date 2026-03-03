@@ -24,6 +24,7 @@ export class BuildProjectPage {
   readonly successMessage: Locator
   readonly sanitizationWarning: Locator
   readonly trelloSection: Locator
+  readonly errorMessage: Locator
 
   constructor(page: Page) {
     this.page = page
@@ -48,6 +49,9 @@ export class BuildProjectPage {
     // Success state
     this.successMessage = page.getByText('Project Created Successfully!')
     this.trelloSection = page.getByText('Trello')
+
+    // Error state
+    this.errorMessage = page.locator('text=/error|failed|failure/i')
 
     // Warnings
     this.sanitizationWarning = page.getByText(/characters were changed/i)
@@ -169,6 +173,39 @@ export class BuildProjectPage {
     } catch {
       return false
     }
+  }
+
+  /**
+   * Check if error state is shown
+   */
+  async isErrorVisible(): Promise<boolean> {
+    try {
+      return await this.errorMessage.isVisible()
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Get the error message text
+   */
+  async getErrorText(): Promise<string | null> {
+    try {
+      if (await this.errorMessage.isVisible()) {
+        return await this.errorMessage.textContent()
+      }
+    } catch {
+      // Error element may not exist
+    }
+    return null
+  }
+
+  /**
+   * Wait for error state to be visible
+   * @param timeout Maximum time to wait in ms (default 30 seconds)
+   */
+  async waitForError(timeout: number = 30000): Promise<void> {
+    await expect(this.errorMessage).toBeVisible({ timeout })
   }
 
   /**

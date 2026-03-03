@@ -18,6 +18,7 @@ export function useBuildProjectMachine() {
 
     let unlistenProgress: (() => void) | null = null
     let unlistenComplete: (() => void) | null = null
+    let unlistenError: (() => void) | null = null
     let isMounted = true
 
     const setupListeners = async () => {
@@ -29,9 +30,15 @@ export function useBuildProjectMachine() {
         })
 
         // Listen for copy complete events
-        unlistenComplete = await listen<string[]>('copy_complete', () => {
+        unlistenComplete = await listen<string[]>('copy_complete', (event) => {
           if (!isMounted) return
-          send({ type: 'COPY_COMPLETE' })
+          send({ type: 'COPY_COMPLETE', movedFiles: event.payload })
+        })
+
+        // Listen for copy error events (e.g., timeout errors from backend)
+        unlistenError = await listen<string>('copy_error', (event) => {
+          if (!isMounted) return
+          send({ type: 'COPY_ERROR', error: event.payload })
         })
       } catch {
         // Silently handle listener setup errors
@@ -48,6 +55,7 @@ export function useBuildProjectMachine() {
         try {
           if (unlistenProgress) unlistenProgress()
           if (unlistenComplete) unlistenComplete()
+          if (unlistenError) unlistenError()
         } catch {
           // Silently handle cleanup errors
         }
@@ -78,7 +86,10 @@ export function useBuildProjectMachine() {
       // Context accessors
       copyProgress: state.context.copyProgress,
       error: state.context.error,
-      projectFolder: state.context.projectFolder
+      projectFolder: state.context.projectFolder,
+      // File tracking for error display
+      expectedFiles: state.context.files,
+      movedFiles: state.context.movedFiles
     }),
     [state, send]
   )
