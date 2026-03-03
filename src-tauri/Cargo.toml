@@ -55,7 +55,6 @@ base64ct = "1.6.0"
 uuid = { version = "1.0", features = ["v4"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 regex = "1.10"
-glib = "0.20.0"
 
 
 
@@ -82,4 +81,3 @@ debug-assertions = false
 
 [dev-dependencies]
 tempfile = "3.8"
-glib = "0.20.0"
