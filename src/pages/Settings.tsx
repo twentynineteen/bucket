@@ -40,7 +40,7 @@ const SettingsPageContent: React.FC = () => {
   // Scroll to section when hash changes, or to top when no hash
   useEffect(() => {
     // Small delay to ensure the page is rendered
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       if (location.hash) {
         const elementId = location.hash.slice(1) // Remove the '#'
         const element = document.getElementById(elementId)
@@ -52,6 +52,9 @@ const SettingsPageContent: React.FC = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     }, 100)
+
+    // Cleanup timeout on unmount to prevent "window is not defined" in tests
+    return () => clearTimeout(timeoutId)
   }, [location.hash, location.key])
 
   // Local state for form inputs (separate from cached data)
