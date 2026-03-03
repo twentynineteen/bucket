@@ -32,6 +32,18 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   writeTextFile: vi.fn()
 }))
 
+// Mock Tauri event API - simulate copy_complete firing immediately
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn((event: string, callback: (event: { payload: string[] }) => void) => {
+    // Simulate the copy_complete event firing after a brief delay
+    if (event === 'copy_complete') {
+      setTimeout(() => callback({ payload: [] }), 10)
+    }
+    // Return an unlisten function
+    return Promise.resolve(() => {})
+  })
+}))
+
 // Mock crypto.randomUUID
 vi.stubGlobal('crypto', {
   randomUUID: vi.fn(() => 'test-uuid-1234')
