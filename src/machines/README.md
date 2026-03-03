@@ -100,7 +100,7 @@ To visualize the state machine in development:
 
 ## Migration Notes
 
-- **Old hooks still present** for other pages (Baker, UploadSprout, etc.)
-- `BuildProject.old.tsx` contains the previous implementation
 - Can gradually migrate other workflows to XState if beneficial
-- Keep `useCopyProgress` for backward compatibility with other pages
+- The new `src/features/build-project/` module contains the XState v5 actor pattern implementation
+  - `machine/buildProjectMachine.ts` - Complete workflow with fromPromise actors
+  - `hooks/useBuildProject.ts` - Comprehensive hook for use in components

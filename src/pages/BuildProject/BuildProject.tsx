@@ -1,12 +1,12 @@
 import { useTrelloApiKeys } from '@hooks/useApiKeys'
-import { useBuildProjectMachine } from '@hooks/useBuildProjectMachine'
-import { useCreateProjectWithMachine } from '@hooks/useCreateProjectWithMachine'
-import { usePostProjectCompletion } from '@hooks/usePostProjectCompletion'
+import { invoke } from '@tauri-apps/api/core'
 import { createNamespacedLogger } from '@utils/logger'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 
+import { useBuildProject } from '@/features/build-project/hooks'
 import { useBreadcrumb, useCameraAutoRemap, useProjectState, useUsername } from '@/hooks'
+import { logger } from '@/utils/logger'
 
 import { AddFootageStep } from './AddFootageStep'
 import { CreateProjectStep } from './CreateProjectStep'
@@ -14,7 +14,7 @@ import ProgressBar from './ProgressBar'
 import { ProjectConfigurationStep } from './ProjectConfigurationStep'
 import { SuccessSection } from './SuccessSection'
 
-const logger = createNamespacedLogger('BuildProject')
+const componentLogger = createNamespacedLogger('BuildProject')
 
 // The BuildProject component is used for uploading footage from camera cards
 // Footage can be marked with the relevant camera in order to place in the correct folder.
@@ -37,22 +37,23 @@ const BuildProject: React.FC = () => {
     clearAllFields
   } = useProjectState()
 
-  // State machine
-  const machine = useBuildProjectMachine()
+  // New modular state machine
   const {
-    state,
-    send,
-    isShowingSuccess,
-    isCreatingTemplate,
-    isIdle,
-    isLoading,
-    copyProgress,
-    error,
-    projectFolder
-  } = machine
+    context,
+    progress,
+    startBuild,
+    reset,
+    isBuilding,
+    isComplete,
+    hasError,
+    isIdle
+  } = useBuildProject()
 
-  // Use state machine's isShowingSuccess for displaying success section
-  const showSuccess = isShowingSuccess
+  // Derive showSuccess from machine state
+  const showSuccess = isComplete
+
+  // Track if dialog has been shown for current success
+  const dialogShown = useRef(false)
 
   // Page label - shadcn breadcrumb component (memoized to prevent infinite re-renders)
   const breadcrumbItems = useMemo(
@@ -70,22 +71,43 @@ const BuildProject: React.FC = () => {
   // Auto-remap camera assignments when numCameras changes
   useCameraAutoRemap(files, numCameras, setFiles)
 
-  // Handle post-completion tasks (premiere template + dialog)
-  usePostProjectCompletion({
-    isCreatingTemplate,
-    isShowingSuccess,
-    projectFolder,
-    projectTitle: title,
-    send,
-    isIdle
-  })
+  // Show confirmation dialog when build completes successfully
+  useEffect(() => {
+    if (!isComplete || dialogShown.current || !context.projectFolder) return
 
-  const { createProject } = useCreateProjectWithMachine()
+    dialogShown.current = true
+
+    const showDialog = async () => {
+      try {
+        await invoke('show_confirmation_dialog', {
+          message: 'Do you want to open the project folder now?',
+          title: 'Transfer complete!',
+          destination: context.projectFolder
+        })
+
+        if (import.meta.env.DEV) {
+          logger.log('Dialog completed')
+        }
+      } catch (error) {
+        logger.error('Error showing dialog:', error)
+        // Dialog errors are non-critical, just log them
+      }
+    }
+
+    showDialog()
+  }, [isComplete, context.projectFolder])
+
+  // Reset dialog flag when machine returns to idle state
+  useEffect(() => {
+    if (isIdle) {
+      dialogShown.current = false
+    }
+  }, [isIdle])
 
   const handleCreateProject = () => {
     if (import.meta.env.DEV) {
-      logger.log('Create Project clicked!')
-      logger.log('Parameters:', {
+      componentLogger.log('Create Project clicked!')
+      componentLogger.log('Parameters:', {
         title,
         files: files.length,
         selectedFolder,
@@ -93,33 +115,34 @@ const BuildProject: React.FC = () => {
       })
     }
 
-    // Execute the project creation workflow
-    // createProject will send events to the machine as it progresses
-    createProject({
-      title,
-      files,
-      selectedFolder,
+    // Execute the project creation workflow using new modular architecture
+    startBuild({
+      projectName: title,
+      destinationPath: selectedFolder,
+      files: files.map((f) => ({
+        file: { path: f.file.path, name: f.file.name },
+        camera: f.camera
+      })),
       numCameras,
-      username: username.data || 'Unknown User',
-      send
+      username: username.data || 'Unknown User'
     })
   }
 
   // Clears all fields and resets machine
   const clearFields = () => {
     clearAllFields()
-    send({ type: 'RESET' })
+    reset()
   }
 
   // Show error toasts
   useEffect(() => {
-    if (error) {
-      toast.error(error, {
+    if (hasError && context.error) {
+      toast.error(context.error, {
         duration: 5000,
         description: 'Please try again or contact support if the issue persists.'
       })
     }
-  }, [error])
+  }, [hasError, context.error])
 
   return (
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
@@ -164,22 +187,19 @@ const BuildProject: React.FC = () => {
             title={title}
             selectedFolder={selectedFolder}
             onCreateProject={handleCreateProject}
-            isLoading={isLoading}
+            isLoading={isBuilding}
           />
         </div>
 
         {/* Progress Bar */}
         <div className="mt-4 px-6">
-          <ProgressBar
-            progress={copyProgress}
-            completed={state.matches('showingSuccess') || state.matches('completed')}
-          />
+          <ProgressBar progress={progress.percentage} completed={isComplete} />
         </div>
 
         {/* Success Message & Post-completion Actions */}
         <SuccessSection
           showSuccess={showSuccess}
-          selectedFolder={projectFolder || selectedFolder}
+          selectedFolder={context.projectFolder || selectedFolder}
           title={title}
           trelloApiKey={apiKey}
           trelloApiToken={apiToken}
