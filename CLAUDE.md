@@ -124,6 +124,34 @@ All file operations go through Tauri backend with progress tracking. Key pattern
 
 ### Recent Features
 
+#### Phase 010: BuildProject Modular Architecture (Branch: refactor/buildproject-refactor)
+
+- **Status**: Implementation Complete
+- **Summary**: Complete modular refactor of the BuildProject workflow, replacing monolithic components with a stage-based architecture powered by XState v5 for predictable state management
+- **Key Features**:
+  - **Stage-Based Architecture**: Five distinct stages (validation, folders, template, breadcrumbs, file-transfer) with clear boundaries
+  - **XState v5 State Machine**: Declarative workflow orchestration with fromPromise actors for async operations
+  - **Real-Time Progress Tracking**: Granular progress updates via Tauri events during file operations
+  - **Cancellation Support**: User can cancel long-running operations with proper cleanup via Rust watch channels
+  - **Unified Error Handling**: Centralized error types with stage-specific error context
+  - **Operation Registry**: Backend registry tracking active operations for coordinated cancellation
+- **Architecture**:
+  - **Types**: [src/features/build-project/types/](src/features/build-project/types/) - Stage definitions, events, and error types
+  - **Stages**: [src/features/build-project/stages/](src/features/build-project/stages/) - Individual stage implementations (validation, folders, template, breadcrumbs, file-transfer)
+  - **Machine**: [src/features/build-project/machine/buildProjectMachine.ts](src/features/build-project/machine/buildProjectMachine.ts) - XState v5 state machine orchestrating the workflow
+  - **Hooks**: [src/features/build-project/hooks/](src/features/build-project/hooks/) - React hooks (useFileTransfer, useStageExecution, useBuildProject)
+  - **Backend**: [src-tauri/src/build_project/](src-tauri/src/build_project/) - OperationRegistry for tracking operations, cancellation commands
+- **Key Patterns**:
+  - XState v5 with `fromPromise` actors for async stage execution
+  - Stage-based workflow with explicit transitions and error boundaries
+  - Cancellation via Rust `tokio::sync::watch` channels for cooperative shutdown
+  - Progress events emitted through Tauri's event system for real-time UI updates
+- **Benefits**:
+  - Improved testability with isolated stage logic
+  - Better error recovery with stage-specific rollback potential
+  - Cleaner separation of concerns between UI, state management, and backend
+  - Predictable state transitions with XState's formal state machine model
+
 #### Phase 009: Multi-Theme System (Current - Branch: update/performance)
 
 - **Status**: Implementation Complete
