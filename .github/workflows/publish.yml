@@ -4,8 +4,18 @@ on:
   push:
     branches:
       - release
+  workflow_dispatch:
+    inputs:
+      notarize:
+        description: 'Run notarization (uses expensive macOS minutes)'
+        required: false
+        default: false
+        type: boolean
 
 # This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
+# NOTE: Notarization is disabled by default to save GitHub Actions minutes.
+# Use local notarization with: ./scripts/notarize-local.sh
+# Or trigger manually with notarize=true for full GitHub-based notarization.
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -180,8 +190,119 @@ jobs:
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           security delete-keychain $KEYCHAIN_PATH || true
 
+  # Fast release job (no notarization) - runs by default
+  release:
+    name: Create Release (No Notarization)
+    if: ${{ github.event.inputs.notarize != 'true' }}
+    needs: [prepare, build-tauri]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Display artifact structure
+        run: ls -R ./artifacts
+
+      - name: Rename updater artifacts to include architecture
+        run: |
+          # Rename updater files to include architecture to avoid conflicts
+          for dir in ./artifacts/updater-*; do
+            arch=$(basename "$dir" | sed 's/updater-//')
+            for file in "$dir"/*.app.tar.gz; do
+              if [ -f "$file" ]; then
+                newname="${file%.app.tar.gz}_${arch}.app.tar.gz"
+                mv "$file" "$newname"
+              fi
+            done
+            for file in "$dir"/*.app.tar.gz.sig; do
+              if [ -f "$file" ]; then
+                newname="${file%.app.tar.gz.sig}_${arch}.app.tar.gz.sig"
+                mv "$file" "$newname"
+              fi
+            done
+          done
+          echo "Renamed updater artifacts:"
+          ls -la ./artifacts/updater-*
+
+      - name: Generate latest.json for Tauri updater
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app-version }}
+          RELEASE_NOTES: ${{ needs.prepare.outputs.release-notes }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Read signature file contents (files already renamed with architecture suffix)
+          AARCH64_SIG=$(cat ./artifacts/updater-aarch64-apple-darwin/*.app.tar.gz.sig)
+          X86_64_SIG=$(cat ./artifacts/updater-x86_64-apple-darwin/*.app.tar.gz.sig)
+
+          # Get updater artifact filenames
+          AARCH64_FILE=$(basename ./artifacts/updater-aarch64-apple-darwin/*.app.tar.gz)
+          X86_64_FILE=$(basename ./artifacts/updater-x86_64-apple-darwin/*.app.tar.gz)
+
+          # Generate latest.json using jq for safe JSON encoding
+          jq -n \
+            --arg version "$APP_VERSION" \
+            --arg notes "$RELEASE_NOTES" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg aarch64_url "https://github.com/${REPO}/releases/download/app-v${APP_VERSION}/${AARCH64_FILE}" \
+            --arg aarch64_sig "$AARCH64_SIG" \
+            --arg x86_64_url "https://github.com/${REPO}/releases/download/app-v${APP_VERSION}/${X86_64_FILE}" \
+            --arg x86_64_sig "$X86_64_SIG" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "darwin-aarch64": { url: $aarch64_url, signature: $aarch64_sig },
+                "darwin-x86_64": { url: $x86_64_url, signature: $x86_64_sig }
+              }
+            }' > latest.json
+
+          echo "Generated latest.json:"
+          cat latest.json
+
+      - name: Create GitHub Release (Draft - Needs Local Notarization)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-v${{ needs.prepare.outputs.app-version }}
+          name: v${{ needs.prepare.outputs.app-version }} (Unsigned - Notarize Locally)
+          body: |
+            ${{ needs.prepare.outputs.release-notes }}
+
+            ---
+            **Note:** These DMGs are signed but NOT notarized.
+            Run `./scripts/notarize-local.sh` to notarize before distributing.
+          draft: true
+          prerelease: false
+          files: |
+            ./artifacts/dmg-*/*.dmg
+            ./artifacts/updater-*/*.app.tar.gz
+            ./artifacts/updater-*/*.app.tar.gz.sig
+            latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare gh-pages directory
+        run: |
+          mkdir -p gh-pages
+          cp latest.json gh-pages/
+
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./gh-pages
+          force_orphan: true
+
+  # Full notarization job - only runs when explicitly requested
   notarize-and-release:
     name: Notarize and Release
+    if: ${{ github.event.inputs.notarize == 'true' }}
     needs: [prepare, build-tauri]
     runs-on: macos-14
     timeout-minutes: 120
@@ -240,13 +361,34 @@ jobs:
             echo "Notarization complete for: $dmg"
           done
 
+      - name: Rename updater artifacts to include architecture
+        run: |
+          # Rename updater files to include architecture to avoid conflicts
+          for dir in ./artifacts/updater-*; do
+            arch=$(basename "$dir" | sed 's/updater-//')
+            for file in "$dir"/*.app.tar.gz; do
+              if [ -f "$file" ]; then
+                newname="${file%.app.tar.gz}_${arch}.app.tar.gz"
+                mv "$file" "$newname"
+              fi
+            done
+            for file in "$dir"/*.app.tar.gz.sig; do
+              if [ -f "$file" ]; then
+                newname="${file%.app.tar.gz.sig}_${arch}.app.tar.gz.sig"
+                mv "$file" "$newname"
+              fi
+            done
+          done
+          echo "Renamed updater artifacts:"
+          ls -la ./artifacts/updater-*
+
       - name: Generate latest.json for Tauri updater
         env:
           APP_VERSION: ${{ needs.prepare.outputs.app-version }}
           RELEASE_NOTES: ${{ needs.prepare.outputs.release-notes }}
           REPO: ${{ github.repository }}
         run: |
-          # Read signature file contents
+          # Read signature file contents (files already renamed with architecture suffix)
           AARCH64_SIG=$(cat ./artifacts/updater-aarch64-apple-darwin/*.app.tar.gz.sig)
           X86_64_SIG=$(cat ./artifacts/updater-x86_64-apple-darwin/*.app.tar.gz.sig)
 

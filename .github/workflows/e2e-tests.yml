@@ -22,7 +22,7 @@ on:
 jobs:
   e2e-tests:
     name: E2E Tests
-    runs-on: macos-latest
+    runs-on: ubuntu-24.04  # Use Linux (10x cheaper than macOS)
     timeout-minutes: 30
 
     steps:
@@ -38,12 +38,12 @@ jobs:
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
-          path: ~/Library/Caches/ms-playwright
+          path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lockb') }}
           restore-keys: ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
-        run: bunx playwright install chromium
+        run: bunx playwright install --with-deps chromium
 
       # Dev server is started automatically by Playwright via webServer config
       - name: Run E2E tests (smoke)
@@ -84,7 +84,7 @@ jobs:
 
   e2e-large-files:
     name: E2E Large File Tests (250GB Simulation)
-    runs-on: macos-latest
+    runs-on: ubuntu-24.04  # Use Linux (10x cheaper than macOS)
     timeout-minutes: 90
     # Run only on push to main branches, not on every PR
     if: github.event_name == 'push'
@@ -102,12 +102,12 @@ jobs:
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
-          path: ~/Library/Caches/ms-playwright
+          path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lockb') }}
           restore-keys: ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
-        run: bunx playwright install chromium
+        run: bunx playwright install --with-deps chromium
 
       # Dev server is started automatically by Playwright via webServer config
       - name: Run large file E2E tests (realistic progress)

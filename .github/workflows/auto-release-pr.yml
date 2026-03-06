@@ -129,11 +129,11 @@ jobs:
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: failure()  # Only upload on failure to save storage
         with:
           name: playwright-report
           path: playwright-report/
-          retention-days: 30
+          retention-days: 7
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
@@ -162,6 +162,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Check if there are any commits between release and master
+          COMMIT_COUNT=$(git rev-list --count origin/release..origin/master 2>/dev/null || echo "0")
+          if [ "$COMMIT_COUNT" -eq 0 ]; then
+            echo "No commits between release and master - skipping PR creation"
+            echo "has_commits=false" >> $GITHUB_OUTPUT
+            echo "pr_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "has_commits=true" >> $GITHUB_OUTPUT
+
           # Check if there's already an open PR from master to release
           EXISTING_PR=$(gh pr list --base release --head master --state open --json number --jq '.[0].number')
           if [ -n "$EXISTING_PR" ]; then
@@ -195,15 +205,13 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
-        if: steps.check-pr.outputs.pr_exists == 'false'
+        if: steps.check-pr.outputs.pr_exists == 'false' && steps.check-pr.outputs.has_commits == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr create \
-            --base release \
-            --head master \
-            --title "Release v${{ needs.check-version-bump.outputs.new_version }}" \
-            --body "${{ steps.changelog.outputs.changelog }}
+          # Write PR body to file to avoid shell escaping issues with special characters
+          cat > /tmp/pr-body.md << 'PREOF'
+          ${{ steps.changelog.outputs.changelog }}
 
           ---
 
@@ -213,18 +221,30 @@ jobs:
           - E2E tests
           - Build verification
 
-          This PR was automatically created after version bump to v${{ needs.check-version-bump.outputs.new_version }} and successful test completion."
+          This PR was automatically created after version bump to v${{ needs.check-version-bump.outputs.new_version }} and successful test completion.
+          PREOF
+
+          gh pr create \
+            --base release \
+            --head master \
+            --title "Release v${{ needs.check-version-bump.outputs.new_version }}" \
+            --body-file /tmp/pr-body.md
 
       - name: Update existing PR
-        if: steps.check-pr.outputs.pr_exists == 'true'
+        if: steps.check-pr.outputs.pr_exists == 'true' && steps.check-pr.outputs.has_commits == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr comment ${{ steps.check-pr.outputs.pr_number }} \
-            --body "Updated to v${{ needs.check-version-bump.outputs.new_version }}
+          # Write comment body to file to avoid shell escaping issues
+          cat > /tmp/comment-body.md << 'COMMENTEOF'
+          Updated to v${{ needs.check-version-bump.outputs.new_version }}
 
           ${{ steps.changelog.outputs.changelog }}
 
           ---
 
-          **All tests passed successfully**"
+          **All tests passed successfully**
+          COMMENTEOF
+
+          gh pr comment ${{ steps.check-pr.outputs.pr_number }} \
+            --body-file /tmp/comment-body.md
