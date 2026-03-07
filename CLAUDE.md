@@ -235,7 +235,7 @@ All file operations go through Tauri backend with progress tracking. Key pattern
 
 ## Development Notes
 
-- **Main Branch**: `release` (use for PRs)
+- **Main Branch**: `main` (use for PRs)
 - **Package Manager**: Bun (used for all development and CI, replaces npm entirely)
 - **Platform**: Cross-platform desktop app, primary development on macOS
 - **Security**: Uses argon2 for password hashing, JWT for auth, Tauri stronghold for secure storage

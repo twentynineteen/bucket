@@ -6,7 +6,10 @@
  */
 
 import type { TranscriptHighlight } from '@/types/transcript'
-import { useCallback, useEffect, useState } from 'react'
+import { createNamespacedLogger } from '@utils/logger'
+import { useCallback, useState } from 'react'
+
+const logger = createNamespacedLogger('useHighlights')
 
 const STORAGE_KEY = 'video-lesson-highlights'
 
@@ -48,7 +51,7 @@ function loadHighlights(): TranscriptHighlight[] {
     if (!stored) return []
     return JSON.parse(stored) as TranscriptHighlight[]
   } catch (error) {
-    console.error('Failed to load highlights from localStorage:', error)
+    logger.error('Failed to load highlights from localStorage:', error)
     return []
   }
 }
@@ -60,7 +63,7 @@ function saveHighlights(highlights: TranscriptHighlight[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(highlights))
   } catch (error) {
-    console.error('Failed to save highlights to localStorage:', error)
+    logger.error('Failed to save highlights to localStorage:', error)
   }
 }
 
@@ -87,22 +90,14 @@ function saveHighlights(highlights: TranscriptHighlight[]): void {
  * removeHighlight(highlightId)
  */
 export function useHighlights(videoId: string | null): UseHighlightsReturn {
-  const [allHighlights, setAllHighlights] = useState<TranscriptHighlight[]>([])
-
-  // Load highlights from localStorage on mount
-  useEffect(() => {
-    setAllHighlights(loadHighlights())
-  }, [])
+  const [allHighlights, setAllHighlights] =
+    useState<TranscriptHighlight[]>(loadHighlights)
 
   // Filter highlights for current video
-  const highlights = videoId
-    ? allHighlights.filter((h) => h.videoId === videoId)
-    : []
+  const highlights = videoId ? allHighlights.filter((h) => h.videoId === videoId) : []
 
   const addHighlight = useCallback(
-    (
-      highlight: Omit<TranscriptHighlight, 'id' | 'createdAt'>
-    ): TranscriptHighlight => {
+    (highlight: Omit<TranscriptHighlight, 'id' | 'createdAt'>): TranscriptHighlight => {
       const newHighlight: TranscriptHighlight = {
         ...highlight,
         id: generateId(),

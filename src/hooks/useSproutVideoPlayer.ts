@@ -6,7 +6,10 @@
  */
 
 import type { SproutVideoPlayer } from '@/types/transcript'
+import { createNamespacedLogger } from '@utils/logger'
 import { useCallback, useEffect, useRef, useState } from 'react'
+
+const logger = createNamespacedLogger('useSproutVideoPlayer')
 
 declare global {
   interface Window {
@@ -85,16 +88,12 @@ export function useSproutVideoPlayer(
   useEffect(() => {
     if (!videoId) {
       playerRef.current = null
-      setIsReady(false)
-      setCurrentTime(0)
-      setDuration(0)
-      setIsPlaying(false)
       return
     }
 
     // Check if SV Player API is available
     if (typeof window.SV === 'undefined') {
-      console.error('SproutVideo Player API not loaded')
+      logger.error('SproutVideo Player API not loaded')
       return
     }
 
@@ -132,7 +131,7 @@ export function useSproutVideoPlayer(
       onComplete?.()
     })
 
-    // Cleanup on unmount or videoId change
+    // Reset state and unbind events on cleanup
     return () => {
       if (playerRef.current) {
         playerRef.current.unbind('ready')
@@ -142,6 +141,10 @@ export function useSproutVideoPlayer(
         playerRef.current.unbind('completed')
         playerRef.current = null
       }
+      setIsReady(false)
+      setCurrentTime(0)
+      setDuration(0)
+      setIsPlaying(false)
     }
   }, [videoId, onTimeUpdate, onReady, onComplete])
 

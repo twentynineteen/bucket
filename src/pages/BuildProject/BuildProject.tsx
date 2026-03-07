@@ -16,11 +16,10 @@ import { SuccessSection } from './SuccessSection'
 
 const logger = createNamespacedLogger('BuildProject')
 
-// The BuildProject component is used for uploading footage from camera cards
-// Footage can be marked with the relevant camera in order to place in the correct folder.
+// Upload footage from camera cards and assign each file to the correct camera folder
 
 const BuildProject: React.FC = () => {
-  // Project state and business logic
+  // Manage project state and business logic
   const {
     title,
     numCameras,
@@ -37,7 +36,7 @@ const BuildProject: React.FC = () => {
     clearAllFields
   } = useProjectState()
 
-  // State machine
+  // Track workflow state via state machine
   const machine = useBuildProjectMachine()
   const {
     state,
@@ -51,10 +50,10 @@ const BuildProject: React.FC = () => {
     projectFolder
   } = machine
 
-  // Use state machine's isShowingSuccess for displaying success section
+  // Derive success visibility from state machine
   const showSuccess = isShowingSuccess
 
-  // Page label - shadcn breadcrumb component (memoized to prevent infinite re-renders)
+  // Set breadcrumb navigation (memoized to prevent infinite re-renders)
   const breadcrumbItems = useMemo(
     () => [
       { label: 'Ingest footage', href: '/ingest/build' },
@@ -70,7 +69,7 @@ const BuildProject: React.FC = () => {
   // Auto-remap camera assignments when numCameras changes
   useCameraAutoRemap(files, numCameras, setFiles)
 
-  // Handle post-completion tasks (premiere template + dialog)
+  // Run post-completion tasks (Premiere template + dialog)
   usePostProjectCompletion({
     isCreatingTemplate,
     isShowingSuccess,
@@ -93,8 +92,7 @@ const BuildProject: React.FC = () => {
       })
     }
 
-    // Execute the project creation workflow
-    // createProject will send events to the machine as it progresses
+    // Execute project creation workflow (sends events to the machine as it progresses)
     createProject({
       title,
       files,
@@ -105,13 +103,13 @@ const BuildProject: React.FC = () => {
     })
   }
 
-  // Clears all fields and resets machine
+  // Clear all fields and reset machine
   const clearFields = () => {
     clearAllFields()
     send({ type: 'RESET' })
   }
 
-  // Show error toasts
+  // Display error toasts when errors occur
   useEffect(() => {
     if (error) {
       toast.error(error, {
