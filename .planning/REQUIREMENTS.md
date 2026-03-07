@@ -1,7 +1,7 @@
 # Requirements: Bucket Deep Module Refactor
 
 **Defined:** 2026-03-07
-**Core Value:** Every feature module has a simple public interface that fully describes its capabilities — nothing reaches past the boundary, and contract tests lock down the behavior.
+**Core Value:** Every feature module has a simple public interface that fully describes its capabilities -- nothing reaches past the boundary, and contract tests lock down the behavior.
 
 ## v1 Requirements
 
@@ -18,7 +18,7 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 ### Shared Infrastructure
 
 - [ ] **SHRD-01**: User can import shared hooks from `@shared/hooks` barrel export only
-- [ ] **SHRD-02**: User can import shared UI primitives from `@shared/ui/*` (no barrel for UI — direct imports)
+- [ ] **SHRD-02**: User can import shared UI primitives from `@shared/ui/*` (no barrel for UI -- direct imports)
 - [ ] **SHRD-03**: User can import global stores from `@shared/store` barrel export
 - [ ] **SHRD-04**: User can import query infrastructure from `@shared/lib` barrel export
 - [ ] **SHRD-05**: User can import services from `@shared/services` barrel export
@@ -116,7 +116,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | Rust backend restructuring | Already has reasonable module boundaries |
 | Performance optimization | Separate concern, not part of structural refactor |
 | Auth security hardening | Important but separate milestone |
-| Store decomposition | Behavioral change — defer until after structural migration stabilizes |
+| Store decomposition | Behavioral change -- defer until after structural migration stabilizes |
 | Mobile/web support | Desktop-only app, out of scope |
 
 ## Traceability
@@ -125,59 +125,59 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TOOL-01 | — | Pending |
-| TOOL-02 | — | Pending |
-| TOOL-03 | — | Pending |
-| TOOL-04 | — | Pending |
-| TOOL-05 | — | Pending |
-| SHRD-01 | — | Pending |
-| SHRD-02 | — | Pending |
-| SHRD-03 | — | Pending |
-| SHRD-04 | — | Pending |
-| SHRD-05 | — | Pending |
-| SHRD-06 | — | Pending |
-| SHRD-07 | — | Pending |
-| SHRD-08 | — | Pending |
-| SHRD-09 | — | Pending |
-| AUTH-01 | — | Pending |
-| AUTH-02 | — | Pending |
-| AUTH-03 | — | Pending |
-| TREL-01 | — | Pending |
-| TREL-02 | — | Pending |
-| TREL-03 | — | Pending |
-| PREM-01 | — | Pending |
-| PREM-02 | — | Pending |
-| PREM-03 | — | Pending |
-| UPLD-01 | — | Pending |
-| UPLD-02 | — | Pending |
-| UPLD-03 | — | Pending |
-| STNG-01 | — | Pending |
-| STNG-02 | — | Pending |
-| STNG-03 | — | Pending |
-| STNG-04 | — | Pending |
-| AITL-01 | — | Pending |
-| AITL-02 | — | Pending |
-| AITL-03 | — | Pending |
-| BAKR-01 | — | Pending |
-| BAKR-02 | — | Pending |
-| BAKR-03 | — | Pending |
-| BLDP-01 | — | Pending |
-| BLDP-02 | — | Pending |
-| BLDP-03 | — | Pending |
-| BLDP-04 | — | Pending |
-| SHEL-01 | — | Pending |
-| SHEL-02 | — | Pending |
-| SHEL-03 | — | Pending |
-| DOCS-01 | — | Pending |
-| DOCS-02 | — | Pending |
-| DOCS-03 | — | Pending |
-| DOCS-04 | — | Pending |
+| TOOL-01 | Phase 1 | Pending |
+| TOOL-02 | Phase 1 | Pending |
+| TOOL-03 | Phase 1 | Pending |
+| TOOL-04 | Phase 1 | Pending |
+| TOOL-05 | Phase 1 | Pending |
+| SHRD-01 | Phase 2 | Pending |
+| SHRD-02 | Phase 2 | Pending |
+| SHRD-03 | Phase 2 | Pending |
+| SHRD-04 | Phase 2 | Pending |
+| SHRD-05 | Phase 2 | Pending |
+| SHRD-06 | Phase 2 | Pending |
+| SHRD-07 | Phase 2 | Pending |
+| SHRD-08 | Phase 2 | Pending |
+| SHRD-09 | Phase 2 | Pending |
+| AUTH-01 | Phase 3 | Pending |
+| AUTH-02 | Phase 3 | Pending |
+| AUTH-03 | Phase 3 | Pending |
+| TREL-01 | Phase 3 | Pending |
+| TREL-02 | Phase 3 | Pending |
+| TREL-03 | Phase 3 | Pending |
+| PREM-01 | Phase 3 | Pending |
+| PREM-02 | Phase 3 | Pending |
+| PREM-03 | Phase 3 | Pending |
+| UPLD-01 | Phase 4 | Pending |
+| UPLD-02 | Phase 4 | Pending |
+| UPLD-03 | Phase 4 | Pending |
+| STNG-01 | Phase 5 | Pending |
+| STNG-02 | Phase 5 | Pending |
+| STNG-03 | Phase 5 | Pending |
+| STNG-04 | Phase 5 | Pending |
+| AITL-01 | Phase 6 | Pending |
+| AITL-02 | Phase 6 | Pending |
+| AITL-03 | Phase 6 | Pending |
+| BAKR-01 | Phase 7 | Pending |
+| BAKR-02 | Phase 7 | Pending |
+| BAKR-03 | Phase 7 | Pending |
+| BLDP-01 | Phase 8 | Pending |
+| BLDP-02 | Phase 8 | Pending |
+| BLDP-03 | Phase 8 | Pending |
+| BLDP-04 | Phase 8 | Pending |
+| SHEL-01 | Phase 9 | Pending |
+| SHEL-02 | Phase 9 | Pending |
+| SHEL-03 | Phase 9 | Pending |
+| DOCS-01 | Phase 9 | Pending |
+| DOCS-02 | Phase 9 | Pending |
+| DOCS-03 | Phase 1 | Pending |
+| DOCS-04 | Phase 9 | Pending |
 
 **Coverage:**
 - v1 requirements: 47 total
-- Mapped to phases: 0
-- Unmapped: 47
+- Mapped to phases: 47
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-07*
-*Last updated: 2026-03-07 after initial definition*
+*Last updated: 2026-03-07 after roadmap creation*

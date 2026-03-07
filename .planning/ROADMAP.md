@@ -1,0 +1,174 @@
+# Roadmap: Bucket Deep Module Refactor
+
+## Overview
+
+Restructure Bucket's frontend from a flat, boundary-less codebase into deep feature modules with barrel exports, API layers, and contract tests. The migration follows dependency order: tooling and prep first, then shared infrastructure, then leaf features (Auth, Trello, Premiere), then mid-tier features (Upload, Settings, AI Tools), then the two most complex features (Baker, BuildProject), and finally wiring up the app shell with enforced boundaries. Each phase delivers independently verifiable modules that work through their public interface.
+
+## Phases
+
+**Phase Numbering:**
+- Integer phases (1, 2, 3): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+
+Decimal phases appear between their surrounding integers in numeric order.
+
+- [ ] **Phase 1: Tooling & Prep** - Install enforcement tools, resolve stale files, configure path aliases
+- [ ] **Phase 2: Shared Infrastructure** - Extract cross-cutting code into shared sub-modules with barrels and contract tests
+- [ ] **Phase 3: Leaf Feature Modules** - Migrate Auth, Trello, and Premiere into deep feature modules
+- [ ] **Phase 4: Upload Module** - Migrate Sprout, Posterframe, and Otter into a deep Upload feature module
+- [ ] **Phase 5: Settings Module** - Decompose Settings monolith and migrate into a deep feature module
+- [ ] **Phase 6: AI Tools Module** - Migrate ScriptFormatter and ExampleEmbeddings into a deep feature module
+- [ ] **Phase 7: Baker Module** - Migrate Baker (drive scanning, breadcrumbs) into a deep feature module
+- [ ] **Phase 8: BuildProject Module** - Migrate BuildProject (file ingest, camera assignment, XState) into a deep feature module
+- [ ] **Phase 9: App Shell & Enforcement** - Lazy routes, boundary enforcement promotion, JSDoc, alert replacement, final cleanup
+
+## Phase Details
+
+### Phase 1: Tooling & Prep
+**Goal**: Developer has enforcement tools configured and the codebase is clean of ambiguous/stale artifacts, ready for migration
+**Depends on**: Nothing (first phase)
+**Requirements**: TOOL-01, TOOL-02, TOOL-03, TOOL-04, TOOL-05, DOCS-03
+**Success Criteria** (what must be TRUE):
+  1. Running `bun run lint` shows eslint-plugin-boundaries warnings for any cross-module import violation
+  2. Running knip produces a baseline report of dead code, unused exports, and orphaned files with zero false-positive noise from intentional patterns
+  3. Running dependency-cruiser generates a visual dependency graph of the current codebase
+  4. No `.refactored` or `.old` files remain -- canonical versions are chosen and duplicates are deleted
+  5. Importing from `@features/*` and `@shared/*` paths resolves correctly in both TypeScript and Vite
+**Plans**: TBD
+
+Plans:
+- [ ] 01-01: TBD
+- [ ] 01-02: TBD
+
+### Phase 2: Shared Infrastructure
+**Goal**: All cross-cutting code lives in `src/shared/` sub-modules with barrel exports and contract tests, providing a stable foundation for feature modules
+**Depends on**: Phase 1
+**Requirements**: SHRD-01, SHRD-02, SHRD-03, SHRD-04, SHRD-05, SHRD-06, SHRD-07, SHRD-08, SHRD-09
+**Success Criteria** (what must be TRUE):
+  1. Importing shared hooks via `@shared/hooks` barrel works and no other import path reaches hook internals
+  2. Importing UI primitives via `@shared/ui/Button` (direct, no barrel) works and the ui directory has no barrel file
+  3. Importing stores, lib, services, utils, types, and constants each works through their respective `@shared/*` barrel exports
+  4. Contract tests exist for each shared sub-module and all pass, validating that public interfaces export the expected members with correct behavior
+  5. The Vite dev server starts without HMR degradation after shared module extraction
+**Plans**: TBD
+
+Plans:
+- [ ] 02-01: TBD
+- [ ] 02-02: TBD
+
+### Phase 3: Leaf Feature Modules
+**Goal**: Auth, Trello, and Premiere each exist as self-contained deep modules with barrel exports, API layers, and contract tests
+**Depends on**: Phase 2
+**Requirements**: AUTH-01, AUTH-02, AUTH-03, TREL-01, TREL-02, TREL-03, PREM-01, PREM-02, PREM-03
+**Success Criteria** (what must be TRUE):
+  1. Importing Auth components, hooks, and types works only through `@features/Auth` barrel -- no other path reaches Auth internals
+  2. Importing Trello components, hooks, and types works only through `@features/Trello` barrel -- Trello is its own module, not split across Baker/Upload
+  3. Importing Premiere components, hooks, and types works only through `@features/Premiere` barrel
+  4. Each module has an `api.ts` layer wrapping its Tauri commands -- no component directly calls `invoke()`
+  5. Contract tests for all three modules pass, validating public interface behavior (not just export existence)
+**Plans**: TBD
+
+Plans:
+- [ ] 03-01: TBD
+- [ ] 03-02: TBD
+- [ ] 03-03: TBD
+
+### Phase 4: Upload Module
+**Goal**: Sprout Video upload, Posterframe generation, and Otter transcription live in a unified Upload feature module with clear sub-feature boundaries
+**Depends on**: Phase 3
+**Requirements**: UPLD-01, UPLD-02, UPLD-03
+**Success Criteria** (what must be TRUE):
+  1. Importing Upload components, hooks, and types works only through `@features/Upload` barrel
+  2. An `api.ts` layer wraps all Sprout, Posterframe, and Otter Tauri commands -- no component directly calls `invoke()`
+  3. Contract tests validate the Upload module's public interface and all pass
+**Plans**: TBD
+
+Plans:
+- [ ] 04-01: TBD
+
+### Phase 5: Settings Module
+**Goal**: Settings is decomposed from a 523-line monolith into per-domain sub-components within a deep feature module
+**Depends on**: Phase 3
+**Requirements**: STNG-01, STNG-02, STNG-03, STNG-04
+**Success Criteria** (what must be TRUE):
+  1. Importing Settings components, hooks, and types works only through `@features/Settings` barrel
+  2. The Settings page renders from per-domain sub-components (API Keys, Appearance, Connected Apps, etc.) -- no single file exceeds 200 lines
+  3. An `api.ts` layer wraps all Settings-related Tauri commands
+  4. Contract tests validate the Settings module's public interface and all pass
+**Plans**: TBD
+
+Plans:
+- [ ] 05-01: TBD
+
+### Phase 6: AI Tools Module
+**Goal**: ScriptFormatter and ExampleEmbeddings live in a unified AITools feature module with clear sub-feature boundaries
+**Depends on**: Phase 2
+**Requirements**: AITL-01, AITL-02, AITL-03
+**Success Criteria** (what must be TRUE):
+  1. Importing AITools components, hooks, and types works only through `@features/AITools` barrel
+  2. An `api.ts` layer wraps all AI-related Tauri commands (RAG queries, embedding management)
+  3. Contract tests validate the AITools module's public interface and all pass
+**Plans**: TBD
+
+Plans:
+- [ ] 06-01: TBD
+
+### Phase 7: Baker Module
+**Goal**: Baker (drive scanning, breadcrumbs management, batch operations) lives in a deep feature module with its 7 hooks colocated
+**Depends on**: Phase 3 (depends on Trello module)
+**Requirements**: BAKR-01, BAKR-02, BAKR-03
+**Success Criteria** (what must be TRUE):
+  1. Importing Baker components, hooks, and types works only through `@features/Baker` barrel
+  2. An `api.ts` layer wraps all Baker-related Tauri commands -- Baker imports Trello through `@features/Trello` barrel, not internal paths
+  3. Contract tests validate the Baker module's public interface and all pass
+**Plans**: TBD
+
+Plans:
+- [ ] 07-01: TBD
+
+### Phase 8: BuildProject Module
+**Goal**: BuildProject (file ingest, camera assignment, project creation) lives in a deep feature module with its 14 hooks and XState machine colocated
+**Depends on**: Phase 3 (depends on Premiere module)
+**Requirements**: BLDP-01, BLDP-02, BLDP-03, BLDP-04
+**Success Criteria** (what must be TRUE):
+  1. Importing BuildProject components, hooks, and types works only through `@features/BuildProject` barrel
+  2. An `api.ts` layer wraps all BuildProject-related Tauri commands -- BuildProject imports Premiere through `@features/Premiere` barrel
+  3. The XState machine, its hook, and step components are colocated within the BuildProject module directory
+  4. Contract tests validate the BuildProject module's public interface and all pass
+**Plans**: TBD
+
+Plans:
+- [ ] 08-01: TBD
+
+### Phase 9: App Shell & Enforcement
+**Goal**: The app shell uses lazy-loaded routes, boundary rules are enforced as errors, old paths are removed, public APIs are documented, and all native alerts are replaced
+**Depends on**: Phases 4, 5, 6, 7, 8 (all feature modules complete)
+**Requirements**: SHEL-01, SHEL-02, SHEL-03, DOCS-01, DOCS-02, DOCS-04
+**Success Criteria** (what must be TRUE):
+  1. All feature routes load via React.lazy() -- navigating to any feature shows a loading boundary before the module chunk loads
+  2. ESLint boundary rules are set to error mode -- any cross-module import that bypasses a barrel fails the lint check
+  3. Old path aliases (`@hooks/*`, `@pages/*`, etc.) are removed from tsconfig and vite config -- importing from old paths produces a TypeScript error
+  4. Every public export in every barrel file has JSDoc describing its purpose and usage
+  5. Zero `alert()` or `confirm()` calls remain in the codebase -- all replaced with Sonner toasts and Radix dialogs
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01: TBD
+- [ ] 09-02: TBD
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (parallelizable) -> 9
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Tooling & Prep | 0/? | Not started | - |
+| 2. Shared Infrastructure | 0/? | Not started | - |
+| 3. Leaf Feature Modules | 0/? | Not started | - |
+| 4. Upload Module | 0/? | Not started | - |
+| 5. Settings Module | 0/? | Not started | - |
+| 6. AI Tools Module | 0/? | Not started | - |
+| 7. Baker Module | 0/? | Not started | - |
+| 8. BuildProject Module | 0/? | Not started | - |
+| 9. App Shell & Enforcement | 0/? | Not started | - |
