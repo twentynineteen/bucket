@@ -34,11 +34,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Running dependency-cruiser generates a visual dependency graph of the current codebase
   4. No `.refactored` or `.old` files remain -- canonical versions are chosen and duplicates are deleted
   5. Importing from `@features/*` and `@shared/*` paths resolves correctly in both TypeScript and Vite
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Path aliases, ESLint boundaries, stale file cleanup
+- [ ] 01-02-PLAN.md -- Knip baseline report, dependency-cruiser graph
 
 ### Phase 2: Shared Infrastructure
 **Goal**: All cross-cutting code lives in `src/shared/` sub-modules with barrel exports and contract tests, providing a stable foundation for feature modules
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Tooling & Prep | 0/? | Not started | - |
+| 1. Tooling & Prep | 0/2 | Planning complete | - |
 | 2. Shared Infrastructure | 0/? | Not started | - |
 | 3. Leaf Feature Modules | 0/? | Not started | - |
 | 4. Upload Module | 0/? | Not started | - |
