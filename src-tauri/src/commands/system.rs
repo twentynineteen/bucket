@@ -47,25 +47,28 @@ pub fn get_username() -> String {
 pub fn open_folder(path: String) {
     #[cfg(target_os = "macos")]
     {
-        Command::new("open")
+        let _ = Command::new("open")
             .arg(path)
             .spawn()
-            .expect("Failed to open folder");
+            .expect("Failed to open folder")
+            .wait();
     }
 
     #[cfg(target_os = "windows")]
     {
-        Command::new("explorer")
+        let _ = Command::new("explorer")
             .arg(path.replace("/", "\\"))
             .spawn()
-            .expect("Failed to open folder");
+            .expect("Failed to open folder")
+            .wait();
     }
 
     #[cfg(target_os = "linux")]
     {
-        Command::new("xdg-open")
+        let _ = Command::new("xdg-open")
             .arg(path)
             .spawn()
-            .expect("Failed to open folder");
+            .expect("Failed to open folder")
+            .wait();
     }
 }

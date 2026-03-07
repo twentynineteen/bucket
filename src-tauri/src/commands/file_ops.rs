@@ -46,7 +46,7 @@ pub fn move_files(
 
             // Copy file with overall progress tracking
             if let Err(e) = copy_file_with_overall_progress(
-                &src_path,
+                src_path,
                 &dest_file_path,
                 &app_handle,
                 index,

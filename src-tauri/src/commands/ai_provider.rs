@@ -1,8 +1,6 @@
-/**
- * AI Provider Command Handlers
- * Feature: 006-i-wish-to
- * Purpose: Generic provider connection validation (not Ollama-specific)
- */
+// AI Provider Command Handlers
+// Feature: 006-i-wish-to
+// Purpose: Generic provider connection validation (not Ollama-specific)
 
 use serde::{Deserialize, Serialize};
 use tauri::command;
