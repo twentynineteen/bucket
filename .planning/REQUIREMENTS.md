@@ -18,7 +18,7 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 ### Shared Infrastructure
 
 - [ ] **SHRD-01**: User can import shared hooks from `@shared/hooks` barrel export only
-- [ ] **SHRD-02**: User can import shared UI primitives from `@shared/ui/*` (no barrel for UI -- direct imports)
+- [x] **SHRD-02**: User can import shared UI primitives from `@shared/ui/*` (no barrel for UI -- direct imports)
 - [x] **SHRD-03**: User can import global stores from `@shared/store` barrel export
 - [x] **SHRD-04**: User can import query infrastructure from `@shared/lib` barrel export
 - [x] **SHRD-05**: User can import services from `@shared/services` barrel export
@@ -131,7 +131,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TOOL-04 | Phase 1 | Complete |
 | TOOL-05 | Phase 1 | Complete |
 | SHRD-01 | Phase 2 | Pending |
-| SHRD-02 | Phase 2 | Pending |
+| SHRD-02 | Phase 2 | Complete |
 | SHRD-03 | Phase 2 | Complete |
 | SHRD-04 | Phase 2 | Complete |
 | SHRD-05 | Phase 2 | Complete |
