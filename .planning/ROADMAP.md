@@ -50,11 +50,13 @@ Plans:
   3. Importing stores, lib, services, utils, types, and constants each works through their respective `@shared/*` barrel exports
   4. Contract tests exist for each shared sub-module and all pass, validating that public interfaces export the expected members with correct behavior
   5. The Vite dev server starts without HMR degradation after shared module extraction
-**Plans**: TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md -- Move lib, constants, types, utils to shared with barrels and contract tests
+- [ ] 02-02-PLAN.md -- Move store and services to shared with barrels and contract tests
+- [ ] 02-03-PLAN.md -- Move UI primitives, theme system, layout to shared/ui with direct imports
+- [ ] 02-04-PLAN.md -- Move shared hooks, tag feature hooks, final verification
 
 ### Phase 3: Leaf Feature Modules
 **Goal**: Auth, Trello, and Premiere each exist as self-contained deep modules with barrel exports, API layers, and contract tests
@@ -164,7 +166,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Tooling & Prep | 1/2 | In progress | - |
-| 2. Shared Infrastructure | 0/? | Not started | - |
+| 2. Shared Infrastructure | 0/4 | Not started | - |
 | 3. Leaf Feature Modules | 0/? | Not started | - |
 | 4. Upload Module | 0/? | Not started | - |
 | 5. Settings Module | 0/? | Not started | - |
