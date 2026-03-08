@@ -21,6 +21,7 @@
 //   prettierConfig
 // )
 
+import boundaries from 'eslint-plugin-boundaries'
 import js from '@eslint/js'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
@@ -51,6 +52,70 @@ export default tseslint.config(
       complexity: ['warn', { max: 15 }], // Target: 10, current max: 40
       'max-depth': ['warn', { max: 5 }], // Target: 4, current max: 8
       'max-params': ['warn', { max: 6 }] // Target: 5, current max: 13
+    }
+  },
+  // Module boundary enforcement (eslint-plugin-boundaries)
+  {
+    files: ['**/*.{ts,tsx}'],
+    plugins: {
+      boundaries
+    },
+    settings: {
+      'boundaries/elements': [
+        {
+          type: 'feature',
+          pattern: ['src/features/*'],
+          capture: ['featureName']
+        },
+        {
+          type: 'shared',
+          pattern: ['src/shared/*'],
+          capture: ['sharedModule']
+        },
+        {
+          type: 'legacy',
+          pattern: [
+            'src/pages/*',
+            'src/hooks/*',
+            'src/components/*',
+            'src/store/*',
+            'src/utils/*',
+            'src/constants/*',
+            'src/services/*',
+            'src/machines/*',
+            'src/context/*',
+            'src/lib/*',
+            'src/types/*'
+          ]
+        }
+      ],
+      'boundaries/ignore': ['**/*.test.*', '**/*.spec.*']
+    },
+    rules: {
+      'boundaries/element-types': [
+        'warn',
+        {
+          default: 'allow',
+          rules: [
+            {
+              from: ['feature'],
+              allow: ['shared']
+            },
+            {
+              // Features can import other features -- barrel-only restriction
+              // will be refined when actual feature modules exist in Phase 3
+              from: ['feature'],
+              allow: [['feature', { featureName: '!${featureName}' }]]
+            },
+            {
+              from: ['shared'],
+              disallow: ['feature']
+            }
+          ]
+        }
+      ],
+      'boundaries/no-unknown-files': ['warn'],
+      'boundaries/no-unknown': ['warn']
     }
   }
 )

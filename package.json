@@ -30,7 +30,8 @@
     "test:e2e:report": "playwright show-report playwright-report",
     "version:patch": "node scripts/bump-version.js patch",
     "version:minor": "node scripts/bump-version.js minor",
-    "version:major": "node scripts/bump-version.js major"
+    "version:major": "node scripts/bump-version.js major",
+    "knip": "knip"
   },
   "license": "UNLICENSED",
   "devDependencies": {
@@ -63,10 +64,12 @@
     "depcheck": "^1.4.7",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-boundaries": "^5.4.0",
     "eslint-plugin-react-hooks": "^7.0.0",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.4.0",
     "jsdom": "^27.0.0",
+    "knip": "^5.86.0",
     "lightningcss": "^1.30.2",
     "msw": "^2.11.5",
     "npm-check-updates": "^19.1.1",
