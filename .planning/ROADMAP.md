@@ -38,7 +38,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md -- Path aliases, ESLint boundaries, stale file cleanup
-- [ ] 01-02-PLAN.md -- Knip baseline report, dependency-cruiser graph
+- [x] 01-02-PLAN.md -- Knip baseline report, dependency-cruiser graph
 
 ### Phase 2: Shared Infrastructure
 **Goal**: All cross-cutting code lives in `src/shared/` sub-modules with barrel exports and contract tests, providing a stable foundation for feature modules
@@ -53,8 +53,8 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Move lib, constants, types, utils to shared with barrels and contract tests
-- [ ] 02-02-PLAN.md -- Move store and services to shared with barrels and contract tests
+- [x] 02-01-PLAN.md -- Move lib, constants, types, utils to shared with barrels and contract tests
+- [x] 02-02-PLAN.md -- Move store and services to shared with barrels and contract tests
 - [ ] 02-03-PLAN.md -- Move UI primitives, theme system, layout to shared/ui with direct imports
 - [ ] 02-04-PLAN.md -- Move shared hooks, tag feature hooks, final verification
 
@@ -165,8 +165,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Tooling & Prep | 1/2 | In progress | - |
-| 2. Shared Infrastructure | 0/4 | Not started | - |
+| 1. Tooling & Prep | 2/2 | Complete | 2026-03-08 |
+| 2. Shared Infrastructure | 2/4 | In progress | - |
 | 3. Leaf Feature Modules | 0/? | Not started | - |
 | 4. Upload Module | 0/? | Not started | - |
 | 5. Settings Module | 0/? | Not started | - |
