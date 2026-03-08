@@ -10,8 +10,8 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 ### Tooling & Prep
 
 - [x] **TOOL-01**: User can run ESLint and see boundary violation warnings for cross-module imports
-- [ ] **TOOL-02**: User can run knip and see a report of dead code, unused exports, and orphaned files
-- [ ] **TOOL-03**: User can run dependency-cruiser and see a dependency graph of the current codebase
+- [x] **TOOL-02**: User can run knip and see a report of dead code, unused exports, and orphaned files
+- [x] **TOOL-03**: User can run dependency-cruiser and see a dependency graph of the current codebase
 - [x] **TOOL-04**: User can see `.refactored` file ambiguity resolved (canonical versions chosen, duplicates deleted)
 - [x] **TOOL-05**: User can see `@features/*` and `@shared/*` path aliases configured in tsconfig and vite
 
@@ -126,8 +126,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | TOOL-01 | Phase 1 | Complete |
-| TOOL-02 | Phase 1 | Pending |
-| TOOL-03 | Phase 1 | Pending |
+| TOOL-02 | Phase 1 | Complete |
+| TOOL-03 | Phase 1 | Complete |
 | TOOL-04 | Phase 1 | Complete |
 | TOOL-05 | Phase 1 | Complete |
 | SHRD-01 | Phase 2 | Pending |
