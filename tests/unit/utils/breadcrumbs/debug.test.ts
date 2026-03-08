@@ -27,12 +27,12 @@ const mockCreateNamespacedLogger = vi.fn(() => ({
 }))
 
 // Mock the logger BEFORE the module is imported
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   createNamespacedLogger: mockCreateNamespacedLogger
 }))
 
 // Mock the comparison functions
-vi.mock('@/utils/breadcrumbs/comparison', () => ({
+vi.mock('@shared/utils/breadcrumbs/comparison', () => ({
   compareBreadcrumbs: vi.fn(() => ({
     hasChanges: true,
     changes: [
@@ -70,7 +70,7 @@ vi.mock('@/utils/breadcrumbs/comparison', () => ({
 }))
 
 // Import after mocks are set up
-const { debugComparison } = await import('@/utils/breadcrumbs/debug')
+const { debugComparison } = await import('@shared/utils/breadcrumbs/debug')
 
 describe('breadcrumbs/debug', () => {
   beforeEach(() => {
@@ -185,7 +185,7 @@ describe('breadcrumbs/debug', () => {
 
     test('should handle changes with identical old and new values', async () => {
       // Mock comparison with no value change
-      const { compareBreadcrumbs } = await import('@/utils/breadcrumbs/comparison')
+      const { compareBreadcrumbs } = await import('@shared/utils/breadcrumbs/comparison')
       vi.mocked(compareBreadcrumbs).mockReturnValueOnce({
         hasChanges: true,
         changes: [
@@ -215,7 +215,7 @@ describe('breadcrumbs/debug', () => {
     test('should handle multiple changes', async () => {
       // Mock comparison with multiple changes
       const { compareBreadcrumbs, compareBreadcrumbsMeaningful } = await import(
-        '@/utils/breadcrumbs/comparison'
+        '@shared/utils/breadcrumbs/comparison'
       )
       vi.mocked(compareBreadcrumbs).mockReturnValueOnce({
         hasChanges: true,
