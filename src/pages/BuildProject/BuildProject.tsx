@@ -6,7 +6,8 @@ import { createNamespacedLogger } from '@shared/utils/logger'
 import { useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 
-import { useBreadcrumb, useCameraAutoRemap, useProjectState, useUsername } from '@/hooks'
+import { useBreadcrumb, useUsername } from '@shared/hooks'
+import { useCameraAutoRemap, useProjectState } from '@/hooks'
 
 import { AddFootageStep } from './AddFootageStep'
 import { CreateProjectStep } from './CreateProjectStep'
