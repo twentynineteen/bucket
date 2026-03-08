@@ -24,6 +24,9 @@
       "@machines/*": ["src/machines/*"],
       "@context/*": ["src/context/*"],
       "@/*": ["src/*"],
+      // Feature module aliases
+      "@features/*": ["src/features/*"],
+      "@shared/*": ["src/shared/*"],
       // Test aliases
       "@tests/*": ["tests/*"]
     }
