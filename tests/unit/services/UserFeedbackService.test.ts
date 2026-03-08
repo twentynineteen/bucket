@@ -3,13 +3,13 @@
  * Purpose: Test user notification and feedback mechanisms
  */
 
-import { ProgressTracker } from '@/services/ProgressTracker'
 import {
+  ProgressTracker,
   UserFeedbackService,
   type FeedbackOptions,
   type NotificationConfig,
   type UserPrompt
-} from '@/services/UserFeedbackService'
+} from '@shared/services'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('UserFeedbackService', () => {

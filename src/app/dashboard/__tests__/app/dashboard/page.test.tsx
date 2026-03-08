@@ -18,7 +18,7 @@ vi.mock('@components/app-sidebar', () => ({
 }))
 
 // Mock the breadcrumb store before tests run
-vi.mock('../../../../../store/useBreadcrumbStore.ts', () => ({
+vi.mock('@shared/store/useBreadcrumbStore', () => ({
   useBreadcrumbStore: () => ({
     breadcrumbs: [
       { href: '/', label: 'Home' },

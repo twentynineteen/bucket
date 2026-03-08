@@ -16,22 +16,22 @@ import {
   AccordionTrigger
 } from '@components/ui/accordion'
 import { Button } from '@components/ui/button'
-import { CACHE } from '@constants/timing'
+import { CACHE } from '@shared/constants/timing'
 import { useAIProvider } from '@hooks/useAIProvider'
 import { useBreadcrumb } from '@hooks/useBreadcrumb'
-import { queryKeys } from '@lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '@lib/query-utils'
-import { useAppStore } from '@store/useAppStore'
+import { queryKeys } from '@shared/lib/query-keys'
+import { createQueryError, createQueryOptions, shouldRetry } from '@shared/lib/query-utils'
+import { useAppStore } from '@shared/store'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { open as openPath } from '@tauri-apps/plugin-dialog'
 import { open } from '@tauri-apps/plugin-shell'
 import ApiKeyInput from '@utils/ApiKeyInput'
-import { ApiKeys, loadApiKeys, saveApiKeys } from '@utils/storage'
+import { ApiKeys, loadApiKeys, saveApiKeys } from '@shared/utils/storage'
 import { AlertTriangle, CheckCircle, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 const SettingsPageContent: React.FC = () => {
   const queryClient = useQueryClient()

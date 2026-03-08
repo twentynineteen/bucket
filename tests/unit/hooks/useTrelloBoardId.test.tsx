@@ -6,22 +6,22 @@
  */
 
 import { useTrelloBoardId } from '@/hooks/useTrelloBoardId'
-import { queryKeys } from '@/lib/query-keys'
-import { appStore } from '@/store/useAppStore'
-import * as storage from '@/utils/storage'
+import { queryKeys } from '@shared/lib/query-keys'
+import { appStore } from '@shared/store'
+import * as storage from '@shared/utils/storage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock storage
-vi.mock('@/utils/storage', () => ({
+vi.mock('@shared/utils/storage', () => ({
   loadApiKeys: vi.fn(),
   saveApiKeys: vi.fn()
 }))
 
 // Mock app store
-vi.mock('@/store/useAppStore', () => ({
+vi.mock('@shared/store/useAppStore', () => ({
   appStore: {
     getState: vi.fn(() => ({
       trelloBoardId: '',

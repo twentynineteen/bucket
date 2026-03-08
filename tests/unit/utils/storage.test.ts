@@ -5,8 +5,8 @@
  * TDD Phase: RED (Writing failing tests first)
  */
 
-import { appStore } from '@/store/useAppStore'
-import { ApiKeys, loadApiKeys, saveApiKeys } from '@/utils/storage'
+import { appStore } from '@shared/store'
+import { ApiKeys, loadApiKeys, saveApiKeys } from '@shared/utils/storage'
 import * as tauriPath from '@tauri-apps/api/path'
 import * as tauriFs from '@tauri-apps/plugin-fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -23,7 +23,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 }))
 
 // Mock app store
-vi.mock('@/store/useAppStore', () => ({
+vi.mock('@shared/store/useAppStore', () => ({
   appStore: {
     getState: vi.fn(() => ({
       setSproutVideoApiKey: vi.fn(),

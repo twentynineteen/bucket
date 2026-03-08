@@ -8,11 +8,11 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { CACHE } from '@/constants/timing'
-import { queryKeys } from '@/lib/query-keys'
-import { useAppStore } from '@/store/useAppStore'
-import { TrelloBoard } from '@/types/media'
-import { loadApiKeys, saveApiKeys } from '@/utils/storage'
+import { CACHE } from '@shared/constants/timing'
+import { queryKeys } from '@shared/lib/query-keys'
+import { useAppStore } from '@shared/store'
+import { TrelloBoard } from '@shared/types/media'
+import { loadApiKeys, saveApiKeys } from '@shared/utils/storage'
 import { validateBoardAccess } from '@/utils/trelloBoardValidation'
 
 // Default board ID (original hardcoded value)

@@ -5,7 +5,7 @@
  */
 
 import { getDefaultConfig, providerRegistry } from '@services/ai/providerConfig'
-import { useAppStore } from '@store/useAppStore'
+import { useAppStore } from '@shared/store'
 import { useState } from 'react'
 
 import {

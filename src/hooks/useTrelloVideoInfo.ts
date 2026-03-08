@@ -3,7 +3,7 @@
  * Handles uploading and parsing video information
  */
 
-import { appStore } from '@store/useAppStore'
+import { appStore } from '@shared/store'
 import type { TrelloCard } from '@utils/TrelloCards'
 import { useCallback, useMemo } from 'react'
 

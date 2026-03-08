@@ -35,7 +35,7 @@ vi.mock('@utils/storage', () => ({
   saveApiKeys: vi.fn().mockResolvedValue(undefined)
 }))
 
-vi.mock('@store/useAppStore', () => ({
+vi.mock('@shared/store/useAppStore', () => ({
   useAppStore: vi.fn((selector) => {
     const state = {
       defaultBackgroundFolder: '/default/folder',

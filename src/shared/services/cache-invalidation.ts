@@ -1,8 +1,8 @@
-import { CACHE } from '@constants/timing'
-import { queryKeys } from '@lib/query-keys'
+import { CACHE } from '@shared/constants/timing'
+import { queryKeys } from '@shared/lib/query-keys'
 import { QueryClient } from '@tanstack/react-query'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 /**
  * Cache Invalidation Service

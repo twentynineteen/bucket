@@ -4,13 +4,13 @@
  */
 
 import { useBreadcrumb } from '@/hooks/useBreadcrumb'
-import { useBreadcrumbStore } from '@/store/useBreadcrumbStore'
+import { useBreadcrumbStore } from '@shared/store'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock the Zustand store
-vi.mock('@/store/useBreadcrumbStore', () => ({
+vi.mock('@shared/store/useBreadcrumbStore', () => ({
   useBreadcrumbStore: vi.fn()
 }))
 

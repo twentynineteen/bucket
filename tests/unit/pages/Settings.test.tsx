@@ -8,7 +8,7 @@
  */
 
 import Settings from '@/pages/Settings'
-import * as storage from '@/utils/storage'
+import * as storage from '@shared/utils/storage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -24,7 +24,7 @@ vi.mock('@tauri-apps/plugin-shell', () => ({
 }))
 
 // Mock storage utilities
-vi.mock('@/utils/storage', () => ({
+vi.mock('@shared/utils/storage', () => ({
   loadApiKeys: vi.fn(),
   saveApiKeys: vi.fn()
 }))
@@ -41,7 +41,7 @@ vi.mock('@/hooks/useAIProvider', () => ({
 }))
 
 // Mock app store
-vi.mock('@/store/useAppStore', () => ({
+vi.mock('@shared/store/useAppStore', () => ({
   useAppStore: vi.fn((selector) => {
     const mockState = {
       defaultBackgroundFolder: '',

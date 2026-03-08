@@ -6,7 +6,7 @@
 import { useAppendBreadcrumbs } from '@/hooks/useAppendBreadcrumbs'
 import { useParsedTrelloDescription } from '@/hooks/useParsedTrelloDescription'
 import { useTrelloBreadcrumbs } from '@/hooks/useTrelloBreadcrumbs'
-import { appStore } from '@/store/useAppStore'
+import { appStore } from '@shared/store'
 import type { TrelloCard } from '@/utils/TrelloCards'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { act, renderHook } from '@testing-library/react'
@@ -25,7 +25,7 @@ vi.mock('@/hooks/useParsedTrelloDescription', () => ({
   useParsedTrelloDescription: vi.fn()
 }))
 
-vi.mock('@/store/useAppStore', () => ({
+vi.mock('@shared/store/useAppStore', () => ({
   appStore: {
     getState: vi.fn()
   }

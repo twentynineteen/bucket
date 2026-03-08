@@ -12,12 +12,12 @@ import {
   DialogTitle
 } from '@components/ui/dialog'
 import { VideoInfoData } from '@hooks/useVideoInfoBlock'
-import { appStore } from '@store/useAppStore'
+import { appStore } from '@shared/store'
 import CardDetailsAccordion from '@utils/trello/CardDetailsAccordion'
 import TooltipPreview from '@utils/trello/TooltipPreview'
 import VideoInfoTooltip from '@utils/trello/VideoInfoTooltip'
 import { TrelloCard, TrelloMember } from '@utils/TrelloCards'
-import { Breadcrumb, SproutUploadResponse } from '@utils/types'
+import { Breadcrumb, SproutUploadResponse } from '@shared/types/types'
 import { ExternalLink } from 'lucide-react'
 import React from 'react'
 

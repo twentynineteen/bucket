@@ -1,4 +1,4 @@
-import { useAppStore } from '@store/useAppStore'
+import { useAppStore } from '@shared/store'
 import { useQuery } from '@tanstack/react-query'
 import { readDir } from '@tauri-apps/plugin-fs'
 import { useCallback, useState } from 'react'

@@ -7,13 +7,13 @@ import { BrowserRouter as Router } from 'react-router-dom'
 import AppRouter from './AppRouter'
 import { QueryErrorBoundary } from './components/ErrorBoundary'
 import { TitleBar } from './components/TitleBar'
-import { CACHE, getBackoffDelay, RETRY } from './constants/timing'
+import { CACHE, getBackoffDelay, RETRY } from '@shared/constants/timing'
 import { AuthProvider } from './context/AuthProvider'
 import { useWindowState } from './hooks/useWindowState'
-import { initializePerformanceMonitor } from './lib/performance-monitor'
-import { initializePrefetchManager } from './lib/prefetch-strategies'
-import { initializeCacheService } from './services/cache-invalidation'
-import { logger } from './utils/logger'
+import { initializePerformanceMonitor } from '@shared/lib/performance-monitor'
+import { initializePrefetchManager } from '@shared/lib/prefetch-strategies'
+import { initializeCacheService } from '@shared/services'
+import { logger } from '@shared/utils/logger'
 
 // The app component acts as the main routing generator for the application.
 // AppRouter wraps the app routes to make use of the useLocation method within react-router-dom

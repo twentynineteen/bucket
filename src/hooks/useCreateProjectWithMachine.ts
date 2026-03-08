@@ -1,13 +1,13 @@
 // hooks/useCreateProjectWithMachine.ts
 
 import type { BuildProjectEvent } from '@machines/buildProjectMachine'
-import { appStore } from '@store/useAppStore'
+import { appStore } from '@shared/store'
 import { invoke } from '@tauri-apps/api/core'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
-import { Breadcrumb } from '@utils/types'
+import { Breadcrumb } from '@shared/types/types'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 import { FootageFile } from './useCameraAutoRemap'
 

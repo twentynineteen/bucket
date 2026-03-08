@@ -39,7 +39,7 @@ vi.mock('@hooks/useAIProvider', () => ({
   })
 }))
 
-vi.mock('@store/useAppStore', () => ({
+vi.mock('@shared/store/useAppStore', () => ({
   useAppStore: vi.fn((selector) => {
     const state = {
       defaultBackgroundFolder: '/default/folder',

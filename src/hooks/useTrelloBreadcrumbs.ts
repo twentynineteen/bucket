@@ -3,12 +3,12 @@
  * Handles appending breadcrumbs to cards and saving to local files
  */
 
-import { appStore } from '@store/useAppStore'
+import { appStore } from '@shared/store'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import type { TrelloCard } from '@utils/TrelloCards'
 import { useCallback } from 'react'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 import { useAppendBreadcrumbs } from './useAppendBreadcrumbs'
 import { useParsedTrelloDescription } from './useParsedTrelloDescription'

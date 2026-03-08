@@ -7,7 +7,7 @@ import {
   ProgressTracker,
   type ProgressFilter,
   type ProgressUpdate
-} from '@/services/ProgressTracker'
+} from '@shared/services'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('ProgressTracker', () => {

@@ -18,7 +18,7 @@
       "@lib/*": ["src/lib/*"],
       "@utils/*": ["src/utils/*"],
       "@constants/*": ["src/constants/*"],
-      "@store/*": ["src/store/*"],
+      "@store/*": ["src/shared/store/*"],
       "@services/*": ["src/services/*"],
       "@pages/*": ["src/pages/*"],
       "@machines/*": ["src/machines/*"],
