@@ -31,7 +31,9 @@
     "version:patch": "node scripts/bump-version.js patch",
     "version:minor": "node scripts/bump-version.js minor",
     "version:major": "node scripts/bump-version.js major",
-    "knip": "knip"
+    "knip": "knip",
+    "dep-graph": "depcruise src --include-only \"^src\" --output-type dot | dot -T svg > dependency-graph.svg",
+    "dep-graph:html": "depcruise src --include-only \"^src\" --output-type dot | dot -T svg | npx depcruise-wrap-stream-in-html > dependency-graph.html"
   },
   "license": "UNLICENSED",
   "devDependencies": {
@@ -62,6 +64,7 @@
     "baseline-browser-mapping": "^2.9.7",
     "better-sqlite3": "^12.4.1",
     "depcheck": "^1.4.7",
+    "dependency-cruiser": "^17.3.8",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-boundaries": "^5.4.0",
