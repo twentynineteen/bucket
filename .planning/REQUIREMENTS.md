@@ -9,11 +9,11 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### Tooling & Prep
 
-- [ ] **TOOL-01**: User can run ESLint and see boundary violation warnings for cross-module imports
+- [x] **TOOL-01**: User can run ESLint and see boundary violation warnings for cross-module imports
 - [ ] **TOOL-02**: User can run knip and see a report of dead code, unused exports, and orphaned files
 - [ ] **TOOL-03**: User can run dependency-cruiser and see a dependency graph of the current codebase
-- [ ] **TOOL-04**: User can see `.refactored` file ambiguity resolved (canonical versions chosen, duplicates deleted)
-- [ ] **TOOL-05**: User can see `@features/*` and `@shared/*` path aliases configured in tsconfig and vite
+- [x] **TOOL-04**: User can see `.refactored` file ambiguity resolved (canonical versions chosen, duplicates deleted)
+- [x] **TOOL-05**: User can see `@features/*` and `@shared/*` path aliases configured in tsconfig and vite
 
 ### Shared Infrastructure
 
@@ -87,7 +87,7 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 - [ ] **DOCS-01**: User can see CLAUDE.md updated to reflect new module structure
 - [ ] **DOCS-02**: User can see JSDoc on every public export in barrel files
-- [ ] **DOCS-03**: User can see stale specs, `.old` files, and orphaned markdown removed
+- [x] **DOCS-03**: User can see stale specs, `.old` files, and orphaned markdown removed
 - [ ] **DOCS-04**: User can see all `alert()`/`confirm()` calls replaced with Sonner toasts and Radix dialogs
 
 ## v2 Requirements
@@ -125,11 +125,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TOOL-01 | Phase 1 | Pending |
+| TOOL-01 | Phase 1 | Complete |
 | TOOL-02 | Phase 1 | Pending |
 | TOOL-03 | Phase 1 | Pending |
-| TOOL-04 | Phase 1 | Pending |
-| TOOL-05 | Phase 1 | Pending |
+| TOOL-04 | Phase 1 | Complete |
+| TOOL-05 | Phase 1 | Complete |
 | SHRD-01 | Phase 2 | Pending |
 | SHRD-02 | Phase 2 | Pending |
 | SHRD-03 | Phase 2 | Pending |
@@ -170,7 +170,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SHEL-03 | Phase 9 | Pending |
 | DOCS-01 | Phase 9 | Pending |
 | DOCS-02 | Phase 9 | Pending |
-| DOCS-03 | Phase 1 | Pending |
+| DOCS-03 | Phase 1 | Complete |
 | DOCS-04 | Phase 9 | Pending |
 
 **Coverage:**

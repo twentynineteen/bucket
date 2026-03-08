@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Path aliases, ESLint boundaries, stale file cleanup
+- [x] 01-01-PLAN.md -- Path aliases, ESLint boundaries, stale file cleanup
 - [ ] 01-02-PLAN.md -- Knip baseline report, dependency-cruiser graph
 
 ### Phase 2: Shared Infrastructure
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Tooling & Prep | 0/2 | Planning complete | - |
+| 1. Tooling & Prep | 1/2 | In progress | - |
 | 2. Shared Infrastructure | 0/? | Not started | - |
 | 3. Leaf Feature Modules | 0/? | Not started | - |
 | 4. Upload Module | 0/? | Not started | - |
