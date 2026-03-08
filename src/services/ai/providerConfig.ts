@@ -6,13 +6,13 @@
  */
 
 // import { createOpenAI } from '@ai-sdk/openai' // Commented out for Phase 1
-import { SECONDS, TIMEOUTS } from '@constants/timing'
+import { SECONDS, TIMEOUTS } from '@shared/constants/timing'
 import type { ProviderConfiguration } from '@types/scriptFormatter'
-import { createNamespacedLogger } from '@utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 import type { LanguageModel } from 'ai'
 import { createOllama } from 'ollama-ai-provider-v2'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 import type { ModelInfo, ProviderAdapter, ProviderRegistry } from './types'
 

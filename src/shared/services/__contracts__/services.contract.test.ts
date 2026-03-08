@@ -28,7 +28,7 @@ import {
 } from '../index'
 
 // Mock logger to prevent console output during tests
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   logger: {
     log: vi.fn(),
     error: vi.fn(),

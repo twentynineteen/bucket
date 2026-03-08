@@ -4,7 +4,7 @@ import type { BuildProjectEvent } from '@machines/buildProjectMachine'
 import { invoke } from '@tauri-apps/api/core'
 import { useEffect, useRef } from 'react'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 interface UsePostProjectCompletionOptions {
   isCreatingTemplate: boolean

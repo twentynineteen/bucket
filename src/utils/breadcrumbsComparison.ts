@@ -24,4 +24,4 @@ export {
   generateBreadcrumbsPreview,
   // Debug utilities
   debugComparison
-} from './breadcrumbs'
+} from '@shared/utils/breadcrumbs'

@@ -2,7 +2,7 @@ import { Button } from '@components/ui/button'
 import { QueryErrorResetBoundary } from '@tanstack/react-query'
 import React, { Component, ReactNode } from 'react'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 interface ErrorBoundaryState {
   hasError: boolean

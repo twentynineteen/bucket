@@ -9,7 +9,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { useCallback, useState } from 'react'
 
 import type { BreadcrumbsFile, FileInfo } from '@/types/baker'
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 // Constants
 const RAW_CONTENT_PREVIEW_LIMIT = 200

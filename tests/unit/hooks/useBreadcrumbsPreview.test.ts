@@ -9,7 +9,7 @@ import { invoke } from '@tauri-apps/api/core'
 import {
   compareBreadcrumbsMeaningful,
   generateBreadcrumbsPreview
-} from '@/utils/breadcrumbsComparison'
+} from '@shared/utils/breadcrumbs'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -19,12 +19,12 @@ vi.mock('@tauri-apps/api/core', () => ({
 }))
 
 // Mock utils
-vi.mock('@/utils/breadcrumbsComparison', () => ({
+vi.mock('@shared/utils/breadcrumbs', () => ({
   compareBreadcrumbsMeaningful: vi.fn(),
   generateBreadcrumbsPreview: vi.fn()
 }))
 
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   logger: {
     warn: vi.fn(),
     error: vi.fn(),

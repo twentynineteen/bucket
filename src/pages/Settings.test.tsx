@@ -51,7 +51,7 @@ vi.mock('@shared/store/useAppStore', () => ({
   })
 }))
 
-vi.mock('@utils/storage', () => ({
+vi.mock('@shared/utils/storage', () => ({
   loadApiKeys: vi.fn().mockResolvedValue({
     trello: '',
     trelloToken: '',

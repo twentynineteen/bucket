@@ -8,7 +8,7 @@
  */
 
 import { ProjectDetailPanel } from '@/components/Baker/ProjectDetailPanel'
-import { BAKER_ANIMATIONS, DURATION } from '@/constants/animations'
+import { BAKER_ANIMATIONS, DURATION } from '@shared/constants/animations'
 import type { BreadcrumbsFile } from '@/types/baker'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'

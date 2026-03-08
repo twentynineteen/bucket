@@ -3,7 +3,7 @@
  * Extracted from BreadcrumbsViewerEnhanced.tsx (DEBT-002)
  */
 
-import { formatFieldValue } from '@utils/breadcrumbsComparison'
+import { formatFieldValue } from '@shared/utils/breadcrumbs'
 import { Edit, Minus, Plus } from 'lucide-react'
 import React from 'react'
 

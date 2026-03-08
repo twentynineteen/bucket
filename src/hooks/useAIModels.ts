@@ -4,7 +4,7 @@
  * Purpose: Fetch models from active provider using React Query
  */
 
-import { REFRESH, SECONDS } from '@constants/timing'
+import { REFRESH, SECONDS } from '@shared/constants/timing'
 import { providerRegistry } from '@services/ai/providerConfig'
 import { useQuery } from '@tanstack/react-query'
 

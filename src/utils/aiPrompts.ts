@@ -9,7 +9,7 @@ import type { SimilarExample } from '@hooks/useScriptRetrieval'
 import { tool } from 'ai'
 import { z } from 'zod'
 
-import { createNamespacedLogger } from './logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 
 const logger = createNamespacedLogger('buildRAGPrompt')
 

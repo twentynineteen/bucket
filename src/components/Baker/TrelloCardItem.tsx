@@ -8,7 +8,7 @@ import { ExternalLink, RefreshCw, Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import type { TrelloCard } from '@/types/baker'
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 interface TrelloCardItemProps {
   trelloCard: TrelloCard

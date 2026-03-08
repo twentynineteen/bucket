@@ -8,12 +8,12 @@
 import { ModelFactory } from '@services/ai/modelFactory'
 import { invoke } from '@tauri-apps/api/core'
 import { buildRAGPrompt } from '@utils/aiPrompts'
-import { createNamespacedLogger } from '@utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 import { streamText } from 'ai'
 import { useRef, useState } from 'react'
 
 import type { ProcessedOutput, ProviderConfiguration } from '@/types/scriptFormatter'
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 import { useOllamaEmbedding } from './useOllamaEmbedding'
 import type { SimilarExample } from './useScriptRetrieval'

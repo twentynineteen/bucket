@@ -6,7 +6,7 @@
  */
 
 import { open } from '@tauri-apps/plugin-shell'
-import { formatBreadcrumbDateSimple } from '@utils/breadcrumbsComparison'
+import { formatBreadcrumbDateSimple } from '@shared/utils/breadcrumbs'
 import {
   AlertTriangle,
   Calendar,

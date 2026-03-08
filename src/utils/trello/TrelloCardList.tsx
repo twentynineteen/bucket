@@ -8,7 +8,7 @@ import {
 } from '@components/ui/accordion'
 import React, { useState } from 'react'
 
-import { logger } from '../logger'
+import { logger } from '@shared/utils/logger'
 import { TrelloCard } from '../TrelloCards'
 
 interface TrelloCardListProps {

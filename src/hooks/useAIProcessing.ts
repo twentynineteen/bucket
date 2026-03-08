@@ -10,7 +10,7 @@
  * - Processing error handling and cancellation
  */
 
-import { createNamespacedLogger } from '@utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 import { useCallback, useEffect, useState } from 'react'
 
 import type { ProcessedOutput, ProviderConfiguration } from '@/types/scriptFormatter'

@@ -1,4 +1,4 @@
-import { FootageData } from '@utils/types'
+import { FootageData } from '@shared/types/types'
 import React from 'react'
 
 interface Props {

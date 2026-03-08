@@ -25,7 +25,7 @@ vi.mock('@hooks/useAIProvider', () => ({
   })
 }))
 
-vi.mock('@utils/storage', () => ({
+vi.mock('@shared/utils/storage', () => ({
   loadApiKeys: vi.fn().mockResolvedValue({
     trello: '',
     trelloToken: '',
@@ -55,7 +55,7 @@ vi.mock('@tauri-apps/plugin-shell', () => ({
   open: vi.fn().mockResolvedValue(undefined)
 }))
 
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   logger: {
     error: vi.fn(),
     log: vi.fn(),

@@ -5,7 +5,7 @@
  */
 
 import { useBakerTrelloIntegration } from '@/hooks/useBakerTrelloIntegration'
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -15,7 +15,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   readTextFile: vi.fn()
 }))
 
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   logger: {
     warn: vi.fn(),
     error: vi.fn(),

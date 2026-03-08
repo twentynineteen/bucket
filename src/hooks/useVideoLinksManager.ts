@@ -5,11 +5,11 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { validateVideoLink } from '@utils/validation'
+import { validateVideoLink } from '@shared/utils/validation'
 import { useState } from 'react'
 
 import type { BreadcrumbsFile, VideoLink } from '@/types/baker'
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 import { useSproutVideoApiKey, useTrelloApiKeys } from './useApiKeys'
 import {

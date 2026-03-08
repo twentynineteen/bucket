@@ -38,7 +38,7 @@ vi.mock('framer-motion', () => ({
 }))
 
 // Mock formatFileSize utility
-vi.mock('@utils/breadcrumbsComparison', () => ({
+vi.mock('@shared/utils/breadcrumbs', () => ({
   formatFileSize: vi.fn((bytes: number) => {
     if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GB`
     if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(2)} MB`

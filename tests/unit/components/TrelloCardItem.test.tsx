@@ -14,7 +14,7 @@
  */
 
 import type { TrelloCard } from '@/types/baker'
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 import { TrelloCardItem } from '@components/Baker/TrelloCardItem'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { render, screen } from '@testing-library/react'
@@ -28,7 +28,7 @@ vi.mock('@tauri-apps/plugin-opener', () => ({
 }))
 
 // Mock logger
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   logger: {
     error: vi.fn(),
     warn: vi.fn(),

@@ -17,7 +17,7 @@ import * as useSproutVideoProcessorModule from '@hooks/useSproutVideoProcessor'
 import * as useUploadEventsModule from '@hooks/useUploadEvents'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { SproutUploadResponse } from '@utils/types'
+import type { SproutUploadResponse } from '@shared/types/types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { VideoLinksManager } from './VideoLinksManager'

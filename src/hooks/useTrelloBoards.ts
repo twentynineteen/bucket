@@ -1,5 +1,5 @@
-import { CACHE } from '@constants/timing'
-import { queryKeys } from '@lib/query-keys'
+import { CACHE } from '@shared/constants/timing'
+import { queryKeys } from '@shared/lib/query-keys'
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { TrelloBoard } from '@types/media'

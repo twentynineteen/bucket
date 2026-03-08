@@ -9,7 +9,7 @@ import { useMutation } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { parseSproutVideoUrl } from '@utils/parseSproutVideoUrl'
 
-import type { SproutVideoDetails } from '@/types/media'
+import type { SproutVideoDetails } from '@shared/types/media'
 
 interface FetchVideoDetailsParams {
   videoUrl: string

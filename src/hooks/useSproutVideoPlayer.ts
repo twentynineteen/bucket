@@ -6,7 +6,7 @@
  */
 
 import type { SproutVideoPlayer } from '@/types/transcript'
-import { createNamespacedLogger } from '@utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 const logger = createNamespacedLogger('useSproutVideoPlayer')

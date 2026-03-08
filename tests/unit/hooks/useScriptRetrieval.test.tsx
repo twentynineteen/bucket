@@ -31,7 +31,7 @@ vi.mock('@/hooks/useEmbedding', () => ({
   useEmbedding: vi.fn()
 }))
 
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   createNamespacedLogger: () => ({
     log: vi.fn(),
     debug: vi.fn(),

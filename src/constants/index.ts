@@ -4,4 +4,4 @@
  * Central export point for all application constants.
  */
 
-export * from './timing'
+export * from './themes'

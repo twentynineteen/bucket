@@ -1,8 +1,8 @@
-import { REFRESH } from '@constants/timing'
-import { queryKeys } from '@lib/query-keys'
-import { createQueryOptions } from '@lib/query-utils'
+import { REFRESH } from '@shared/constants/timing'
+import { queryKeys } from '@shared/lib/query-keys'
+import { createQueryOptions } from '@shared/lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
-import { SproutUploadResponse } from '@utils/types'
+import { SproutUploadResponse } from '@shared/types/types'
 import { useState } from 'react'
 
 interface UseImageRefreshReturn {

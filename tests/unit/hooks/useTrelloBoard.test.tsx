@@ -4,7 +4,7 @@
  */
 
 import { useTrelloBoard } from '@/hooks/useTrelloBoard'
-import { loadApiKeys } from '@/utils/storage'
+import { loadApiKeys } from '@shared/utils/storage'
 import { fetchTrelloCards, fetchTrelloLists } from '@/utils/TrelloCards'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
@@ -33,7 +33,7 @@ vi.mock('@/utils/TrelloCards', () => ({
   })
 }))
 
-vi.mock('@/lib/query-keys', () => ({
+vi.mock('@shared/lib/query-keys', () => ({
   queryKeys: {
     trello: {
       cards: (boardId: string) => ['trello', 'cards', boardId],
@@ -42,11 +42,11 @@ vi.mock('@/lib/query-keys', () => ({
   }
 }))
 
-vi.mock('@/utils/storage', () => ({
+vi.mock('@shared/utils/storage', () => ({
   loadApiKeys: vi.fn()
 }))
 
-vi.mock('@/lib/query-utils', () => ({
+vi.mock('@shared/lib/query-utils', () => ({
   createQueryError: vi.fn((message: string) => new Error(message)),
   createQueryOptions: vi.fn((queryKey, queryFn, type, options) => ({
     queryKey,

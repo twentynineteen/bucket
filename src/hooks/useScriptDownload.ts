@@ -9,7 +9,7 @@
  * - Generation error handling
  */
 
-import { createNamespacedLogger } from '@utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 import { useCallback, useState } from 'react'
 
 import type { ScriptDocument } from '@/types/scriptFormatter'

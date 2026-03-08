@@ -7,7 +7,7 @@
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { useCallback } from 'react'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 interface TrelloError {
   project: string

@@ -9,7 +9,7 @@ import React from 'react'
 
 import { Button } from '@/components/ui/button'
 import type { VideoLink } from '@/types/baker'
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 interface VideoLinkCardProps {
   videoLink: VideoLink

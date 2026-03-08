@@ -26,7 +26,7 @@ import { AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react'
 import React, { useCallback, useState } from 'react'
 
 import { useTrelloBoard } from '@/hooks'
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 const BakerPageContent: React.FC = () => {
   // Set breadcrumbs for navigation

@@ -4,7 +4,7 @@
  * Displays scan progress and results summary for Baker.
  */
 
-import { formatFileSize } from '@utils/breadcrumbsComparison'
+import { formatFileSize } from '@shared/utils/breadcrumbs'
 import { RefreshCw } from 'lucide-react'
 import React from 'react'
 

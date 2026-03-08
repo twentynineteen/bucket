@@ -3,7 +3,7 @@
  * Purpose: Create consistent mock data for tests
  */
 
-import type { Breadcrumb } from '@/utils/types'
+import type { Breadcrumb } from '@shared/types/types'
 
 /**
  * Create mock breadcrumbs data

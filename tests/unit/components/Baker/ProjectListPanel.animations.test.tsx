@@ -8,7 +8,7 @@
  */
 
 import { ProjectListPanel } from '@/components/Baker/ProjectListPanel'
-import { BAKER_ANIMATIONS, DURATION } from '@/constants/animations'
+import { BAKER_ANIMATIONS, DURATION } from '@shared/constants/animations'
 import type { ProjectFolder } from '@/types/baker'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

@@ -2,7 +2,7 @@ import { useTrelloApiKeys } from '@hooks/useApiKeys'
 import { useBuildProjectMachine } from '@hooks/useBuildProjectMachine'
 import { useCreateProjectWithMachine } from '@hooks/useCreateProjectWithMachine'
 import { usePostProjectCompletion } from '@hooks/usePostProjectCompletion'
-import { createNamespacedLogger } from '@utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 import { useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 

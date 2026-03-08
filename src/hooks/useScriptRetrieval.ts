@@ -6,7 +6,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
-import { createNamespacedLogger } from '@utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 
 import { useEmbedding } from './useEmbedding'
 

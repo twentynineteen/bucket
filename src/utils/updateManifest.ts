@@ -2,7 +2,7 @@
  * Utilities for converting GitHub release data to Tauri updater manifest format
  */
 
-import { createNamespacedLogger } from './logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 
 const log = createNamespacedLogger('UpdateManifest')
 

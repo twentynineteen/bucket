@@ -14,12 +14,12 @@ import { invoke } from '@tauri-apps/api/core'
 import {
   compareBreadcrumbsMeaningful,
   generateBreadcrumbsPreview
-} from '@utils/breadcrumbsComparison'
+} from '@shared/utils/breadcrumbs'
 import pLimit from 'p-limit'
 import { useCallback, useMemo, useState } from 'react'
 
 import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '@/types/baker'
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 // Concurrency limit for batch operations to prevent system overload
 const CONCURRENCY_LIMIT = 5

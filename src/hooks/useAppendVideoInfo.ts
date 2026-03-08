@@ -1,7 +1,7 @@
 import { extractVideoInfoBlock } from '@utils/extractVideoInfoBlock'
-import { createNamespacedLogger } from '@utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 import { TrelloCard, updateCard } from '@utils/TrelloCards'
-import { SproutUploadResponse } from '@utils/types'
+import { SproutUploadResponse } from '@shared/types/types'
 
 const logger = createNamespacedLogger('useAppendVideoInfo')
 

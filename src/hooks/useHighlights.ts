@@ -6,7 +6,7 @@
  */
 
 import type { TranscriptHighlight } from '@/types/transcript'
-import { createNamespacedLogger } from '@utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 import { useCallback, useState } from 'react'
 
 const logger = createNamespacedLogger('useHighlights')

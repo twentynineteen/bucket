@@ -13,7 +13,7 @@
  * Total: 10 tests
  */
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 import { FolderSelector } from '@components/Baker/FolderSelector'
 import { open } from '@tauri-apps/plugin-dialog'
 import { render, screen } from '@testing-library/react'
@@ -45,7 +45,7 @@ vi.mock('framer-motion', () => ({
 }))
 
 // Mock logger
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   logger: {
     error: vi.fn(),
     warn: vi.fn(),

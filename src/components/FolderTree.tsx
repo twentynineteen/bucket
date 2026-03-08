@@ -1,7 +1,7 @@
 import { open } from '@tauri-apps/plugin-dialog'
 import React from 'react'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 type Props = {
   onSelect: (folderPath: string) => void

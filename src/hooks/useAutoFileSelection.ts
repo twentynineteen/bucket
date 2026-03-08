@@ -1,6 +1,6 @@
-import { CACHE } from '@constants/timing'
-import { queryKeys } from '@lib/query-keys'
-import { createQueryOptions } from '@lib/query-utils'
+import { CACHE } from '@shared/constants/timing'
+import { queryKeys } from '@shared/lib/query-keys'
+import { createQueryOptions } from '@shared/lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 

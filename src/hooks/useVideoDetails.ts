@@ -5,7 +5,7 @@
  * URL for direct streaming playback.
  */
 
-import type { SproutVideoDetails } from '@/types/media'
+import type { SproutVideoDetails } from '@shared/types/media'
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 

@@ -20,7 +20,7 @@ vi.mock('@hooks/useDocxGenerator', () => ({
   useDocxGenerator: vi.fn()
 }))
 
-vi.mock('@utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   createNamespacedLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

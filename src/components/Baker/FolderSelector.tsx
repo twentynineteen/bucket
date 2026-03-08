@@ -10,7 +10,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { FolderOpen, Play, RefreshCw, Square } from 'lucide-react'
 import React, { useCallback } from 'react'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 interface FolderSelectorProps {
   selectedFolder: string

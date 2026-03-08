@@ -23,7 +23,7 @@ import Settings from './pages/Settings'
 import UploadOtter from './pages/UploadOtter'
 import UploadSprout from './pages/UploadSprout'
 import UploadTrello from './pages/UploadTrello'
-import { createNamespacedLogger } from './utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 
 const log = createNamespacedLogger('AppRouter')
 

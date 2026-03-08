@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { logger } from './logger'
+import { logger } from '@shared/utils/logger'
 
 // Define an interface for a Trello card (adjust fields as needed)
 export interface TrelloCard {

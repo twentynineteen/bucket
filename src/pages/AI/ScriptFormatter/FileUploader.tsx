@@ -9,7 +9,7 @@ import { readFile } from '@tauri-apps/plugin-fs'
 import { AlertCircle, FileText, Upload } from 'lucide-react'
 import React, { useState } from 'react'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 interface FileUploaderProps {
   onFileSelect: (file: File) => void

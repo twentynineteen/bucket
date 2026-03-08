@@ -3,7 +3,7 @@
  * Extracted from BreadcrumbsViewerEnhanced.tsx (DEBT-002)
  */
 
-import { formatBreadcrumbDateSimple } from '@utils/breadcrumbsComparison'
+import { formatBreadcrumbDateSimple } from '@shared/utils/breadcrumbs'
 import {
   Calendar,
   Camera,

@@ -10,7 +10,7 @@
  * - Unsaved changes warnings
  */
 
-import { createNamespacedLogger } from '@utils/logger'
+import { createNamespacedLogger } from '@shared/utils/logger'
 import { useCallback, useMemo, useState } from 'react'
 
 import type { ProcessedOutput } from '@/types/scriptFormatter'

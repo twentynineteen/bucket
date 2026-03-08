@@ -1,4 +1,4 @@
-import { queryKeys } from '@lib/query-keys'
+import { queryKeys } from '@shared/lib/query-keys'
 import { renderWithQueryClient } from '@tests/utils/query-test-utils'
 import React from 'react'
 

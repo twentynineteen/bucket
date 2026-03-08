@@ -1,11 +1,11 @@
-import { CACHE } from '@constants/timing'
-import { queryKeys } from '@lib/query-keys'
-import { createQueryOptions } from '@lib/query-utils'
+import { CACHE } from '@shared/constants/timing'
+import { queryKeys } from '@shared/lib/query-keys'
+import { createQueryOptions } from '@shared/lib/query-utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { listen } from '@tauri-apps/api/event'
 import { useCallback, useEffect, useRef } from 'react'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils/logger'
 
 interface UseUploadEventsReturn {
   progress: number

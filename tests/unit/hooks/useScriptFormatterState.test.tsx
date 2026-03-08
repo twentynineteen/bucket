@@ -24,7 +24,7 @@ vi.mock('@/hooks/useExampleManagement', () => ({
   useExampleManagement: vi.fn()
 }))
 
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   createNamespacedLogger: vi.fn(() => ({
     info: vi.fn(),
     warn: vi.fn(),

@@ -36,7 +36,7 @@ vi.mock('@hooks/useScriptDownload', () => ({
   useScriptDownload: vi.fn()
 }))
 
-vi.mock('@utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

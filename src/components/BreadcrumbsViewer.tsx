@@ -4,7 +4,7 @@
  * Displays the contents of a breadcrumbs.json file in a readable format.
  */
 
-import { formatBreadcrumbDateSimple } from '@utils/breadcrumbsComparison'
+import { formatBreadcrumbDateSimple } from '@shared/utils/breadcrumbs'
 import {
   Calendar,
   Camera,
