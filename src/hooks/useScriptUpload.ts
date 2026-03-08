@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useScriptUpload Hook
  * Manages file selection and parsing for script formatter workflow

@@ -1,3 +1,4 @@
+// Target: @features/Baker
 import { appStore } from '@shared/store'
 import { useQueryClient } from '@tanstack/react-query'
 import { ask, confirm, open } from '@tauri-apps/plugin-dialog'

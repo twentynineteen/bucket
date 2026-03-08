@@ -1,6 +1,6 @@
 import { cn } from '@components/lib/utils'
 import { BUTTON_ANIMATIONS } from '@shared/constants/animations'
-import { useReducedMotion } from '@hooks/useReducedMotion'
+import { useReducedMotion } from '@shared/hooks'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { motion } from 'framer-motion'

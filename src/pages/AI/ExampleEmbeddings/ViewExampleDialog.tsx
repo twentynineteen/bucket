@@ -7,15 +7,15 @@
 
 import { FileText } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@shared/ui/badge'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle
-} from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+} from '@shared/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
 import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
 
 interface ViewExampleDialogProps {

@@ -23,7 +23,7 @@ import {
 import React, { useRef } from 'react'
 
 import { formatFileSize } from '@/components/BreadcrumbsViewer/fieldUtils'
-import { Button } from '@/components/ui/button'
+import { Button } from '@shared/ui/button'
 import type { BreadcrumbsFile, BreadcrumbsPreview } from '@/types/baker'
 
 import { TrelloCardsManager } from './TrelloCardsManager'

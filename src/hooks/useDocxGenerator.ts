@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useDocxGenerator Hook
  * Feature: 006-i-wish-to (T039)

@@ -1,3 +1,4 @@
+// Target: @features/Upload
 /**
  * React Query hook for fetching Sprout Video metadata
  * Feature: 004-embed-multiple-video - URL auto-fetch

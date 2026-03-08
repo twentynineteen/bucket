@@ -19,7 +19,7 @@ import React from 'react'
 
 import type { BreadcrumbsViewerProps } from '@/types/baker'
 
-import { Button } from './ui/button'
+import { Button } from '@shared/ui/button'
 
 export const BreadcrumbsViewer: React.FC<BreadcrumbsViewerProps> = ({
   breadcrumbs,

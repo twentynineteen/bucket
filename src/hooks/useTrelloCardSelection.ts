@@ -1,3 +1,4 @@
+// Target: @features/Trello
 /**
  * useTrelloCardSelection - Card selection and details management
  * Handles card selection state, fetching details, and validation

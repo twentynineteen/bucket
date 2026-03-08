@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 
 // Mock the hooks before importing the component
-vi.mock('@hooks/useBreadcrumb', () => ({
+vi.mock('@shared/hooks/useBreadcrumb', () => ({
   useBreadcrumb: vi.fn()
 }))
 
@@ -65,7 +65,7 @@ vi.mock('@shared/utils/logger', () => ({
 }))
 
 // Mock ThemeSelector and TrelloBoardSelector
-vi.mock('@components/Settings/ThemeSelector', () => ({
+vi.mock('@shared/ui/theme/ThemeSelector', () => ({
   ThemeSelector: () => <div data-testid="theme-selector">Theme Selector</div>
 }))
 
@@ -145,7 +145,7 @@ describe('SettingsPage Component', () => {
 
   describe('Navigation', () => {
     test('should set breadcrumbs correctly', async () => {
-      const { useBreadcrumb } = await import('@hooks/useBreadcrumb')
+      const { useBreadcrumb } = await import('@shared/hooks/useBreadcrumb')
 
       renderWithProviders(<Settings />)
 

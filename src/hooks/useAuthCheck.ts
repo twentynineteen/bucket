@@ -1,3 +1,4 @@
+// Target: @features/Auth
 import { CACHE } from '@shared/constants/timing'
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'

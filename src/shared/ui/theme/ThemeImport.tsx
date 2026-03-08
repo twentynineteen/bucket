@@ -5,7 +5,7 @@
  * Currently a placeholder/stub for the architecture.
  */
 
-import { Button } from '@/components/ui/button'
+import { Button } from '@shared/ui/button'
 import { Upload } from 'lucide-react'
 import React from 'react'
 

@@ -7,8 +7,8 @@
 
 import '@testing-library/jest-dom'
 
-import { TooltipProvider } from '@components/ui/tooltip'
-import { SidebarContext } from '@components/ui/use-sidebar'
+import { TooltipProvider } from '@shared/ui/tooltip'
+import { SidebarContext } from '@shared/ui/use-sidebar'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Home, Settings, Users, type LucideIcon } from 'lucide-react'

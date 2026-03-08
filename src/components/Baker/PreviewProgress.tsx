@@ -5,7 +5,7 @@
  * Shows the number of previews generated out of total projects.
  */
 
-import { Progress } from '@components/ui/progress'
+import { Progress } from '@shared/ui/progress'
 import { RefreshCw } from 'lucide-react'
 import React from 'react'
 

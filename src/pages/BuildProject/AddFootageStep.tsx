@@ -1,4 +1,4 @@
-import { Button } from '@components/ui/button'
+import { Button } from '@shared/ui/button'
 import { STEP_CARD_ANIMATION } from '@shared/constants/animations'
 import { FootageFile } from '@hooks/useCameraAutoRemap'
 import { RefreshCw, Upload } from 'lucide-react'

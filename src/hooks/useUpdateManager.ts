@@ -1,3 +1,4 @@
+// Target: @features/AppShell
 /**
  * Comprehensive update management hook that handles GitHub releases and Tauri updater compatibility
  */

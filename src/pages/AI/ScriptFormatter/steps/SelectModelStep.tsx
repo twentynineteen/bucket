@@ -3,7 +3,7 @@
  * Step 2: AI Provider and Model Selection
  */
 
-import { Button } from '@components/ui/button'
+import { Button } from '@shared/ui/button'
 import { Database, Sparkles } from 'lucide-react'
 import React from 'react'
 
@@ -12,7 +12,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from '@/components/ui/accordion'
+} from '@shared/ui/accordion'
 import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
 import type {
   AIModel,

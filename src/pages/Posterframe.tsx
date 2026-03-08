@@ -4,19 +4,19 @@
  * Create custom thumbnails with branded backgrounds and video titles.
  */
 
-import ErrorBoundary from '@components/ErrorBoundary'
-import { Button } from '@components/ui/button'
-import { Input } from '@components/ui/input'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { Button } from '@shared/ui/button'
+import { Input } from '@shared/ui/input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
-} from '@components/ui/select'
+} from '@shared/ui/select'
 import { useAutoFileSelection } from '@hooks/useAutoFileSelection'
 import { useBackgroundFolder } from '@hooks/useBackgroundFolder'
-import { useBreadcrumb } from '@hooks/useBreadcrumb'
+import { useBreadcrumb } from '@shared/hooks'
 import { useFileSelection } from '@hooks/useFileSelection'
 import { usePosterframeAutoRedraw } from '@hooks/usePosterframeAutoRedraw'
 import { usePosterframeCanvas } from '@hooks/usePosterframeCanvas'

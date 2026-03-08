@@ -29,7 +29,7 @@ vi.mock('@tauri-apps/plugin-shell', () => ({
 }))
 
 // Mock hooks
-vi.mock('@hooks/useBreadcrumb', () => ({
+vi.mock('@shared/hooks/useBreadcrumb', () => ({
   useBreadcrumb: vi.fn()
 }))
 

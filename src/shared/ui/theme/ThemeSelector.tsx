@@ -11,10 +11,10 @@
  * - Theme cards use inline styles to remain stable during preview
  */
 
-import { ThemeColorSwatch } from '@/components/Settings/ThemeColorSwatch'
-import { Label } from '@/components/ui/label'
-import { getGroupedThemes, type ThemeMetadata } from '@/constants/themes'
-import { useThemePreview } from '@/hooks/useThemePreview'
+import { ThemeColorSwatch } from './ThemeColorSwatch'
+import { Label } from '@shared/ui/label'
+import { getGroupedThemes, type ThemeMetadata } from './themes'
+import { useThemePreview } from './useThemePreview'
 import { Check } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import React from 'react'

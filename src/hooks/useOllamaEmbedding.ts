@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useOllamaEmbedding Hook
  * Feature: 007-frontend-script-example

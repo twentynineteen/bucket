@@ -1,3 +1,4 @@
+// Target: dead-code-candidate (0 external consumers)
 /**
  * React hook for managing transcript highlights
  *

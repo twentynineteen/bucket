@@ -1,5 +1,6 @@
 import * as useMobileHook from '@components/hooks/use-mobile'
-import { SidebarProvider, useSidebar } from '@components/ui/sidebar'
+import { SidebarProvider } from '@shared/ui/sidebar/SidebarProvider'
+import { useSidebar } from '@shared/ui/use-sidebar'
 import { act, render, renderHook } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'

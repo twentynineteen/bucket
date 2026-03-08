@@ -26,7 +26,7 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
 }))
 
 // Mock hooks
-vi.mock('@hooks/useBreadcrumb', () => ({
+vi.mock('@shared/hooks/useBreadcrumb', () => ({
   useBreadcrumb: vi.fn()
 }))
 
@@ -59,7 +59,7 @@ let mockImageRefreshState = {
   setThumbnailLoaded: mockSetThumbnailLoaded
 }
 
-vi.mock('@hooks/useApiKeys', () => ({
+vi.mock('@shared/hooks/useApiKeys', () => ({
   useSproutVideoApiKey: vi.fn(() => mockApiKeyState)
 }))
 

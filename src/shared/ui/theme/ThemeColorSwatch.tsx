@@ -5,7 +5,7 @@
  * Shows: background, foreground, primary, and accent colors.
  */
 
-import type { ThemeColorSwatch as ThemeColorSwatchType } from '@/constants/themes'
+import type { ThemeColorSwatch as ThemeColorSwatchType } from './themes'
 
 interface ThemeColorSwatchProps {
   colors: ThemeColorSwatchType

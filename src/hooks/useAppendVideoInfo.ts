@@ -1,3 +1,4 @@
+// Target: @features/BuildProject
 import { extractVideoInfoBlock } from '@utils/extractVideoInfoBlock'
 import { createNamespacedLogger } from '@shared/utils/logger'
 import { TrelloCard, updateCard } from '@utils/TrelloCards'

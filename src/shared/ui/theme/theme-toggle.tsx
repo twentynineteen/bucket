@@ -1,4 +1,4 @@
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@components/ui/sidebar'
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@shared/ui/sidebar/SidebarMenu'
 import { Palette } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 

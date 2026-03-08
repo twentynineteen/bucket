@@ -2,18 +2,17 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger
-} from '@components/ui/collapsible'
+} from '@shared/ui/collapsible'
+import { SidebarGroup, SidebarGroupLabel } from '@shared/ui/sidebar/SidebarLayout'
 import {
-  SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem
-} from '@components/ui/sidebar'
-import { useSidebar } from '@components/ui/use-sidebar'
+} from '@shared/ui/sidebar/SidebarMenu'
+import { useSidebar } from '@shared/ui/use-sidebar'
 import { ChevronRight, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 

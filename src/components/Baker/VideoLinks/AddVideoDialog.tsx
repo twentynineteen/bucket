@@ -6,8 +6,8 @@
 
 import { AlertCircle, Loader2, Plus, Upload as UploadIcon } from 'lucide-react'
 
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@shared/ui/alert'
+import { Button } from '@shared/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -16,10 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+} from '@shared/ui/dialog'
+import { Input } from '@shared/ui/input'
+import { Label } from '@shared/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
 
 // Type definitions for grouped parameters
 export interface DialogState {

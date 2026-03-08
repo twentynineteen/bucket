@@ -1,3 +1,4 @@
+// Target: @features/BuildProject
 /**
  * useProjectValidation Hook
  * Purpose: Handle all validation logic for project creation

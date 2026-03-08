@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useScriptFormatterState Hook
  * Purpose: Manages all state and handlers for the ScriptFormatter workflow

@@ -8,7 +8,7 @@
 
 import { Loader2 } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
+import { Button } from '@shared/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -16,16 +16,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+} from '@shared/ui/dialog'
+import { Input } from '@shared/ui/input'
+import { Label } from '@shared/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
-} from '@/components/ui/select'
+} from '@shared/ui/select'
 import { ExampleCategory } from '@/types/exampleEmbeddings'
 
 import { FileInputField, ModelStatusIndicator, UploadSuccessView } from './components'

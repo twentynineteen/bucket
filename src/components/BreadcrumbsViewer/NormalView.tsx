@@ -20,7 +20,7 @@ import type { BreadcrumbsFile } from '@/types/baker'
 
 import { TrelloCardsManager } from '../Baker/TrelloCardsManager'
 import { VideoLinksManager } from '../Baker/VideoLinksManager'
-import { Button } from '../ui/button'
+import { Button } from '@shared/ui/button'
 import { formatFileSize } from './fieldUtils'
 
 interface NormalViewProps {

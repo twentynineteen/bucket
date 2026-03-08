@@ -5,10 +5,10 @@
  * Refactored to use consistent UI template pattern from BuildProject/Baker pages.
  */
 
-import ErrorBoundary from '@components/ErrorBoundary'
-import { Button } from '@components/ui/button'
-import { Input } from '@components/ui/input'
-import { useBreadcrumb } from '@hooks/useBreadcrumb'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { Button } from '@shared/ui/button'
+import { Input } from '@shared/ui/input'
+import { useBreadcrumb } from '@shared/hooks'
 import { useUploadTrello } from '@hooks/useUploadTrello'
 import TrelloCardList from '@utils/trello/TrelloCardList'
 import { AlertTriangle, RefreshCw, Search } from 'lucide-react'

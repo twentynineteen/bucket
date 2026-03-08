@@ -3,7 +3,7 @@
  * Purpose: Test breadcrumb state management with React Query and Zustand
  */
 
-import { useBreadcrumb } from '@/hooks/useBreadcrumb'
+import { useBreadcrumb } from '@shared/hooks/useBreadcrumb'
 import { useBreadcrumbStore } from '@shared/store'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'

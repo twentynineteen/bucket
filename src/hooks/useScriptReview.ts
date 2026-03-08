@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useScriptReview Hook
  * Manages text editing and review for formatted scripts

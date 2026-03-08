@@ -1,3 +1,4 @@
+// Target: @features/BuildProject
 import { useMemo } from 'react'
 
 export interface VideoInfoData {

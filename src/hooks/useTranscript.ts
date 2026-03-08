@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * React Query hook for fetching and parsing video transcripts
  *

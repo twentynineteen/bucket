@@ -1,4 +1,4 @@
-import { Button } from '@components/ui/button'
+import { Button } from '@shared/ui/button'
 import React from 'react'
 
 interface TrelloIntegrationButtonProps {

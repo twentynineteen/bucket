@@ -1,3 +1,4 @@
+// Target: @features/Trello
 /**
  * useTrelloActions - External actions for Trello integration
  * Handles opening cards in browser and dialog management

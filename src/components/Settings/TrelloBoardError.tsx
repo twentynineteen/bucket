@@ -1,5 +1,5 @@
-import { Alert, AlertDescription, AlertTitle } from '@components/ui/alert'
-import { Button } from '@components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert'
+import { Button } from '@shared/ui/button'
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import React from 'react'
 

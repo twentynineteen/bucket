@@ -6,13 +6,13 @@
 
 import { CheckCircle } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
+import { Button } from '@shared/ui/button'
 import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from '@/components/ui/dialog'
+} from '@shared/ui/dialog'
 
 interface UploadSuccessViewProps {
   uploadedTitle: string

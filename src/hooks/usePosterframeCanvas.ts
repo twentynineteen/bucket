@@ -1,3 +1,4 @@
+// Target: @features/Upload
 import { loadFont } from '@utils/loadFont'
 import type { Font } from 'opentype.js'
 import { useCallback, useRef } from 'react'

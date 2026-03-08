@@ -1,6 +1,6 @@
 import * as useMobileHook from '@components/hooks/use-mobile'
+import { Sidebar } from '@shared/ui/sidebar/Sidebar'
 import {
-  Sidebar,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuBadge,
@@ -9,9 +9,9 @@ import {
   SidebarMenuSkeleton,
   SidebarMenuSub,
   SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarProvider
-} from '@components/ui/sidebar'
+  SidebarMenuSubItem
+} from '@shared/ui/sidebar/SidebarMenu'
+import { SidebarProvider } from '@shared/ui/sidebar/SidebarProvider'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'

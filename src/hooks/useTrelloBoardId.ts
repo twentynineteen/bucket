@@ -1,3 +1,4 @@
+// Target: @features/Trello
 /**
  * useTrelloBoardId - Hook for managing configurable Trello board ID
  * DEBT-014: Make Trello board ID configurable in Settings

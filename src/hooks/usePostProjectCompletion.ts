@@ -1,3 +1,4 @@
+// Target: @features/BuildProject
 // hooks/usePostProjectCompletion.ts
 
 import type { BuildProjectEvent } from '@machines/buildProjectMachine'

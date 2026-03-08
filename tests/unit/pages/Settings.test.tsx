@@ -30,7 +30,7 @@ vi.mock('@shared/utils/storage', () => ({
 }))
 
 // Mock hooks
-vi.mock('@/hooks/useBreadcrumb', () => ({
+vi.mock('@shared/hooks/useBreadcrumb', () => ({
   useBreadcrumb: vi.fn()
 }))
 

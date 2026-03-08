@@ -1,3 +1,4 @@
+// Target: @features/Auth
 import { AuthContext, type AuthContextType } from '@context/AuthContext'
 import { useContext } from 'react'
 

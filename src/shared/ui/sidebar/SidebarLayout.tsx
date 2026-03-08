@@ -1,8 +1,8 @@
 'use client'
 
 import { cn } from '@components/lib/utils'
-import { Input } from '@components/ui/input'
-import { Separator } from '@components/ui/separator'
+import { Input } from '@shared/ui/input'
+import { Separator } from '@shared/ui/separator'
 import { Slot } from '@radix-ui/react-slot'
 import * as React from 'react'
 

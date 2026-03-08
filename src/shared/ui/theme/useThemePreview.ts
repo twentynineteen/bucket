@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react'
-import type { ThemeId } from '@/constants/themes'
+import type { ThemeId } from './themes'
 
 interface UseThemePreviewOptions {
   activeTheme: string

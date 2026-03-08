@@ -85,7 +85,7 @@ vi.mock('@hooks/useBakerTrelloIntegration', () => ({
   }))
 }))
 
-vi.mock('hooks/useBreadcrumb', () => ({
+vi.mock('@shared/hooks/useBreadcrumb', () => ({
   useBreadcrumb: vi.fn()
 }))
 

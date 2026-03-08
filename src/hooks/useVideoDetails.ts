@@ -1,3 +1,4 @@
+// Target: dead-code-candidate (0 external consumers)
 /**
  * React Query hook for fetching SproutVideo details including HLS URL
  *

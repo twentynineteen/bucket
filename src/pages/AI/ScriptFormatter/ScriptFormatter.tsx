@@ -5,9 +5,9 @@
  * Refactored: 2025-11-18 - Extracted state to useScriptFormatterState, step components to /steps
  */
 
-import ErrorBoundary from '@components/ErrorBoundary'
-import { Button } from '@components/ui/button'
-import { useBreadcrumb } from '@hooks/index'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { Button } from '@shared/ui/button'
+import { useBreadcrumb } from '@shared/hooks'
 import { useScriptFormatterState } from '@hooks/useScriptFormatterState'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import React from 'react'

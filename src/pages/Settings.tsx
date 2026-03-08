@@ -6,26 +6,26 @@
  * Follows BuildProject/Baker UI patterns with ErrorBoundary wrapper.
  */
 
-import ErrorBoundary from '@components/ErrorBoundary'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import { TrelloBoardSelector } from '@components/Settings/TrelloBoardSelector'
-import { ThemeSelector } from '@components/Settings/ThemeSelector'
+import { ThemeSelector } from '@shared/ui/theme/ThemeSelector'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from '@components/ui/accordion'
-import { Button } from '@components/ui/button'
+} from '@shared/ui/accordion'
+import { Button } from '@shared/ui/button'
 import { CACHE } from '@shared/constants/timing'
 import { useAIProvider } from '@hooks/useAIProvider'
-import { useBreadcrumb } from '@hooks/useBreadcrumb'
+import { useBreadcrumb } from '@shared/hooks'
 import { queryKeys } from '@shared/lib/query-keys'
 import { createQueryError, createQueryOptions, shouldRetry } from '@shared/lib/query-utils'
 import { useAppStore } from '@shared/store'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { open as openPath } from '@tauri-apps/plugin-dialog'
 import { open } from '@tauri-apps/plugin-shell'
-import ApiKeyInput from '@utils/ApiKeyInput'
+import ApiKeyInput from '@shared/ui/ApiKeyInput'
 import { ApiKeys, loadApiKeys, saveApiKeys } from '@shared/utils/storage'
 import { AlertTriangle, CheckCircle, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import React, { useEffect, useState } from 'react'

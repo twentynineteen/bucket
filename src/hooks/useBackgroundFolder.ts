@@ -1,3 +1,4 @@
+// Target: @features/BuildProject
 import { useAppStore } from '@shared/store'
 import { useQuery } from '@tanstack/react-query'
 import { readDir } from '@tauri-apps/plugin-fs'

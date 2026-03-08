@@ -1,3 +1,4 @@
+// Target: @features/AppShell
 import { useEffect, useState } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 

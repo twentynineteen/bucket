@@ -1,20 +1,20 @@
-import { Button } from '@components/ui/button'
+import { Button } from '@shared/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle
-} from '@components/ui/dialog'
-import { Input } from '@components/ui/input'
+} from '@shared/ui/dialog'
+import { Input } from '@shared/ui/input'
 import { appStore } from '@shared/store'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { open } from '@tauri-apps/plugin-shell'
 import TrelloCardList from '@utils/trello/TrelloCardList'
 import { TrelloCard } from '@utils/TrelloCards'
+import { useFuzzySearch } from '@shared/hooks'
 import {
   useAppendBreadcrumbs,
-  useFuzzySearch,
   useTrelloBoard,
   useTrelloCardDetails
 } from 'hooks'

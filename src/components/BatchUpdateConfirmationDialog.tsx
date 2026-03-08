@@ -17,7 +17,7 @@ import React from 'react'
 import type { BreadcrumbsPreview } from '@/types/baker'
 
 import { DetailedChangesSection } from './BatchUpdate'
-import { Button } from './ui/button'
+import { Button } from '@shared/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from './ui/dialog'
+} from '@shared/ui/dialog'
 
 interface BatchUpdateConfirmationDialogProps {
   isOpen: boolean

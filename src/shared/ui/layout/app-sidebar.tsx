@@ -1,19 +1,18 @@
-import { NavMain } from '@components/nav-main'
-import { NavUser } from '@components/nav-user'
-import { TeamSwitcher } from '@components/team-switcher'
-import { ThemeToggle } from '@components/theme-toggle'
+import { NavMain } from './nav-main'
+import { NavUser } from './nav-user'
+import { TeamSwitcher } from './team-switcher'
+import { ThemeToggle } from '@shared/ui/theme/theme-toggle'
+import { Sidebar, SidebarRail } from '@shared/ui/sidebar/Sidebar'
 import {
-  Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarHeader,
-  SidebarRail
-} from '@components/ui/sidebar'
+  SidebarHeader
+} from '@shared/ui/sidebar/SidebarLayout'
 import { UpdateDialog } from '@components/UpdateDialog'
 import { useAuth } from '@hooks/useAuth'
 import { useMacOSEffects } from '@hooks/useMacOSEffects'
 import { useUpdateManager } from '@hooks/useUpdateManager'
-import { useUsername } from '@hooks/useUsername'
+import { useUsername } from '@shared/hooks'
 import {
   Clapperboard,
   FileText,

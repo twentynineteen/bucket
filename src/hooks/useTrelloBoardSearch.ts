@@ -1,3 +1,4 @@
+// Target: @features/Trello
 /**
  * useTrelloBoardSearch - Search and filter Trello cards
  * Provides fuzzy search across card names and descriptions
@@ -6,7 +7,7 @@
 import type { TrelloCard } from '@utils/TrelloCards'
 import { useMemo } from 'react'
 
-import { useFuzzySearch } from './useFuzzySearch'
+import { useFuzzySearch } from '@shared/hooks'
 
 /**
  * Hook to search and filter Trello cards with fuzzy matching

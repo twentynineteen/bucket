@@ -1,6 +1,6 @@
 import * as useMobileHook from '@components/hooks/use-mobile'
+import { Sidebar } from '@shared/ui/sidebar/Sidebar'
 import {
-  Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
@@ -9,9 +9,9 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarInput,
-  SidebarProvider,
   SidebarSeparator
-} from '@components/ui/sidebar'
+} from '@shared/ui/sidebar/SidebarLayout'
+import { SidebarProvider } from '@shared/ui/sidebar/SidebarProvider'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'

@@ -1,3 +1,4 @@
+// Target: @features/BuildProject
 /**
  * useProjectFolders Hook
  * Purpose: Handle project folder structure creation

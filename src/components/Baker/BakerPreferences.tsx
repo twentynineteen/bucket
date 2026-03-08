@@ -4,7 +4,7 @@
  * Settings dialog for configuring Baker scan and update behavior.
  */
 
-import { Button } from '@components/ui/button'
+import { Button } from '@shared/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger
-} from '@components/ui/dialog'
+} from '@shared/ui/dialog'
 import { Settings } from 'lucide-react'
 import React from 'react'
 

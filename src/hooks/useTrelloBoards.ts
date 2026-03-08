@@ -1,10 +1,11 @@
+// Target: @features/Trello
 import { CACHE } from '@shared/constants/timing'
 import { queryKeys } from '@shared/lib/query-keys'
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { TrelloBoard } from '@types/media'
 
-import { useApiKeys } from './useApiKeys'
+import { useApiKeys } from '@shared/hooks'
 
 export interface UseTrelloBoardsReturn {
   /** Array of available Trello boards */

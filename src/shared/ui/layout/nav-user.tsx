@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@shared/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,9 +7,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from '@components/ui/dropdown-menu'
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@components/ui/sidebar'
-import { useSidebar } from '@components/ui/use-sidebar'
+} from '@shared/ui/dropdown-menu'
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@shared/ui/sidebar/SidebarMenu'
+import { useSidebar } from '@shared/ui/use-sidebar'
 import { CACHE } from '@shared/constants/timing'
 import { queryKeys } from '@shared/lib/query-keys'
 import { createQueryError, createQueryOptions, shouldRetry } from '@shared/lib/query-utils'

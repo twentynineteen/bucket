@@ -5,7 +5,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from '@components/ui/accordion'
+} from '@shared/ui/accordion'
 import React, { useState } from 'react'
 
 import { logger } from '@shared/utils/logger'

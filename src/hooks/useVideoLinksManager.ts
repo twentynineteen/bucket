@@ -1,3 +1,4 @@
+// Target: @features/Trello
 /**
  * useVideoLinksManager Hook
  * Purpose: Manages state and handlers for VideoLinksManager component
@@ -11,7 +12,7 @@ import { useState } from 'react'
 import type { BreadcrumbsFile, VideoLink } from '@/types/baker'
 import { logger } from '@shared/utils/logger'
 
-import { useSproutVideoApiKey, useTrelloApiKeys } from './useApiKeys'
+import { useSproutVideoApiKey, useTrelloApiKeys } from '@shared/hooks'
 import {
   generateBreadcrumbsBlock,
   updateTrelloCardWithBreadcrumbs

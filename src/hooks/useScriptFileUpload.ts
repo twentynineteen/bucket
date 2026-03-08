@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * Custom hook for script file upload and validation
  * Feature: 007-frontend-script-example

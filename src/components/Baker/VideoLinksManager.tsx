@@ -7,7 +7,7 @@
 import { useVideoLinksManager } from '@hooks/useVideoLinksManager'
 import { AlertCircle, Loader2 } from 'lucide-react'
 
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription } from '@shared/ui/alert'
 
 import { TrelloCardUpdateDialog } from './TrelloCardUpdateDialog'
 import { VideoLinkCard } from './VideoLinkCard'

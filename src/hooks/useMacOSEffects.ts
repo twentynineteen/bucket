@@ -1,3 +1,4 @@
+// Target: @features/AppShell
 import { useEffect } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useSystemTheme } from './useSystemTheme'

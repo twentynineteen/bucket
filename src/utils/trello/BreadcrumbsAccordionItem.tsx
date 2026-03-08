@@ -2,7 +2,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from '@components/ui/accordion'
+} from '@shared/ui/accordion'
 import { Breadcrumb } from '@shared/types/types'
 import React from 'react'
 

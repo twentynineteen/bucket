@@ -1,3 +1,4 @@
+// Target: @features/Upload
 /**
  * React hook for SproutVideo Player API integration
  *

@@ -5,7 +5,7 @@
  * Injects CSS styles into the document for user-imported themes.
  */
 
-import type { CustomThemeDefinition, CSSVariableName } from '@/types/customTheme'
+import type { CustomThemeDefinition, CSSVariableName } from './customTheme'
 
 /**
  * Required CSS variables that must be defined in every theme

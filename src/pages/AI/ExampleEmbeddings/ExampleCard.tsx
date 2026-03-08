@@ -7,8 +7,8 @@
 
 import { Download, RefreshCw, Trash2 } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Badge } from '@shared/ui/badge'
+import { Button } from '@shared/ui/button'
 import {
   Card,
   CardContent,
@@ -16,7 +16,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle
-} from '@/components/ui/card'
+} from '@shared/ui/card'
 import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
 
 interface ExampleCardProps {

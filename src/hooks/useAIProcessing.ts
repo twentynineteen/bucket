@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useAIProcessing Hook
  * Manages AI provider selection, model selection, and script processing

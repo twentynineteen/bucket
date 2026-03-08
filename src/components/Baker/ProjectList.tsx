@@ -5,7 +5,7 @@
  */
 
 import { BreadcrumbsViewerEnhanced } from '@components/BreadcrumbsViewerEnhanced'
-import { Button } from '@components/ui/button'
+import { Button } from '@shared/ui/button'
 import { AlertTriangle, Eye, RefreshCw } from 'lucide-react'
 import React from 'react'
 

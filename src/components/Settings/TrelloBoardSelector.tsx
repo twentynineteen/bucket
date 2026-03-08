@@ -1,4 +1,4 @@
-import { Label } from '@components/ui/label'
+import { Label } from '@shared/ui/label'
 import {
   Select,
   SelectContent,
@@ -7,8 +7,8 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue
-} from '@components/ui/select'
-import { Skeleton } from '@components/ui/skeleton'
+} from '@shared/ui/select'
+import { Skeleton } from '@shared/ui/skeleton'
 import { useTrelloBoards } from '@hooks/useTrelloBoards'
 import { TrelloBoard } from '@types/media'
 import {

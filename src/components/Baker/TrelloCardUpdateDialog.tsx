@@ -6,9 +6,9 @@
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Alert, AlertDescription } from '@shared/ui/alert'
+import { Button } from '@shared/ui/button'
+import { Checkbox } from '@shared/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from '@/components/ui/dialog'
+} from '@shared/ui/dialog'
 import type { TrelloCard } from '@/types/baker'
 
 interface TrelloCardUpdateDialogProps {

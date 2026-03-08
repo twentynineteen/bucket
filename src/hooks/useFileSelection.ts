@@ -1,3 +1,4 @@
+// Target: @features/Upload
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { readFile } from '@tauri-apps/plugin-fs'
 import { useCallback, useState } from 'react'

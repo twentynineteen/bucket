@@ -1,3 +1,4 @@
+// Target: @features/Baker
 /**
  * Custom hook for managing video links in breadcrumbs
  * Feature: 004-embed-multiple-video

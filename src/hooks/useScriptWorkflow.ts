@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useScriptWorkflow Hook
  * Orchestrates the complete script formatting workflow

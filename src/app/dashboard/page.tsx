@@ -1,4 +1,4 @@
-import { AppSidebar } from '@components/app-sidebar'
+import { AppSidebar } from '@shared/ui/layout/app-sidebar'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -6,9 +6,10 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator
-} from '@components/ui/breadcrumb'
-import { Separator } from '@components/ui/separator'
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@components/ui/sidebar'
+} from '@shared/ui/breadcrumb'
+import { Separator } from '@shared/ui/separator'
+import { SidebarInset, SidebarTrigger } from '@shared/ui/sidebar/Sidebar'
+import { SidebarProvider } from '@shared/ui/sidebar/SidebarProvider'
 import { useBreadcrumbStore } from '@shared/store'
 import React from 'react'
 import { Outlet } from 'react-router-dom'

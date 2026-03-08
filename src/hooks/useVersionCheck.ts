@@ -1,3 +1,4 @@
+// Target: @features/AppShell
 import { CACHE } from '@shared/constants/timing'
 import { useQuery } from '@tanstack/react-query'
 import { getVersion } from '@tauri-apps/api/app'

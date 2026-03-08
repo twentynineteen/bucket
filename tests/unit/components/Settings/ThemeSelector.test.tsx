@@ -4,7 +4,7 @@
  * Tests for the theme selection card grid with live preview functionality.
  */
 
-import { ThemeSelector } from '@/components/Settings/ThemeSelector'
+import { ThemeSelector } from '@shared/ui/theme/ThemeSelector'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -21,7 +21,7 @@ vi.mock('next-themes', () => ({
 }))
 
 // Mock useThemePreview hook
-vi.mock('@/hooks/useThemePreview', () => ({
+vi.mock('@shared/ui/theme/useThemePreview', () => ({
   useThemePreview: () => ({
     startPreview: vi.fn(),
     stopPreview: vi.fn(),

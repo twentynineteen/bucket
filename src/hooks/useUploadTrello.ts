@@ -1,3 +1,4 @@
+// Target: @features/Trello
 /**
  * useUploadTrello - Custom hook for UploadTrello page state and actions
  * Extracted from UploadTrello.tsx (DEBT-002)
@@ -18,10 +19,10 @@ import { TrelloCard } from '@utils/TrelloCards'
 import { SproutUploadResponse } from '@shared/types/types'
 import { useMemo, useState } from 'react'
 
+import { useFuzzySearch } from '@shared/hooks'
 import {
   useAppendBreadcrumbs,
   useAppendVideoInfo,
-  useFuzzySearch,
   useParsedTrelloDescription,
   useTrelloBoard,
   useTrelloBoardId,

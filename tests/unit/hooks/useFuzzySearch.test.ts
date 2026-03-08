@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, test, expect } from 'vitest'
-import { useFuzzySearch } from '@hooks/useFuzzySearch'
+import { useFuzzySearch } from '@shared/hooks/useFuzzySearch'
 
 interface TestItem {
   id: string

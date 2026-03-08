@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useScriptRetrieval Hook
  * Feature: 006-i-wish-to RAG Enhancement

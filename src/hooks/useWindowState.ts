@@ -1,3 +1,4 @@
+// Target: @features/AppShell
 import { useEffect } from 'react'
 import { getCurrentWindow, LogicalPosition, LogicalSize } from '@tauri-apps/api/window'
 

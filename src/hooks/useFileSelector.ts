@@ -1,3 +1,4 @@
+// Target: @features/BuildProject
 import { open } from '@tauri-apps/plugin-dialog'
 
 export async function selectFiles(): Promise<

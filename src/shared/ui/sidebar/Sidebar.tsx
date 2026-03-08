@@ -1,8 +1,8 @@
 'use client'
 
 import { cn } from '@components/lib/utils'
-import { Button } from '@components/ui/button'
-import { Sheet, SheetContent } from '@components/ui/sheet'
+import { Button } from '@shared/ui/button'
+import { Sheet, SheetContent } from '@shared/ui/sheet'
 import { PanelLeft } from 'lucide-react'
 import * as React from 'react'
 

@@ -1,4 +1,4 @@
-import { Button } from '@components/ui/button'
+import { Button } from '@shared/ui/button'
 import { STEP_CARD_ANIMATION } from '@shared/constants/animations'
 import { FolderPlus } from 'lucide-react'
 

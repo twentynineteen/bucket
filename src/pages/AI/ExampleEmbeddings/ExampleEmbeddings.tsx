@@ -6,10 +6,10 @@
  * Refactored to align with Baker/BuildProject UI patterns.
  */
 
-import ErrorBoundary from '@components/ErrorBoundary'
-import { Button } from '@components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
-import { useBreadcrumb } from '@hooks/useBreadcrumb'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { Button } from '@shared/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
+import { useBreadcrumb } from '@shared/hooks'
 import { useExampleManagement } from '@hooks/useExampleManagement'
 import { save } from '@tauri-apps/plugin-dialog'
 import { mkdir, writeTextFile } from '@tauri-apps/plugin-fs'

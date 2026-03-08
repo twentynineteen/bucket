@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useAIProvider Hook
  * Feature: 006-i-wish-to (T040)

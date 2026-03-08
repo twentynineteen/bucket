@@ -12,7 +12,7 @@ import type { BreadcrumbsViewerProps } from '@/types/baker'
 
 import { NormalView } from './BreadcrumbsViewer/NormalView'
 import { PreviewComparison } from './BreadcrumbsViewer/PreviewComparison'
-import { Button } from './ui/button'
+import { Button } from '@shared/ui/button'
 
 export const BreadcrumbsViewerEnhanced: React.FC<BreadcrumbsViewerProps> = ({
   breadcrumbs,

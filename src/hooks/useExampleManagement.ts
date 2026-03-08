@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * Custom hook for managing AI script example embeddings
  * Feature: 007-frontend-script-example

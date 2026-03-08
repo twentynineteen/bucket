@@ -1,3 +1,4 @@
+// Target: @features/BuildProject
 // hooks/useCreateProjectWithMachine.ts
 
 import type { BuildProjectEvent } from '@machines/buildProjectMachine'

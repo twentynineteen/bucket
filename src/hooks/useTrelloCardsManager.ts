@@ -1,3 +1,4 @@
+// Target: @features/Trello
 /**
  * useTrelloCardsManager Hook
  * Purpose: Manages state and handlers for TrelloCardsManager component
@@ -11,7 +12,7 @@ import type { TrelloCard } from '@/types/baker'
 import { logger } from '@shared/utils/logger'
 
 import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
-import { useFuzzySearch } from './useFuzzySearch'
+import { useFuzzySearch } from '@shared/hooks'
 import { useTrelloBoard } from './useTrelloBoard'
 
 interface UseTrelloCardsManagerProps {

@@ -1,3 +1,4 @@
+// Target: @features/BuildProject
 /**
  * usePremiereIntegration Hook
  * Purpose: Handle Premiere Pro template integration and post-completion actions

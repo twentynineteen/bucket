@@ -5,17 +5,17 @@
  * Follows the standard page template pattern used by BuildProject and Baker pages.
  */
 
-import { Button } from '@components/ui/button'
-import { Progress } from '@components/ui/progress'
-import ErrorBoundary from '@components/ErrorBoundary'
-import { useSproutVideoApiKey } from '@hooks/useApiKeys'
-import { useBreadcrumb } from '@hooks/useBreadcrumb'
+import { Button } from '@shared/ui/button'
+import { Progress } from '@shared/ui/progress'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { useSproutVideoApiKey } from '@shared/hooks'
+import { useBreadcrumb } from '@shared/hooks'
 import { useFileUpload } from '@hooks/useFileUpload'
 import { useImageRefresh } from '@hooks/useImageRefresh'
 import { useUploadEvents } from '@hooks/useUploadEvents'
-import EmbedCodeInput from '@utils/EmbedCodeInput'
-import ExternalLink from '@utils/ExternalLink'
-import FormattedDate from '@utils/FormattedDate'
+import EmbedCodeInput from '@shared/ui/EmbedCodeInput'
+import ExternalLink from '@shared/ui/ExternalLink'
+import FormattedDate from '@shared/ui/FormattedDate'
 import { AlertTriangle, RefreshCw, Sprout } from 'lucide-react'
 import React, { useMemo } from 'react'
 

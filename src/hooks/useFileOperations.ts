@@ -1,3 +1,4 @@
+// Target: @features/BuildProject
 /**
  * useFileOperations Hook
  * Purpose: Handle file moving operations with progress tracking

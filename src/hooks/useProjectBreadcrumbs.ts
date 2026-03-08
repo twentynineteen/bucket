@@ -1,3 +1,4 @@
+// Target: @features/Baker
 /**
  * useProjectBreadcrumbs Hook
  * Purpose: Handle breadcrumbs generation and storage

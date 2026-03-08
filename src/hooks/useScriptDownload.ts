@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useScriptDownload Hook
  * Manages DOCX file generation and download from markdown

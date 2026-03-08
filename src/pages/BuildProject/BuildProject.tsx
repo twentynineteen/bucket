@@ -1,4 +1,4 @@
-import { useTrelloApiKeys } from '@hooks/useApiKeys'
+import { useTrelloApiKeys } from '@shared/hooks'
 import { useBuildProjectMachine } from '@hooks/useBuildProjectMachine'
 import { useCreateProjectWithMachine } from '@hooks/useCreateProjectWithMachine'
 import { usePostProjectCompletion } from '@hooks/usePostProjectCompletion'

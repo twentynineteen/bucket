@@ -4,7 +4,7 @@
  * Handles project selection and batch update operations for Baker.
  */
 
-import { Button } from '@components/ui/button'
+import { Button } from '@shared/ui/button'
 import { CheckCircle, RefreshCw } from 'lucide-react'
 import React from 'react'
 

@@ -5,7 +5,7 @@
  * Automatically deploys plugin updates to your Premiere Pro installation.
  */
 
-import ErrorBoundary from '@components/ErrorBoundary'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,9 +14,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from '@components/ui/alert-dialog'
-import { Button } from '@components/ui/button'
-import { useBreadcrumb } from '@hooks/useBreadcrumb'
+} from '@shared/ui/alert-dialog'
+import { Button } from '@shared/ui/button'
+import { useBreadcrumb } from '@shared/hooks'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import {

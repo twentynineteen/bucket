@@ -5,7 +5,7 @@
  * Ensures backward compatibility for existing users.
  */
 
-import type { ThemeId } from '@/constants/themes'
+import type { ThemeId } from './themes'
 
 /**
  * Map legacy theme IDs to modern theme IDs

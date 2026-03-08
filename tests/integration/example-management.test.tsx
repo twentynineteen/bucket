@@ -40,7 +40,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 }))
 
 // Mock useBreadcrumb
-vi.mock('@/hooks/useBreadcrumb', () => ({
+vi.mock('@shared/hooks/useBreadcrumb', () => ({
   useBreadcrumb: vi.fn()
 }))
 

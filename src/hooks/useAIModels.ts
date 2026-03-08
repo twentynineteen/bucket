@@ -1,3 +1,4 @@
+// Target: @features/AITools
 /**
  * useAIModels Hook
  * Feature: 006-i-wish-to (T041)
