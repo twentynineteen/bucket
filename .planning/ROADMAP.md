@@ -152,11 +152,12 @@ Plans:
   3. Old path aliases (`@hooks/*`, `@pages/*`, etc.) are removed from tsconfig and vite config -- importing from old paths produces a TypeScript error
   4. Every public export in every barrel file has JSDoc describing its purpose and usage
   5. Zero `alert()` or `confirm()` calls remain in the codebase -- all replaced with Sonner toasts and Radix dialogs
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
+- [ ] 09-01-PLAN.md -- Old-alias cleanup, file relocations, cn() migration, alert/confirm replacement
+- [ ] 09-02-PLAN.md -- React.lazy() route conversion, Suspense boundaries, ESLint boundary promotion to error
+- [ ] 09-03-PLAN.md -- JSDoc on all barrel exports, CLAUDE.md rewrite with module map
 
 ## Progress
 
@@ -173,4 +174,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 6. AI Tools Module | 2/2 | Complete   | 2026-03-09 |
 | 7. Baker Module | 1/1 | Complete   | 2026-03-09 |
 | 8. BuildProject Module | 0/1 | Planned | - |
-| 9. App Shell & Enforcement | 0/? | Not started | - |
+| 9. App Shell & Enforcement | 0/3 | Not started | - |
