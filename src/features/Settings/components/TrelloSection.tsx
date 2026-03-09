@@ -10,7 +10,7 @@ import { queryKeys } from '@shared/lib/query-keys'
 import { createQueryError } from '@shared/lib/query-utils'
 import { logger } from '@shared/utils/logger'
 import ApiKeyInput from '@shared/ui/ApiKeyInput'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 
 import { openExternalUrl, saveSettingsApiKeys } from '../api'
 import type { ApiKeys } from '../api'
@@ -22,19 +22,19 @@ interface TrelloSectionProps {
 const TrelloSection: React.FC<TrelloSectionProps> = ({ apiKeys }) => {
   const queryClient = useQueryClient()
   const [localTrelloKey, setLocalTrelloKey] = useState(apiKeys.trello || '')
-  const [localTrelloToken, setLocalTrelloToken] = useState(
-    apiKeys.trelloToken || ''
-  )
+  const [localTrelloToken, setLocalTrelloToken] = useState(apiKeys.trelloToken || '')
   const [localBoardId, setLocalBoardId] = useState(apiKeys.trelloBoardId || '')
+  const [prevApiKeys, setPrevApiKeys] = useState(apiKeys)
 
-  // Sync local state when apiKeys prop changes
-  useEffect(() => {
+  // Sync local state when prop changes (React-recommended pattern)
+  if (apiKeys !== prevApiKeys) {
+    setPrevApiKeys(apiKeys)
     if (apiKeys && Object.keys(apiKeys).length > 0) {
       setLocalTrelloKey(apiKeys.trello || '')
       setLocalTrelloToken(apiKeys.trelloToken || '')
       setLocalBoardId(apiKeys.trelloBoardId || '')
     }
-  }, [apiKeys])
+  }
 
   const saveMutation = useMutation({
     mutationFn: async (newKeys: Partial<ApiKeys>) => {
@@ -42,10 +42,7 @@ const TrelloSection: React.FC<TrelloSectionProps> = ({ apiKeys }) => {
         await saveSettingsApiKeys({ ...apiKeys, ...newKeys })
         return { ...apiKeys, ...newKeys }
       } catch (error) {
-        throw createQueryError(
-          `Failed to save API keys: ${error}`,
-          'SETTINGS_SAVE'
-        )
+        throw createQueryError(`Failed to save API keys: ${error}`, 'SETTINGS_SAVE')
       }
     },
     onSuccess: (updatedKeys) => {
@@ -93,10 +90,7 @@ const TrelloSection: React.FC<TrelloSectionProps> = ({ apiKeys }) => {
         </p>
       </div>
       <div>
-        <label
-          htmlFor="trello-api-key-input"
-          className="mb-2 block text-sm font-medium"
-        >
+        <label htmlFor="trello-api-key-input" className="mb-2 block text-sm font-medium">
           Trello API Key
         </label>
         <ApiKeyInput

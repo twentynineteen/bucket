@@ -29,10 +29,7 @@ import TrelloSection from './TrelloSection'
 const SettingsPageContent: React.FC = () => {
   useSettingsScroll()
 
-  useBreadcrumb([
-    { label: 'Settings', href: '/settings/general' },
-    { label: 'General' }
-  ])
+  useBreadcrumb([{ label: 'Settings', href: '/settings/general' }, { label: 'General' }])
 
   const { data: apiKeys = {} } = useQuery({
     ...createQueryOptions(
@@ -41,10 +38,7 @@ const SettingsPageContent: React.FC = () => {
         try {
           return await loadSettingsApiKeys()
         } catch (error) {
-          throw createQueryError(
-            `Failed to load API keys: ${error}`,
-            'SETTINGS_LOAD'
-          )
+          throw createQueryError(`Failed to load API keys: ${error}`, 'SETTINGS_LOAD')
         }
       },
       'DYNAMIC',
@@ -92,8 +86,7 @@ const Settings: React.FC = () => {
             </h2>
             <div className="text-muted-foreground mb-6">
               <p>
-                An error occurred while loading the Settings page. This could be
-                due to:
+                An error occurred while loading the Settings page. This could be due to:
               </p>
               <ul className="mt-2 space-y-1 text-left">
                 <li>- Storage access issues</li>

@@ -8,7 +8,7 @@ import { queryKeys } from '@shared/lib/query-keys'
 import { createQueryError } from '@shared/lib/query-utils'
 import { logger } from '@shared/utils/logger'
 import ApiKeyInput from '@shared/ui/ApiKeyInput'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 
 import { saveSettingsApiKeys } from '../api'
 import type { ApiKeys } from '../api'
@@ -17,18 +17,16 @@ interface SproutVideoSectionProps {
   apiKeys: ApiKeys
 }
 
-const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({
-  apiKeys
-}) => {
+const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({ apiKeys }) => {
   const queryClient = useQueryClient()
   const [localKey, setLocalKey] = useState(apiKeys.sproutVideo || '')
+  const [prevPropValue, setPrevPropValue] = useState(apiKeys.sproutVideo)
 
-  // Sync local state when apiKeys prop changes
-  useEffect(() => {
-    if (apiKeys.sproutVideo !== undefined) {
-      setLocalKey(apiKeys.sproutVideo || '')
-    }
-  }, [apiKeys.sproutVideo])
+  // Sync local state when prop changes (React-recommended pattern)
+  if (apiKeys.sproutVideo !== prevPropValue) {
+    setPrevPropValue(apiKeys.sproutVideo)
+    setLocalKey(apiKeys.sproutVideo || '')
+  }
 
   const saveMutation = useMutation({
     mutationFn: async (newKeys: Partial<ApiKeys>) => {
@@ -36,10 +34,7 @@ const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({
         await saveSettingsApiKeys({ ...apiKeys, ...newKeys })
         return { ...apiKeys, ...newKeys }
       } catch (error) {
-        throw createQueryError(
-          `Failed to save API keys: ${error}`,
-          'SETTINGS_SAVE'
-        )
+        throw createQueryError(`Failed to save API keys: ${error}`, 'SETTINGS_SAVE')
       }
     },
     onSuccess: (updatedKeys) => {

@@ -36,10 +36,7 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({ apiKeys }) => {
         await saveSettingsApiKeys({ ...apiKeys, ...newKeys })
         return { ...apiKeys, ...newKeys }
       } catch (error) {
-        throw createQueryError(
-          `Failed to save API keys: ${error}`,
-          'SETTINGS_SAVE'
-        )
+        throw createQueryError(`Failed to save API keys: ${error}`, 'SETTINGS_SAVE')
       }
     },
     onSuccess: (updatedKeys) => {
@@ -78,8 +75,7 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({ apiKeys }) => {
       setConnectionStatus({
         status: 'error',
         message:
-          result.errorMessage ||
-          'Connection failed. Please check if Ollama is running.'
+          result.errorMessage || 'Connection failed. Please check if Ollama is running.'
       })
     }
   }
@@ -96,10 +92,7 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({ apiKeys }) => {
         </p>
       </div>
       <div>
-        <label
-          htmlFor="ollama-url-input"
-          className="mb-2 block text-sm font-medium"
-        >
+        <label htmlFor="ollama-url-input" className="mb-2 block text-sm font-medium">
           Ollama URL
           <span className="text-muted-foreground ml-2 text-xs">
             (Default: http://localhost:11434)
@@ -121,9 +114,7 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({ apiKeys }) => {
               {connectionStatus.status === 'testing' && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              {connectionStatus.status === 'testing'
-                ? 'Testing...'
-                : 'Test Connection'}
+              {connectionStatus.status === 'testing' ? 'Testing...' : 'Test Connection'}
             </Button>
 
             {connectionStatus.status === 'success' && (

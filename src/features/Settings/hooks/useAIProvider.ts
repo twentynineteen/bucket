@@ -100,10 +100,7 @@ export function useAIProvider(): UseAIProviderResult {
     }
   }
 
-  const validateProvider = async (
-    providerId: string,
-    config: ProviderConfiguration
-  ) => {
+  const validateProvider = async (providerId: string, config: ProviderConfiguration) => {
     try {
       const result = await validateAIConnection(providerId, config)
 
@@ -139,10 +136,7 @@ export function useAIProvider(): UseAIProviderResult {
     }
   }
 
-  const updateProviderConfig = (
-    providerId: string,
-    config: ProviderConfiguration
-  ) => {
+  const updateProviderConfig = (providerId: string, config: ProviderConfiguration) => {
     setAvailableProviders((prev) =>
       prev.map((p) => (p.id === providerId ? { ...p, configuration: config } : p))
     )

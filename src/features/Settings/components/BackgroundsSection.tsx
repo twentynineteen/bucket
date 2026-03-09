@@ -20,9 +20,7 @@ interface BackgroundsSectionProps {
 
 const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({ apiKeys }) => {
   const queryClient = useQueryClient()
-  const defaultBackgroundFolder = useAppStore(
-    (state) => state.defaultBackgroundFolder
-  )
+  const defaultBackgroundFolder = useAppStore((state) => state.defaultBackgroundFolder)
   const setDefaultBackgroundFolder = useAppStore(
     (state) => state.setDefaultBackgroundFolder
   )
@@ -33,10 +31,7 @@ const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({ apiKeys }) => {
         await saveSettingsApiKeys({ ...apiKeys, ...newKeys })
         return { ...apiKeys, ...newKeys }
       } catch (error) {
-        throw createQueryError(
-          `Failed to save API keys: ${error}`,
-          'SETTINGS_SAVE'
-        )
+        throw createQueryError(`Failed to save API keys: ${error}`, 'SETTINGS_SAVE')
       }
     },
     onSuccess: (updatedKeys) => {
@@ -75,10 +70,7 @@ const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({ apiKeys }) => {
           Default Background Folder
         </label>
         <div className="flex items-center gap-2">
-          <Button
-            onClick={handleSelectFolder}
-            className="rounded border px-3 py-1"
-          >
+          <Button onClick={handleSelectFolder} className="rounded border px-3 py-1">
             Choose Folder
           </Button>
           <Button onClick={handleSave} className="rounded border px-3 py-1">
@@ -86,9 +78,7 @@ const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({ apiKeys }) => {
           </Button>
         </div>
         {defaultBackgroundFolder && (
-          <p className="text-muted-foreground mt-1 text-sm">
-            {defaultBackgroundFolder}
-          </p>
+          <p className="text-muted-foreground mt-1 text-sm">{defaultBackgroundFolder}</p>
         )}
       </div>
     </section>
