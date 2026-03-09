@@ -81,14 +81,14 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 - [ ] **SHEL-01**: User can see all feature routes loaded via React.lazy()
 - [ ] **SHEL-02**: User can see ESLint boundary rules promoted from warn to error
-- [ ] **SHEL-03**: User can see old path aliases (`@hooks/*`, `@pages/*`, etc.) removed after migration
+- [x] **SHEL-03**: User can see old path aliases (`@hooks/*`, `@pages/*`, etc.) removed after migration
 
 ### Documentation & Cleanup
 
 - [ ] **DOCS-01**: User can see CLAUDE.md updated to reflect new module structure
 - [ ] **DOCS-02**: User can see JSDoc on every public export in barrel files
 - [x] **DOCS-03**: User can see stale specs, `.old` files, and orphaned markdown removed
-- [ ] **DOCS-04**: User can see all `alert()`/`confirm()` calls replaced with Sonner toasts and Radix dialogs
+- [x] **DOCS-04**: User can see all `alert()`/`confirm()` calls replaced with Sonner toasts and Radix dialogs
 
 ## v2 Requirements
 
@@ -167,11 +167,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BLDP-04 | Phase 8 | Complete |
 | SHEL-01 | Phase 9 | Pending |
 | SHEL-02 | Phase 9 | Pending |
-| SHEL-03 | Phase 9 | Pending |
+| SHEL-03 | Phase 9 | Complete |
 | DOCS-01 | Phase 9 | Pending |
 | DOCS-02 | Phase 9 | Pending |
 | DOCS-03 | Phase 1 | Complete |
-| DOCS-04 | Phase 9 | Pending |
+| DOCS-04 | Phase 9 | Complete |
 
 **Coverage:**
 - v1 requirements: 47 total
