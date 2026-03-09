@@ -116,17 +116,17 @@ Plans:
 - [ ] 06-02-PLAN.md -- Gap closure: route remaining direct Tauri plugin imports through api.ts
 
 ### Phase 7: Baker Module
-**Goal**: Baker (drive scanning, breadcrumbs management, batch operations) lives in a deep feature module with its 7 hooks colocated
+**Goal**: Baker (drive scanning, breadcrumbs management, batch operations) lives in a deep feature module with its 9 hooks colocated
 **Depends on**: Phase 3 (depends on Trello module)
 **Requirements**: BAKR-01, BAKR-02, BAKR-03
 **Success Criteria** (what must be TRUE):
   1. Importing Baker components, hooks, and types works only through `@features/Baker` barrel
   2. An `api.ts` layer wraps all Baker-related Tauri commands -- Baker imports Trello through `@features/Trello` barrel, not internal paths
   3. Contract tests validate the Baker module's public interface and all pass
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 07-01: TBD
+- [ ] 07-01-PLAN.md -- Baker module with api.ts I/O boundary (~24 wrappers), flat layout, minimal barrel exports, and contract tests
 
 ### Phase 8: BuildProject Module
 **Goal**: BuildProject (file ingest, camera assignment, project creation) lives in a deep feature module with its 14 hooks and XState machine colocated
@@ -171,6 +171,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 4. Upload Module | 1/1 | Complete   | 2026-03-09 |
 | 5. Settings Module | 0/1 | Planned | - |
 | 6. AI Tools Module | 2/2 | Complete   | 2026-03-09 |
-| 7. Baker Module | 0/? | Not started | - |
+| 7. Baker Module | 0/1 | Planned | - |
 | 8. BuildProject Module | 0/? | Not started | - |
 | 9. App Shell & Enforcement | 0/? | Not started | - |
