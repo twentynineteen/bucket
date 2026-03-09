@@ -5,7 +5,7 @@
  * TDD Phase: RED (Writing failing tests first)
  */
 
-import { useTrelloBoardId } from '@/hooks/useTrelloBoardId'
+import { useTrelloBoardId } from '@features/Trello'
 import { queryKeys } from '@shared/lib/query-keys'
 import { appStore } from '@shared/store'
 import * as storage from '@shared/utils/storage'

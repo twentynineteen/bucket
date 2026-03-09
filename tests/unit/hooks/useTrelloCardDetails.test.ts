@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, test, expect, beforeEach, vi } from 'vitest'
-import { useTrelloCardDetails } from '@hooks/useTrelloCardDetails'
+import { useTrelloCardDetails } from '@features/Trello'
 import type { ReactNode } from 'react'
 import { createElement } from 'react'
 

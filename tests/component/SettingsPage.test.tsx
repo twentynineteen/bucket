@@ -60,8 +60,16 @@ vi.mock('@shared/utils/logger', () => ({
     error: vi.fn(),
     log: vi.fn(),
     debug: vi.fn(),
-    warn: vi.fn()
-  }
+    warn: vi.fn(),
+    info: vi.fn()
+  },
+  createNamespacedLogger: vi.fn(() => ({
+    error: vi.fn(),
+    warn: vi.fn(),
+    log: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn()
+  }))
 }))
 
 // Mock ThemeSelector and TrelloBoardSelector
@@ -69,7 +77,7 @@ vi.mock('@shared/ui/theme/ThemeSelector', () => ({
   ThemeSelector: () => <div data-testid="theme-selector">Theme Selector</div>
 }))
 
-vi.mock('@components/Settings/TrelloBoardSelector', () => ({
+vi.mock('@features/Trello/components/TrelloBoardSelector', () => ({
   TrelloBoardSelector: () => <div data-testid="trello-board-selector">Board Selector</div>
 }))
 

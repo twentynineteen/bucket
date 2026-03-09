@@ -3,8 +3,8 @@
  * Handles searching and filtering Trello cards with fuzzy search
  */
 
-import { useTrelloBoardSearch } from '@/hooks/useTrelloBoardSearch'
-import type { TrelloCard } from '@/utils/TrelloCards'
+import { useTrelloBoardSearch } from '@features/Trello'
+import type { TrelloCard } from '@features/Trello'
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 

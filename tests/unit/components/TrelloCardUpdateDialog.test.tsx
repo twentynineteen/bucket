@@ -15,7 +15,7 @@
  */
 
 import type { TrelloCard } from '@/types/baker'
-import { TrelloCardUpdateDialog } from '@components/Baker/TrelloCardUpdateDialog'
+import { TrelloCardUpdateDialog } from '@features/Trello'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'

@@ -79,7 +79,7 @@ vi.mock('hooks/useTrelloBoard', () => ({
   }))
 }))
 
-vi.mock('@hooks/useBakerTrelloIntegration', () => ({
+vi.mock('@features/Trello/hooks/useBakerTrelloIntegration', () => ({
   useBakerTrelloIntegration: vi.fn(() => ({
     updateTrelloCards: vi.fn().mockResolvedValue([])
   }))

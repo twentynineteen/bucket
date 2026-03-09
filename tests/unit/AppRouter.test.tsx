@@ -66,8 +66,8 @@ vi.mock('@pages/UploadSprout', () => ({
   default: () => <div>Upload Sprout</div>
 }))
 
-vi.mock('@pages/UploadTrello', () => ({
-  default: () => <div>Upload Trello</div>
+vi.mock('@features/Trello', () => ({
+  UploadTrello: () => <div>Upload Trello</div>
 }))
 
 describe('AppRouter', () => {

@@ -3,8 +3,8 @@
  * Handles external actions: opening card in Trello, closing dialog
  */
 
-import { useTrelloActions } from '@/hooks/useTrelloActions'
-import { SelectedCard } from '@/pages/UploadTrello/UploadTrelloTypes'
+import { useTrelloActions } from '@features/Trello'
+import type { SelectedCard } from '@features/Trello'
 import { open } from '@tauri-apps/plugin-shell'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'

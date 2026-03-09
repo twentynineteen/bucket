@@ -4,7 +4,7 @@
  * Phase: RED (Write failing tests)
  */
 
-import { useBakerTrelloIntegration } from '@/hooks/useBakerTrelloIntegration'
+import { useBakerTrelloIntegration } from '@features/Trello'
 import { logger } from '@shared/utils/logger'
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { renderHook } from '@testing-library/react'
@@ -19,8 +19,17 @@ vi.mock('@shared/utils/logger', () => ({
   logger: {
     warn: vi.fn(),
     error: vi.fn(),
-    info: vi.fn()
-  }
+    info: vi.fn(),
+    log: vi.fn(),
+    debug: vi.fn()
+  },
+  createNamespacedLogger: vi.fn(() => ({
+    error: vi.fn(),
+    warn: vi.fn(),
+    log: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn()
+  }))
 }))
 
 // Mock the dynamic imports

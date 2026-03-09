@@ -4,10 +4,9 @@
  */
 
 import { useAppendBreadcrumbs } from '@/hooks/useAppendBreadcrumbs'
-import { useParsedTrelloDescription } from '@/hooks/useParsedTrelloDescription'
-import { useTrelloBreadcrumbs } from '@/hooks/useTrelloBreadcrumbs'
+import { useParsedTrelloDescription, useTrelloBreadcrumbs } from '@features/Trello'
 import { appStore } from '@shared/store'
-import type { TrelloCard } from '@/utils/TrelloCards'
+import type { TrelloCard } from '@features/Trello'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
@@ -21,7 +20,7 @@ vi.mock('@/hooks/useAppendBreadcrumbs', () => ({
   useAppendBreadcrumbs: vi.fn()
 }))
 
-vi.mock('@/hooks/useParsedTrelloDescription', () => ({
+vi.mock('@features/Trello/hooks/useParsedTrelloDescription', () => ({
   useParsedTrelloDescription: vi.fn()
 }))
 

@@ -5,7 +5,7 @@
  * browsing and breadcrumbs/video info appending functionality.
  */
 
-import UploadTrello from '@pages/UploadTrello'
+import { UploadTrello } from '@features/Trello'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -16,7 +16,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 const mockSetSearchTerm = vi.fn()
 const mockSetSelectedCard = vi.fn()
 
-vi.mock('@hooks/useUploadTrello', () => ({
+vi.mock('@features/Trello/hooks/useUploadTrello', () => ({
   useUploadTrello: vi.fn(() => ({
     selectedCard: null,
     setSelectedCard: mockSetSelectedCard,
@@ -46,7 +46,7 @@ vi.mock('@shared/hooks/useBreadcrumb', () => ({
 }))
 
 // Import after mocks
-import { useUploadTrello } from '@hooks/useUploadTrello'
+import { useUploadTrello } from '@features/Trello/hooks/useUploadTrello'
 
 // Helper to render with providers
 function renderWithProviders(ui: React.ReactElement) {

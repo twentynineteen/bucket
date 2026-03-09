@@ -4,10 +4,10 @@
  */
 
 import { useAppendVideoInfo } from '@/hooks/useAppendVideoInfo'
-import { useTrelloVideoInfo } from '@/hooks/useTrelloVideoInfo'
+import { useTrelloVideoInfo } from '@features/Trello'
 import { useVideoInfoBlock } from '@/hooks/useVideoInfoBlock'
 import { appStore } from '@shared/store'
-import type { TrelloCard } from '@/utils/TrelloCards'
+import type { TrelloCard } from '@features/Trello'
 import type { SproutUploadResponse } from '@shared/types/types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
