@@ -1,30 +1,23 @@
 ---
 phase: 06-ai-tools-module
-verified: 2026-03-09T17:02:00Z
-status: gaps_found
-score: 2/3 must-haves verified
-gaps:
-  - truth: "All invoke(), fetch(), open(), save(), readTextFile(), writeFile(), ModelFactory, and providerRegistry calls route through AITools/api.ts"
-    status: partial
-    reason: "Two components still import Tauri plugins directly, bypassing api.ts I/O boundary"
-    artifacts:
-      - path: "src/features/AITools/ScriptFormatter/components/FileUploader.tsx"
-        issue: "Directly imports open from @tauri-apps/plugin-dialog and readFile from @tauri-apps/plugin-fs instead of using api.ts wrappers"
-      - path: "src/features/AITools/ExampleEmbeddings/components/ExampleEmbeddings.tsx"
-        issue: "Directly imports save from @tauri-apps/plugin-dialog and mkdir, writeTextFile from @tauri-apps/plugin-fs instead of using api.ts wrappers"
-    missing:
-      - "Add openDocxFileDialog(), readDocxFile() (or similar) wrappers to api.ts for FileUploader's open+readFile usage"
-      - "Add exportExampleDialog(), createDirectory(), writeTextToFile() (or similar) wrappers to api.ts for ExampleEmbeddings' save+mkdir+writeTextFile usage"
-      - "Update FileUploader.tsx to import from ../../api instead of @tauri-apps/plugin-dialog and @tauri-apps/plugin-fs"
-      - "Update ExampleEmbeddings.tsx to import from ../../api instead of @tauri-apps/plugin-dialog and @tauri-apps/plugin-fs"
+verified: 2026-03-09T19:53:00Z
+status: passed
+score: 3/3 must-haves verified
+re_verification:
+  previous_status: gaps_found
+  previous_score: 2/3
+  gaps_closed:
+    - "All invoke(), fetch(), open(), save(), readTextFile(), writeFile(), ModelFactory, and providerRegistry calls route through AITools/api.ts"
+  gaps_remaining: []
+  regressions: []
 ---
 
 # Phase 6: AI Tools Module Verification Report
 
 **Phase Goal:** ScriptFormatter and ExampleEmbeddings live in a unified AITools feature module with clear sub-feature boundaries
-**Verified:** 2026-03-09T17:02:00Z
-**Status:** gaps_found
-**Re-verification:** No -- initial verification
+**Verified:** 2026-03-09T19:53:00Z
+**Status:** passed
+**Re-verification:** Yes -- after gap closure (plan 06-02)
 
 ## Goal Achievement
 
@@ -33,45 +26,45 @@ gaps:
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
 | 1 | Importing from @features/AITools barrel provides ScriptFormatter, ExampleEmbeddings, useScriptFormatterState, useExampleManagement, useScriptFileUpload, and SimilarExample type | VERIFIED | index.ts exports exactly these 5 named members + 1 type re-export. Contract test confirms sorted export list matches expected. |
-| 2 | All invoke(), fetch(), open(), save(), readTextFile(), writeFile(), ModelFactory, and providerRegistry calls route through AITools/api.ts | FAILED | api.ts wraps 14 functions correctly, but FileUploader.tsx directly imports open+readFile from Tauri plugins, and ExampleEmbeddings.tsx directly imports save+mkdir+writeTextFile from Tauri plugins. 5 direct Tauri plugin imports bypass api.ts. |
-| 3 | Contract tests pass validating barrel shape, api.ts shape, and hook behavior | VERIFIED | 18 contract tests pass: barrel shape (7 tests), API shape (2 tests), useExampleManagement behavior (4 tests), useScriptFileUpload behavior (5 tests). |
+| 2 | All invoke(), fetch(), open(), save(), readTextFile(), writeFile(), ModelFactory, and providerRegistry calls route through AITools/api.ts | VERIFIED | api.ts wraps 19 functions. grep for @tauri-apps/plugin-* across all .ts/.tsx files in AITools returns only api.ts and the contract test mock. FileUploader.tsx imports openDocxFileDialog+readDocxFile from ../../api. ExampleEmbeddings.tsx imports exportExampleDialog+createDirectory+writeTextToFile from ../../api. Zero direct plugin imports in components or hooks. |
+| 3 | Contract tests pass validating barrel shape, api.ts shape, and hook behavior | VERIFIED | 18 contract tests pass: barrel shape (7 tests), API shape (2 tests -- now verifying 19 functions), useExampleManagement behavior (4 tests), useScriptFileUpload behavior (5 tests). |
 
-**Score:** 2/3 truths verified
+**Score:** 3/3 truths verified
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
 | `src/features/AITools/index.ts` | Barrel with selective exports | VERIFIED | 12 lines, exports 5 named members + SimilarExample type. No internal leakage. |
-| `src/features/AITools/api.ts` | Single I/O boundary (min 60 lines) | VERIFIED | 125 lines, wraps 14 functions across invoke, dialog, fs, fetch, and service calls. |
-| `src/features/AITools/types.ts` | Shared types including SimilarExample | VERIFIED | 63 lines, contains SimilarExample interface, OllamaModel/OllamaTagsResponse, re-exports from exampleEmbeddings and scriptFormatter types. |
-| `src/features/AITools/internal/aiPrompts.ts` | AI prompt utilities (not exported from barrel) | VERIFIED | 363 lines, imports SimilarExample from ../types, contains AUTOCUE_PROMPT, buildRAGPrompt, tools. Not in barrel. |
-| `src/features/AITools/__contracts__/aitools.contract.test.ts` | Contract tests (min 40 lines) | VERIFIED | 238 lines, 18 tests covering barrel shape, API shape, and hook behavior. All pass. |
+| `src/features/AITools/api.ts` | Single I/O boundary (min 60 lines) | VERIFIED | 158 lines, wraps 19 functions across invoke, dialog, fs, fetch, and service calls. 5 new wrappers added in plan 06-02. |
+| `src/features/AITools/types.ts` | Shared types including SimilarExample | VERIFIED | Regression check passed -- file exists, exports SimilarExample. |
+| `src/features/AITools/internal/aiPrompts.ts` | AI prompt utilities (not exported from barrel) | VERIFIED | Regression check passed -- file exists, not in barrel exports. |
+| `src/features/AITools/__contracts__/aitools.contract.test.ts` | Contract tests (min 40 lines) | VERIFIED | 238+ lines, 18 tests, updated to verify 19 api exports. All pass. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|-----|--------|---------|
-| ScriptFormatter/hooks/*.ts | api.ts | import from ../../api | WIRED | 5 hooks import from api.ts: useAIModels, useDocxGenerator, useScriptRetrieval, useOllamaEmbedding, useScriptProcessor |
-| ExampleEmbeddings/hooks/*.ts | api.ts | import from ../../api | WIRED | 2 hooks import from api.ts: useExampleManagement (namespace import), useScriptFileUpload |
+| ScriptFormatter/hooks/*.ts | api.ts | import from ../../api | WIRED | Previously verified, regression check passed. |
+| ExampleEmbeddings/hooks/*.ts | api.ts | import from ../../api | WIRED | Previously verified, regression check passed. |
+| FileUploader.tsx | api.ts | import from ../../api | WIRED | Line 12: `import { openDocxFileDialog, readDocxFile } from '../../api'` -- gap closed. |
+| ExampleEmbeddings.tsx | api.ts | import from ../../api | WIRED | Line 18: `import { createDirectory, exportExampleDialog, writeTextToFile } from '../../api'` -- gap closed. |
 | AppRouter.tsx | @features/AITools | import from @features/AITools | WIRED | Line 12: `import { ExampleEmbeddings, ScriptFormatter } from '@features/AITools'` |
-| internal/aiPrompts.ts | types.ts | import SimilarExample from ../types | WIRED | Line 8: `import type { SimilarExample } from '../types'` |
+| internal/aiPrompts.ts | types.ts | import SimilarExample from ../types | WIRED | Previously verified, regression check passed. |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|----------|
-| AITL-01 | 06-01-PLAN | User can import AITools components, hooks, and types from `@features/AITools` barrel only | SATISFIED | Barrel exports verified. No old import paths remain (grep for @hooks/useScript*, @pages/AI/* returns zero hits). AppRouter.tsx imports from barrel. |
-| AITL-02 | 06-01-PLAN | User can see an API layer wrapping AI-related Tauri commands (RAG, embeddings) | PARTIAL | api.ts exists with 14 functions, but 2 components bypass it with direct Tauri plugin imports. The api.ts itself is correct and comprehensive for hooks; components were missed. |
-| AITL-03 | 06-01-PLAN | User can see contract tests validating AITools module's public interface | SATISFIED | 18 contract tests validate barrel shape (exact exports), API shape (14 functions), and hook behavior (useExampleManagement, useScriptFileUpload). All pass. |
+| AITL-01 | 06-01-PLAN | User can import AITools components, hooks, and types from `@features/AITools` barrel only | SATISFIED | Barrel exports verified. Zero old import paths remain (grep for @hooks/useScript*, @pages/AI/* returns zero hits). AppRouter.tsx imports from barrel. |
+| AITL-02 | 06-01-PLAN, 06-02-PLAN | User can see an API layer wrapping AI-related Tauri commands (RAG, embeddings) | SATISFIED | api.ts exports 19 wrapper functions. All components and hooks route through api.ts exclusively. Zero direct Tauri plugin imports outside api.ts. Gap from initial verification now closed. |
+| AITL-03 | 06-01-PLAN | User can see contract tests validating AITools module's public interface | SATISFIED | 18 contract tests validate barrel shape (exact exports), API shape (19 functions), and hook behavior. All pass. |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
 | ScriptFormatter/hooks/useDocxParser.ts | 191 | `// TODO: Calculate nesting level` | Info | Pre-existing TODO, not a phase 6 regression. Minor incomplete feature. |
-| ScriptFormatter/components/FileUploader.tsx | 7-8 | Direct `@tauri-apps/plugin-dialog` and `@tauri-apps/plugin-fs` imports | Warning | Bypasses api.ts I/O boundary. Makes this component harder to test in isolation. |
-| ExampleEmbeddings/components/ExampleEmbeddings.tsx | 14-15 | Direct `@tauri-apps/plugin-dialog` and `@tauri-apps/plugin-fs` imports | Warning | Bypasses api.ts I/O boundary. Uses save, mkdir, writeTextFile directly. |
 
 ### Human Verification Required
 
@@ -79,19 +72,9 @@ None. All checks are programmatically verifiable.
 
 ### Gaps Summary
 
-One gap found: the api.ts I/O boundary is incomplete. While all hooks correctly route through api.ts (verified via import grep), two components still directly import Tauri plugins:
-
-1. **FileUploader.tsx** uses `open()` from plugin-dialog and `readFile()` from plugin-fs for .docx file selection and reading.
-2. **ExampleEmbeddings.tsx** uses `save()` from plugin-dialog and `mkdir()`, `writeTextFile()` from plugin-fs for exporting examples.
-
-These represent 5 direct Tauri plugin imports that should be wrapped in api.ts functions and consumed indirectly. The fix is straightforward: add wrapper functions to api.ts and update the two components to use them.
-
-The gap is partial (not complete failure) because:
-- All 16 hooks correctly route through api.ts
-- Only 2 of 25 components bypass the boundary
-- The api.ts itself is well-structured with 14 functions
+No gaps remain. The single gap from the initial verification (direct Tauri plugin imports in FileUploader.tsx and ExampleEmbeddings.tsx) has been fully resolved by plan 06-02. All three observable truths are now verified.
 
 ---
 
-_Verified: 2026-03-09T17:02:00Z_
+_Verified: 2026-03-09T19:53:00Z_
 _Verifier: Claude (gsd-verifier)_
