@@ -71,7 +71,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- Auth + Premiere modules with api.ts layers, barrels, and contract tests
+- [x] 03-01-PLAN.md -- Auth + Premiere modules with api.ts layers, barrels, and contract tests
 - [ ] 03-02-PLAN.md -- Trello module with api.ts layer, merged types, barrel, and contract tests
 
 ### Phase 4: Upload Module
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 |-------|----------------|--------|-----------|
 | 1. Tooling & Prep | 2/2 | Complete | 2026-03-08 |
 | 2. Shared Infrastructure | 4/4 | Complete | 2026-03-09 |
-| 3. Leaf Feature Modules | 0/2 | Planned | - |
+| 3. Leaf Feature Modules | 1/2 | In Progress | - |
 | 4. Upload Module | 0/? | Not started | - |
 | 5. Settings Module | 0/? | Not started | - |
 | 6. AI Tools Module | 0/? | Not started | - |

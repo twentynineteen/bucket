@@ -29,9 +29,9 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### Auth Module
 
-- [ ] **AUTH-01**: User can import auth components, hooks, and types from `@features/Auth` barrel only
-- [ ] **AUTH-02**: User can see an API layer wrapping auth-related Tauri commands
-- [ ] **AUTH-03**: User can see contract tests validating Auth module's public interface
+- [x] **AUTH-01**: User can import auth components, hooks, and types from `@features/Auth` barrel only
+- [x] **AUTH-02**: User can see an API layer wrapping auth-related Tauri commands
+- [x] **AUTH-03**: User can see contract tests validating Auth module's public interface
 
 ### Trello Module
 
@@ -41,9 +41,9 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### Premiere Module
 
-- [ ] **PREM-01**: User can import Premiere components, hooks, and types from `@features/Premiere` barrel only
-- [ ] **PREM-02**: User can see an API layer wrapping Premiere-related Tauri commands
-- [ ] **PREM-03**: User can see contract tests validating Premiere module's public interface
+- [x] **PREM-01**: User can import Premiere components, hooks, and types from `@features/Premiere` barrel only
+- [x] **PREM-02**: User can see an API layer wrapping Premiere-related Tauri commands
+- [x] **PREM-03**: User can see contract tests validating Premiere module's public interface
 
 ### Upload Module
 
@@ -139,15 +139,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SHRD-07 | Phase 2 | Complete |
 | SHRD-08 | Phase 2 | Complete |
 | SHRD-09 | Phase 2 | Complete |
-| AUTH-01 | Phase 3 | Pending |
-| AUTH-02 | Phase 3 | Pending |
-| AUTH-03 | Phase 3 | Pending |
+| AUTH-01 | Phase 3 | Complete |
+| AUTH-02 | Phase 3 | Complete |
+| AUTH-03 | Phase 3 | Complete |
 | TREL-01 | Phase 3 | Pending |
 | TREL-02 | Phase 3 | Pending |
 | TREL-03 | Phase 3 | Pending |
-| PREM-01 | Phase 3 | Pending |
-| PREM-02 | Phase 3 | Pending |
-| PREM-03 | Phase 3 | Pending |
+| PREM-01 | Phase 3 | Complete |
+| PREM-02 | Phase 3 | Complete |
+| PREM-03 | Phase 3 | Complete |
 | UPLD-01 | Phase 4 | Pending |
 | UPLD-02 | Phase 4 | Pending |
 | UPLD-03 | Phase 4 | Pending |
