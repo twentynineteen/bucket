@@ -16,8 +16,8 @@ export type {
   DeleteError,
   ReplaceError,
   FileValidation
-} from '@/types/exampleEmbeddings'
-export { ExampleCategory } from '@/types/exampleEmbeddings'
+} from '@shared/types/exampleEmbeddings'
+export { ExampleCategory } from '@shared/types/exampleEmbeddings'
 
 // Re-export relevant types from scriptFormatter
 export type {
@@ -28,7 +28,7 @@ export type {
   ScriptDocument,
   FormattingMetadata,
   WorkflowStep
-} from '@/types/scriptFormatter'
+} from '@shared/types/scriptFormatter'
 
 /**
  * Similar example returned from vector search

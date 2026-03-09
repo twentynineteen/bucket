@@ -96,11 +96,12 @@ describe('Hooks Barrel Exports - Shape', () => {
 
   it('exports exactly the expected number of named exports', () => {
     const exportNames = Object.keys(hooksBarrel)
-    expect(exportNames).toHaveLength(7)
+    expect(exportNames).toHaveLength(8)
     expect(exportNames.sort()).toEqual([
       'useApiKeys',
       'useBreadcrumb',
       'useFuzzySearch',
+      'useIsMobile',
       'useReducedMotion',
       'useSproutVideoApiKey',
       'useTrelloApiKeys',

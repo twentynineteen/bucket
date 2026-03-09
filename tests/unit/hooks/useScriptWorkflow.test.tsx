@@ -10,7 +10,7 @@
  * - Navigation warnings for unsaved work
  */
 
-import type { WorkflowStep } from '@/types/scriptFormatter'
+import type { WorkflowStep } from '@shared/types/scriptFormatter'
 import { useAIProcessing } from '@features/AITools/ScriptFormatter/hooks/useAIProcessing'
 import { useScriptDownload } from '@features/AITools/ScriptFormatter/hooks/useScriptDownload'
 import { useScriptReview } from '@features/AITools/ScriptFormatter/hooks/useScriptReview'

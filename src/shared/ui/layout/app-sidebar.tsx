@@ -8,10 +8,10 @@ import {
   SidebarFooter,
   SidebarHeader
 } from '@shared/ui/sidebar/SidebarLayout'
-import { UpdateDialog } from '@components/UpdateDialog'
+import { UpdateDialog } from './UpdateDialog'
 import { useAuth } from '@features/Auth'
-import { useMacOSEffects } from '@hooks/useMacOSEffects'
-import { useUpdateManager } from '@hooks/useUpdateManager'
+import { useMacOSEffects } from '@shared/hooks/useMacOSEffects'
+import { useUpdateManager } from '@shared/hooks/useUpdateManager'
 import { useUsername } from '@shared/hooks'
 import {
   Clapperboard,

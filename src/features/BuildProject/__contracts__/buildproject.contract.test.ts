@@ -92,8 +92,9 @@ describe('BuildProject api.ts Exports - Shape', () => {
     'listenCopyComplete',
     'listenCopyFileError',
     'listenCopyCompleteWithErrors',
-    // Dialog (2)
+    // Dialog (3)
     'openFileDialog',
+    'openFolderDialog',
     'confirmDialog',
     // File System (4)
     'createDirectory',
@@ -102,13 +103,13 @@ describe('BuildProject api.ts Exports - Shape', () => {
     'writeTextFileContents'
   ].sort()
 
-  it('exports exactly 14 I/O wrapper functions', () => {
+  it('exports exactly 15 I/O wrapper functions', () => {
     const exportNames = Object.keys(buildProjectApi).sort()
     expect(exportNames).toEqual(expectedApiExports)
   })
 
-  it('exports exactly 14 members', () => {
-    expect(Object.keys(buildProjectApi)).toHaveLength(14)
+  it('exports exactly 15 members', () => {
+    expect(Object.keys(buildProjectApi)).toHaveLength(15)
   })
 
   for (const name of expectedApiExports) {

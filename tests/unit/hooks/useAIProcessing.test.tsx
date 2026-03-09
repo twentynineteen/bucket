@@ -10,7 +10,7 @@
  * - Processing error handling
  */
 
-import type { ProcessedOutput, ProviderConfiguration } from '@/types/scriptFormatter'
+import type { ProcessedOutput, ProviderConfiguration } from '@shared/types/scriptFormatter'
 import { useAIModels } from '@features/AITools/ScriptFormatter/hooks/useAIModels'
 import { useAIProcessing } from '@features/AITools/ScriptFormatter/hooks/useAIProcessing'
 import { useAIProvider } from '@features/Settings'

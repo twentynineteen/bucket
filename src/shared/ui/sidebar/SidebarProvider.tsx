@@ -1,7 +1,7 @@
 'use client'
 
-import { useIsMobile } from '@components/hooks/use-mobile'
-import { cn } from '@components/lib/utils'
+import { useIsMobile } from '../../hooks/use-mobile'
+import { cn } from '../../utils/cn'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import * as React from 'react'
 

@@ -7,7 +7,7 @@
 import mammoth from 'mammoth'
 import { useState } from 'react'
 
-import type { FormattingMetadata, ScriptDocument } from '@/types/scriptFormatter'
+import type { FormattingMetadata, ScriptDocument } from '@shared/types/scriptFormatter'
 import { logger } from '@shared/utils/logger'
 
 interface UseDocxParserResult {

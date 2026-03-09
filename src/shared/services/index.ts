@@ -19,3 +19,7 @@ export {
   getCacheService,
   useCacheInvalidation
 } from './cache-invalidation'
+
+// Note: AI provider services (providerConfig, modelFactory) are NOT barrel-exported
+// because they depend on Ollama runtime imports.
+// Import them directly: import { providerRegistry } from '@shared/services/ai/providerConfig'

@@ -19,7 +19,7 @@ import React from 'react'
 import type { BreadcrumbsFile } from '@features/Baker'
 
 import { TrelloCardsManager } from '@features/Trello'
-import { VideoLinksManager } from '../Baker/VideoLinksManager'
+import { VideoLinksManager } from '../components/VideoLinksManager'
 import { Button } from '@shared/ui/button'
 import { formatFileSize } from './fieldUtils'
 

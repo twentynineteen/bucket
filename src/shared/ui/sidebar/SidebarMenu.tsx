@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@components/lib/utils'
+import { cn } from '../../utils/cn'
 import { Skeleton } from '@shared/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@shared/ui/tooltip'
 import { Slot } from '@radix-ui/react-slot'

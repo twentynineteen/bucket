@@ -12,8 +12,6 @@ import { createNamespacedLogger } from '@shared/utils/logger'
 import type { LanguageModel } from 'ai'
 import { createOllama } from 'ollama-ai-provider-v2'
 
-import { logger } from '@shared/utils/logger'
-
 import type { ModelInfo, ProviderAdapter, ProviderRegistry } from './types'
 
 const logger = createNamespacedLogger('Ollama')

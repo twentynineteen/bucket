@@ -13,7 +13,7 @@
 import { createNamespacedLogger } from '@shared/utils/logger'
 import { useCallback, useMemo, useState } from 'react'
 
-import type { ProcessedOutput } from '@/types/scriptFormatter'
+import type { ProcessedOutput } from '@shared/types/scriptFormatter'
 
 const log = createNamespacedLogger('ScriptReview')
 

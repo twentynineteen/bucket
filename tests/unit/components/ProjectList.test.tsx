@@ -40,7 +40,7 @@ vi.mock('framer-motion', () => ({
 }))
 
 // Mock BreadcrumbsViewerEnhanced component
-vi.mock('@components/BreadcrumbsViewerEnhanced', () => ({
+vi.mock('../../../src/features/Baker/components/BreadcrumbsViewerEnhanced', () => ({
   BreadcrumbsViewerEnhanced: ({
     breadcrumbs,
     projectPath

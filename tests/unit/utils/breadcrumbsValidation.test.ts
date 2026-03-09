@@ -5,7 +5,7 @@ import {
   recoverBreadcrumbs,
   validateBreadcrumbs,
   type ValidationResult
-} from '@utils/breadcrumbsValidation'
+} from '../../../src/utils/breadcrumbsValidation'
 import { describe, expect, it } from 'vitest'
 
 describe('breadcrumbsValidation', () => {

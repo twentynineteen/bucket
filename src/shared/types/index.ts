@@ -23,3 +23,31 @@ export type {
   Breadcrumb,
   SproutUploadResponse
 } from './types'
+
+// Script formatter types (AI tools + Settings)
+export type {
+  ScriptDocument,
+  FormattingMetadata,
+  ProviderConfiguration,
+  ProcessedOutput,
+  AIProvider,
+  AIModel,
+  WorkflowStep,
+  ProviderType,
+  ConnectionValidationResult
+} from './scriptFormatter'
+export { STORAGE_KEYS, queryKeys } from './scriptFormatter'
+
+// Example embeddings types (AI tools)
+export type {
+  ExampleWithMetadata,
+  UploadRequest,
+  ReplaceRequest,
+  ExampleMetadata,
+  ExampleSource,
+  UploadError,
+  DeleteError,
+  ReplaceError,
+  FileValidation
+} from './exampleEmbeddings'
+export { ExampleCategory } from './exampleEmbeddings'

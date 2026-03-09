@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import React, { useRef } from 'react'
 
-import { formatFileSize } from '@/components/BreadcrumbsViewer/fieldUtils'
+import { formatFileSize } from '../internal/fieldUtils'
 import { Button } from '@shared/ui/button'
 import { openInShell } from '../api'
 import type { BreadcrumbsFile, BreadcrumbsPreview } from '../types'

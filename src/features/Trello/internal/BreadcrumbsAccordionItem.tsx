@@ -2,7 +2,7 @@ import { AccordionContent, AccordionItem, AccordionTrigger } from '@shared/ui/ac
 import { Breadcrumb } from '@shared/types/types'
 import React from 'react'
 
-import { formatBreadcrumbDate } from '../breadcrumbsComparison'
+import { formatBreadcrumbDate } from '@shared/utils/breadcrumbs'
 import FileList from './FileList'
 import KeyValueRow from './KeyValueRow'
 

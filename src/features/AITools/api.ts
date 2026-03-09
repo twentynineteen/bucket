@@ -14,8 +14,8 @@ import {
   writeFile,
   writeTextFile
 } from '@tauri-apps/plugin-fs'
-import { ModelFactory } from '@services/ai/modelFactory'
-import { providerRegistry } from '@services/ai/providerConfig'
+import { ModelFactory } from '@shared/services/ai/modelFactory'
+import { providerRegistry } from '@shared/services/ai/providerConfig'
 
 import type {
   ExampleWithMetadata,

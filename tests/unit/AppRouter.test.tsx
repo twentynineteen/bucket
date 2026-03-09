@@ -1,4 +1,4 @@
-import { AppRouter } from '@/AppRouter'
+import { AppRouter } from '../../src/AppRouter'
 import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,7 +13,7 @@ vi.mock('@tauri-apps/plugin-updater', () => ({
 }))
 
 // Mock all page components
-vi.mock('@/app/dashboard/page', () => ({
+vi.mock('../../src/app/dashboard/page', () => ({
   default: () => <div data-testid="page-layout">Page Layout</div>
 }))
 

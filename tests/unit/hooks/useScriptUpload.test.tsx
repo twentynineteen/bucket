@@ -9,7 +9,7 @@
  * - Transition to next workflow step
  */
 
-import type { ScriptDocument } from '@/types/scriptFormatter'
+import type { ScriptDocument } from '@shared/types/scriptFormatter'
 import { useDocxParser } from '@features/AITools/ScriptFormatter/hooks/useDocxParser'
 import { useScriptUpload } from '@features/AITools/ScriptFormatter/hooks/useScriptUpload'
 import { act, renderHook, waitFor } from '@testing-library/react'

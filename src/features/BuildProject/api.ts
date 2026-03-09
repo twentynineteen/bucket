@@ -81,6 +81,11 @@ export async function openFileDialog(): Promise<string | string[] | null> {
   })
 }
 
+export async function openFolderDialog(): Promise<string | null> {
+  const result = await open({ directory: true })
+  return result as string | null
+}
+
 export async function confirmDialog(message: string): Promise<boolean> {
   return confirm(message)
 }

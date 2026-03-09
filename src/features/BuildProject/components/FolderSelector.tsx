@@ -1,4 +1,4 @@
-import FolderTree from '@components/FolderTree'
+import FolderTree from './FolderTree'
 import React from 'react'
 
 interface FolderSelectorProps {

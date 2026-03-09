@@ -9,7 +9,7 @@
  * - Download state and errors
  */
 
-import type { ScriptDocument } from '@/types/scriptFormatter'
+import type { ScriptDocument } from '@shared/types/scriptFormatter'
 import { useDocxGenerator } from '@features/AITools/ScriptFormatter/hooks/useDocxGenerator'
 import { useScriptDownload } from '@features/AITools/ScriptFormatter/hooks/useScriptDownload'
 import { act, renderHook, waitFor } from '@testing-library/react'

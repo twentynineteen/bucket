@@ -13,7 +13,10 @@
 import { createNamespacedLogger } from '@shared/utils/logger'
 import { useCallback, useEffect, useState } from 'react'
 
-import type { ProcessedOutput, ProviderConfiguration } from '@/types/scriptFormatter'
+import type {
+  ProcessedOutput,
+  ProviderConfiguration
+} from '@shared/types/scriptFormatter'
 
 import { useAIModels } from './useAIModels'
 import { useAIProvider } from '@features/Settings'

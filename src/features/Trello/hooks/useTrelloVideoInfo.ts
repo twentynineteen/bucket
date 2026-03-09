@@ -7,7 +7,7 @@ import { appStore } from '@shared/store'
 import type { TrelloCard } from '../types'
 import { useCallback, useMemo } from 'react'
 
-import { useAppendVideoInfo } from '@hooks/useAppendVideoInfo'
+import { useAppendVideoInfo } from './useAppendVideoInfo'
 import { useVideoInfoBlock } from '@features/BuildProject'
 
 /**

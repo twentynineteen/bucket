@@ -1,4 +1,4 @@
-import { cn } from '@components/lib/utils'
+import { cn } from '../utils/cn'
 import { BUTTON_ANIMATIONS } from '@shared/constants/animations'
 import { useReducedMotion } from '@shared/hooks'
 import { Slot } from '@radix-ui/react-slot'

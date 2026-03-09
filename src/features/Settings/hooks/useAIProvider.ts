@@ -4,7 +4,7 @@
  * Purpose: Provider management and switching (provider-agnostic architecture)
  */
 
-import { getDefaultConfig, providerRegistry } from '@services/ai/providerConfig'
+import { getDefaultConfig, providerRegistry } from '@shared/services/ai/providerConfig'
 import { useAppStore } from '@shared/store'
 import { useState } from 'react'
 
@@ -12,7 +12,7 @@ import {
   STORAGE_KEYS,
   type AIProvider,
   type ProviderConfiguration
-} from '@/types/scriptFormatter'
+} from '@shared/types/scriptFormatter'
 
 import { validateAIConnection } from '../api'
 

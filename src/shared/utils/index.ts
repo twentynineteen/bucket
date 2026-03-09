@@ -33,6 +33,9 @@ export {
   isUpdateAvailable
 } from './versionUtils'
 
+// CSS class merging
+export { cn } from './cn'
+
 // Breadcrumbs utilities
 export {
   formatBreadcrumbDate,

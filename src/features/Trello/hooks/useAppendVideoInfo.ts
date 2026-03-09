@@ -1,5 +1,5 @@
 // Target: @features/BuildProject
-import { extractVideoInfoBlock } from '@utils/extractVideoInfoBlock'
+import { extractVideoInfoBlock } from '../internal/extractVideoInfoBlock'
 import { createNamespacedLogger } from '@shared/utils/logger'
 import type { TrelloCard } from '@features/Trello'
 import { updateTrelloCard } from '@features/Trello/api'

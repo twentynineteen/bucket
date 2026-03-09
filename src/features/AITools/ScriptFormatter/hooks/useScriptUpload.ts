@@ -12,7 +12,7 @@
 import { createNamespacedLogger } from '@shared/utils/logger'
 import { useCallback, useState } from 'react'
 
-import type { ScriptDocument } from '@/types/scriptFormatter'
+import type { ScriptDocument } from '@shared/types/scriptFormatter'
 
 import { useDocxParser } from './useDocxParser'
 

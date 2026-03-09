@@ -15,7 +15,7 @@
  */
 
 import { ExampleEmbeddings } from '@features/AITools/ExampleEmbeddings/components/ExampleEmbeddings'
-import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
+import type { ExampleWithMetadata } from '@shared/types/exampleEmbeddings'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as tauriCore from '@tauri-apps/api/core'
 import { render, screen, waitFor, within } from '@testing-library/react'

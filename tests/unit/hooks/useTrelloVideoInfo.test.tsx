@@ -3,7 +3,7 @@
  * Handles video info operations for Trello cards
  */
 
-import { useAppendVideoInfo } from '@/hooks/useAppendVideoInfo'
+import { useAppendVideoInfo } from '@features/Trello/hooks/useAppendVideoInfo'
 import { useTrelloVideoInfo } from '@features/Trello'
 import { useVideoInfoBlock } from '@features/BuildProject'
 import { appStore } from '@shared/store'
@@ -13,7 +13,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock dependencies
-vi.mock('@/hooks/useAppendVideoInfo', () => ({
+vi.mock('@features/Trello/hooks/useAppendVideoInfo', () => ({
   useAppendVideoInfo: vi.fn()
 }))
 

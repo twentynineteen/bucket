@@ -1,7 +1,8 @@
-import { open } from '@tauri-apps/plugin-dialog'
 import React from 'react'
 
 import { logger } from '@shared/utils/logger'
+
+import { openFolderDialog } from '../api'
 
 type Props = {
   onSelect: (folderPath: string) => void
@@ -17,14 +18,10 @@ const FolderTree: React.FC<Props> = ({ onSelect, selectedFolder }) => {
 
   const openFolderPicker = async () => {
     try {
-      const result = await open({
-        directory: true // This specifies that the picker should be for selecting directories.
-      })
+      const result = await openFolderDialog()
 
       if (result) {
-        const newSelectedFolder = result as string // Ensure that `result` is a string path.
-        // Notify the parent component of the new folder path.
-        onSelect(newSelectedFolder)
+        onSelect(result)
       }
     } catch (error) {
       logger.error('Error selecting folder:', error)

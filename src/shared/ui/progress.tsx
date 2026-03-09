@@ -1,4 +1,4 @@
-import { cn } from '@components/lib/utils'
+import { cn } from '../utils/cn'
 import * as ProgressPrimitive from '@radix-ui/react-progress'
 import * as React from 'react'
 

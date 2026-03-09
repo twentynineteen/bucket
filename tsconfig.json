@@ -12,17 +12,6 @@
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
-      // Source code aliases
-      "@components/*": ["src/components/*"],
-      "@hooks/*": ["src/hooks/*"],
-      "@lib/*": ["src/lib/*"],
-      "@utils/*": ["src/utils/*"],
-      "@constants/*": ["src/constants/*"],
-      "@store/*": ["src/shared/store/*"],
-      "@services/*": ["src/services/*"],
-      "@pages/*": ["src/pages/*"],
-      "@context/*": ["src/context/*"],
-      "@/*": ["src/*"],
       // Feature module aliases
       "@features/*": ["src/features/*"],
       "@shared/*": ["src/shared/*"],

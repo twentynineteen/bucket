@@ -1,4 +1,4 @@
-import * as useMobileHook from '@components/hooks/use-mobile'
+import * as useMobileHook from '@shared/hooks/use-mobile'
 import { SidebarProvider } from '@shared/ui/sidebar/SidebarProvider'
 import { useSidebar } from '@shared/ui/use-sidebar'
 import { act, render, renderHook } from '@testing-library/react'
@@ -6,7 +6,7 @@ import React from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock the use-mobile hook
-vi.mock('@components/hooks/use-mobile', () => ({
+vi.mock('@shared/hooks/use-mobile', () => ({
   useIsMobile: vi.fn()
 }))
 

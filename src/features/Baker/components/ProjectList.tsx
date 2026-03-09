@@ -4,7 +4,7 @@
  * Displays list of discovered projects with selection and breadcrumb viewing.
  */
 
-import { BreadcrumbsViewerEnhanced } from '@components/BreadcrumbsViewerEnhanced'
+import { BreadcrumbsViewerEnhanced } from './BreadcrumbsViewerEnhanced'
 import { Button } from '@shared/ui/button'
 import { AlertTriangle, Eye, RefreshCw } from 'lucide-react'
 import React from 'react'

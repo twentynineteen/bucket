@@ -11,7 +11,7 @@
  * 4. Malicious script tags and attributes are neutralized
  */
 
-import type { ScriptDocument } from '@/types/scriptFormatter'
+import type { ScriptDocument } from '@shared/types/scriptFormatter'
 import { useScriptDownload } from '@features/AITools/ScriptFormatter/hooks/useScriptDownload'
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'

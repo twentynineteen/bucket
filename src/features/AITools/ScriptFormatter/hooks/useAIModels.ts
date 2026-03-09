@@ -12,7 +12,7 @@ import {
   queryKeys,
   type AIModel,
   type ProviderConfiguration
-} from '@/types/scriptFormatter'
+} from '@shared/types/scriptFormatter'
 
 interface UseAIModelsOptions {
   providerId: string
