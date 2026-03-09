@@ -47,9 +47,9 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### Upload Module
 
-- [ ] **UPLD-01**: User can import Upload components, hooks, and types from `@features/Upload` barrel only
-- [ ] **UPLD-02**: User can see an API layer wrapping Sprout/Posterframe/Otter Tauri commands
-- [ ] **UPLD-03**: User can see contract tests validating Upload module's public interface
+- [x] **UPLD-01**: User can import Upload components, hooks, and types from `@features/Upload` barrel only
+- [x] **UPLD-02**: User can see an API layer wrapping Sprout/Posterframe/Otter Tauri commands
+- [x] **UPLD-03**: User can see contract tests validating Upload module's public interface
 
 ### Settings Module
 
@@ -148,9 +148,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PREM-01 | Phase 3 | Complete |
 | PREM-02 | Phase 3 | Complete |
 | PREM-03 | Phase 3 | Complete |
-| UPLD-01 | Phase 4 | Pending |
-| UPLD-02 | Phase 4 | Pending |
-| UPLD-03 | Phase 4 | Pending |
+| UPLD-01 | Phase 4 | Complete |
+| UPLD-02 | Phase 4 | Complete |
+| UPLD-03 | Phase 4 | Complete |
 | STNG-01 | Phase 5 | Pending |
 | STNG-02 | Phase 5 | Pending |
 | STNG-03 | Phase 5 | Pending |

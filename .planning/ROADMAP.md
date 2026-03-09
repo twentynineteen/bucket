@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Tooling & Prep** - Install enforcement tools, resolve stale files, configure path aliases
 - [x] **Phase 2: Shared Infrastructure** - Extract cross-cutting code into shared sub-modules with barrels and contract tests
 - [x] **Phase 3: Leaf Feature Modules** - Migrate Auth, Trello, and Premiere into deep feature modules (completed 2026-03-09)
-- [ ] **Phase 4: Upload Module** - Migrate Sprout, Posterframe, and Otter into a deep Upload feature module
+- [x] **Phase 4: Upload Module** - Migrate Sprout, Posterframe, and Otter into a deep Upload feature module (completed 2026-03-09)
 - [ ] **Phase 5: Settings Module** - Decompose Settings monolith and migrate into a deep feature module
 - [ ] **Phase 6: AI Tools Module** - Migrate ScriptFormatter and ExampleEmbeddings into a deep feature module
 - [ ] **Phase 7: Baker Module** - Migrate Baker (drive scanning, breadcrumbs) into a deep feature module
@@ -82,7 +82,7 @@ Plans:
   1. Importing Upload components, hooks, and types works only through `@features/Upload` barrel
   2. An `api.ts` layer wraps all Sprout, Posterframe, and Otter Tauri commands -- no component directly calls `invoke()`
   3. Contract tests validate the Upload module's public interface and all pass
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 04-01-PLAN.md -- Upload module with api.ts layer, barrel, contract tests, and cross-module consumer updates
@@ -167,7 +167,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 1. Tooling & Prep | 2/2 | Complete | 2026-03-08 |
 | 2. Shared Infrastructure | 4/4 | Complete | 2026-03-09 |
 | 3. Leaf Feature Modules | 2/2 | Complete   | 2026-03-09 |
-| 4. Upload Module | 0/1 | Not started | - |
+| 4. Upload Module | 1/1 | Complete   | 2026-03-09 |
 | 5. Settings Module | 0/? | Not started | - |
 | 6. AI Tools Module | 0/? | Not started | - |
 | 7. Baker Module | 0/? | Not started | - |
