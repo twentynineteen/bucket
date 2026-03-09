@@ -60,9 +60,9 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### AI Tools Module
 
-- [ ] **AITL-01**: User can import AITools components, hooks, and types from `@features/AITools` barrel only
-- [ ] **AITL-02**: User can see an API layer wrapping AI-related Tauri commands (RAG, embeddings)
-- [ ] **AITL-03**: User can see contract tests validating AITools module's public interface
+- [x] **AITL-01**: User can import AITools components, hooks, and types from `@features/AITools` barrel only
+- [x] **AITL-02**: User can see an API layer wrapping AI-related Tauri commands (RAG, embeddings)
+- [x] **AITL-03**: User can see contract tests validating AITools module's public interface
 
 ### Baker Module
 
@@ -155,9 +155,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STNG-02 | Phase 5 | Complete |
 | STNG-03 | Phase 5 | Complete |
 | STNG-04 | Phase 5 | Complete |
-| AITL-01 | Phase 6 | Pending |
-| AITL-02 | Phase 6 | Pending |
-| AITL-03 | Phase 6 | Pending |
+| AITL-01 | Phase 6 | Complete |
+| AITL-02 | Phase 6 | Complete |
+| AITL-03 | Phase 6 | Complete |
 | BAKR-01 | Phase 7 | Pending |
 | BAKR-02 | Phase 7 | Pending |
 | BAKR-03 | Phase 7 | Pending |
