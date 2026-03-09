@@ -14,11 +14,10 @@ import ScriptFormatter from './pages/AI/ScriptFormatter/ScriptFormatter'
 import { Login, Register } from '@features/Auth'
 import Baker from './pages/Baker/Baker'
 import BuildProject from './pages/BuildProject/BuildProject'
-import ConnectedApps from './pages/ConnectedApps'
 import IngestHistory from './pages/IngestHistory'
+import { Settings } from '@features/Settings'
 import { Posterframe, UploadOtter, UploadSprout } from '@features/Upload'
 import { PremierePluginManager } from '@features/Premiere'
-import Settings from './pages/Settings'
 import { UploadTrello } from '@features/Trello'
 import { createNamespacedLogger } from '@shared/utils/logger'
 
@@ -146,7 +145,6 @@ export const AppRouter: React.FC = () => {
             <Route path="settings">
               <Route index element={<Navigate to="/settings/general" replace />} />
               <Route path="general" element={<Settings />} />
-              <Route path="connected-apps" element={<ConnectedApps />} />
             </Route>
           </Route>
         </>

@@ -1,4 +1,3 @@
-// Target: @features/AITools
 /**
  * useAIProvider Hook
  * Feature: 006-i-wish-to (T040)
@@ -14,6 +13,8 @@ import {
   type AIProvider,
   type ProviderConfiguration
 } from '@/types/scriptFormatter'
+
+import { validateAIConnection } from '../api'
 
 interface UseAIProviderResult {
   activeProvider: AIProvider | null
@@ -99,17 +100,12 @@ export function useAIProvider(): UseAIProviderResult {
     }
   }
 
-  const validateProvider = async (providerId: string, config: ProviderConfiguration) => {
+  const validateProvider = async (
+    providerId: string,
+    config: ProviderConfiguration
+  ) => {
     try {
-      const adapter = providerRegistry.get(providerId)
-      if (!adapter) {
-        return {
-          success: false,
-          errorMessage: `Provider "${providerId}" not found`
-        }
-      }
-
-      const result = await adapter.validateConnection(config)
+      const result = await validateAIConnection(providerId, config)
 
       // Update provider status
       setAvailableProviders((prev) =>
@@ -143,7 +139,10 @@ export function useAIProvider(): UseAIProviderResult {
     }
   }
 
-  const updateProviderConfig = (providerId: string, config: ProviderConfiguration) => {
+  const updateProviderConfig = (
+    providerId: string,
+    config: ProviderConfiguration
+  ) => {
     setAvailableProviders((prev) =>
       prev.map((p) => (p.id === providerId ? { ...p, configuration: config } : p))
     )
