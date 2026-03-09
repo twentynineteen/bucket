@@ -11,12 +11,11 @@ import { Button } from '@shared/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
 import { useBreadcrumb } from '@shared/hooks'
 import { useExampleManagement } from '../hooks/useExampleManagement'
-import { save } from '@tauri-apps/plugin-dialog'
-import { mkdir, writeTextFile } from '@tauri-apps/plugin-fs'
 import { AlertTriangle, Download, RefreshCw, Upload } from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 
+import { createDirectory, exportExampleDialog, writeTextToFile } from '../../api'
 import type { ExampleCategory, ExampleSource } from '../../types'
 
 import { DeleteConfirm } from './DeleteConfirm'
@@ -136,25 +135,19 @@ const ExampleEmbeddingsContent: React.FC = () => {
 
     try {
       // Let user select a folder
-      const folderPath = await save({
-        defaultPath: example.title.replace(/[^a-z0-9\s-]/gi, '_'),
-        filters: [
-          {
-            name: 'Folder',
-            extensions: ['']
-          }
-        ]
-      })
+      const folderPath = await exportExampleDialog(
+        example.title.replace(/[^a-z0-9\s-]/gi, '_')
+      )
 
       if (folderPath) {
         // Create folder by saving a file into it, then save both files
         const basePath = folderPath
 
         // Write before.txt
-        await writeTextFile(`${basePath}/before.txt`, example.beforeText)
+        await writeTextToFile(`${basePath}/before.txt`, example.beforeText)
 
         // Write after.txt
-        await writeTextFile(`${basePath}/after.txt`, example.afterText)
+        await writeTextToFile(`${basePath}/after.txt`, example.afterText)
 
         toast.success('Download successful', {
           description: `${example.title} saved as before.txt and after.txt`
@@ -176,19 +169,13 @@ const ExampleEmbeddingsContent: React.FC = () => {
 
     try {
       // Let user select a parent folder for all examples
-      const parentFolderPath = await save({
-        defaultPath: `script_examples_${new Date().toISOString().split('T')[0]}`,
-        filters: [
-          {
-            name: 'Folder',
-            extensions: ['']
-          }
-        ]
-      })
+      const parentFolderPath = await exportExampleDialog(
+        `script_examples_${new Date().toISOString().split('T')[0]}`
+      )
 
       if (parentFolderPath) {
         // Create parent folder first
-        await mkdir(parentFolderPath, { recursive: true })
+        await createDirectory(parentFolderPath)
 
         // Create a folder for each example
         for (const example of filteredExamples) {
@@ -196,13 +183,13 @@ const ExampleEmbeddingsContent: React.FC = () => {
           const examplePath = `${parentFolderPath}/${folderName}`
 
           // Create example folder
-          await mkdir(examplePath, { recursive: true })
+          await createDirectory(examplePath)
 
           // Write before.txt
-          await writeTextFile(`${examplePath}/before.txt`, example.beforeText)
+          await writeTextToFile(`${examplePath}/before.txt`, example.beforeText)
 
           // Write after.txt
-          await writeTextFile(`${examplePath}/after.txt`, example.afterText)
+          await writeTextToFile(`${examplePath}/after.txt`, example.afterText)
         }
 
         toast.success('Download successful', {

@@ -24,7 +24,12 @@ vi.mock('../api', () => ({
   generateOllamaEmbedding: vi.fn().mockResolvedValue([]),
   createAIModel: vi.fn(),
   listAIProviders: vi.fn().mockReturnValue([]),
-  getAIProvider: vi.fn().mockReturnValue(undefined)
+  getAIProvider: vi.fn().mockReturnValue(undefined),
+  openDocxFileDialog: vi.fn().mockResolvedValue(null),
+  exportExampleDialog: vi.fn().mockResolvedValue(null),
+  readDocxFile: vi.fn().mockResolvedValue(new Uint8Array()),
+  createDirectory: vi.fn().mockResolvedValue(undefined),
+  writeTextToFile: vi.fn().mockResolvedValue(undefined)
 }))
 
 // Mock Tauri plugins (transitive dependencies)
@@ -32,7 +37,10 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn(), save: vi.fn() }))
 vi.mock('@tauri-apps/plugin-fs', () => ({
   readTextFile: vi.fn(),
-  writeFile: vi.fn()
+  writeFile: vi.fn(),
+  readFile: vi.fn(),
+  mkdir: vi.fn(),
+  writeTextFile: vi.fn()
 }))
 
 // Mock shared dependencies
@@ -146,9 +154,14 @@ describe('AITools API Layer - Shape', () => {
     'deleteExample',
     'searchSimilarScripts',
     'openScriptFileDialog',
+    'openDocxFileDialog',
+    'exportExampleDialog',
     'saveDocxDialog',
     'readScriptFile',
     'writeDocxFile',
+    'readDocxFile',
+    'createDirectory',
+    'writeTextToFile',
     'checkOllamaModels',
     'generateOllamaEmbedding',
     'createAIModel',
@@ -156,13 +169,13 @@ describe('AITools API Layer - Shape', () => {
     'getAIProvider'
   ]
 
-  it('exports all 14 expected functions', () => {
+  it('exports all 19 expected functions', () => {
     expectedFunctions.forEach((name) => {
       expect(typeof (api as Record<string, unknown>)[name]).toBe('function')
     })
   })
 
-  it('exports exactly 14 functions (no extras)', () => {
+  it('exports exactly 19 functions (no extras)', () => {
     const apiExportNames = Object.keys(api).sort()
     expect(apiExportNames).toEqual(expectedFunctions.sort())
   })

@@ -4,12 +4,12 @@
  * Purpose: Upload .docx files with validation
  */
 
-import { open } from '@tauri-apps/plugin-dialog'
-import { readFile } from '@tauri-apps/plugin-fs'
 import { AlertCircle, FileText, Upload } from 'lucide-react'
 import React, { useState } from 'react'
 
 import { logger } from '@shared/utils/logger'
+
+import { openDocxFileDialog, readDocxFile } from '../../api'
 
 interface FileUploaderProps {
   onFileSelect: (file: File) => void
@@ -27,17 +27,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   const handleUploadClick = async () => {
     try {
       // Trigger Tauri file dialog
-      const selected = await open({
-        filters: [
-          {
-            name: 'Word Documents',
-            extensions: ['docx']
-          }
-        ],
-        multiple: false
-      })
+      const selected = await openDocxFileDialog()
 
-      if (!selected || typeof selected !== 'string') {
+      if (!selected) {
         return
       }
 
@@ -46,8 +38,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         throw new Error('File must be a .docx document')
       }
 
-      // Read file using Tauri FS plugin
-      const bytes = await readFile(selected)
+      // Read file using api.ts boundary
+      const bytes = await readDocxFile(selected)
       const filename = selected.split('/').pop() || 'document.docx'
 
       // Check file size (1GB limit)

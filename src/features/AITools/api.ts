@@ -7,7 +7,13 @@
 
 import { invoke } from '@tauri-apps/api/core'
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog'
-import { readTextFile, writeFile } from '@tauri-apps/plugin-fs'
+import {
+  mkdir,
+  readFile,
+  readTextFile,
+  writeFile,
+  writeTextFile
+} from '@tauri-apps/plugin-fs'
 import { ModelFactory } from '@services/ai/modelFactory'
 import { providerRegistry } from '@services/ai/providerConfig'
 
@@ -62,6 +68,21 @@ export async function openScriptFileDialog(): Promise<string | null> {
   return typeof result === 'string' ? result : null
 }
 
+export async function openDocxFileDialog(): Promise<string | null> {
+  const result = await openDialog({
+    multiple: false,
+    filters: [{ name: 'Word Documents', extensions: ['docx'] }]
+  })
+  return typeof result === 'string' ? result : null
+}
+
+export async function exportExampleDialog(defaultName: string): Promise<string | null> {
+  return saveDialog({
+    defaultPath: defaultName,
+    filters: [{ name: 'Folder', extensions: [''] }]
+  })
+}
+
 export async function saveDocxDialog(defaultFilename: string): Promise<string | null> {
   return saveDialog({
     defaultPath: defaultFilename,
@@ -77,6 +98,18 @@ export async function readScriptFile(path: string): Promise<string> {
 
 export async function writeDocxFile(path: string, data: Uint8Array): Promise<void> {
   return writeFile(path, data)
+}
+
+export async function readDocxFile(path: string): Promise<Uint8Array> {
+  return readFile(path)
+}
+
+export async function createDirectory(path: string): Promise<void> {
+  return mkdir(path, { recursive: true })
+}
+
+export async function writeTextToFile(path: string, content: string): Promise<void> {
+  return writeTextFile(path, content)
 }
 
 // --- Ollama Embedding ---
