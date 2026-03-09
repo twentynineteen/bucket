@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Tooling & Prep** - Install enforcement tools, resolve stale files, configure path aliases
 - [x] **Phase 2: Shared Infrastructure** - Extract cross-cutting code into shared sub-modules with barrels and contract tests
-- [ ] **Phase 3: Leaf Feature Modules** - Migrate Auth, Trello, and Premiere into deep feature modules
+- [x] **Phase 3: Leaf Feature Modules** - Migrate Auth, Trello, and Premiere into deep feature modules (completed 2026-03-09)
 - [ ] **Phase 4: Upload Module** - Migrate Sprout, Posterframe, and Otter into a deep Upload feature module
 - [ ] **Phase 5: Settings Module** - Decompose Settings monolith and migrate into a deep feature module
 - [ ] **Phase 6: AI Tools Module** - Migrate ScriptFormatter and ExampleEmbeddings into a deep feature module
@@ -68,7 +68,7 @@ Plans:
   3. Importing Premiere components, hooks, and types works only through `@features/Premiere` barrel
   4. Each module has an `api.ts` layer wrapping its Tauri commands -- no component directly calls `invoke()`
   5. Contract tests for all three modules pass, validating public interface behavior (not just export existence)
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 03-01-PLAN.md -- Auth + Premiere modules with api.ts layers, barrels, and contract tests
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 |-------|----------------|--------|-----------|
 | 1. Tooling & Prep | 2/2 | Complete | 2026-03-08 |
 | 2. Shared Infrastructure | 4/4 | Complete | 2026-03-09 |
-| 3. Leaf Feature Modules | 1/2 | In Progress | - |
+| 3. Leaf Feature Modules | 2/2 | Complete   | 2026-03-09 |
 | 4. Upload Module | 0/? | Not started | - |
 | 5. Settings Module | 0/? | Not started | - |
 | 6. AI Tools Module | 0/? | Not started | - |

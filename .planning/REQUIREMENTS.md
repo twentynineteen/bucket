@@ -35,9 +35,9 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### Trello Module
 
-- [ ] **TREL-01**: User can import Trello components, hooks, and types from `@features/Trello` barrel only
-- [ ] **TREL-02**: User can see an API layer wrapping Trello-related Tauri commands
-- [ ] **TREL-03**: User can see contract tests validating Trello module's public interface
+- [x] **TREL-01**: User can import Trello components, hooks, and types from `@features/Trello` barrel only
+- [x] **TREL-02**: User can see an API layer wrapping Trello-related Tauri commands
+- [x] **TREL-03**: User can see contract tests validating Trello module's public interface
 
 ### Premiere Module
 
@@ -142,9 +142,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-01 | Phase 3 | Complete |
 | AUTH-02 | Phase 3 | Complete |
 | AUTH-03 | Phase 3 | Complete |
-| TREL-01 | Phase 3 | Pending |
-| TREL-02 | Phase 3 | Pending |
-| TREL-03 | Phase 3 | Pending |
+| TREL-01 | Phase 3 | Complete |
+| TREL-02 | Phase 3 | Complete |
+| TREL-03 | Phase 3 | Complete |
 | PREM-01 | Phase 3 | Complete |
 | PREM-02 | Phase 3 | Complete |
 | PREM-03 | Phase 3 | Complete |
