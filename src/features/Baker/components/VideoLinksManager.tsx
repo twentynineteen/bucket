@@ -8,6 +8,16 @@ import { useVideoLinksManager } from '@features/Trello'
 import { AlertCircle, Loader2 } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@shared/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@shared/ui/alert-dialog'
 
 import { TrelloCardUpdateDialog } from '@features/Trello'
 import { VideoLinkCard } from './VideoLinkCard'
@@ -56,7 +66,6 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
     // Handlers
     handleFetchVideoDetails,
     handleAddVideo,
-    handleRemove,
     handleMoveUp,
     handleMoveDown,
     handleUploadAndAdd,
@@ -64,7 +73,13 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
     handleAddTrelloCard,
     handleDialogOpenChange,
     handleTabChange,
-    selectFile
+    selectFile,
+
+    // AlertDialog state
+    pendingRemoveVideoIndex,
+    requestRemoveVideo,
+    confirmRemoveVideo,
+    cancelRemoveVideo
   } = useVideoLinksManager({ projectPath })
 
   // Loading state
@@ -152,7 +167,7 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
             <VideoLinkCard
               key={`${link.url}-${index}`}
               videoLink={link}
-              onRemove={() => handleRemove(index)}
+              onRemove={() => requestRemoveVideo(index)}
               onMoveUp={() => handleMoveUp(index)}
               onMoveDown={() => handleMoveDown(index)}
               canMoveUp={index > 0}
@@ -178,6 +193,25 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
         onUpdate={handleTrelloCardUpdate}
         onAddTrelloCard={handleAddTrelloCard}
       />
+
+      {/* Remove video link confirmation dialog */}
+      <AlertDialog
+        open={pendingRemoveVideoIndex !== null}
+        onOpenChange={(open) => !open && cancelRemoveVideo()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Video Link</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this video link?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRemoveVideo}>Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

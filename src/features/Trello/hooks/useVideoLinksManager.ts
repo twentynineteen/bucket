@@ -144,10 +144,22 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     setIsDialogOpen(false)
   }
 
-  const handleRemove = (index: number) => {
-    if (confirm('Are you sure you want to remove this video link?')) {
-      removeVideoLink(index)
+  // AlertDialog state for video link removal confirmation
+  const [pendingRemoveVideoIndex, setPendingRemoveVideoIndex] = useState<number | null>(null)
+
+  const requestRemoveVideo = (index: number) => {
+    setPendingRemoveVideoIndex(index)
+  }
+
+  const confirmRemoveVideo = () => {
+    if (pendingRemoveVideoIndex !== null) {
+      removeVideoLink(pendingRemoveVideoIndex)
+      setPendingRemoveVideoIndex(null)
     }
+  }
+
+  const cancelRemoveVideo = () => {
+    setPendingRemoveVideoIndex(null)
   }
 
   const handleMoveUp = (index: number) => {
@@ -270,7 +282,6 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     // Handlers
     handleFetchVideoDetails,
     handleAddVideo,
-    handleRemove,
     handleMoveUp,
     handleMoveDown,
     handleUploadAndAdd,
@@ -278,6 +289,12 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     handleAddTrelloCard,
     handleDialogOpenChange,
     handleTabChange,
-    selectFile
+    selectFile,
+
+    // AlertDialog state for video removal
+    pendingRemoveVideoIndex,
+    requestRemoveVideo,
+    confirmRemoveVideo,
+    cancelRemoveVideo
   }
 }

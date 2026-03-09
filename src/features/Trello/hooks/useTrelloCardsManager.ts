@@ -6,6 +6,7 @@
 
 import { extractTrelloCardId, validateTrelloCard } from '@shared/utils/validation'
 import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 
 import type { TrelloCard } from '@features/Baker'
 import { logger } from '@shared/utils/logger'
@@ -259,17 +260,31 @@ export function useTrelloCardsManager({
     }
   }
 
-  // Handler: Remove card
-  const handleRemove = (index: number) => {
-    if (confirm('Are you sure you want to remove this Trello card?')) {
-      removeTrelloCard(index)
+  // AlertDialog state for card removal confirmation
+  const [pendingRemoveCardIndex, setPendingRemoveCardIndex] = useState<number | null>(null)
+
+  // Handler: Request card removal (opens AlertDialog)
+  const requestRemoveCard = (index: number) => {
+    setPendingRemoveCardIndex(index)
+  }
+
+  // Handler: Confirm card removal
+  const confirmRemoveCard = () => {
+    if (pendingRemoveCardIndex !== null) {
+      removeTrelloCard(pendingRemoveCardIndex)
+      setPendingRemoveCardIndex(null)
     }
+  }
+
+  // Handler: Cancel card removal
+  const cancelRemoveCard = () => {
+    setPendingRemoveCardIndex(null)
   }
 
   // Handler: Refresh card details
   const handleRefresh = async (index: number) => {
     if (!trelloApiKey || !trelloApiToken) {
-      alert('Trello API credentials not configured')
+      toast.error('Trello API credentials not configured')
       return
     }
 
@@ -286,7 +301,7 @@ export function useTrelloCardsManager({
         addTrelloCard(updatedCard)
       }, 100)
     } catch (err) {
-      alert(`Failed to refresh card: ${err instanceof Error ? err.message : String(err)}`)
+      toast.error(`Failed to refresh card: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
@@ -331,8 +346,13 @@ export function useTrelloCardsManager({
     // Handlers
     handleSelectCard,
     handleFetchAndAdd,
-    handleRemove,
     handleRefresh,
-    handleCloseDialog
+    handleCloseDialog,
+
+    // AlertDialog state for card removal
+    pendingRemoveCardIndex,
+    requestRemoveCard,
+    confirmRemoveCard,
+    cancelRemoveCard
   }
 }

@@ -8,6 +8,7 @@
 import { Button } from '@shared/ui/button'
 import { Upload } from 'lucide-react'
 import React from 'react'
+import { toast } from 'sonner'
 
 export function ThemeImport() {
   const [isImporting, setIsImporting] = React.useState(false)
@@ -15,7 +16,7 @@ export function ThemeImport() {
   const handleImportClick = () => {
     setIsImporting(true)
     // TODO: Implement file picker and theme import logic
-    alert('Custom theme import feature coming soon!')
+    toast.info('Custom theme import feature coming soon!')
     setIsImporting(false)
   }
 

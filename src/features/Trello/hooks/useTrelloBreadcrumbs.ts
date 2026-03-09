@@ -8,6 +8,7 @@ import type { TrelloCard } from '../types'
 import { useCallback } from 'react'
 
 import { logger } from '@shared/utils/logger'
+import { toast } from 'sonner'
 
 import { writeBreadcrumbsFile } from '../api'
 import { useAppendBreadcrumbs } from '@features/Baker'
@@ -70,7 +71,7 @@ export function useTrelloBreadcrumbs(
           )
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
-          alert('Failed to save breadcrumbs: ' + errorMessage)
+          toast.error('Failed to save breadcrumbs: ' + errorMessage)
           logger.error('Failed to write breadcrumbs file:', error)
         }
       }

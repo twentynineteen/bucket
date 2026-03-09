@@ -8,6 +8,16 @@ import { useTrelloCardsManager } from '../hooks/useTrelloCardsManager'
 import { AlertCircle, Loader2 } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@shared/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@shared/ui/alert-dialog'
 
 import { TrelloCardItem } from './TrelloCardItem'
 import { AddCardDialog } from './AddCardDialog'
@@ -59,8 +69,13 @@ export function TrelloCardsManager({
     // Handlers
     handleSelectCard,
     handleFetchAndAdd,
-    handleRemove,
-    handleRefresh
+    handleRefresh,
+
+    // AlertDialog state
+    pendingRemoveCardIndex,
+    requestRemoveCard,
+    confirmRemoveCard,
+    cancelRemoveCard
   } = useTrelloCardsManager({
     projectPath,
     trelloApiKey,
@@ -172,7 +187,7 @@ export function TrelloCardsManager({
                 <TrelloCardItem
                   key={`${card.cardId}-${index}`}
                   trelloCard={card}
-                  onRemove={() => handleRemove(index)}
+                  onRemove={() => requestRemoveCard(index)}
                   onRefresh={hasApiCredentials ? () => handleRefresh(index) : undefined}
                 />
               ))}
@@ -194,6 +209,25 @@ export function TrelloCardsManager({
           </span>
         </div>
       )}
+
+      {/* Remove card confirmation dialog */}
+      <AlertDialog
+        open={pendingRemoveCardIndex !== null}
+        onOpenChange={(open) => !open && cancelRemoveCard()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Trello Card</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this Trello card?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRemoveCard}>Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

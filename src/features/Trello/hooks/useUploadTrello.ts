@@ -13,6 +13,7 @@ import { useAppendVideoInfo } from './useAppendVideoInfo'
 import { useVideoInfoBlock } from '@features/BuildProject'
 import { open } from '@tauri-apps/plugin-shell'
 import { logger } from '@shared/utils/logger'
+import { toast } from 'sonner'
 
 import { writeBreadcrumbsFile } from '../api'
 import { createDefaultSproutUploadResponse } from '../types'
@@ -164,7 +165,7 @@ export function useUploadTrello() {
           )
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
-          alert('Failed to save breadcrumbs: ' + errorMessage)
+          toast.error('Failed to save breadcrumbs: ' + errorMessage)
           logger.error('Failed to write breadcrumbs file:', error)
         }
       }
