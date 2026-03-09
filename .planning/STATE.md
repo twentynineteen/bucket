@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 7 context gathered
-last_updated: "2026-03-09T20:21:43.677Z"
-last_activity: 2026-03-09 -- Completed plan 06-02 (api.ts I/O boundary gap closure)
+status: in-progress
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-09T21:02:00.000Z"
+last_activity: 2026-03-09 -- Completed plan 07-01 (Baker module migration)
 progress:
   total_phases: 9
   completed_phases: 6
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 13
+  completed_plans: 13
   percent: 100
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 ## Current Position
 
-Phase: 6 of 9 (AI Tools Module)
-Plan: 2 of 2 in current phase (all complete)
-Status: Phase 6 complete, ready for Phase 7/8
-Last activity: 2026-03-09 -- Completed plan 06-02 (api.ts I/O boundary gap closure)
+Phase: 7 of 9 (Baker Module)
+Plan: 1 of 1 in current phase (all complete)
+Status: Phase 7 plan 01 complete
+Last activity: 2026-03-09 -- Completed plan 07-01 (Baker module migration)
 
 Progress: [██████████] 100%
 
@@ -63,6 +63,7 @@ Progress: [██████████] 100%
 | Phase 05 P01 | 10 | 2 tasks | 17 files |
 | Phase 06 P01 | 14 | 2 tasks | 67 files |
 | Phase 06 P02 | 3 | 1 task | 4 files |
+| Phase 07 P01 | 30 | 2 tasks | 88 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,10 @@ Recent decisions affecting current work:
 - [Phase 06]: api.ts consolidates 14 I/O functions: invoke, fetch, dialog, fs, service imports
 - [Phase 06]: useTranscript.ts deleted as dead code (zero consumers)
 - [06-02]: api.ts expanded to 19 I/O functions -- complete boundary, zero direct plugin imports in components
+- [07-01]: Baker api.ts wraps 25 I/O functions (invoke, listen, dialog, shell, opener, fs, fetch)
+- [07-01]: useBreadcrumbsVideoLinks added to Baker barrel (needed by Trello's useVideoLinksManager)
+- [07-01]: Event listener wrappers return unlisten functions for cleanup pattern
+- [07-01]: No-bypass contract tests validate zero direct @tauri-apps imports via grep
 
 ### Pending Todos
 
@@ -123,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T20:21:43.674Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-baker-module/07-CONTEXT.md
+Last session: 2026-03-09T21:02:00.000Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: .planning/phases/07-baker-module/07-01-SUMMARY.md
