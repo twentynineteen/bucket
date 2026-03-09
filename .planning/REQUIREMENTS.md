@@ -72,10 +72,10 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### BuildProject Module
 
-- [ ] **BLDP-01**: User can import BuildProject components, hooks, and types from `@features/BuildProject` barrel only
-- [ ] **BLDP-02**: User can see an API layer wrapping BuildProject-related Tauri commands
-- [ ] **BLDP-03**: User can see XState machine colocated within the BuildProject module
-- [ ] **BLDP-04**: User can see contract tests validating BuildProject module's public interface
+- [x] **BLDP-01**: User can import BuildProject components, hooks, and types from `@features/BuildProject` barrel only
+- [x] **BLDP-02**: User can see an API layer wrapping BuildProject-related Tauri commands
+- [x] **BLDP-03**: User can see XState machine colocated within the BuildProject module
+- [x] **BLDP-04**: User can see contract tests validating BuildProject module's public interface
 
 ### App Shell & Enforcement
 
@@ -161,10 +161,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BAKR-01 | Phase 7 | Pending |
 | BAKR-02 | Phase 7 | Pending |
 | BAKR-03 | Phase 7 | Pending |
-| BLDP-01 | Phase 8 | Pending |
-| BLDP-02 | Phase 8 | Pending |
-| BLDP-03 | Phase 8 | Pending |
-| BLDP-04 | Phase 8 | Pending |
+| BLDP-01 | Phase 8 | Complete |
+| BLDP-02 | Phase 8 | Complete |
+| BLDP-03 | Phase 8 | Complete |
+| BLDP-04 | Phase 8 | Complete |
 | SHEL-01 | Phase 9 | Pending |
 | SHEL-02 | Phase 9 | Pending |
 | SHEL-03 | Phase 9 | Pending |

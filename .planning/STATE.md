@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 8 context gathered
-last_updated: "2026-03-09T21:29:35.570Z"
-last_activity: 2026-03-09 -- Completed plan 07-01 (Baker module migration)
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-09T22:01:00.000Z"
+last_activity: 2026-03-09 -- Completed plan 08-01 (BuildProject module migration)
 progress:
   total_phases: 9
-  completed_phases: 7
-  total_plans: 13
-  completed_plans: 13
+  completed_phases: 8
+  total_plans: 14
+  completed_plans: 14
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Every feature module has a simple public interface that fully describes its capabilities -- nothing reaches past the boundary, and contract tests lock down the behavior.
-**Current focus:** Phase 5: Settings Module
+**Current focus:** Phase 8: BuildProject Module
 
 ## Current Position
 
-Phase: 7 of 9 (Baker Module)
+Phase: 8 of 9 (BuildProject Module)
 Plan: 1 of 1 in current phase (all complete)
-Status: Phase 7 plan 01 complete
-Last activity: 2026-03-09 -- Completed plan 07-01 (Baker module migration)
+Status: Phase 8 plan 01 complete
+Last activity: 2026-03-09 -- Completed plan 08-01 (BuildProject module migration)
 
 Progress: [██████████] 100%
 
@@ -64,6 +64,7 @@ Progress: [██████████] 100%
 | Phase 06 P01 | 14 | 2 tasks | 67 files |
 | Phase 06 P02 | 3 | 1 task | 4 files |
 | Phase 07 P01 | 30 | 2 tasks | 88 files |
+| Phase 08 P01 | 14 | 2 tasks | 44 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,10 @@ Recent decisions affecting current work:
 - [07-01]: useBreadcrumbsVideoLinks added to Baker barrel (needed by Trello's useVideoLinksManager)
 - [07-01]: Event listener wrappers return unlisten functions for cleanup pattern
 - [07-01]: No-bypass contract tests validate zero direct @tauri-apps imports via grep
+- [08-01]: XState machine colocated at module root (not hooks/) for visibility alongside api.ts and types.ts
+- [08-01]: useAutoFileSelection and useBackgroundFolder moved to Upload module (Posterframe is sole consumer)
+- [08-01]: useBackgroundFolder rewired to use Upload api.ts listDirectory instead of direct readDir
+- [08-01]: Existing unit tests updated to mock api.ts layer instead of direct Tauri plugins
 
 ### Pending Todos
 
@@ -128,6 +133,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T21:29:35.566Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-buildproject-module/08-CONTEXT.md
+Last session: 2026-03-09T22:01:00.000Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: .planning/phases/08-buildproject-module/08-01-SUMMARY.md
