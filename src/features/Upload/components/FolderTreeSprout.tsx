@@ -1,9 +1,10 @@
 // FolderTreeSprout.tsx
-import { invoke } from '@tauri-apps/api/core'
 import { GetFoldersResponse, SproutFolder } from '@shared/types/types'
 import React, { useState } from 'react'
 
 import { logger } from '@shared/utils/logger'
+
+import { getFolders } from '../api'
 
 interface FolderTreeSproutProps {
   folder: SproutFolder
@@ -25,11 +26,8 @@ const FolderTreeSprout: React.FC<FolderTreeSproutProps> = ({
     // If not expanded and children have not been loaded, fetch subfolders.
     if (!expanded && !children) {
       try {
-        // Call the Tauri command "get_folders" with the current folder's ID as parent_id.
-        const result = await invoke<GetFoldersResponse>('get_folders', {
-          apiKey,
-          parent_id: folder.id
-        })
+        // Call the api layer to get subfolders
+        const result: GetFoldersResponse = await getFolders(apiKey, folder.id)
         setChildren(result.folders)
       } catch (error) {
         logger.error('Error fetching subfolders:', error)

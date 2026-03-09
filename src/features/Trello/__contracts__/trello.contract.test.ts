@@ -148,7 +148,7 @@ vi.mock('@hooks/useBreadcrumbsVideoLinks', () => ({
   })
 }))
 
-vi.mock('@hooks/useFileUpload', () => ({
+vi.mock('@features/Upload', () => ({
   useFileUpload: () => ({
     selectedFile: null,
     uploading: false,
@@ -156,23 +156,14 @@ vi.mock('@hooks/useFileUpload', () => ({
     selectFile: vi.fn(),
     uploadFile: vi.fn(),
     resetUploadState: vi.fn()
-  })
-}))
-
-vi.mock('@hooks/useSproutVideoApi', () => ({
+  }),
   useSproutVideoApi: () => ({
     fetchVideoDetailsAsync: vi.fn(),
     isFetching: false
-  })
-}))
-
-vi.mock('@hooks/useSproutVideoProcessor', () => ({
+  }),
   useSproutVideoProcessor: () => ({
     reset: vi.fn()
-  })
-}))
-
-vi.mock('@hooks/useUploadEvents', () => ({
+  }),
   useUploadEvents: () => ({
     progress: 0,
     message: ''
@@ -271,9 +262,7 @@ describe('Trello Barrel Exports - Shape', () => {
   }
 
   it('exports createDefaultSproutUploadResponse as a function', () => {
-    expect(typeof trelloBarrel.createDefaultSproutUploadResponse).toBe(
-      'function'
-    )
+    expect(typeof trelloBarrel.createDefaultSproutUploadResponse).toBe('function')
   })
 
   it('does NOT export internal modules (TrelloCards, trelloBoardValidation)', () => {

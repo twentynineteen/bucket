@@ -1,6 +1,6 @@
-import { fontDir } from '@tauri-apps/api/path'
-import { exists, readFile } from '@tauri-apps/plugin-fs'
 import opentype, { Font } from 'opentype.js'
+
+import { fileExists, getFontDir, readFileAsBytes } from '../api'
 
 let parsedFont: Font | null = null
 
@@ -10,20 +10,20 @@ let parsedFont: Font | null = null
  * Returns the parsed Font instance for vector rendering.
  */
 export async function loadFont(): Promise<Font | null> {
-  // If we’ve already parsed it once, just return it
+  // If we've already parsed it once, just return it
   if (parsedFont) {
     return parsedFont
   }
   // Load the font from the Tauri font directory
-  const fontPath = await fontDir()
+  const fontPath = await getFontDir()
   const path = `${fontPath}/Cabrito.otf`
 
   // Check if the font file exists return null if not
-  const found = await exists(path)
+  const found = await fileExists(path)
   if (!found) return null
 
   // Read raw bytes from the font file
-  const data = await readFile(path)
+  const data = await readFileAsBytes(path)
   const uint8 = new Uint8Array(data)
 
   // Register a CSS FontFace so fillText() still works

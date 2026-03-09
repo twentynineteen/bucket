@@ -1,12 +1,12 @@
-// Target: @features/Upload
 import { CACHE } from '@shared/constants/timing'
 import { queryKeys } from '@shared/lib/query-keys'
 import { createQueryOptions } from '@shared/lib/query-utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { listen } from '@tauri-apps/api/event'
 import { useCallback, useEffect, useRef } from 'react'
 
 import { logger } from '@shared/utils/logger'
+
+import { listenUploadComplete, listenUploadError, listenUploadProgress } from '../api'
 
 interface UseUploadEventsReturn {
   progress: number
@@ -110,14 +110,14 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
 
     const setupListeners = async () => {
       try {
-        unlistenProgress = await listen('upload_progress', (event) => {
+        unlistenProgress = await listenUploadProgress((event) => {
           if (isMounted) {
             const progressValue = event.payload as number
             updateUploadState({ progress: progressValue })
           }
         })
 
-        unlistenComplete = await listen('upload_complete', () => {
+        unlistenComplete = await listenUploadComplete(() => {
           if (isMounted) {
             // Backend sends the response object, not a string message
             // Convert to a success message for display
@@ -129,7 +129,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
           }
         })
 
-        unlistenError = await listen('upload_error', (event) => {
+        unlistenError = await listenUploadError((event) => {
           if (isMounted) {
             const errorMessage = event.payload as string
             updateUploadState({

@@ -1,7 +1,7 @@
-// Target: @features/Upload
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { readFile } from '@tauri-apps/plugin-fs'
 import { useCallback, useState } from 'react'
+
+import { readFileAsBytes } from '../api'
 
 interface FileSelectionData {
   selectedFilePath: string | null
@@ -18,7 +18,7 @@ function useBlobUrl(filePath: string | null) {
     queryFn: async (): Promise<string | null> => {
       if (!filePath) return null
 
-      const file = await readFile(filePath)
+      const file = await readFileAsBytes(filePath)
       const blob = new Blob([new Uint8Array(file)], { type: 'image/jpeg' })
       return URL.createObjectURL(blob)
     },

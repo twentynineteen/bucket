@@ -10,9 +10,9 @@ import { Progress } from '@shared/ui/progress'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import { useSproutVideoApiKey } from '@shared/hooks'
 import { useBreadcrumb } from '@shared/hooks'
-import { useFileUpload } from '@hooks/useFileUpload'
-import { useImageRefresh } from '@hooks/useImageRefresh'
-import { useUploadEvents } from '@hooks/useUploadEvents'
+import { useFileUpload } from '../hooks/useFileUpload'
+import { useImageRefresh } from '../hooks/useImageRefresh'
+import { useUploadEvents } from '../hooks/useUploadEvents'
 import EmbedCodeInput from '@shared/ui/EmbedCodeInput'
 import ExternalLink from '@shared/ui/ExternalLink'
 import FormattedDate from '@shared/ui/FormattedDate'
@@ -209,9 +209,9 @@ const UploadSprout: React.FC = () => {
                 An error occurred while loading the upload page. This could be due to:
               </p>
               <ul className="mt-2 space-y-1 text-left">
-                <li>• API key configuration issues</li>
-                <li>• Network connectivity problems</li>
-                <li>• File system access restrictions</li>
+                <li>- API key configuration issues</li>
+                <li>- Network connectivity problems</li>
+                <li>- File system access restrictions</li>
               </ul>
               {error && process.env.NODE_ENV === 'development' && (
                 <details className="bg-muted/50 border-border mt-4 rounded-md border p-4 text-left text-sm">

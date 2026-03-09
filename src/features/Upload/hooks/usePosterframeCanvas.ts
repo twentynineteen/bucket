@@ -1,5 +1,4 @@
-// Target: @features/Upload
-import { loadFont } from '@utils/loadFont'
+import { loadFont } from '../internal/loadFont'
 import type { Font } from 'opentype.js'
 import { useCallback, useRef } from 'react'
 
@@ -34,12 +33,12 @@ export function usePosterframeCanvas() {
       // 3) layout params
       const fontSize = 37 // px
       const xStart = 292 // left edge of box
-      const yStart = 467 // first‐line baseline
+      const yStart = 467 // first-line baseline
       const maxWidth = 380 // box width
       const lineHeight = 45 // px between baselines
       const letterSpacing = 1.5 // extra px between glyphs
 
-      // 4) word‐wrap into lines[]
+      // 4) word-wrap into lines[]
       const lines: string[] = []
       {
         let line = ''
@@ -71,7 +70,7 @@ export function usePosterframeCanvas() {
       ctx.rect(boxX, boxY, boxW, boxH)
       ctx.clip()
 
-      // 6) draw each line glyph‐by‐glyph with letterSpacing
+      // 6) draw each line glyph-by-glyph with letterSpacing
       let y = yStart
       for (const line of lines) {
         let x = xStart
@@ -88,7 +87,7 @@ export function usePosterframeCanvas() {
         y += lineHeight
       }
 
-      // 7) restore so any further drawing isn’t clipped
+      // 7) restore so any further drawing isn't clipped
       ctx.restore()
     }
   }, [])

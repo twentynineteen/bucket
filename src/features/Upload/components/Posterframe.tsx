@@ -14,16 +14,16 @@ import {
   SelectTrigger,
   SelectValue
 } from '@shared/ui/select'
+// TODO(Phase 8): Move to @features/BuildProject
 import { useAutoFileSelection } from '@hooks/useAutoFileSelection'
+// TODO(Phase 8): Move to @features/BuildProject
 import { useBackgroundFolder } from '@hooks/useBackgroundFolder'
 import { useBreadcrumb } from '@shared/hooks'
-import { useFileSelection } from '@hooks/useFileSelection'
-import { usePosterframeAutoRedraw } from '@hooks/usePosterframeAutoRedraw'
-import { usePosterframeCanvas } from '@hooks/usePosterframeCanvas'
-import { useZoomPan } from '@hooks/useZoomPan'
-import { invoke } from '@tauri-apps/api/core'
-import { open } from '@tauri-apps/plugin-dialog'
-import { writeFile } from '@tauri-apps/plugin-fs'
+import { useFileSelection } from '../hooks/useFileSelection'
+import { usePosterframeAutoRedraw } from '../hooks/usePosterframeAutoRedraw'
+import { usePosterframeCanvas } from '../hooks/usePosterframeCanvas'
+import { useZoomPan } from '../hooks/useZoomPan'
+import { openFolder, openFolderDialog, saveFile } from '../api'
 import {
   AlertTriangle,
   FolderOpen,
@@ -69,7 +69,7 @@ const PosterframeContent: React.FC = () => {
   })
 
   const chooseSavePath = async () => {
-    const folder = await open({ directory: true, multiple: false })
+    const folder = await openFolderDialog()
     if (typeof folder === 'string') {
       setSavePath(folder)
     }
@@ -97,9 +97,9 @@ const PosterframeContent: React.FC = () => {
       const fullPath = `${savePath}/${fileName}`
 
       try {
-        await writeFile(fullPath, uint8Array)
+        await saveFile(fullPath, uint8Array)
         toast.success(`Thumbnail saved at: ${fullPath}`)
-        invoke('open_folder', { path: savePath })
+        openFolder(savePath)
       } catch (err) {
         logger.error('Save failed:', err)
         toast.error('Error saving file. Please check permissions and try again.')
@@ -159,7 +159,7 @@ const PosterframeContent: React.FC = () => {
                 <div className="space-y-3">
                   <Button
                     onClick={() =>
-                      open({ directory: true }).then(
+                      openFolderDialog().then(
                         (path) => typeof path === 'string' && loadFolder(path)
                       )
                     }
@@ -374,9 +374,9 @@ const Posterframe: React.FC = () => {
                 to:
               </p>
               <ul className="mt-2 space-y-1 text-left">
-                <li>• File system access issues</li>
-                <li>• Invalid image or canvas rendering</li>
-                <li>• Browser compatibility problems</li>
+                <li>- File system access issues</li>
+                <li>- Invalid image or canvas rendering</li>
+                <li>- Browser compatibility problems</li>
               </ul>
               {error && process.env.NODE_ENV === 'development' && (
                 <details className="bg-muted/50 border-border mt-4 rounded-md border p-4 text-left text-sm">

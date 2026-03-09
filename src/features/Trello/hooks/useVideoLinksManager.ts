@@ -17,10 +17,12 @@ import {
 } from '@hooks/useAppendBreadcrumbs'
 import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
 import { useBreadcrumbsVideoLinks } from '@hooks/useBreadcrumbsVideoLinks'
-import { useFileUpload } from '@hooks/useFileUpload'
-import { useSproutVideoApi } from '@hooks/useSproutVideoApi'
-import { useSproutVideoProcessor } from '@hooks/useSproutVideoProcessor'
-import { useUploadEvents } from '@hooks/useUploadEvents'
+import {
+  useFileUpload,
+  useSproutVideoApi,
+  useSproutVideoProcessor,
+  useUploadEvents
+} from '@features/Upload'
 
 import { bakerReadBreadcrumbs, fetchTrelloCardById } from '../api'
 
@@ -42,9 +44,7 @@ const initialFormData: FormData = {
   sproutVideoId: ''
 }
 
-export function useVideoLinksManager({
-  projectPath
-}: UseVideoLinksManagerProps) {
+export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps) {
   // Core data hooks
   const {
     videoLinks,
@@ -60,16 +60,9 @@ export function useVideoLinksManager({
   const { trelloCards } = useBreadcrumbsTrelloCards({ projectPath })
   const { apiKey } = useSproutVideoApiKey()
   const { apiKey: trelloApiKey, apiToken: trelloToken } = useTrelloApiKeys()
-  const { fetchVideoDetailsAsync, isFetching: isFetchingVideo } =
-    useSproutVideoApi()
-  const {
-    selectedFile,
-    uploading,
-    response,
-    selectFile,
-    uploadFile,
-    resetUploadState
-  } = useFileUpload()
+  const { fetchVideoDetailsAsync, isFetching: isFetchingVideo } = useSproutVideoApi()
+  const { selectedFile, uploading, response, selectFile, uploadFile, resetUploadState } =
+    useFileUpload()
   const { progress, message } = useUploadEvents()
 
   // UI state
@@ -88,12 +81,7 @@ export function useVideoLinksManager({
     enabled: addMode === 'upload',
     onVideoReady: (videoLink) => {
       addVideoLink(videoLink)
-      if (
-        trelloCards &&
-        trelloCards.length > 0 &&
-        trelloApiKey &&
-        trelloToken
-      ) {
+      if (trelloCards && trelloCards.length > 0 && trelloApiKey && trelloToken) {
         setIsTrelloDialogOpen(true)
       }
     },
@@ -126,9 +114,7 @@ export function useVideoLinksManager({
       })
     } catch (error) {
       const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Failed to fetch video details'
+        error instanceof Error ? error.message : 'Failed to fetch video details'
       setFetchError(errorMessage)
     }
   }
@@ -191,19 +177,13 @@ export function useVideoLinksManager({
       throw new Error('Trello API credentials not configured')
     }
 
-    const breadcrumbsData = (await bakerReadBreadcrumbs(
-      projectPath
-    )) as BreadcrumbsFile
+    const breadcrumbsData = (await bakerReadBreadcrumbs(projectPath)) as BreadcrumbsFile
 
     const breadcrumbsBlock = generateBreadcrumbsBlock(breadcrumbsData)
 
     const updatePromises = selectedCardIndexes.map(async (index) => {
       const card = trelloCards[index]
-      const fullCard = await fetchTrelloCardById(
-        card.cardId,
-        trelloApiKey,
-        trelloToken
-      )
+      const fullCard = await fetchTrelloCardById(card.cardId, trelloApiKey, trelloToken)
 
       await updateTrelloCardWithBreadcrumbs(
         fullCard,

@@ -1,4 +1,3 @@
-// Target: @features/Upload
 /**
  * React Query hook for fetching Sprout Video metadata
  * Feature: 004-embed-multiple-video - URL auto-fetch
@@ -7,10 +6,8 @@
  */
 
 import { useMutation } from '@tanstack/react-query'
-import { invoke } from '@tauri-apps/api/core'
-import { parseSproutVideoUrl } from '@utils/parseSproutVideoUrl'
-
-import type { SproutVideoDetails } from '@shared/types/media'
+import { parseSproutVideoUrl } from '../internal/parseSproutVideoUrl'
+import { fetchSproutVideoDetails } from '../api'
 
 interface FetchVideoDetailsParams {
   videoUrl: string
@@ -34,7 +31,7 @@ interface FetchVideoDetailsParams {
  * }
  */
 export function useSproutVideoApi() {
-  const fetchVideoDetails = useMutation({
+  const fetchVideoDetailsMutation = useMutation({
     mutationFn: async ({ videoUrl, apiKey }: FetchVideoDetailsParams) => {
       // Parse URL to extract video ID
       const videoId = parseSproutVideoUrl(videoUrl)
@@ -44,21 +41,18 @@ export function useSproutVideoApi() {
       }
 
       // Fetch details from Sprout API via Tauri command
-      const details = await invoke<SproutVideoDetails>('fetch_sprout_video_details', {
-        videoId,
-        apiKey
-      })
+      const details = await fetchSproutVideoDetails(videoId, apiKey)
 
       return details
     }
   })
 
   return {
-    fetchVideoDetails: fetchVideoDetails.mutate,
-    fetchVideoDetailsAsync: fetchVideoDetails.mutateAsync,
-    isFetching: fetchVideoDetails.isPending,
-    error: fetchVideoDetails.error,
-    data: fetchVideoDetails.data,
-    reset: fetchVideoDetails.reset
+    fetchVideoDetails: fetchVideoDetailsMutation.mutate,
+    fetchVideoDetailsAsync: fetchVideoDetailsMutation.mutateAsync,
+    isFetching: fetchVideoDetailsMutation.isPending,
+    error: fetchVideoDetailsMutation.error,
+    data: fetchVideoDetailsMutation.data,
+    reset: fetchVideoDetailsMutation.reset
   }
 }

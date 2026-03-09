@@ -1,12 +1,16 @@
-// Target: @features/Upload
 import { appStore } from '@shared/store'
-import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
-import { open } from '@tauri-apps/plugin-dialog'
 import { SproutUploadResponse } from '@shared/types/types'
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 import { logger } from '@shared/utils/logger'
+
+import {
+  listenUploadComplete,
+  listenUploadError,
+  openFileDialog,
+  uploadVideo
+} from '../api'
 
 interface UseFileUploadReturn {
   selectedFile: string | null
@@ -24,7 +28,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
   const [selectedFolder] = useState<string | null>(null)
 
   const selectFile = async () => {
-    const file = await open({
+    const file = await openFileDialog({
       multiple: false,
       filters: [{ name: 'Videos', extensions: ['mp4', 'mov', 'avi'] }]
     })
@@ -41,11 +45,11 @@ export const useFileUpload = (): UseFileUploadReturn => {
   const uploadFile = async (apiKey: string | null) => {
     // Validate file selection and API key
     if (!selectedFile) {
-      alert('Please select a video file.')
+      toast.error('Please select a video file.')
       return
     }
     if (!apiKey) {
-      alert('API key is missing. Please set it in the settings.')
+      toast.error('API key is missing. Please set it in the settings.')
       return
     }
 
@@ -92,23 +96,19 @@ export const useFileUpload = (): UseFileUploadReturn => {
         ) // 45 minutes
 
         // Listen for the upload_complete event and resolve with its payload
-        completeUnlisten = listen('upload_complete', async (event) => {
+        completeUnlisten = listenUploadComplete(async (event) => {
           await cleanup()
           resolve(event.payload as SproutUploadResponse)
         })
 
         // Listen for the upload_error event and reject with its payload
-        errorUnlisten = listen('upload_error', async (event) => {
+        errorUnlisten = listenUploadError(async (event) => {
           await cleanup()
           reject(event.payload)
         })
 
         // Invoke the Rust backend command to start the upload
-        invoke('upload_video', {
-          filePath: selectedFile,
-          apiKey: apiKey,
-          folderId: selectedFolder
-        }).catch(async (error) => {
+        uploadVideo(selectedFile, apiKey, selectedFolder).catch(async (error) => {
           await cleanup()
           reject(error)
         })
@@ -138,7 +138,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
         errorMessage += String(error)
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage)
     } finally {
       // Regardless of success or failure, mark the upload as finished
       setUploading(false)

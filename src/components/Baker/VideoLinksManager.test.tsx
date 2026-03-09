@@ -11,10 +11,10 @@ import '@testing-library/jest-dom'
 import * as useApiKeysModule from '@shared/hooks/useApiKeys'
 import * as useBreadcrumbsTrelloCardsModule from '@features/Trello/hooks/useBreadcrumbsTrelloCards'
 import * as useBreadcrumbsVideoLinksModule from '@hooks/useBreadcrumbsVideoLinks'
-import * as useFileUploadModule from '@hooks/useFileUpload'
-import * as useSproutVideoApiModule from '@hooks/useSproutVideoApi'
-import * as useSproutVideoProcessorModule from '@hooks/useSproutVideoProcessor'
-import * as useUploadEventsModule from '@hooks/useUploadEvents'
+import * as useFileUploadModule from '@features/Upload/hooks/useFileUpload'
+import * as useSproutVideoApiModule from '@features/Upload/hooks/useSproutVideoApi'
+import * as useSproutVideoProcessorModule from '@features/Upload/hooks/useSproutVideoProcessor'
+import * as useUploadEventsModule from '@features/Upload/hooks/useUploadEvents'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { SproutUploadResponse } from '@shared/types/types'
@@ -25,11 +25,11 @@ import { VideoLinksManager } from './VideoLinksManager'
 // Mock hooks
 vi.mock('@hooks/useBreadcrumbsVideoLinks')
 vi.mock('@features/Trello/hooks/useBreadcrumbsTrelloCards')
-vi.mock('@hooks/useSproutVideoApi')
+vi.mock('@features/Upload/hooks/useSproutVideoApi')
 vi.mock('@shared/hooks/useApiKeys')
-vi.mock('@hooks/useFileUpload')
-vi.mock('@hooks/useUploadEvents')
-vi.mock('@hooks/useSproutVideoProcessor')
+vi.mock('@features/Upload/hooks/useFileUpload')
+vi.mock('@features/Upload/hooks/useUploadEvents')
+vi.mock('@features/Upload/hooks/useSproutVideoProcessor')
 
 // Helper function to create a complete mock SproutUploadResponse
 const createMockSproutUploadResponse = (

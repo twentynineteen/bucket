@@ -63,15 +63,15 @@ vi.mock('@shared/hooks/useApiKeys', () => ({
   useSproutVideoApiKey: vi.fn(() => mockApiKeyState)
 }))
 
-vi.mock('@hooks/useFileUpload', () => ({
+vi.mock('../hooks/useFileUpload', () => ({
   useFileUpload: vi.fn(() => mockFileUploadState)
 }))
 
-vi.mock('@hooks/useUploadEvents', () => ({
+vi.mock('../hooks/useUploadEvents', () => ({
   useUploadEvents: vi.fn(() => mockUploadEventsState)
 }))
 
-vi.mock('@hooks/useImageRefresh', () => ({
+vi.mock('../hooks/useImageRefresh', () => ({
   useImageRefresh: vi.fn(() => mockImageRefreshState)
 }))
 

@@ -1,13 +1,17 @@
 // FolderTreeNavigator.tsx
 import { CACHE } from '@shared/constants/timing'
 import { queryKeys } from '@shared/lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '@shared/lib/query-utils'
+import {
+  createQueryError,
+  createQueryOptions,
+  shouldRetry
+} from '@shared/lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { GetFoldersResponse, SproutFolder } from '@shared/types/types'
 import React, { useState } from 'react'
 
-import FolderTreeSprout from './FolderTreeSprout'
+import { FolderTreeSprout } from '@features/Upload'
 
 interface FolderTreeNavigatorProps {
   apiKey: string

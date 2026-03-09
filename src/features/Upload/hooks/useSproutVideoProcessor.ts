@@ -1,4 +1,3 @@
-// Target: @features/Upload
 /**
  * useSproutVideoProcessor - React Query hook for processing Sprout Video upload responses
  * Feature: 004-embed-multiple-video

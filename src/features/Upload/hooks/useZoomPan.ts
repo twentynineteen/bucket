@@ -1,4 +1,3 @@
-// Target: @features/Upload
 import { CACHE } from '@shared/constants/timing'
 import { queryKeys } from '@shared/lib/query-keys'
 import { createQueryOptions } from '@shared/lib/query-utils'
