@@ -82,10 +82,10 @@ Plans:
   1. Importing Upload components, hooks, and types works only through `@features/Upload` barrel
   2. An `api.ts` layer wraps all Sprout, Posterframe, and Otter Tauri commands -- no component directly calls `invoke()`
   3. Contract tests validate the Upload module's public interface and all pass
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md -- Upload module with api.ts layer, barrel, contract tests, and cross-module consumer updates
 
 ### Phase 5: Settings Module
 **Goal**: Settings is decomposed from a 523-line monolith into per-domain sub-components within a deep feature module
@@ -167,7 +167,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 1. Tooling & Prep | 2/2 | Complete | 2026-03-08 |
 | 2. Shared Infrastructure | 4/4 | Complete | 2026-03-09 |
 | 3. Leaf Feature Modules | 2/2 | Complete   | 2026-03-09 |
-| 4. Upload Module | 0/? | Not started | - |
+| 4. Upload Module | 0/1 | Not started | - |
 | 5. Settings Module | 0/? | Not started | - |
 | 6. AI Tools Module | 0/? | Not started | - |
 | 7. Baker Module | 0/? | Not started | - |
