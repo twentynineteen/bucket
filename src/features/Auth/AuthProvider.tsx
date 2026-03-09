@@ -1,13 +1,19 @@
-import { useAuthCheck } from '@hooks/useAuthCheck'
 import { useQueryClient } from '@tanstack/react-query'
-import { invoke } from '@tauri-apps/api/core'
 import React from 'react'
 
 import { logger } from '@shared/utils/logger'
 
 import { AuthContext } from './AuthContext'
+import {
+  addToken,
+  clearStoredCredentials,
+  setStoredCredentials
+} from './api'
+import { useAuthCheck } from './hooks/useAuthCheck'
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children
+}) => {
   const queryClient = useQueryClient()
   const { data: authData } = useAuthCheck()
 
@@ -16,9 +22,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (token: string, username: string) => {
     try {
-      await invoke('add_token', { token }) // Add token to backend
-      localStorage.setItem('access_token', token)
-      localStorage.setItem('username', username)
+      await addToken(token)
+      setStoredCredentials(token, username)
       queryClient.invalidateQueries({ queryKey: ['authCheck'] })
     } catch (error) {
       logger.error('Login failed:', error)
@@ -26,13 +31,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const logout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('username')
+    clearStoredCredentials()
     queryClient.invalidateQueries({ queryKey: ['authCheck'] })
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, username, login, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, username, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   )

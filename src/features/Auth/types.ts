@@ -1,5 +1,3 @@
-import { createContext } from 'react'
-
 export interface AuthContextType {
   isAuthenticated: boolean
   username: string | null
@@ -7,4 +5,7 @@ export interface AuthContextType {
   logout: () => void
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined)
+export interface AuthCheckResult {
+  isAuthenticated: boolean
+  username: string | null
+}

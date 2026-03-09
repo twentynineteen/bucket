@@ -9,7 +9,7 @@ import {
   SidebarHeader
 } from '@shared/ui/sidebar/SidebarLayout'
 import { UpdateDialog } from '@components/UpdateDialog'
-import { useAuth } from '@hooks/useAuth'
+import { useAuth } from '@features/Auth'
 import { useMacOSEffects } from '@hooks/useMacOSEffects'
 import { useUpdateManager } from '@hooks/useUpdateManager'
 import { useUsername } from '@shared/hooks'

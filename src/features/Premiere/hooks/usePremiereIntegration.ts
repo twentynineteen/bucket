@@ -1,4 +1,3 @@
-// Target: @features/BuildProject
 /**
  * usePremiereIntegration Hook
  * Purpose: Handle Premiere Pro template integration and post-completion actions
@@ -13,21 +12,10 @@
  * Lines: ~70
  */
 
-import { invoke } from '@tauri-apps/api/core'
-
 import { logger } from '@shared/utils/logger'
 
-interface PremiereParams {
-  projectFolder: string
-  projectTitle: string
-  setLoading: (value: boolean) => void
-  setMessage: (value: string) => void
-}
-
-interface DialogParams {
-  projectFolder: string
-  projectTitle: string
-}
+import { copyPremiereProject, showConfirmationDialog } from '../api'
+import type { DialogParams, PremiereParams } from '../types'
 
 export function usePremiereIntegration() {
   /**
@@ -45,10 +33,10 @@ export function usePremiereIntegration() {
     try {
       const destinationFolder = `${projectFolder}/Projects/`
 
-      const result = await invoke('copy_premiere_project', {
+      const result = await copyPremiereProject(
         destinationFolder,
-        newTitle: projectTitle
-      })
+        projectTitle
+      )
 
       setMessage('Success: ' + result)
     } catch (error) {
@@ -62,13 +50,15 @@ export function usePremiereIntegration() {
   /**
    * Show completion dialog and optionally open folder
    */
-  const showCompletionDialog = async ({ projectFolder }: DialogParams): Promise<void> => {
+  const showCompletionDialog = async ({
+    projectFolder
+  }: DialogParams): Promise<void> => {
     try {
-      await invoke('show_confirmation_dialog', {
-        message: 'Do you want to open the project folder now?',
-        title: 'Transfer complete!',
-        destination: projectFolder
-      })
+      await showConfirmationDialog(
+        'Do you want to open the project folder now?',
+        'Transfer complete!',
+        projectFolder
+      )
     } catch (error) {
       logger.error('Error:', error)
     }
@@ -77,7 +67,9 @@ export function usePremiereIntegration() {
   /**
    * Handle all post-completion actions
    */
-  const handlePostCompletion = async (params: PremiereParams): Promise<void> => {
+  const handlePostCompletion = async (
+    params: PremiereParams
+  ): Promise<void> => {
     await copyPremiereTemplate(params)
     await showCompletionDialog({
       projectFolder: params.projectFolder,

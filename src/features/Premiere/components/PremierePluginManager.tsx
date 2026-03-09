@@ -18,7 +18,6 @@ import {
 import { Button } from '@shared/ui/button'
 import { useBreadcrumb } from '@shared/hooks'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { invoke } from '@tauri-apps/api/core'
 import {
   AlertTriangle,
   CheckCircle,
@@ -30,24 +29,12 @@ import {
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 
-interface PluginInfo {
-  name: string
-  displayName: string
-  version: string
-  filename: string
-  size: number
-  installed: boolean
-  description: string
-  features: string[]
-  icon: string
-}
-
-interface InstallResult {
-  success: boolean
-  message: string
-  pluginName: string
-  installedPath: string
-}
+import {
+  getAvailablePlugins,
+  installPlugin,
+  openCepFolder
+} from '../api'
+import type { InstallResult } from '../types'
 
 const PremierePluginManagerContent: React.FC = () => {
   // Set breadcrumbs for navigation
@@ -76,9 +63,7 @@ const PremierePluginManagerContent: React.FC = () => {
     error
   } = useQuery({
     queryKey: ['plugins'],
-    queryFn: async () => {
-      return await invoke<PluginInfo[]>('get_available_plugins')
-    }
+    queryFn: getAvailablePlugins
   })
 
   // Install plugin mutation
@@ -92,10 +77,10 @@ const PremierePluginManagerContent: React.FC = () => {
       name: string
       displayName: string
     }) => {
-      const result = await invoke<InstallResult>('install_plugin', {
-        pluginFilename: filename,
-        pluginName: name
-      })
+      const result: InstallResult = await installPlugin(
+        filename,
+        name
+      )
       return { ...result, displayName }
     },
     onSuccess: (result) => {
@@ -119,7 +104,7 @@ const PremierePluginManagerContent: React.FC = () => {
   // Open CEP folder
   const handleOpenFolder = async () => {
     try {
-      await invoke('open_cep_folder')
+      await openCepFolder()
     } catch (error) {
       toast.error(`Failed to open folder: ${error}`)
     }
@@ -377,7 +362,7 @@ const PremierePluginManagerContent: React.FC = () => {
                 <Button
                   onClick={async () => {
                     try {
-                      await invoke('open_cep_folder')
+                      await openCepFolder()
                     } catch (error) {
                       toast.error(`Failed to open folder: ${error}`)
                     }
