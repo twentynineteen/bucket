@@ -7,7 +7,7 @@
  */
 
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
-import { TrelloBoardSelector } from '@components/Settings/TrelloBoardSelector'
+import { TrelloBoardSelector } from '@features/Trello'
 import { ThemeSelector } from '@shared/ui/theme/ThemeSelector'
 import {
   Accordion,

@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@testing-library/jest-dom'
 
 import * as useApiKeysModule from '@shared/hooks/useApiKeys'
-import * as useBreadcrumbsTrelloCardsModule from '@hooks/useBreadcrumbsTrelloCards'
+import * as useBreadcrumbsTrelloCardsModule from '@features/Trello/hooks/useBreadcrumbsTrelloCards'
 import * as useBreadcrumbsVideoLinksModule from '@hooks/useBreadcrumbsVideoLinks'
 import * as useFileUploadModule from '@hooks/useFileUpload'
 import * as useSproutVideoApiModule from '@hooks/useSproutVideoApi'
@@ -24,7 +24,7 @@ import { VideoLinksManager } from './VideoLinksManager'
 
 // Mock hooks
 vi.mock('@hooks/useBreadcrumbsVideoLinks')
-vi.mock('@hooks/useBreadcrumbsTrelloCards')
+vi.mock('@features/Trello/hooks/useBreadcrumbsTrelloCards')
 vi.mock('@hooks/useSproutVideoApi')
 vi.mock('@shared/hooks/useApiKeys')
 vi.mock('@hooks/useFileUpload')

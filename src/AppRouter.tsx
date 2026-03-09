@@ -21,7 +21,7 @@ import { PremierePluginManager } from '@features/Premiere'
 import Settings from './pages/Settings'
 import UploadOtter from './pages/UploadOtter'
 import UploadSprout from './pages/UploadSprout'
-import UploadTrello from './pages/UploadTrello'
+import { UploadTrello } from '@features/Trello'
 import { createNamespacedLogger } from '@shared/utils/logger'
 
 const log = createNamespacedLogger('AppRouter')

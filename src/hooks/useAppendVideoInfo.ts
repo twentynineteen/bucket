@@ -1,7 +1,8 @@
 // Target: @features/BuildProject
 import { extractVideoInfoBlock } from '@utils/extractVideoInfoBlock'
 import { createNamespacedLogger } from '@shared/utils/logger'
-import { TrelloCard, updateCard } from '@utils/TrelloCards'
+import type { TrelloCard } from '@features/Trello'
+import { updateTrelloCard } from '@features/Trello/api'
 import { SproutUploadResponse } from '@shared/types/types'
 
 const logger = createNamespacedLogger('useAppendVideoInfo')
@@ -47,7 +48,7 @@ ${video.embed_code}
 
     const updatedDesc = `${card.desc.trim()}\n\n---\n\n${markdownBlock}`
 
-    await updateCard(card.id, { desc: updatedDesc }, apiKey, token)
+    await updateTrelloCard(card.id, { desc: updatedDesc }, apiKey, token)
     logger.log('Video info block appended.')
   }
 

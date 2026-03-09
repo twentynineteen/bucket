@@ -1,8 +1,13 @@
-import React from 'react'
+/**
+ * Internal TrelloCardMembers component
+ * Not exported from barrel - used internally by Trello components
+ */
 
 import { useQuery } from '@tanstack/react-query'
-import { fetchCardMembers } from '@features/Trello/api'
-import type { TrelloMember } from '@features/Trello'
+import React from 'react'
+
+import { fetchCardMembers } from '../api'
+import type { TrelloMember } from '../types'
 
 const TrelloCardMembers: React.FC<{
   cardId: string

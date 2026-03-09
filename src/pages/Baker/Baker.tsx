@@ -17,7 +17,7 @@ import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import { Button } from '@shared/ui/button'
 import { useBakerPreferences } from '@hooks/useBakerPreferences'
 import { useBakerScan } from '@hooks/useBakerScan'
-import { useBakerTrelloIntegration } from '@hooks/useBakerTrelloIntegration'
+import { useBakerTrelloIntegration } from '@features/Trello'
 import { useBreadcrumb } from '@shared/hooks'
 import { useBreadcrumbsManager } from '@hooks/useBreadcrumbsManager'
 import { useBreadcrumbsPreview } from '@hooks/useBreadcrumbsPreview'
@@ -25,7 +25,7 @@ import { useLiveBreadcrumbsReader } from '@hooks/useLiveBreadcrumbsReader'
 import { AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react'
 import React, { useCallback, useState } from 'react'
 
-import { useTrelloBoard } from '@/hooks'
+import { useTrelloBoard } from '@features/Trello'
 import { logger } from '@shared/utils/logger'
 
 const BakerPageContent: React.FC = () => {

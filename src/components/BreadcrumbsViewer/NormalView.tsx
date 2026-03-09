@@ -18,7 +18,7 @@ import React from 'react'
 
 import type { BreadcrumbsFile } from '@/types/baker'
 
-import { TrelloCardsManager } from '../Baker/TrelloCardsManager'
+import { TrelloCardsManager } from '@features/Trello'
 import { VideoLinksManager } from '../Baker/VideoLinksManager'
 import { Button } from '@shared/ui/button'
 import { formatFileSize } from './fieldUtils'

@@ -3,7 +3,7 @@ import { appStore } from '@shared/store'
 import { useQueryClient } from '@tanstack/react-query'
 import { ask, confirm, open } from '@tauri-apps/plugin-dialog'
 import { readTextFile } from '@tauri-apps/plugin-fs'
-import { TrelloCard as LegacyTrelloCard } from '@utils/TrelloCards'
+import type { TrelloCard as LegacyTrelloCard } from '@features/Trello'
 import type { Breadcrumb } from '@shared/types/types'
 
 import { logger } from '@shared/utils/logger'

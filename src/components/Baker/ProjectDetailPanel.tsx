@@ -26,7 +26,7 @@ import { formatFileSize } from '@/components/BreadcrumbsViewer/fieldUtils'
 import { Button } from '@shared/ui/button'
 import type { BreadcrumbsFile, BreadcrumbsPreview } from '@/types/baker'
 
-import { TrelloCardsManager } from './TrelloCardsManager'
+import { TrelloCardsManager } from '@features/Trello'
 import { VideoLinksManager } from './VideoLinksManager'
 
 interface ProjectDetailPanelProps {

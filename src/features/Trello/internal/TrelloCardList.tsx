@@ -1,4 +1,7 @@
-// src/components/uploadTrello/TrelloCardList.tsx
+/**
+ * Internal TrelloCardList component
+ * Not exported from barrel - used internally by Trello components
+ */
 
 import {
   Accordion,
@@ -9,7 +12,7 @@ import {
 import React, { useState } from 'react'
 
 import { logger } from '@shared/utils/logger'
-import type { TrelloCard } from '@features/Trello'
+import type { TrelloCard } from '../types'
 
 interface TrelloCardListProps {
   grouped: Record<string, TrelloCard[]>
@@ -24,7 +27,6 @@ interface TrelloCardListProps {
 const TrelloCardList: React.FC<TrelloCardListProps> = ({ grouped, onSelect }) => {
   const STORAGE_KEY = 'trello-accordion-state'
   const [openSections, setOpenSections] = useState<string[]>(() => {
-    // Load accordion state from localStorage on initial render
     try {
       const savedState = localStorage.getItem(STORAGE_KEY)
       if (savedState) {
@@ -36,7 +38,6 @@ const TrelloCardList: React.FC<TrelloCardListProps> = ({ grouped, onSelect }) =>
     return []
   })
 
-  // Save accordion state to localStorage when it changes
   const handleAccordionChange = (value: string[]) => {
     setOpenSections(value)
     try {
