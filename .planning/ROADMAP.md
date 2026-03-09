@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Leaf Feature Modules** - Migrate Auth, Trello, and Premiere into deep feature modules (completed 2026-03-09)
 - [x] **Phase 4: Upload Module** - Migrate Sprout, Posterframe, and Otter into a deep Upload feature module (completed 2026-03-09)
 - [ ] **Phase 5: Settings Module** - Decompose Settings monolith and migrate into a deep feature module
-- [ ] **Phase 6: AI Tools Module** - Migrate ScriptFormatter and ExampleEmbeddings into a deep feature module (gap closure in progress)
+- [x] **Phase 6: AI Tools Module** - Migrate ScriptFormatter and ExampleEmbeddings into a deep feature module (gap closure in progress) (completed 2026-03-09)
 - [ ] **Phase 7: Baker Module** - Migrate Baker (drive scanning, breadcrumbs) into a deep feature module
 - [ ] **Phase 8: BuildProject Module** - Migrate BuildProject (file ingest, camera assignment, XState) into a deep feature module
 - [ ] **Phase 9: App Shell & Enforcement** - Lazy routes, boundary enforcement promotion, JSDoc, alert replacement, final cleanup
@@ -109,7 +109,7 @@ Plans:
   1. Importing AITools components, hooks, and types works only through `@features/AITools` barrel
   2. An `api.ts` layer wraps all AI-related Tauri commands (RAG queries, embedding management)
   3. Contract tests validate the AITools module's public interface and all pass
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 06-01-PLAN.md -- AITools module with sub-feature directories, api.ts I/O boundary, selective barrel exports, and contract tests
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 3. Leaf Feature Modules | 2/2 | Complete   | 2026-03-09 |
 | 4. Upload Module | 1/1 | Complete   | 2026-03-09 |
 | 5. Settings Module | 0/1 | Planned | - |
-| 6. AI Tools Module | 1/2 | Gap closure | - |
+| 6. AI Tools Module | 2/2 | Complete   | 2026-03-09 |
 | 7. Baker Module | 0/? | Not started | - |
 | 8. BuildProject Module | 0/? | Not started | - |
 | 9. App Shell & Enforcement | 0/? | Not started | - |
