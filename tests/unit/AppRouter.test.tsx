@@ -25,12 +25,13 @@ vi.mock('@pages/AI/ScriptFormatter/ScriptFormatter', () => ({
   default: () => <div>Script Formatter</div>
 }))
 
-vi.mock('@pages/auth/Login', () => ({
-  default: () => <div data-testid="login-page">Login Page</div>
+vi.mock('@features/Auth', () => ({
+  Login: () => <div data-testid="login-page">Login Page</div>,
+  Register: () => <div data-testid="register-page">Register Page</div>
 }))
 
-vi.mock('@pages/auth/Register', () => ({
-  default: () => <div data-testid="register-page">Register Page</div>
+vi.mock('@features/Premiere', () => ({
+  PremierePluginManager: () => <div>Premiere Plugin Manager</div>
 }))
 
 vi.mock('@pages/Baker/Baker', () => ({

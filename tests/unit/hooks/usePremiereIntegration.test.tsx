@@ -9,7 +9,7 @@
  * - Handle UI state (loading, messages)
  */
 
-import { usePremiereIntegration } from '@/hooks/usePremiereIntegration'
+import { usePremiereIntegration } from '@features/Premiere'
 import { invoke } from '@tauri-apps/api/core'
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
