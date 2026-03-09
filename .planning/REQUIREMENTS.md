@@ -53,10 +53,10 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### Settings Module
 
-- [ ] **STNG-01**: User can import Settings components, hooks, and types from `@features/Settings` barrel only
-- [ ] **STNG-02**: User can see Settings decomposed into per-domain sub-components (no 523-line monolith)
-- [ ] **STNG-03**: User can see an API layer wrapping Settings-related Tauri commands
-- [ ] **STNG-04**: User can see contract tests validating Settings module's public interface
+- [x] **STNG-01**: User can import Settings components, hooks, and types from `@features/Settings` barrel only
+- [x] **STNG-02**: User can see Settings decomposed into per-domain sub-components (no 523-line monolith)
+- [x] **STNG-03**: User can see an API layer wrapping Settings-related Tauri commands
+- [x] **STNG-04**: User can see contract tests validating Settings module's public interface
 
 ### AI Tools Module
 
@@ -151,10 +151,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UPLD-01 | Phase 4 | Complete |
 | UPLD-02 | Phase 4 | Complete |
 | UPLD-03 | Phase 4 | Complete |
-| STNG-01 | Phase 5 | Pending |
-| STNG-02 | Phase 5 | Pending |
-| STNG-03 | Phase 5 | Pending |
-| STNG-04 | Phase 5 | Pending |
+| STNG-01 | Phase 5 | Complete |
+| STNG-02 | Phase 5 | Complete |
+| STNG-03 | Phase 5 | Complete |
+| STNG-04 | Phase 5 | Complete |
 | AITL-01 | Phase 6 | Pending |
 | AITL-02 | Phase 6 | Pending |
 | AITL-03 | Phase 6 | Pending |
