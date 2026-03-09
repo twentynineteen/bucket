@@ -18,7 +18,7 @@ import { Breadcrumb } from '@shared/types/types'
 import { getFolderSize, writeTextFileContents } from '../api'
 import { logger } from '@shared/utils/logger'
 
-import { FootageFile } from '@hooks/useCameraAutoRemap'
+import { type FootageFile } from '@features/BuildProject'
 
 interface CreateBreadcrumbsParams {
   title: string

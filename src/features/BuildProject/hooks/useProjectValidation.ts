@@ -1,22 +1,10 @@
-// Target: @features/BuildProject
 /**
  * useProjectValidation Hook
  * Purpose: Handle all validation logic for project creation
- *
- * Responsibilities:
- * - Validate folder selection
- * - Validate project title
- * - Confirm when no files added
- * - Check folder existence and handle overwrite
- *
- * Complexity: Low (< 5)
- * Lines: ~100
  */
 
-import { confirm } from '@tauri-apps/plugin-dialog'
-import { exists, remove } from '@tauri-apps/plugin-fs'
-
-import { FootageFile } from './useCameraAutoRemap'
+import type { FootageFile } from '../types'
+import { confirmDialog, pathExists, removePath } from '../api'
 
 interface ValidationResult {
   isValid: boolean
@@ -79,7 +67,7 @@ export function useProjectValidation() {
    */
   const validateFiles = async (files: FootageFile[]): Promise<ValidationResult> => {
     if (files.length === 0) {
-      const confirmNoFiles = await confirm(
+      const confirmNoFiles = await confirmDialog(
         'No files have been added to the drag and drop section. Are you sure you want to create the project?'
       )
 
@@ -106,7 +94,7 @@ export function useProjectValidation() {
     projectFolder: string
   ): Promise<FolderExistsResult> => {
     try {
-      const folderExists = await exists(projectFolder)
+      const folderExists = await pathExists(projectFolder)
 
       if (!folderExists) {
         return {
@@ -115,7 +103,7 @@ export function useProjectValidation() {
         }
       }
 
-      const overwrite = await confirm(
+      const overwrite = await confirmDialog(
         `The folder "${projectFolder}" already exists. Do you want to overwrite it?`
       )
 
@@ -137,7 +125,7 @@ export function useProjectValidation() {
    * Remove existing folder
    */
   const removeExistingFolder = async (projectFolder: string): Promise<void> => {
-    await remove(projectFolder, { recursive: true })
+    await removePath(projectFolder, { recursive: true })
   }
 
   /**

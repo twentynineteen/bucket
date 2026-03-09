@@ -1,22 +1,15 @@
-// Target: @features/BuildProject
-import { buildProjectMachine } from '@machines/buildProjectMachine'
-import { listen } from '@tauri-apps/api/event'
+import { buildProjectMachine } from '../buildProjectMachine'
 import { useMachine } from '@xstate/react'
 import { useEffect, useMemo, useRef } from 'react'
 
-// Type definitions for Tauri error events
-interface CopyFileError {
-  file: string
-  error: string
-}
+import {
+  listenCopyProgress,
+  listenCopyComplete,
+  listenCopyFileError,
+  listenCopyCompleteWithErrors
+} from '../api'
 
-interface CopyCompleteWithErrors {
-  successful_files: string[]
-  failed_files: CopyFileError[]
-  failure_count: number
-  success_count: number
-  total_files: number
-}
+import type { CopyCompleteWithErrors } from '../types'
 
 /**
  * Hook that manages the BuildProject state machine and connects it to Tauri events
@@ -40,7 +33,7 @@ export function useBuildProjectMachine() {
     const setupListeners = async () => {
       try {
         // Listen for copy progress events
-        unlistenProgress = await listen<number>('copy_progress', (event) => {
+        unlistenProgress = await listenCopyProgress((event) => {
           if (!isMounted) return
           send({ type: 'COPY_PROGRESS', progress: event.payload })
         })
@@ -48,34 +41,31 @@ export function useBuildProjectMachine() {
         // Listen for individual file copy errors
         // Individual errors are logged by the backend; the final error state
         // will be set by copy_complete_with_errors
-        unlistenFileError = await listen<CopyFileError>('copy_file_error', () => {
+        unlistenFileError = await listenCopyFileError(() => {
           // Event received - errors accumulated and reported in copy_complete_with_errors
         })
 
         // Listen for copy complete with errors (partial failure)
-        unlistenCompleteWithErrors = await listen<CopyCompleteWithErrors>(
-          'copy_complete_with_errors',
-          (event) => {
-            if (!isMounted) return
-            const { failure_count, success_count, total_files, failed_files } =
-              event.payload
+        unlistenCompleteWithErrors = await listenCopyCompleteWithErrors((event) => {
+          if (!isMounted) return
+          const { failure_count, success_count, total_files, failed_files } =
+            event.payload as CopyCompleteWithErrors
 
-            // Build descriptive error message
-            const failedFileNames = failed_files
-              .map((f) => f.file.split('/').pop())
-              .join(', ')
+          // Build descriptive error message
+          const failedFileNames = failed_files
+            .map((f) => f.file.split('/').pop())
+            .join(', ')
 
-            const errorMessage =
-              `Copy completed with errors: ${failure_count} of ${total_files} files failed. ` +
-              `Successfully copied: ${success_count}. ` +
-              `Failed files: ${failedFileNames}`
+          const errorMessage =
+            `Copy completed with errors: ${failure_count} of ${total_files} files failed. ` +
+            `Successfully copied: ${success_count}. ` +
+            `Failed files: ${failedFileNames}`
 
-            send({ type: 'COPY_ERROR', error: errorMessage })
-          }
-        )
+          send({ type: 'COPY_ERROR', error: errorMessage })
+        })
 
         // Listen for copy complete events (full success)
-        unlistenComplete = await listen<string[]>('copy_complete', () => {
+        unlistenComplete = await listenCopyComplete(() => {
           if (!isMounted) return
           send({ type: 'COPY_COMPLETE' })
         })

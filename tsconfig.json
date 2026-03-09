@@ -21,7 +21,6 @@
       "@store/*": ["src/shared/store/*"],
       "@services/*": ["src/services/*"],
       "@pages/*": ["src/pages/*"],
-      "@machines/*": ["src/machines/*"],
       "@context/*": ["src/context/*"],
       "@/*": ["src/*"],
       // Feature module aliases

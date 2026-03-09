@@ -1,19 +1,9 @@
-// Target: @features/BuildProject
 /**
  * useProjectFolders Hook
  * Purpose: Handle project folder structure creation
- *
- * Responsibilities:
- * - Create main project folder
- * - Create camera folders (1 to numCameras)
- * - Create support folders (Graphics, Renders, Projects, Scripts)
- * - Handle errors during folder creation
- *
- * Complexity: Low (< 5)
- * Lines: ~80
  */
 
-import { mkdir } from '@tauri-apps/plugin-fs'
+import { createDirectory } from '../api'
 
 interface FolderCreationResult {
   success: boolean
@@ -25,7 +15,7 @@ export function useProjectFolders() {
    * Create main project folder
    */
   const createMainFolder = async (projectFolder: string): Promise<void> => {
-    await mkdir(projectFolder, { recursive: true })
+    await createDirectory(projectFolder, { recursive: true })
   }
 
   /**
@@ -38,7 +28,7 @@ export function useProjectFolders() {
     if (numCameras <= 0) return
 
     for (let cam = 1; cam <= numCameras; cam++) {
-      await mkdir(`${projectFolder}/Footage/Camera ${cam}`, { recursive: true })
+      await createDirectory(`${projectFolder}/Footage/Camera ${cam}`, { recursive: true })
     }
   }
 
@@ -47,10 +37,10 @@ export function useProjectFolders() {
    */
   const createSupportFolders = async (projectFolder: string): Promise<void> => {
     await Promise.all([
-      mkdir(`${projectFolder}/Graphics`, { recursive: true }),
-      mkdir(`${projectFolder}/Renders`, { recursive: true }),
-      mkdir(`${projectFolder}/Projects`, { recursive: true }),
-      mkdir(`${projectFolder}/Scripts`, { recursive: true })
+      createDirectory(`${projectFolder}/Graphics`, { recursive: true }),
+      createDirectory(`${projectFolder}/Renders`, { recursive: true }),
+      createDirectory(`${projectFolder}/Projects`, { recursive: true }),
+      createDirectory(`${projectFolder}/Scripts`, { recursive: true })
     ])
   }
 

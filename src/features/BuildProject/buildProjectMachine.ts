@@ -1,42 +1,8 @@
-import type { FootageFile } from '@hooks/useCameraAutoRemap'
+import type { BuildProjectContext, BuildProjectEvent } from './types'
 import { assign, setup } from 'xstate'
 
-// Context type - data that persists through state transitions
-export interface BuildProjectContext {
-  // Project configuration
-  title: string
-  numCameras: number
-  files: FootageFile[]
-  selectedFolder: string
-  username: string
-
-  // Progress tracking
-  copyProgress: number
-
-  // Project paths
-  projectFolder: string | null
-
-  // Error handling
-  error: string | null
-}
-
-// Event types - all possible events that can occur
-export type BuildProjectEvent =
-  | { type: 'START_PROJECT' }
-  | { type: 'VALIDATION_SUCCESS'; projectFolder: string }
-  | { type: 'VALIDATION_ERROR'; error: string }
-  | { type: 'FOLDERS_CREATED' }
-  | { type: 'FOLDERS_ERROR'; error: string }
-  | { type: 'BREADCRUMBS_SAVED' }
-  | { type: 'BREADCRUMBS_ERROR'; error: string }
-  | { type: 'FILES_MOVING' }
-  | { type: 'COPY_PROGRESS'; progress: number }
-  | { type: 'COPY_COMPLETE' }
-  | { type: 'COPY_ERROR'; error: string }
-  | { type: 'TEMPLATE_COMPLETE' }
-  | { type: 'TEMPLATE_ERROR'; error: string }
-  | { type: 'RESET' }
-  | { type: 'UPDATE_CONFIG'; config: Partial<BuildProjectContext> }
+// Re-export types for backward compatibility
+export type { BuildProjectContext, BuildProjectEvent }
 
 // State machine definition
 export const buildProjectMachine = setup({

@@ -1,11 +1,10 @@
-// Target: @features/BuildProject
 // hooks/usePostProjectCompletion.ts
 
-import type { BuildProjectEvent } from '@machines/buildProjectMachine'
-import { invoke } from '@tauri-apps/api/core'
+import type { BuildProjectEvent } from '../types'
 import { useEffect, useRef } from 'react'
 
 import { logger } from '@shared/utils/logger'
+import { copyPremiereProject, showConfirmationDialog } from '../api'
 
 interface UsePostProjectCompletionOptions {
   isCreatingTemplate: boolean
@@ -41,10 +40,7 @@ export function usePostProjectCompletion({
       try {
         const filePath = `${projectFolder}/Projects/`
 
-        await invoke('copy_premiere_project', {
-          destinationFolder: filePath,
-          newTitle: projectTitle
-        })
+        await copyPremiereProject(filePath, projectTitle)
 
         if (import.meta.env.DEV) {
           logger.log('Premiere template created successfully')
@@ -71,11 +67,11 @@ export function usePostProjectCompletion({
 
     const showDialog = async () => {
       try {
-        await invoke('show_confirmation_dialog', {
-          message: 'Do you want to open the project folder now?',
-          title: 'Transfer complete!',
-          destination: projectFolder
-        })
+        await showConfirmationDialog(
+          'Do you want to open the project folder now?',
+          'Transfer complete!',
+          projectFolder
+        )
 
         if (import.meta.env.DEV) {
           logger.log('Dialog completed')

@@ -8,7 +8,7 @@ import type { TrelloCard } from '../types'
 import { useCallback, useMemo } from 'react'
 
 import { useAppendVideoInfo } from '@hooks/useAppendVideoInfo'
-import { useVideoInfoBlock } from '@hooks/useVideoInfoBlock'
+import { useVideoInfoBlock } from '@features/BuildProject'
 
 /**
  * Hook to manage video info operations for Trello cards

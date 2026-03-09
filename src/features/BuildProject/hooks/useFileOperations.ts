@@ -1,24 +1,12 @@
-// Target: @features/BuildProject
 /**
  * useFileOperations Hook
  * Purpose: Handle file moving operations with progress tracking
- *
- * Responsibilities:
- * - Setup event listeners for copy_complete
- * - Invoke move_files command
- * - Handle completion callbacks
- * - Clean up event listeners
- *
- * Complexity: Low (< 5)
- * Lines: ~90
  */
-
-import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
 
 import { logger } from '@shared/utils/logger'
 
-import { FootageFile } from './useCameraAutoRemap'
+import type { FootageFile } from '../types'
+import { moveFiles as apiMoveFiles, listenCopyComplete } from '../api'
 
 interface MoveFilesWithProgressParams {
   files: FootageFile[]
@@ -48,7 +36,7 @@ export function useFileOperations() {
   const setupProgressListener = async (
     onComplete: () => Promise<void>
   ): Promise<() => void> => {
-    const unlisten = await listen<string[]>('copy_complete', async () => {
+    const unlisten = await listenCopyComplete(async () => {
       try {
         await onComplete()
       } catch (error) {
@@ -70,10 +58,7 @@ export function useFileOperations() {
   ): Promise<void> => {
     const fileList = prepareFileList(files)
 
-    await invoke('move_files', {
-      files: fileList,
-      baseDest: projectFolder
-    })
+    await apiMoveFiles(fileList, projectFolder)
   }
 
   /**

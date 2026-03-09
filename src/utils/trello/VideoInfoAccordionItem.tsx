@@ -1,5 +1,5 @@
 import { AccordionContent, AccordionItem, AccordionTrigger } from '@shared/ui/accordion'
-import { VideoInfoData } from '@hooks/useVideoInfoBlock'
+import { type VideoInfoData } from '@features/BuildProject'
 import React from 'react'
 
 import KeyValueRow from './KeyValueRow'

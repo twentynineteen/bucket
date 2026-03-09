@@ -5,7 +5,7 @@
 
 import { useAppendVideoInfo } from '@/hooks/useAppendVideoInfo'
 import { useTrelloVideoInfo } from '@features/Trello'
-import { useVideoInfoBlock } from '@/hooks/useVideoInfoBlock'
+import { useVideoInfoBlock } from '@features/BuildProject'
 import { appStore } from '@shared/store'
 import type { TrelloCard } from '@features/Trello'
 import type { SproutUploadResponse } from '@shared/types/types'
@@ -17,9 +17,13 @@ vi.mock('@/hooks/useAppendVideoInfo', () => ({
   useAppendVideoInfo: vi.fn()
 }))
 
-vi.mock('@/hooks/useVideoInfoBlock', () => ({
-  useVideoInfoBlock: vi.fn()
-}))
+vi.mock('@features/BuildProject', async () => {
+  const actual = await vi.importActual('@features/BuildProject')
+  return {
+    ...actual,
+    useVideoInfoBlock: vi.fn()
+  }
+})
 
 vi.mock('@shared/store/useAppStore', () => ({
   appStore: {

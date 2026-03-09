@@ -12,7 +12,7 @@ import Page from './app/dashboard/page'
 import { ExampleEmbeddings, ScriptFormatter } from '@features/AITools'
 import { Login, Register } from '@features/Auth'
 import { BakerPage as Baker } from '@features/Baker'
-import BuildProject from './pages/BuildProject/BuildProject'
+import { BuildProjectPage } from '@features/BuildProject'
 import IngestHistory from './pages/IngestHistory'
 import { Settings } from '@features/Settings'
 import { Posterframe, UploadOtter, UploadSprout } from '@features/Upload'
@@ -116,7 +116,7 @@ export const AppRouter: React.FC = () => {
             <Route path="ingest">
               <Route index element={<Navigate to="/ingest/build" replace />} />
               <Route path="history" element={<IngestHistory />} />
-              <Route path="build" element={<BuildProject />} />
+              <Route path="build" element={<BuildProjectPage />} />
               <Route path="baker" element={<Baker />} />
             </Route>
             <Route path="ai-tools">

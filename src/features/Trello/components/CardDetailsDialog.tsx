@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@shared/ui/dialog'
-import { VideoInfoData } from '@hooks/useVideoInfoBlock'
+import { type VideoInfoData } from '@features/BuildProject'
 import { appStore } from '@shared/store'
 import CardDetailsAccordion from '@utils/trello/CardDetailsAccordion'
 import TooltipPreview from '@utils/trello/TooltipPreview'

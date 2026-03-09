@@ -14,10 +14,8 @@ import {
   SelectTrigger,
   SelectValue
 } from '@shared/ui/select'
-// TODO(Phase 8): Move to @features/BuildProject
-import { useAutoFileSelection } from '@hooks/useAutoFileSelection'
-// TODO(Phase 8): Move to @features/BuildProject
-import { useBackgroundFolder } from '@hooks/useBackgroundFolder'
+import { useAutoFileSelection } from '../hooks/useAutoFileSelection'
+import { useBackgroundFolder } from '../hooks/useBackgroundFolder'
 import { useBreadcrumb } from '@shared/hooks'
 import { useFileSelection } from '../hooks/useFileSelection'
 import { usePosterframeAutoRedraw } from '../hooks/usePosterframeAutoRedraw'

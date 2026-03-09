@@ -1,17 +1,10 @@
-// Target: @features/BuildProject
 import { CACHE } from '@shared/constants/timing'
 import { queryKeys } from '@shared/lib/query-keys'
 import { createQueryOptions } from '@shared/lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 
-export interface FootageFile {
-  file: {
-    path: string
-    name: string
-  }
-  camera: number
-}
+import type { FootageFile } from '../types'
 
 export function useCameraAutoRemap(
   files: FootageFile[],

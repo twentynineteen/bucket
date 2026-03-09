@@ -5,16 +5,10 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { Film, Trash2, Video } from 'lucide-react'
 import React from 'react'
 
+import type { FootageFile } from '../types'
+
 // Threshold for enabling virtual scrolling (performance optimization for large lists)
 const VIRTUAL_SCROLLING_THRESHOLD = 50
-
-interface FootageFile {
-  file: {
-    name: string
-    path: string
-  }
-  camera: number
-}
 
 interface ProjectFileListProps {
   files: FootageFile[]

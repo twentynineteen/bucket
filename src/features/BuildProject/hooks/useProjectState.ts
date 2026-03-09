@@ -1,9 +1,8 @@
-// Target: @features/BuildProject
 import { PROJECT_LIMITS } from '@shared/constants/project'
 import { createNamespacedLogger } from '@shared/utils/logger'
 import { useCallback, useMemo, useState } from 'react'
 
-import { FootageFile } from './useCameraAutoRemap'
+import type { FootageFile } from '../types'
 import { selectFiles } from './useFileSelector'
 
 const logger = createNamespacedLogger('useProjectState')

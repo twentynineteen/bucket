@@ -1,13 +1,9 @@
-// Target: @features/BuildProject
 import { useMemo } from 'react'
 
-export interface VideoInfoData {
-  title: string
-  duration: string
-  uploaded: string
-  thumbnail?: string
-  url: string
-}
+import type { VideoInfoData } from '../types'
+
+// Re-export the type for backward compatibility
+export type { VideoInfoData }
 
 export function useVideoInfoBlock(description: string) {
   return useMemo(() => {

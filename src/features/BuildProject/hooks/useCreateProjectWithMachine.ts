@@ -1,16 +1,21 @@
-// Target: @features/BuildProject
 // hooks/useCreateProjectWithMachine.ts
 
-import type { BuildProjectEvent } from '@machines/buildProjectMachine'
+import type { BuildProjectEvent } from '../types'
 import { appStore } from '@shared/store'
-import { invoke } from '@tauri-apps/api/core'
-import { confirm } from '@tauri-apps/plugin-dialog'
-import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 import { Breadcrumb } from '@shared/types/types'
 
 import { logger } from '@shared/utils/logger'
 
-import { FootageFile } from './useCameraAutoRemap'
+import type { FootageFile } from '../types'
+import {
+  confirmDialog,
+  createDirectory,
+  getFolderSize,
+  moveFiles,
+  pathExists,
+  removePath,
+  writeTextFileContents
+} from '../api'
 
 interface CreateProjectParams {
   title: string
@@ -42,7 +47,7 @@ export function useCreateProjectWithMachine() {
     }
 
     if (files.length === 0) {
-      const confirmNoFiles = await confirm(
+      const confirmNoFiles = await confirmDialog(
         'No files have been added to the drag and drop section. Are you sure you want to create the project?'
       )
       if (!confirmNoFiles) {
@@ -53,15 +58,15 @@ export function useCreateProjectWithMachine() {
 
     const projectFolder = `${selectedFolder}/${title.trim()}`
 
-    if (await exists(projectFolder)) {
-      const overwrite = await confirm(
+    if (await pathExists(projectFolder)) {
+      const overwrite = await confirmDialog(
         `The folder "${projectFolder}" already exists. Do you want to overwrite it?`
       )
       if (!overwrite) {
         send({ type: 'VALIDATION_ERROR', error: 'Project creation cancelled' })
         return
       }
-      await remove(projectFolder, { recursive: true })
+      await removePath(projectFolder, { recursive: true })
     }
 
     // Validation passed
@@ -69,17 +74,19 @@ export function useCreateProjectWithMachine() {
 
     // Step 2: Create folder structure
     try {
-      await mkdir(projectFolder, { recursive: true })
+      await createDirectory(projectFolder, { recursive: true })
 
       for (let cam = 1; cam <= numCameras; cam++) {
-        await mkdir(`${projectFolder}/Footage/Camera ${cam}`, { recursive: true })
+        await createDirectory(`${projectFolder}/Footage/Camera ${cam}`, {
+          recursive: true
+        })
       }
 
       await Promise.all([
-        mkdir(`${projectFolder}/Graphics`, { recursive: true }),
-        mkdir(`${projectFolder}/Renders`, { recursive: true }),
-        mkdir(`${projectFolder}/Projects`, { recursive: true }),
-        mkdir(`${projectFolder}/Scripts`, { recursive: true })
+        createDirectory(`${projectFolder}/Graphics`, { recursive: true }),
+        createDirectory(`${projectFolder}/Renders`, { recursive: true }),
+        createDirectory(`${projectFolder}/Projects`, { recursive: true }),
+        createDirectory(`${projectFolder}/Scripts`, { recursive: true })
       ])
 
       send({ type: 'FOLDERS_CREATED' })
@@ -96,9 +103,7 @@ export function useCreateProjectWithMachine() {
 
       let folderSizeBytes: number | undefined
       try {
-        folderSizeBytes = await invoke<number>('get_folder_size', {
-          folderPath: projectFolder
-        })
+        folderSizeBytes = await getFolderSize(projectFolder)
       } catch (error) {
         logger.warn('Failed to calculate folder size:', error)
         folderSizeBytes = undefined
@@ -120,7 +125,7 @@ export function useCreateProjectWithMachine() {
 
       appStore.getState().setBreadcrumbs(projectData)
 
-      await writeTextFile(
+      await writeTextFileContents(
         `${projectFolder}/breadcrumbs.json`,
         JSON.stringify(projectData, null, 2)
       )
@@ -141,10 +146,7 @@ export function useCreateProjectWithMachine() {
         }
         // This will trigger copy_progress and copy_complete events
         // which are listened to by useBuildProjectMachine
-        await invoke('move_files', {
-          files: filesToMove,
-          baseDest: projectFolder
-        })
+        await moveFiles(filesToMove, projectFolder)
         if (import.meta.env.DEV) {
           logger.log('move_files invoke completed')
         }

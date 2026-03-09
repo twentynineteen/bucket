@@ -1,19 +1,21 @@
 import { useTrelloApiKeys } from '@shared/hooks'
-import { useBuildProjectMachine } from '@hooks/useBuildProjectMachine'
-import { useCreateProjectWithMachine } from '@hooks/useCreateProjectWithMachine'
-import { usePostProjectCompletion } from '@hooks/usePostProjectCompletion'
 import { createNamespacedLogger } from '@shared/utils/logger'
 import { useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 
 import { useBreadcrumb, useUsername } from '@shared/hooks'
-import { useCameraAutoRemap, useProjectState } from '@/hooks'
 
-import { AddFootageStep } from './AddFootageStep'
-import { CreateProjectStep } from './CreateProjectStep'
-import ProgressBar from './ProgressBar'
-import { ProjectConfigurationStep } from './ProjectConfigurationStep'
-import { SuccessSection } from './SuccessSection'
+import { useBuildProjectMachine } from './hooks/useBuildProjectMachine'
+import { useCreateProjectWithMachine } from './hooks/useCreateProjectWithMachine'
+import { usePostProjectCompletion } from './hooks/usePostProjectCompletion'
+import { useCameraAutoRemap } from './hooks/useCameraAutoRemap'
+import { useProjectState } from './hooks/useProjectState'
+
+import { AddFootageStep } from './components/AddFootageStep'
+import { CreateProjectStep } from './components/CreateProjectStep'
+import ProgressBar from './components/ProgressBar'
+import { ProjectConfigurationStep } from './components/ProjectConfigurationStep'
+import { SuccessSection } from './components/SuccessSection'
 
 const logger = createNamespacedLogger('BuildProject')
 

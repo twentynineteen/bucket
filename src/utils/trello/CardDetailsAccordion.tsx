@@ -1,5 +1,5 @@
 import { Accordion } from '@shared/ui/accordion'
-import { VideoInfoData } from '@hooks/useVideoInfoBlock'
+import { type VideoInfoData } from '@features/BuildProject'
 import { Breadcrumb } from '@shared/types/types'
 import React from 'react'
 

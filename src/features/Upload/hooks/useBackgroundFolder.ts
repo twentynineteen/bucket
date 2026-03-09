@@ -1,8 +1,8 @@
-// Target: @features/BuildProject
 import { useAppStore } from '@shared/store'
 import { useQuery } from '@tanstack/react-query'
-import { readDir } from '@tauri-apps/plugin-fs'
 import { useCallback, useState } from 'react'
+
+import { listDirectory } from '../api'
 
 interface BackgroundFolderData {
   files: string[]
@@ -28,11 +28,8 @@ export function useBackgroundFolder(): BackgroundFolderData {
     queryFn: async () => {
       if (!folderToLoad) return []
 
-      const dirFiles = await readDir(folderToLoad)
-      return dirFiles
-        .filter((f) => f.name?.endsWith('.jpg'))
-        .map((f) => `${folderToLoad}/${f.name}`)
-        .sort((a, b) => a.localeCompare(b))
+      // listDirectory already filters for image files and returns sorted paths
+      return listDirectory(folderToLoad)
     },
     enabled: !!folderToLoad
   })

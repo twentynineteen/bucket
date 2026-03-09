@@ -10,7 +10,7 @@ import { useMemo, useState } from 'react'
 import { useFuzzySearch } from '@shared/hooks'
 import { useAppendBreadcrumbs } from '@features/Baker'
 import { useAppendVideoInfo } from '@hooks/useAppendVideoInfo'
-import { useVideoInfoBlock } from '@hooks/useVideoInfoBlock'
+import { useVideoInfoBlock } from '@features/BuildProject'
 import { open } from '@tauri-apps/plugin-shell'
 import { logger } from '@shared/utils/logger'
 
