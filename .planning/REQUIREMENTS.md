@@ -17,7 +17,7 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### Shared Infrastructure
 
-- [ ] **SHRD-01**: User can import shared hooks from `@shared/hooks` barrel export only
+- [x] **SHRD-01**: User can import shared hooks from `@shared/hooks` barrel export only
 - [x] **SHRD-02**: User can import shared UI primitives from `@shared/ui/*` (no barrel for UI -- direct imports)
 - [x] **SHRD-03**: User can import global stores from `@shared/store` barrel export
 - [x] **SHRD-04**: User can import query infrastructure from `@shared/lib` barrel export
@@ -25,7 +25,7 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 - [x] **SHRD-06**: User can import utilities from `@shared/utils` barrel export
 - [x] **SHRD-07**: User can import shared types from `@shared/types` barrel export
 - [x] **SHRD-08**: User can import constants from `@shared/constants` barrel export
-- [ ] **SHRD-09**: User can see contract tests validating each shared sub-module's public interface
+- [x] **SHRD-09**: User can see contract tests validating each shared sub-module's public interface
 
 ### Auth Module
 
@@ -130,7 +130,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TOOL-03 | Phase 1 | Complete |
 | TOOL-04 | Phase 1 | Complete |
 | TOOL-05 | Phase 1 | Complete |
-| SHRD-01 | Phase 2 | Pending |
+| SHRD-01 | Phase 2 | Complete |
 | SHRD-02 | Phase 2 | Complete |
 | SHRD-03 | Phase 2 | Complete |
 | SHRD-04 | Phase 2 | Complete |
@@ -138,7 +138,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SHRD-06 | Phase 2 | Complete |
 | SHRD-07 | Phase 2 | Complete |
 | SHRD-08 | Phase 2 | Complete |
-| SHRD-09 | Phase 2 | Pending |
+| SHRD-09 | Phase 2 | Complete |
 | AUTH-01 | Phase 3 | Pending |
 | AUTH-02 | Phase 3 | Pending |
 | AUTH-03 | Phase 3 | Pending |

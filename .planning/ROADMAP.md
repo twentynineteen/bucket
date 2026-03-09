@@ -13,7 +13,7 @@ Restructure Bucket's frontend from a flat, boundary-less codebase into deep feat
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Tooling & Prep** - Install enforcement tools, resolve stale files, configure path aliases
-- [ ] **Phase 2: Shared Infrastructure** - Extract cross-cutting code into shared sub-modules with barrels and contract tests
+- [x] **Phase 2: Shared Infrastructure** - Extract cross-cutting code into shared sub-modules with barrels and contract tests
 - [ ] **Phase 3: Leaf Feature Modules** - Migrate Auth, Trello, and Premiere into deep feature modules
 - [ ] **Phase 4: Upload Module** - Migrate Sprout, Posterframe, and Otter into a deep Upload feature module
 - [ ] **Phase 5: Settings Module** - Decompose Settings monolith and migrate into a deep feature module
@@ -50,13 +50,13 @@ Plans:
   3. Importing stores, lib, services, utils, types, and constants each works through their respective `@shared/*` barrel exports
   4. Contract tests exist for each shared sub-module and all pass, validating that public interfaces export the expected members with correct behavior
   5. The Vite dev server starts without HMR degradation after shared module extraction
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md -- Move lib, constants, types, utils to shared with barrels and contract tests
 - [x] 02-02-PLAN.md -- Move store and services to shared with barrels and contract tests
-- [ ] 02-03-PLAN.md -- Move UI primitives, theme system, layout to shared/ui with direct imports
-- [ ] 02-04-PLAN.md -- Move shared hooks, tag feature hooks, final verification
+- [x] 02-03-PLAN.md -- Move UI primitives, theme system, layout to shared/ui with direct imports
+- [x] 02-04-PLAN.md -- Move shared hooks, tag feature hooks, final verification
 
 ### Phase 3: Leaf Feature Modules
 **Goal**: Auth, Trello, and Premiere each exist as self-contained deep modules with barrel exports, API layers, and contract tests
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Tooling & Prep | 2/2 | Complete | 2026-03-08 |
-| 2. Shared Infrastructure | 3/4 | In Progress|  |
+| 2. Shared Infrastructure | 4/4 | Complete | 2026-03-09 |
 | 3. Leaf Feature Modules | 0/? | Not started | - |
 | 4. Upload Module | 0/? | Not started | - |
 | 5. Settings Module | 0/? | Not started | - |
