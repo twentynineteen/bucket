@@ -129,7 +129,7 @@ Plans:
 - [ ] 07-01-PLAN.md -- Baker module with api.ts I/O boundary (~24 wrappers), flat layout, minimal barrel exports, and contract tests
 
 ### Phase 8: BuildProject Module
-**Goal**: BuildProject (file ingest, camera assignment, project creation) lives in a deep feature module with its 14 hooks and XState machine colocated
+**Goal**: BuildProject (file ingest, camera assignment, project creation) lives in a deep feature module with its 10 hooks and XState machine colocated
 **Depends on**: Phase 3 (depends on Premiere module)
 **Requirements**: BLDP-01, BLDP-02, BLDP-03, BLDP-04
 **Success Criteria** (what must be TRUE):
@@ -137,10 +137,10 @@ Plans:
   2. An `api.ts` layer wraps all BuildProject-related Tauri commands -- BuildProject imports Premiere through `@features/Premiere` barrel
   3. The XState machine, its hook, and step components are colocated within the BuildProject module directory
   4. Contract tests validate the BuildProject module's public interface and all pass
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md -- BuildProject module with api.ts I/O boundary (~14 wrappers), flat layout, minimal barrel, XState colocation, and contract tests
 
 ### Phase 9: App Shell & Enforcement
 **Goal**: The app shell uses lazy-loaded routes, boundary rules are enforced as errors, old paths are removed, public APIs are documented, and all native alerts are replaced
@@ -172,5 +172,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 5. Settings Module | 0/1 | Planned | - |
 | 6. AI Tools Module | 2/2 | Complete   | 2026-03-09 |
 | 7. Baker Module | 1/1 | Complete   | 2026-03-09 |
-| 8. BuildProject Module | 0/? | Not started | - |
+| 8. BuildProject Module | 0/1 | Planned | - |
 | 9. App Shell & Enforcement | 0/? | Not started | - |
