@@ -29,12 +29,7 @@ export function useUploadTrello() {
 
   // DEBT-014: Use configurable board ID
   const { boardId } = useTrelloBoardId()
-  const {
-    grouped,
-    isLoading: isBoardLoading,
-    apiKey,
-    token
-  } = useTrelloBoard(boardId)
+  const { grouped, isLoading: isBoardLoading, apiKey, token } = useTrelloBoard(boardId)
 
   // Fetch all boards to get the selected board's name
   const { boards } = useTrelloBoards()
@@ -103,12 +98,7 @@ export function useUploadTrello() {
 
   // Validate card exists and reset if not found
   useQuery({
-    queryKey: [
-      'cardValidation',
-      selectedCard?.id,
-      selectedCardDetails,
-      isCardLoading
-    ],
+    queryKey: ['cardValidation', selectedCard?.id, selectedCardDetails, isCardLoading],
     queryFn: async () => {
       if (selectedCard && !selectedCardDetails && !isCardLoading) {
         setSelectedCard(null)
@@ -173,8 +163,7 @@ export function useUploadTrello() {
             JSON.stringify(updatedBreadcrumbs, null, 2)
           )
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error)
+          const errorMessage = error instanceof Error ? error.message : String(error)
           alert('Failed to save breadcrumbs: ' + errorMessage)
           logger.error('Failed to write breadcrumbs file:', error)
         }

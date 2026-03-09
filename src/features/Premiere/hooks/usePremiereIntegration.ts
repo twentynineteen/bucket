@@ -33,10 +33,7 @@ export function usePremiereIntegration() {
     try {
       const destinationFolder = `${projectFolder}/Projects/`
 
-      const result = await copyPremiereProject(
-        destinationFolder,
-        projectTitle
-      )
+      const result = await copyPremiereProject(destinationFolder, projectTitle)
 
       setMessage('Success: ' + result)
     } catch (error) {
@@ -50,9 +47,7 @@ export function usePremiereIntegration() {
   /**
    * Show completion dialog and optionally open folder
    */
-  const showCompletionDialog = async ({
-    projectFolder
-  }: DialogParams): Promise<void> => {
+  const showCompletionDialog = async ({ projectFolder }: DialogParams): Promise<void> => {
     try {
       await showConfirmationDialog(
         'Do you want to open the project folder now?',
@@ -67,9 +62,7 @@ export function usePremiereIntegration() {
   /**
    * Handle all post-completion actions
    */
-  const handlePostCompletion = async (
-    params: PremiereParams
-  ): Promise<void> => {
+  const handlePostCompletion = async (params: PremiereParams): Promise<void> => {
     await copyPremiereTemplate(params)
     await showCompletionDialog({
       projectFolder: params.projectFolder,

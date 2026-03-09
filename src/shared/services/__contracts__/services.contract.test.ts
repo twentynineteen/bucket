@@ -47,17 +47,13 @@ describe('Services Barrel Exports - Shape', () => {
   it('exports UserFeedbackService as a class constructor', () => {
     expect(typeof UserFeedbackService).toBe('function')
     const tracker = new ProgressTracker()
-    expect(new UserFeedbackService(tracker)).toBeInstanceOf(
-      UserFeedbackService
-    )
+    expect(new UserFeedbackService(tracker)).toBeInstanceOf(UserFeedbackService)
   })
 
   it('exports CacheInvalidationService as a class constructor', () => {
     expect(typeof CacheInvalidationService).toBe('function')
     const qc = new QueryClient()
-    expect(new CacheInvalidationService(qc)).toBeInstanceOf(
-      CacheInvalidationService
-    )
+    expect(new CacheInvalidationService(qc)).toBeInstanceOf(CacheInvalidationService)
   })
 
   it('exports createCacheInvalidationService as a factory function', () => {
@@ -190,9 +186,7 @@ describe('UserFeedbackService - Behavior', () => {
   })
 
   it('can update options', () => {
-    expect(() =>
-      service.updateOptions({ verboseMode: true })
-    ).not.toThrow()
+    expect(() => service.updateOptions({ verboseMode: true })).not.toThrow()
   })
 
   it('can prompt user (returns default value)', async () => {

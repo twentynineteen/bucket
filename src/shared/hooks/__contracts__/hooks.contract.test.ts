@@ -28,8 +28,9 @@ vi.mock('@shared/utils/storage', () => ({
 // Mock @shared/store for useBreadcrumb
 const mockSetBreadcrumbs = vi.fn()
 vi.mock('@shared/store', () => ({
-  useBreadcrumbStore: vi.fn((selector: (state: { setBreadcrumbs: typeof mockSetBreadcrumbs }) => unknown) =>
-    selector({ setBreadcrumbs: mockSetBreadcrumbs })
+  useBreadcrumbStore: vi.fn(
+    (selector: (state: { setBreadcrumbs: typeof mockSetBreadcrumbs }) => unknown) =>
+      selector({ setBreadcrumbs: mockSetBreadcrumbs })
   )
 }))
 

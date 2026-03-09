@@ -46,9 +46,7 @@ export async function fetchBoardCards(
     const response = await fetch(url)
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(
-        `HTTP error! status: ${response.status}, message: ${errorText}`
-      )
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
     }
     return response.json()
   } catch (error) {
@@ -67,9 +65,7 @@ export async function fetchBoardLists(
     const response = await fetch(url)
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(
-        `HTTP error! status: ${response.status}, message: ${errorText}`
-      )
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
     }
     return response.json()
   } catch (error) {
@@ -149,18 +145,13 @@ export async function readBreadcrumbsFile(path: string): Promise<string> {
   return readTextFile(path)
 }
 
-export async function writeBreadcrumbsFile(
-  path: string,
-  content: string
-): Promise<void> {
+export async function writeBreadcrumbsFile(path: string, content: string): Promise<void> {
   await writeTextFile(path, content)
 }
 
 // --- Baker Tauri Commands (Trello card data in breadcrumbs) ---
 
-export async function bakerGetTrelloCards(
-  projectPath: string
-): Promise<unknown[]> {
+export async function bakerGetTrelloCards(projectPath: string): Promise<unknown[]> {
   return invoke('baker_get_trello_cards', { projectPath })
 }
 
@@ -190,9 +181,7 @@ export async function bakerFetchTrelloCardDetails(
   })
 }
 
-export async function bakerReadBreadcrumbs(
-  projectPath: string
-): Promise<unknown> {
+export async function bakerReadBreadcrumbs(projectPath: string): Promise<unknown> {
   return invoke('baker_read_breadcrumbs', { projectPath })
 }
 

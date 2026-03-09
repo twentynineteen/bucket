@@ -41,12 +41,7 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
   const [isUpdating, setIsUpdating] = useState(false)
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
 
-  const {
-    grouped,
-    isLoading: isBoardLoading,
-    apiKey,
-    token
-  } = useTrelloBoard(boardId)
+  const { grouped, isLoading: isBoardLoading, apiKey, token } = useTrelloBoard(boardId)
 
   // Flatten all cards for search
   const allCards = useMemo(() => {
@@ -202,10 +197,7 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
             </div>
             <div className="max-h-80 overflow-y-auto">
               {Object.keys(filteredGrouped).length > 0 ? (
-                <TrelloCardList
-                  grouped={filteredGrouped}
-                  onSelect={setSelectedCard}
-                />
+                <TrelloCardList grouped={filteredGrouped} onSelect={setSelectedCard} />
               ) : (
                 <p className="text-muted-foreground py-8 text-center">
                   {searchTerm.trim()
@@ -219,9 +211,7 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-semibold">{selectedCard.name}</h3>
-              <p className="text-muted-foreground text-sm">
-                Card ID: {selectedCard.id}
-              </p>
+              <p className="text-muted-foreground text-sm">Card ID: {selectedCard.id}</p>
             </div>
 
             {updateMessage && (
@@ -250,9 +240,7 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
                   variant="outline"
                   onClick={async () => {
                     if (selectedCard) {
-                      const url = new URL(
-                        `https://trello.com/c/${selectedCard.id}`
-                      )
+                      const url = new URL(`https://trello.com/c/${selectedCard.id}`)
                       await open(url.toString())
                     }
                   }}

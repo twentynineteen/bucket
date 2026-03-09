@@ -5,12 +5,8 @@ import { z } from 'zod'
 import { logger } from '@shared/utils/logger'
 
 const registerSchema = z.object({
-  username: z
-    .string()
-    .min(3, 'Username must be at least 3 characters'),
-  password: z
-    .string()
-    .min(6, 'Password must be at least 6 characters')
+  username: z.string().min(3, 'Username must be at least 3 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters')
 })
 
 export default function Register() {
@@ -45,9 +41,7 @@ export default function Register() {
       navigate('/login')
     } catch (err) {
       logger.error('Registration failed:', err)
-      setError(
-        'An error occurred while registering. Please try again.'
-      )
+      setError('An error occurred while registering. Please try again.')
     }
   }
 

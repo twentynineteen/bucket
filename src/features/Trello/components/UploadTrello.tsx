@@ -84,12 +84,9 @@ const UploadTrelloContent: React.FC = () => {
           <div className="flex items-center gap-3">
             <TrelloIcon className="text-primary h-6 w-6" />
             <div>
-              <h1 className="text-foreground text-2xl font-bold">
-                Trello: {boardName}
-              </h1>
+              <h1 className="text-foreground text-2xl font-bold">Trello: {boardName}</h1>
               <p className="text-muted-foreground mt-0.5 text-xs">
-                Browse Trello cards and append breadcrumbs or video
-                information
+                Browse Trello cards and append breadcrumbs or video information
               </p>
             </div>
           </div>
@@ -102,9 +99,7 @@ const UploadTrelloContent: React.FC = () => {
               <div className="bg-primary/10 text-primary flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold">
                 1
               </div>
-              <h2 className="text-foreground text-sm font-semibold">
-                Search Cards
-              </h2>
+              <h2 className="text-foreground text-sm font-semibold">Search Cards</h2>
             </div>
             <div className="p-4">
               <div className="relative">
@@ -125,16 +120,11 @@ const UploadTrelloContent: React.FC = () => {
               <div className="bg-primary/10 text-primary flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold">
                 2
               </div>
-              <h2 className="text-foreground text-sm font-semibold">
-                Select a Card
-              </h2>
+              <h2 className="text-foreground text-sm font-semibold">Select a Card</h2>
             </div>
             <div className="max-h-[600px] overflow-y-auto p-4">
               {Object.keys(filteredGrouped).length > 0 ? (
-                <TrelloCardList
-                  grouped={filteredGrouped}
-                  onSelect={setSelectedCard}
-                />
+                <TrelloCardList grouped={filteredGrouped} onSelect={setSelectedCard} />
               ) : (
                 <p className="text-muted-foreground py-8 text-center">
                   {searchTerm.trim()
@@ -175,13 +165,10 @@ const UploadTrello: React.FC = () => {
         <div className="flex min-h-[400px] flex-col items-center justify-center p-8 text-center">
           <div className="max-w-md">
             <AlertTriangle className="text-destructive mx-auto mb-4 h-12 w-12" />
-            <h2 className="text-foreground mb-4 text-2xl font-semibold">
-              Trello Error
-            </h2>
+            <h2 className="text-foreground mb-4 text-2xl font-semibold">Trello Error</h2>
             <div className="text-muted-foreground mb-6">
               <p>
-                An error occurred while loading the Trello page. This could
-                be due to:
+                An error occurred while loading the Trello page. This could be due to:
               </p>
               <ul className="mt-2 space-y-1 text-left">
                 <li>- Trello API connection issues</li>
@@ -195,8 +182,7 @@ const UploadTrello: React.FC = () => {
                   </summary>
                   <div className="text-muted-foreground mt-2">
                     <p>
-                      <strong className="text-foreground">Error:</strong>{' '}
-                      {error.message}
+                      <strong className="text-foreground">Error:</strong> {error.message}
                     </p>
                   </div>
                 </details>

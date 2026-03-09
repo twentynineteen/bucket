@@ -30,11 +30,7 @@ export function useTrelloCardDetails(
   const query = useQuery({
     queryKey: ['trello-card-with-members', cardId],
     queryFn: async () => {
-      return fetchCardWithMembers(
-        cardId!,
-        apiKey!,
-        token!
-      ) as Promise<CardWithMembers>
+      return fetchCardWithMembers(cardId!, apiKey!, token!) as Promise<CardWithMembers>
     },
     enabled: !!cardId && !!apiKey && !!token
   })

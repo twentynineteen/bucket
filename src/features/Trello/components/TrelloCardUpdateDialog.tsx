@@ -40,9 +40,7 @@ export function TrelloCardUpdateDialog({
 
   const handleToggle = (index: number) => {
     setSelectedIndexes((prev) =>
-      prev.includes(index)
-        ? prev.filter((i) => i !== index)
-        : [...prev, index]
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     )
   }
 
@@ -56,9 +54,7 @@ export function TrelloCardUpdateDialog({
       await onUpdate(selectedIndexes)
       onOpenChange(false)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to update Trello cards'
-      )
+      setError(err instanceof Error ? err.message : 'Failed to update Trello cards')
     } finally {
       setUpdating(false)
     }
@@ -87,16 +83,13 @@ export function TrelloCardUpdateDialog({
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Add a Trello card to automatically sync video links with your
-              project management workflow.
+              Add a Trello card to automatically sync video links with your project
+              management workflow.
             </AlertDescription>
           </Alert>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleDialogChange(false)}
-            >
+            <Button variant="outline" onClick={() => handleDialogChange(false)}>
               Skip for Now
             </Button>
             <Button
@@ -126,10 +119,7 @@ export function TrelloCardUpdateDialog({
 
         <div className="space-y-3">
           {trelloCards.map((card, index) => (
-            <div
-              key={index}
-              className="flex items-start space-x-3 rounded-lg border p-3"
-            >
+            <div key={index} className="flex items-start space-x-3 rounded-lg border p-3">
               <Checkbox
                 checked={selectedIndexes.includes(index)}
                 onCheckedChange={() => handleToggle(index)}
@@ -137,9 +127,7 @@ export function TrelloCardUpdateDialog({
               <div className="flex-1">
                 <p className="font-medium">{card.title}</p>
                 {card.boardName && (
-                  <p className="text-muted-foreground text-sm">
-                    {card.boardName}
-                  </p>
+                  <p className="text-muted-foreground text-sm">{card.boardName}</p>
                 )}
               </div>
             </div>

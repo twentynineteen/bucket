@@ -16,10 +16,7 @@ export function getStoredUsername(): string | null {
   return localStorage.getItem('username')
 }
 
-export function setStoredCredentials(
-  token: string,
-  username: string
-): void {
+export function setStoredCredentials(token: string, username: string): void {
   localStorage.setItem('access_token', token)
   localStorage.setItem('username', username)
 }

@@ -71,9 +71,7 @@ export const CardDetailsDialog: React.FC<CardDetailsDialogProps> = ({
             <p>Loading card details...</p>
           ) : (
             <>
-              {members && members.length > 0 && (
-                <MembersList members={members} />
-              )}
+              {members && members.length > 0 && <MembersList members={members} />}
               {selectedCardDetails && (
                 <div className="space-y-4">
                   <CardDetailsAccordion
@@ -137,13 +135,9 @@ const DialogActions: React.FC<DialogActionsProps> = ({
 }) => (
   <div className="flex items-center justify-between gap-4 pt-4">
     <TooltipPreview
-      trigger={
-        <Button onClick={onAppendBreadcrumbs}>Append Breadcrumbs</Button>
-      }
+      trigger={<Button onClick={onAppendBreadcrumbs}>Append Breadcrumbs</Button>}
       content={
-        breadcrumbs
-          ? JSON.stringify(breadcrumbs, null, 2)
-          : 'No breadcrumbs selected'
+        breadcrumbs ? JSON.stringify(breadcrumbs, null, 2) : 'No breadcrumbs selected'
       }
     />
     <Button variant="outline" onClick={onOpenInTrello}>

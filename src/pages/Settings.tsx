@@ -20,7 +20,11 @@ import { CACHE } from '@shared/constants/timing'
 import { useAIProvider } from '@hooks/useAIProvider'
 import { useBreadcrumb } from '@shared/hooks'
 import { queryKeys } from '@shared/lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '@shared/lib/query-utils'
+import {
+  createQueryError,
+  createQueryOptions,
+  shouldRetry
+} from '@shared/lib/query-utils'
 import { useAppStore } from '@shared/store'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { open as openPath } from '@tauri-apps/plugin-dialog'

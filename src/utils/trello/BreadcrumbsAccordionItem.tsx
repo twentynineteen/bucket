@@ -1,8 +1,4 @@
-import {
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@shared/ui/accordion'
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@shared/ui/accordion'
 import { Breadcrumb } from '@shared/types/types'
 import React from 'react'
 

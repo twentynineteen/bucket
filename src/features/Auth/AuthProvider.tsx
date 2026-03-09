@@ -4,16 +4,10 @@ import React from 'react'
 import { logger } from '@shared/utils/logger'
 
 import { AuthContext } from './AuthContext'
-import {
-  addToken,
-  clearStoredCredentials,
-  setStoredCredentials
-} from './api'
+import { addToken, clearStoredCredentials, setStoredCredentials } from './api'
 import { useAuthCheck } from './hooks/useAuthCheck'
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children
-}) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient()
   const { data: authData } = useAuthCheck()
 
@@ -36,9 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   return (
-    <AuthContext.Provider
-      value={{ isAuthenticated, username, login, logout }}
-    >
+    <AuthContext.Provider value={{ isAuthenticated, username, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

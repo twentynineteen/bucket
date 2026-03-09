@@ -40,19 +40,14 @@ export function TrelloBoardError({
 
         {isAuthError && (
           <p className="text-sm">
-            Your Trello API credentials may be invalid or expired. Please
-            re-authorize with Trello.
+            Your Trello API credentials may be invalid or expired. Please re-authorize
+            with Trello.
           </p>
         )}
 
         <div className="flex gap-2">
           {onRetry && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRetry}
-              className="gap-2"
-            >
+            <Button variant="outline" size="sm" onClick={onRetry} className="gap-2">
               <RefreshCw className="h-3.5 w-3.5" />
               Retry
             </Button>

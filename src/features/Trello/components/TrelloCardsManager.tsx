@@ -95,13 +95,10 @@ export function TrelloCardsManager({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-foreground text-lg font-semibold">
-            Trello Cards
-          </h3>
+          <h3 className="text-foreground text-lg font-semibold">Trello Cards</h3>
           <p className="text-muted-foreground text-sm">
-            {trelloCards.length}{' '}
-            {trelloCards.length === 1 ? 'card' : 'cards'} {'\u2022'} Project
-            management
+            {trelloCards.length} {trelloCards.length === 1 ? 'card' : 'cards'} {'\u2022'}{' '}
+            Project management
           </p>
         </div>
 
@@ -146,9 +143,7 @@ export function TrelloCardsManager({
       {/* Card List */}
       {trelloCards.length === 0 ? (
         <div className="border-border bg-muted rounded-lg border border-dashed p-12 text-center">
-          <p className="text-muted-foreground text-sm">
-            No Trello cards added yet
-          </p>
+          <p className="text-muted-foreground text-sm">No Trello cards added yet</p>
           <p className="text-muted-foreground/50 mt-1 text-xs">
             Link Trello cards to track project management tasks
           </p>
@@ -178,11 +173,7 @@ export function TrelloCardsManager({
                   key={`${card.cardId}-${index}`}
                   trelloCard={card}
                   onRemove={() => handleRemove(index)}
-                  onRefresh={
-                    hasApiCredentials
-                      ? () => handleRefresh(index)
-                      : undefined
-                  }
+                  onRefresh={hasApiCredentials ? () => handleRefresh(index) : undefined}
                 />
               ))}
             </tbody>

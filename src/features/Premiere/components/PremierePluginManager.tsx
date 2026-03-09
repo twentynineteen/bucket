@@ -29,11 +29,7 @@ import {
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 
-import {
-  getAvailablePlugins,
-  installPlugin,
-  openCepFolder
-} from '../api'
+import { getAvailablePlugins, installPlugin, openCepFolder } from '../api'
 import type { InstallResult } from '../types'
 
 const PremierePluginManagerContent: React.FC = () => {
@@ -77,10 +73,7 @@ const PremierePluginManagerContent: React.FC = () => {
       name: string
       displayName: string
     }) => {
-      const result: InstallResult = await installPlugin(
-        filename,
-        name
-      )
+      const result: InstallResult = await installPlugin(filename, name)
       return { ...result, displayName }
     },
     onSuccess: (result) => {

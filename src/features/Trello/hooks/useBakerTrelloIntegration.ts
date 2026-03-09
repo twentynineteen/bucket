@@ -50,20 +50,12 @@ async function updateSingleTrelloCard(
     idList: ''
   }
 
-  const { updateTrelloCardWithBreadcrumbs } = await import(
-    '@hooks/useAppendBreadcrumbs'
-  )
+  const { updateTrelloCardWithBreadcrumbs } = await import('@hooks/useAppendBreadcrumbs')
 
-  await updateTrelloCardWithBreadcrumbs(
-    mockCard,
-    breadcrumbsBlock,
-    apiKey,
-    token,
-    {
-      autoReplace: true,
-      silentErrors: true
-    }
-  )
+  await updateTrelloCardWithBreadcrumbs(mockCard, breadcrumbsBlock, apiKey, token, {
+    autoReplace: true,
+    silentErrors: true
+  })
 }
 
 /**
@@ -75,9 +67,7 @@ async function updateProjectTrelloCards(
   apiKey: string,
   token: string
 ): Promise<void> {
-  const { generateBreadcrumbsBlock } = await import(
-    '@hooks/useAppendBreadcrumbs'
-  )
+  const { generateBreadcrumbsBlock } = await import('@hooks/useAppendBreadcrumbs')
 
   const block = generateBreadcrumbsBlock(breadcrumbsData)
   if (!block) return
@@ -90,15 +80,10 @@ async function updateProjectTrelloCards(
   if (trelloCards && trelloCards.length > 0) {
     // Update all cards in the array asynchronously
     const updatePromises = trelloCards.map((card) =>
-      updateSingleTrelloCard(card.cardId, block, apiKey, token).catch(
-        (err) => {
-          logger.warn(
-            `Failed to update Trello card ${card.cardId}:`,
-            err
-          )
-          throw err
-        }
-      )
+      updateSingleTrelloCard(card.cardId, block, apiKey, token).catch((err) => {
+        logger.warn(`Failed to update Trello card ${card.cardId}:`, err)
+        throw err
+      })
     )
 
     // Use allSettled to ensure all cards are attempted even if some fail
@@ -107,10 +92,7 @@ async function updateProjectTrelloCards(
     // Log any failures but don't throw
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
-        logger.error(
-          `Failed to update card ${trelloCards[index].cardId}:`,
-          result.reason
-        )
+        logger.error(`Failed to update card ${trelloCards[index].cardId}:`, result.reason)
       }
     })
 
@@ -144,25 +126,18 @@ export function useBakerTrelloIntegration({
         try {
           // Read the updated breadcrumbs file via api layer
           const breadcrumbsPath = `${projectPath}/breadcrumbs.json`
-          const breadcrumbsContent =
-            await readBreadcrumbsFile(breadcrumbsPath)
+          const breadcrumbsContent = await readBreadcrumbsFile(breadcrumbsPath)
           const breadcrumbsData = JSON.parse(breadcrumbsContent)
 
           await updateProjectTrelloCards(breadcrumbsData, apiKey, token)
         } catch (trelloError) {
-          const projectName =
-            projectPath.split('/').pop() || projectPath
+          const projectName = projectPath.split('/').pop() || projectPath
           trelloErrors.push({
             project: projectName,
             error:
-              trelloError instanceof Error
-                ? trelloError.message
-                : String(trelloError)
+              trelloError instanceof Error ? trelloError.message : String(trelloError)
           })
-          logger.warn(
-            `Failed to update Trello card for ${projectPath}:`,
-            trelloError
-          )
+          logger.warn(`Failed to update Trello card for ${projectPath}:`, trelloError)
         }
       }
 

@@ -191,8 +191,12 @@ describe('@shared/constants barrel contract', () => {
     test('PROJECT_LIMITS has camera constraints', () => {
       expect(PROJECT_LIMITS.MIN_CAMERAS).toBe(1)
       expect(PROJECT_LIMITS.MAX_CAMERAS).toBeGreaterThan(PROJECT_LIMITS.MIN_CAMERAS)
-      expect(PROJECT_LIMITS.DEFAULT_CAMERAS).toBeGreaterThanOrEqual(PROJECT_LIMITS.MIN_CAMERAS)
-      expect(PROJECT_LIMITS.DEFAULT_CAMERAS).toBeLessThanOrEqual(PROJECT_LIMITS.MAX_CAMERAS)
+      expect(PROJECT_LIMITS.DEFAULT_CAMERAS).toBeGreaterThanOrEqual(
+        PROJECT_LIMITS.MIN_CAMERAS
+      )
+      expect(PROJECT_LIMITS.DEFAULT_CAMERAS).toBeLessThanOrEqual(
+        PROJECT_LIMITS.MAX_CAMERAS
+      )
     })
   })
 })

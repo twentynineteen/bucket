@@ -52,8 +52,7 @@ export function useTrelloBoard(boardId: string): TrelloBoardData {
       {
         enabled: !!apiKey && !!token && !credentialsLoading,
         staleTime: CACHE.QUICK, // 2 minutes
-        retry: (failureCount, error) =>
-          shouldRetry(error, failureCount, 'external')
+        retry: (failureCount, error) => shouldRetry(error, failureCount, 'external')
       }
     )
   })
@@ -71,8 +70,7 @@ export function useTrelloBoard(boardId: string): TrelloBoardData {
       {
         enabled: !!apiKey && !!token && !credentialsLoading,
         staleTime: CACHE.QUICK, // 2 minutes
-        retry: (failureCount, error) =>
-          shouldRetry(error, failureCount, 'external')
+        retry: (failureCount, error) => shouldRetry(error, failureCount, 'external')
       }
     )
   })

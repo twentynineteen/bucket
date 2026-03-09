@@ -110,10 +110,7 @@ describe('useBreadcrumbStore - Behavior', () => {
   })
 
   it('setBreadcrumbs updates state correctly', () => {
-    const items = [
-      { label: 'Home', href: '/' },
-      { label: 'Settings' }
-    ]
+    const items = [{ label: 'Home', href: '/' }, { label: 'Settings' }]
     useBreadcrumbStore.getState().setBreadcrumbs(items)
     expect(useBreadcrumbStore.getState().breadcrumbs).toEqual(items)
   })

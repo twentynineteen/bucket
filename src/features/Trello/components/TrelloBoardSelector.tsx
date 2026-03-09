@@ -46,10 +46,7 @@ export function TrelloBoardSelector({
   const { boards, isLoading, error } = useTrelloBoards()
 
   const boardStatus = categorizeBoardStatus(value, boards)
-  const groupedBoards = React.useMemo(
-    () => groupBoardsByOrganization(boards),
-    [boards]
-  )
+  const groupedBoards = React.useMemo(() => groupBoardsByOrganization(boards), [boards])
 
   if (isLoading) {
     return (
@@ -131,31 +128,25 @@ export function TrelloBoardSelector({
         <SelectContent className="max-h-[400px]">
           {boardStatus === 'inaccessible' && value && (
             <div className="text-muted-foreground px-2 py-1.5 text-sm">
-              <span className="text-destructive">
-                {'\u26A0\uFE0F'}
-              </span>{' '}
-              Selected board is no longer accessible
+              <span className="text-destructive">{'\u26A0\uFE0F'}</span> Selected board is
+              no longer accessible
             </div>
           )}
 
-          {Array.from(groupedBoards.entries()).map(
-            ([orgName, orgBoards]) => (
-              <SelectGroup key={orgName || 'personal'}>
-                <SelectLabel>
-                  {orgName || 'Personal Boards'}
-                </SelectLabel>
-                {orgBoards.map((board: TrelloBoard) => (
-                  <SelectItem
-                    key={board.id}
-                    value={board.id}
-                    aria-label={formatBoardDisplayName(board)}
-                  >
-                    {formatBoardDisplayName(board)}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            )
-          )}
+          {Array.from(groupedBoards.entries()).map(([orgName, orgBoards]) => (
+            <SelectGroup key={orgName || 'personal'}>
+              <SelectLabel>{orgName || 'Personal Boards'}</SelectLabel>
+              {orgBoards.map((board: TrelloBoard) => (
+                <SelectItem
+                  key={board.id}
+                  value={board.id}
+                  aria-label={formatBoardDisplayName(board)}
+                >
+                  {formatBoardDisplayName(board)}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
         </SelectContent>
       </Select>
 

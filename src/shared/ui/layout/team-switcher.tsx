@@ -7,7 +7,11 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger
 } from '@shared/ui/dropdown-menu'
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@shared/ui/sidebar/SidebarMenu'
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem
+} from '@shared/ui/sidebar/SidebarMenu'
 import { useSidebar } from '@shared/ui/use-sidebar'
 import { ChevronsUpDown, Plus } from 'lucide-react'
 import * as React from 'react'

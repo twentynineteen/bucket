@@ -8,12 +8,8 @@ import { useAuth } from '../hooks/useAuth'
 const logger = createNamespacedLogger('Login')
 
 const loginSchema = z.object({
-  username: z
-    .string()
-    .min(3, 'Username must be at least 3 characters'),
-  password: z
-    .string()
-    .min(6, 'Password must be at least 6 characters')
+  username: z.string().min(3, 'Username must be at least 3 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters')
 })
 
 const Login: React.FC = () => {
@@ -73,11 +69,7 @@ const Login: React.FC = () => {
         </Link>{' '}
         to register
       </p>
-      {isAuthenticated ? (
-        <p>authenticated!</p>
-      ) : (
-        <p>not authenticated</p>
-      )}
+      {isAuthenticated ? <p>authenticated!</p> : <p>not authenticated</p>}
     </div>
   )
 }

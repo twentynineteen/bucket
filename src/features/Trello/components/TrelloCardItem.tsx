@@ -16,11 +16,7 @@ interface TrelloCardItemProps {
   onRefresh?: () => void
 }
 
-export function TrelloCardItem({
-  trelloCard,
-  onRemove,
-  onRefresh
-}: TrelloCardItemProps) {
+export function TrelloCardItem({ trelloCard, onRemove, onRefresh }: TrelloCardItemProps) {
   const getRelativeTime = (isoDate?: string) => {
     if (!isoDate) return null
 
@@ -62,11 +58,7 @@ export function TrelloCardItem({
         <div className="flex items-center gap-2">
           <div className="flex-shrink-0">
             <div className="bg-info/10 flex h-8 w-8 items-center justify-center rounded">
-              <svg
-                viewBox="0 0 24 24"
-                className="text-info h-4 w-4"
-                fill="currentColor"
-              >
+              <svg viewBox="0 0 24 24" className="text-info h-4 w-4" fill="currentColor">
                 <path d="M21 0H3C1.343 0 0 1.343 0 3v18c0 1.656 1.343 3 3 3h18c1.656 0 3-1.344 3-3V3c0-1.657-1.344-3-3-3zM10.44 18.18c0 .795-.645 1.44-1.44 1.44H4.56c-.795 0-1.44-.646-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44H9c.795 0 1.44.645 1.44 1.44v13.62zm10.44-6c0 .794-.645 1.44-1.44 1.44H15c-.795 0-1.44-.646-1.44-1.44V4.56c0-.795.645-1.44 1.44-1.44h4.44c.795 0 1.44.645 1.44 1.44v7.62z" />
               </svg>
             </div>
@@ -75,9 +67,7 @@ export function TrelloCardItem({
             <p className="text-foreground truncate text-sm font-medium">
               {trelloCard.title}
             </p>
-            <p className="text-muted-foreground text-xs">
-              ID: {trelloCard.cardId}
-            </p>
+            <p className="text-muted-foreground text-xs">ID: {trelloCard.cardId}</p>
           </div>
         </div>
       </td>
@@ -95,9 +85,7 @@ export function TrelloCardItem({
       <td className="px-4 py-3">
         {trelloCard.lastFetched ? (
           <div>
-            <p
-              className={`text-sm ${stale ? 'text-warning' : 'text-foreground'}`}
-            >
+            <p className={`text-sm ${stale ? 'text-warning' : 'text-foreground'}`}>
               {getRelativeTime(trelloCard.lastFetched)}
             </p>
             {stale && <p className="text-warning text-xs">Stale</p>}
@@ -125,9 +113,7 @@ export function TrelloCardItem({
               size="icon"
               onClick={onRefresh}
               className={`h-7 w-7 ${stale ? 'text-warning hover:text-warning/90' : 'text-muted-foreground hover:text-foreground'}`}
-              title={
-                stale ? 'Refresh stale card details' : 'Refresh card details'
-              }
+              title={stale ? 'Refresh stale card details' : 'Refresh card details'}
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>

@@ -41,10 +41,7 @@ export function useBreadcrumbsTrelloCards({
   // Mutation: Add Trello card
   const addTrelloCard = useMutation({
     mutationFn: async (trelloCard: TrelloCard) => {
-      return (await bakerAssociateTrelloCard(
-        projectPath,
-        trelloCard
-      )) as BreadcrumbsFile
+      return (await bakerAssociateTrelloCard(projectPath, trelloCard)) as BreadcrumbsFile
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -59,10 +56,7 @@ export function useBreadcrumbsTrelloCards({
   // Mutation: Remove Trello card
   const removeTrelloCard = useMutation({
     mutationFn: async (cardIndex: number) => {
-      return (await bakerRemoveTrelloCard(
-        projectPath,
-        cardIndex
-      )) as BreadcrumbsFile
+      return (await bakerRemoveTrelloCard(projectPath, cardIndex)) as BreadcrumbsFile
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -85,11 +79,7 @@ export function useBreadcrumbsTrelloCards({
       apiKey: string
       apiToken: string
     }) => {
-      return (await bakerFetchTrelloCardDetails(
-        cardUrl,
-        apiKey,
-        apiToken
-      )) as TrelloCard
+      return (await bakerFetchTrelloCardDetails(cardUrl, apiKey, apiToken)) as TrelloCard
     }
   })
 

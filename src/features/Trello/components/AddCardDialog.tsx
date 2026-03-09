@@ -43,10 +43,7 @@ export interface UrlModeState {
 export interface SelectModeState {
   searchTerm: string
   onSearchTermChange: (term: string) => void
-  filteredGrouped: Record<
-    string,
-    Array<{ id: string; name: string; desc?: string }>
-  >
+  filteredGrouped: Record<string, Array<{ id: string; name: string; desc?: string }>>
   onSelectCard: (card: { id: string; name: string }) => void
   isBoardLoading: boolean
 }
@@ -100,9 +97,7 @@ export function AddCardDialog({
 
         <Tabs
           value={mode.addMode}
-          onValueChange={(v) =>
-            mode.onAddModeChange(v as 'url' | 'select')
-          }
+          onValueChange={(v) => mode.onAddModeChange(v as 'url' | 'select')}
         >
           {dialog.hasApiCredentials && (
             <TabsList className="grid w-full grid-cols-2">
@@ -112,10 +107,7 @@ export function AddCardDialog({
           )}
 
           <TabsContent value="select" className="space-y-4">
-            <SelectFromBoardContent
-              selectMode={selectMode}
-              common={common}
-            />
+            <SelectFromBoardContent selectMode={selectMode} common={common} />
           </TabsContent>
 
           <TabsContent value="url" className="space-y-4">
@@ -145,9 +137,7 @@ function SelectFromBoardContent({
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
-        <span className="text-muted-foreground ml-2 text-sm">
-          Loading cards...
-        </span>
+        <span className="text-muted-foreground ml-2 text-sm">Loading cards...</span>
       </div>
     )
   }
@@ -172,9 +162,7 @@ function SelectFromBoardContent({
         {common.isFetchingCard ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
-            <span className="text-muted-foreground ml-2 text-sm">
-              Adding card...
-            </span>
+            <span className="text-muted-foreground ml-2 text-sm">Adding card...</span>
           </div>
         ) : (
           <TrelloCardList

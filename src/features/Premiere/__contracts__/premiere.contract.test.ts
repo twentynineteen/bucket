@@ -61,15 +61,11 @@ import * as premiereBarrel from '../index'
 
 describe('Premiere Barrel Exports - Shape', () => {
   it('exports PremierePluginManager as a function', () => {
-    expect(typeof premiereBarrel.PremierePluginManager).toBe(
-      'function'
-    )
+    expect(typeof premiereBarrel.PremierePluginManager).toBe('function')
   })
 
   it('exports usePremiereIntegration as a function', () => {
-    expect(typeof premiereBarrel.usePremiereIntegration).toBe(
-      'function'
-    )
+    expect(typeof premiereBarrel.usePremiereIntegration).toBe('function')
   })
 
   it('exports exactly the expected named exports', () => {
@@ -85,37 +81,23 @@ describe('Premiere Barrel Exports - Shape', () => {
 
 describe('usePremiereIntegration - Behavior', () => {
   it('returns copyPremiereTemplate function', () => {
-    const { result } = renderHook(() =>
-      premiereBarrel.usePremiereIntegration()
-    )
-    expect(typeof result.current.copyPremiereTemplate).toBe(
-      'function'
-    )
+    const { result } = renderHook(() => premiereBarrel.usePremiereIntegration())
+    expect(typeof result.current.copyPremiereTemplate).toBe('function')
   })
 
   it('returns showCompletionDialog function', () => {
-    const { result } = renderHook(() =>
-      premiereBarrel.usePremiereIntegration()
-    )
-    expect(typeof result.current.showCompletionDialog).toBe(
-      'function'
-    )
+    const { result } = renderHook(() => premiereBarrel.usePremiereIntegration())
+    expect(typeof result.current.showCompletionDialog).toBe('function')
   })
 
   it('returns handlePostCompletion function', () => {
-    const { result } = renderHook(() =>
-      premiereBarrel.usePremiereIntegration()
-    )
-    expect(typeof result.current.handlePostCompletion).toBe(
-      'function'
-    )
+    const { result } = renderHook(() => premiereBarrel.usePremiereIntegration())
+    expect(typeof result.current.handlePostCompletion).toBe('function')
   })
 
   it('calls copyPremiereProject via api layer', async () => {
     const { copyPremiereProject } = await import('../api')
-    const { result } = renderHook(() =>
-      premiereBarrel.usePremiereIntegration()
-    )
+    const { result } = renderHook(() => premiereBarrel.usePremiereIntegration())
 
     const setLoading = vi.fn()
     const setMessage = vi.fn()
@@ -127,10 +109,7 @@ describe('usePremiereIntegration - Behavior', () => {
       setMessage
     })
 
-    expect(copyPremiereProject).toHaveBeenCalledWith(
-      '/test/Projects/',
-      'Test Project'
-    )
+    expect(copyPremiereProject).toHaveBeenCalledWith('/test/Projects/', 'Test Project')
     expect(setLoading).toHaveBeenCalledWith(true)
     expect(setLoading).toHaveBeenCalledWith(false)
   })

@@ -96,7 +96,9 @@ describe('@shared/lib barrel contract', () => {
     })
 
     test('isQueryKeyMatch handles exact strategy', () => {
-      expect(isQueryKeyMatch(['projects', 'list'], ['projects', 'list'], 'exact')).toBe(true)
+      expect(isQueryKeyMatch(['projects', 'list'], ['projects', 'list'], 'exact')).toBe(
+        true
+      )
       expect(isQueryKeyMatch(['projects', 'list'], ['projects'], 'exact')).toBe(false)
     })
 
@@ -124,7 +126,11 @@ describe('@shared/lib barrel contract', () => {
     })
 
     test('createTimeRangeQueryKey extends base key', () => {
-      const key = createTimeRangeQueryKey(['projects', 'list'], '2024-01-01', '2024-12-31')
+      const key = createTimeRangeQueryKey(
+        ['projects', 'list'],
+        '2024-01-01',
+        '2024-12-31'
+      )
       expect(key.length).toBeGreaterThan(2)
     })
 
@@ -141,7 +147,9 @@ describe('@shared/lib barrel contract', () => {
       expect(QUERY_PROFILES).toHaveProperty('DYNAMIC')
       expect(QUERY_PROFILES).toHaveProperty('REALTIME')
       expect(QUERY_PROFILES).toHaveProperty('EXTERNAL')
-      expect(QUERY_PROFILES.REALTIME.staleTime).toBeLessThan(QUERY_PROFILES.STATIC.staleTime)
+      expect(QUERY_PROFILES.REALTIME.staleTime).toBeLessThan(
+        QUERY_PROFILES.STATIC.staleTime
+      )
     })
 
     test('inferErrorType categorizes errors correctly', () => {
@@ -171,9 +179,17 @@ describe('@shared/lib barrel contract', () => {
     })
 
     test('calculateProgress computes correct percentages', () => {
-      expect(calculateProgress(5, 10)).toEqual({ total: 10, completed: 5, percentage: 50 })
+      expect(calculateProgress(5, 10)).toEqual({
+        total: 10,
+        completed: 5,
+        percentage: 50
+      })
       expect(calculateProgress(0, 10)).toEqual({ total: 10, completed: 0, percentage: 0 })
-      expect(calculateProgress(10, 10)).toEqual({ total: 10, completed: 10, percentage: 100 })
+      expect(calculateProgress(10, 10)).toEqual({
+        total: 10,
+        completed: 10,
+        percentage: 100
+      })
       expect(calculateProgress(0, 0)).toEqual({ total: 0, completed: 0, percentage: 0 })
     })
 

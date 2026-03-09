@@ -69,8 +69,7 @@ export function useTrelloBreadcrumbs(
             JSON.stringify(updatedBreadcrumbs, null, 2)
           )
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error)
+          const errorMessage = error instanceof Error ? error.message : String(error)
           alert('Failed to save breadcrumbs: ' + errorMessage)
           logger.error('Failed to write breadcrumbs file:', error)
         }
@@ -79,12 +78,7 @@ export function useTrelloBreadcrumbs(
       // Refresh card details to show updated breadcrumbs
       refetchCard()
     }
-  }, [
-    selectedCardDetails,
-    getBreadcrumbsBlock,
-    applyBreadcrumbsToCard,
-    refetchCard
-  ])
+  }, [selectedCardDetails, getBreadcrumbsBlock, applyBreadcrumbsToCard, refetchCard])
 
   return {
     mainDescription,

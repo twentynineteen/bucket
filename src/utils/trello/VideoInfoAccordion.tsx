@@ -1,8 +1,4 @@
-import {
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@shared/ui/accordion'
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@shared/ui/accordion'
 import React from 'react'
 
 interface VideoInfoAccordionProps {
