@@ -1,7 +1,7 @@
 // tauri auto updater on app launch
 import { relaunch } from '@tauri-apps/plugin-process'
 import { check } from '@tauri-apps/plugin-updater'
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 // The AppRouter component switches the display if the user is not logged in
@@ -9,16 +9,51 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 // subsequent components are loaded within the page window via the Outlet component.
 
 import Page from './app/dashboard/page'
-import { ExampleEmbeddings, ScriptFormatter } from '@features/AITools'
-import { Login, Register } from '@features/Auth'
-import { BakerPage as Baker } from '@features/Baker'
-import { BuildProjectPage } from '@features/BuildProject'
-import IngestHistory from './pages/IngestHistory'
-import { Settings } from '@features/Settings'
-import { Posterframe, UploadOtter, UploadSprout } from '@features/Upload'
-import { PremierePluginManager } from '@features/Premiere'
-import { UploadTrello } from '@features/Trello'
 import { createNamespacedLogger } from '@shared/utils/logger'
+
+// Lazy-loaded route components -- each produces a separate chunk for
+// smaller initial bundle and faster startup.
+const ExampleEmbeddings = React.lazy(() =>
+  import('@features/AITools').then((m) => ({ default: m.ExampleEmbeddings }))
+)
+const ScriptFormatter = React.lazy(() =>
+  import('@features/AITools').then((m) => ({ default: m.ScriptFormatter }))
+)
+const Login = React.lazy(() =>
+  import('@features/Auth').then((m) => ({ default: m.Login }))
+)
+const Register = React.lazy(() =>
+  import('@features/Auth').then((m) => ({ default: m.Register }))
+)
+const Baker = React.lazy(() =>
+  import('@features/Baker').then((m) => ({ default: m.BakerPage }))
+)
+const BuildProjectPage = React.lazy(() =>
+  import('@features/BuildProject').then((m) => ({
+    default: m.BuildProjectPage,
+  }))
+)
+const IngestHistory = React.lazy(() => import('./pages/IngestHistory'))
+const Settings = React.lazy(() =>
+  import('@features/Settings').then((m) => ({ default: m.Settings }))
+)
+const Posterframe = React.lazy(() =>
+  import('@features/Upload').then((m) => ({ default: m.Posterframe }))
+)
+const UploadOtter = React.lazy(() =>
+  import('@features/Upload').then((m) => ({ default: m.UploadOtter }))
+)
+const UploadSprout = React.lazy(() =>
+  import('@features/Upload').then((m) => ({ default: m.UploadSprout }))
+)
+const PremierePluginManager = React.lazy(() =>
+  import('@features/Premiere').then((m) => ({
+    default: m.PremierePluginManager,
+  }))
+)
+const UploadTrello = React.lazy(() =>
+  import('@features/Trello').then((m) => ({ default: m.UploadTrello }))
+)
 
 const log = createNamespacedLogger('AppRouter')
 
