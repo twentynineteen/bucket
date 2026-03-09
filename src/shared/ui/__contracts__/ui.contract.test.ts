@@ -211,7 +211,7 @@ describe('Formerly misplaced components (moved from utils)', () => {
 
 describe('Theme system behavioral contracts', () => {
   test('THEMES registry contains all expected theme IDs', async () => {
-    const { THEMES, getAllThemeIds } = await import('@shared/ui/theme/themes')
+    const { getAllThemeIds } = await import('@shared/ui/theme/themes')
     const ids = getAllThemeIds()
     expect(ids.length).toBeGreaterThanOrEqual(8)
     expect(ids).toContain('system')

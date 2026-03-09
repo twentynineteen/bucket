@@ -10,11 +10,7 @@ import { useMemo, useState } from 'react'
 import type { TrelloCard } from '@/types/baker'
 import { logger } from '@shared/utils/logger'
 
-import {
-  fetchTrelloCardById,
-  readBreadcrumbsFile,
-  updateTrelloCard
-} from '../api'
+import { fetchTrelloCardById, readBreadcrumbsFile } from '../api'
 import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
 import { useFuzzySearch } from '@shared/hooks'
 import { useTrelloBoard } from './useTrelloBoard'
@@ -101,10 +97,7 @@ export function useTrelloCardsManager({
       return grouped
     }
 
-    const result: Record<
-      string,
-      Array<{ id: string; name: string; desc?: string }>
-    > = {}
+    const result: Record<string, Array<{ id: string; name: string; desc?: string }>> = {}
     filteredCards.forEach((card) => {
       Object.entries(grouped).forEach(([listName, cards]) => {
         if (cards.some((c) => c.id === card.id)) {
@@ -131,8 +124,9 @@ export function useTrelloCardsManager({
       const breadcrumbsContent = await readBreadcrumbsFile(breadcrumbsPath)
       const breadcrumbsData = JSON.parse(breadcrumbsContent)
 
-      const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } =
-        await import('@hooks/useAppendBreadcrumbs')
+      const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } = await import(
+        '@hooks/useAppendBreadcrumbs'
+      )
 
       const apiCard = {
         id: cardData.cardId,
@@ -169,10 +163,7 @@ export function useTrelloCardsManager({
   }
 
   // Handler: Select card from board
-  const handleSelectCard = async (selectedCard: {
-    id: string
-    name: string
-  }) => {
+  const handleSelectCard = async (selectedCard: { id: string; name: string }) => {
     const validationError = validateCardCanBeAdded(trelloCards, selectedCard.id)
     if (validationError) {
       setValidationErrors([validationError])
@@ -295,9 +286,7 @@ export function useTrelloCardsManager({
         addTrelloCard(updatedCard)
       }, 100)
     } catch (err) {
-      alert(
-        `Failed to refresh card: ${err instanceof Error ? err.message : String(err)}`
-      )
+      alert(`Failed to refresh card: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 

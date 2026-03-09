@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
-import type { SelectedCard, TrelloCard } from '../types'
+import type { SelectedCard } from '../types'
 import { useTrelloCardDetails } from './useTrelloCardDetails'
 
 /**
@@ -15,10 +15,7 @@ import { useTrelloCardDetails } from './useTrelloCardDetails'
  * @param token - Trello auth token
  * @returns Card selection state and details
  */
-export function useTrelloCardSelection(
-  apiKey: string | null,
-  token: string | null
-) {
+export function useTrelloCardSelection(apiKey: string | null, token: string | null) {
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null)
 
   // Fetch card details and members
@@ -32,12 +29,7 @@ export function useTrelloCardSelection(
 
   // Auto-sync card details when selection changes
   useQuery({
-    queryKey: [
-      'cardDetailsSync',
-      selectedCard?.id,
-      apiKey,
-      token
-    ],
+    queryKey: ['cardDetailsSync', selectedCard?.id, apiKey, token],
     queryFn: async () => {
       if (selectedCard && selectedCard.id && apiKey && token) {
         refetchCard()
@@ -50,27 +42,14 @@ export function useTrelloCardSelection(
 
   // Validate card exists and reset if not found
   useQuery({
-    queryKey: [
-      'cardValidation',
-      selectedCard?.id,
-      selectedCardDetails,
-      isCardLoading
-    ],
+    queryKey: ['cardValidation', selectedCard?.id, selectedCardDetails, isCardLoading],
     queryFn: async () => {
-      if (
-        selectedCard &&
-        !selectedCardDetails &&
-        !isCardLoading
-      ) {
+      if (selectedCard && !selectedCardDetails && !isCardLoading) {
         setSelectedCard(null)
       }
       return null
     },
-    enabled: !!(
-      selectedCard &&
-      !selectedCardDetails &&
-      !isCardLoading
-    )
+    enabled: !!(selectedCard && !selectedCardDetails && !isCardLoading)
   })
 
   return {

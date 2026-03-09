@@ -29,8 +29,7 @@ vi.mock('../api', () => ({
 
 // Mock shared dependencies
 vi.mock('@shared/constants/timing', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@shared/constants/timing')>()
+  const actual = await importOriginal<typeof import('@shared/constants/timing')>()
   return { ...actual }
 })
 

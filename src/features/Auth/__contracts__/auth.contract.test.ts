@@ -6,7 +6,7 @@
  * can rely on stable exports.
  */
 
-import { renderHook, waitFor } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock the api layer (single mock point for all Auth I/O)
@@ -104,9 +104,7 @@ describe('useAuth - Behavior', () => {
 
 describe('useAuthCheck - Behavior', () => {
   it('calls useQuery with correct config', async () => {
-    const { useQuery } = vi.mocked(
-      await import('@tanstack/react-query')
-    )
+    const { useQuery } = vi.mocked(await import('@tanstack/react-query'))
 
     // Clear previous calls
     useQuery.mockClear()
@@ -124,9 +122,7 @@ describe('useAuthCheck - Behavior', () => {
   })
 
   it('passes a queryFn that checks auth status', async () => {
-    const { useQuery } = vi.mocked(
-      await import('@tanstack/react-query')
-    )
+    const { useQuery } = vi.mocked(await import('@tanstack/react-query'))
 
     useQuery.mockClear()
     renderHook(() => authBarrel.useAuthCheck())
