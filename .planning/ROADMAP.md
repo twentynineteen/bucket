@@ -96,10 +96,10 @@ Plans:
   2. The Settings page renders from per-domain sub-components (API Keys, Appearance, Connected Apps, etc.) -- no single file exceeds 200 lines
   3. An `api.ts` layer wraps all Settings-related Tauri commands
   4. Contract tests validate the Settings module's public interface and all pass
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md -- Decompose Settings monolith into deep feature module with 5 sub-components, api.ts, barrel, and contract tests
 
 ### Phase 6: AI Tools Module
 **Goal**: ScriptFormatter and ExampleEmbeddings live in a unified AITools feature module with clear sub-feature boundaries
@@ -168,7 +168,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 2. Shared Infrastructure | 4/4 | Complete | 2026-03-09 |
 | 3. Leaf Feature Modules | 2/2 | Complete   | 2026-03-09 |
 | 4. Upload Module | 1/1 | Complete   | 2026-03-09 |
-| 5. Settings Module | 0/? | Not started | - |
+| 5. Settings Module | 0/1 | Planned | - |
 | 6. AI Tools Module | 0/? | Not started | - |
 | 7. Baker Module | 0/? | Not started | - |
 | 8. BuildProject Module | 0/? | Not started | - |
