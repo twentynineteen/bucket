@@ -12,7 +12,7 @@ import { MockLanguageModelV2, simulateReadableStream } from 'ai/test'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Import the hook (will fail during RED phase - not implemented yet)
-// import { useScriptProcessor } from '@hooks/useScriptProcessor'
+// import { useScriptProcessor } from '@features/AITools/ScriptFormatter/hooks/useScriptProcessor'
 
 // Mock language model for testing
 const createMockModel = () => {

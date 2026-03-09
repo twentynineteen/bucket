@@ -14,7 +14,7 @@
  * - useScriptFileUpload hook tests (9/9)
  */
 
-import { ExampleEmbeddings } from '@/pages/AI/ExampleEmbeddings/ExampleEmbeddings'
+import { ExampleEmbeddings } from '@features/AITools/ExampleEmbeddings/components/ExampleEmbeddings'
 import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as tauriCore from '@tauri-apps/api/core'
@@ -45,7 +45,7 @@ vi.mock('@shared/hooks/useBreadcrumb', () => ({
 }))
 
 // Mock useDocxParser
-vi.mock('@/hooks/useDocxParser', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useDocxParser', () => ({
   useDocxParser: () => ({
     parseFile: vi.fn(),
     isLoading: false
@@ -53,7 +53,7 @@ vi.mock('@/hooks/useDocxParser', () => ({
 }))
 
 // Mock useOllamaEmbedding
-vi.mock('@/hooks/useOllamaEmbedding', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useOllamaEmbedding', () => ({
   useOllamaEmbedding: () => ({
     embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
     isReady: true,

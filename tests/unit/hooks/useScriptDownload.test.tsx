@@ -10,13 +10,13 @@
  */
 
 import type { ScriptDocument } from '@/types/scriptFormatter'
-import { useDocxGenerator } from '@hooks/useDocxGenerator'
-import { useScriptDownload } from '@hooks/useScriptDownload'
+import { useDocxGenerator } from '@features/AITools/ScriptFormatter/hooks/useDocxGenerator'
+import { useScriptDownload } from '@features/AITools/ScriptFormatter/hooks/useScriptDownload'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock dependencies
-vi.mock('@hooks/useDocxGenerator', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useDocxGenerator', () => ({
   useDocxGenerator: vi.fn()
 }))
 

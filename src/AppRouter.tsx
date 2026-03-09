@@ -9,8 +9,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 // subsequent components are loaded within the page window via the Outlet component.
 
 import Page from './app/dashboard/page'
-import { ExampleEmbeddings } from './pages/AI/ExampleEmbeddings/ExampleEmbeddings'
-import ScriptFormatter from './pages/AI/ScriptFormatter/ScriptFormatter'
+import { ExampleEmbeddings, ScriptFormatter } from '@features/AITools'
 import { Login, Register } from '@features/Auth'
 import Baker from './pages/Baker/Baker'
 import BuildProject from './pages/BuildProject/BuildProject'

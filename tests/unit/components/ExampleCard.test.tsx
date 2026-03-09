@@ -3,7 +3,7 @@
  * Feature: 007-frontend-script-example
  */
 
-import { ExampleCard } from '@/pages/AI/ExampleEmbeddings/ExampleCard'
+import { ExampleCard } from '@features/AITools/ExampleEmbeddings/components/ExampleCard'
 import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

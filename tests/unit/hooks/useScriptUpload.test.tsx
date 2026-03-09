@@ -10,13 +10,13 @@
  */
 
 import type { ScriptDocument } from '@/types/scriptFormatter'
-import { useDocxParser } from '@hooks/useDocxParser'
-import { useScriptUpload } from '@hooks/useScriptUpload'
+import { useDocxParser } from '@features/AITools/ScriptFormatter/hooks/useDocxParser'
+import { useScriptUpload } from '@features/AITools/ScriptFormatter/hooks/useScriptUpload'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock dependencies
-vi.mock('@hooks/useDocxParser', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useDocxParser', () => ({
   useDocxParser: vi.fn()
 }))
 

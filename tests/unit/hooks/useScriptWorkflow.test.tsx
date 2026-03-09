@@ -11,28 +11,28 @@
  */
 
 import type { WorkflowStep } from '@/types/scriptFormatter'
-import { useAIProcessing } from '@hooks/useAIProcessing'
-import { useScriptDownload } from '@hooks/useScriptDownload'
-import { useScriptReview } from '@hooks/useScriptReview'
-import { useScriptUpload } from '@hooks/useScriptUpload'
-import { useScriptWorkflow } from '@hooks/useScriptWorkflow'
+import { useAIProcessing } from '@features/AITools/ScriptFormatter/hooks/useAIProcessing'
+import { useScriptDownload } from '@features/AITools/ScriptFormatter/hooks/useScriptDownload'
+import { useScriptReview } from '@features/AITools/ScriptFormatter/hooks/useScriptReview'
+import { useScriptUpload } from '@features/AITools/ScriptFormatter/hooks/useScriptUpload'
+import { useScriptWorkflow } from '@features/AITools/ScriptFormatter/hooks/useScriptWorkflow'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock all sub-hooks
-vi.mock('@hooks/useScriptUpload', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useScriptUpload', () => ({
   useScriptUpload: vi.fn()
 }))
 
-vi.mock('@hooks/useAIProcessing', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useAIProcessing', () => ({
   useAIProcessing: vi.fn()
 }))
 
-vi.mock('@hooks/useScriptReview', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useScriptReview', () => ({
   useScriptReview: vi.fn()
 }))
 
-vi.mock('@hooks/useScriptDownload', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useScriptDownload', () => ({
   useScriptDownload: vi.fn()
 }))
 

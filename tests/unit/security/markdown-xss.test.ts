@@ -12,12 +12,12 @@
  */
 
 import type { ScriptDocument } from '@/types/scriptFormatter'
-import { useScriptDownload } from '@hooks/useScriptDownload'
+import { useScriptDownload } from '@features/AITools/ScriptFormatter/hooks/useScriptDownload'
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 
 // Mock useDocxGenerator
-vi.mock('@hooks/useDocxGenerator', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useDocxGenerator', () => ({
   useDocxGenerator: () => ({
     generateFile: vi.fn().mockResolvedValue(undefined),
     isGenerating: false,

@@ -7,20 +7,20 @@
  * It adds UI-specific state (showSaveDialog) and save-as-example functionality.
  */
 
-import { useExampleManagement } from '@/hooks/useExampleManagement'
-import { useScriptFormatterState } from '@/hooks/useScriptFormatterState'
-import { useScriptWorkflow } from '@/hooks/useScriptWorkflow'
+import { useExampleManagement } from '@features/AITools/ExampleEmbeddings/hooks/useExampleManagement'
+import { useScriptFormatterState } from '@features/AITools/ScriptFormatter/hooks/useScriptFormatterState'
+import { useScriptWorkflow } from '@features/AITools/ScriptFormatter/hooks/useScriptWorkflow'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock the composed hooks
-vi.mock('@/hooks/useScriptWorkflow', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useScriptWorkflow', () => ({
   useScriptWorkflow: vi.fn()
 }))
 
-vi.mock('@/hooks/useExampleManagement', () => ({
+vi.mock('@features/AITools/ExampleEmbeddings/hooks/useExampleManagement', () => ({
   useExampleManagement: vi.fn()
 }))
 
