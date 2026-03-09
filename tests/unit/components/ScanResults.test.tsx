@@ -13,8 +13,8 @@
  * Total: 12 tests
  */
 
-import type { ProjectFolder, ScanResult } from '@/types/baker'
-import { ScanResults } from '@components/Baker/ScanResults'
+import type { ProjectFolder, ScanResult } from '@features/Baker'
+import { ScanResults } from '../../../src/features/Baker/components/ScanResults'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'

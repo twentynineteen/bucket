@@ -3,8 +3,8 @@
  * Purpose: Test breadcrumbs preview generation with concurrency control
  */
 
-import { useBreadcrumbsPreview } from '@/hooks/useBreadcrumbsPreview'
-import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '@/types/baker'
+import { useBreadcrumbsPreview } from '../../../src/features/Baker/hooks/useBreadcrumbsPreview'
+import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '@features/Baker'
 import { invoke } from '@tauri-apps/api/core'
 import {
   compareBreadcrumbsMeaningful,

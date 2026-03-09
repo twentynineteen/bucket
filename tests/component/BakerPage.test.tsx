@@ -6,15 +6,15 @@
  */
 
 // Import after mocks
-import { useBakerScan } from '@hooks/useBakerScan'
-import BakerPage from '@pages/Baker/Baker'
+import { useBakerScan } from '../../src/features/Baker/hooks/useBakerScan'
+import { BakerPage } from '@features/Baker'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock all the hooks used by BakerPage
-vi.mock('@hooks/useBakerScan', () => ({
+vi.mock('../../src/features/Baker/hooks/useBakerScan', () => ({
   useBakerScan: vi.fn(() => ({
     scanResult: null,
     isScanning: false,
@@ -25,7 +25,7 @@ vi.mock('@hooks/useBakerScan', () => ({
   }))
 }))
 
-vi.mock('@hooks/useBreadcrumbsManager', () => ({
+vi.mock('../../src/features/Baker/hooks/useBreadcrumbsManager', () => ({
   useBreadcrumbsManager: vi.fn(() => ({
     updateBreadcrumbs: vi.fn(),
     isUpdating: false,
@@ -34,7 +34,7 @@ vi.mock('@hooks/useBreadcrumbsManager', () => ({
   }))
 }))
 
-vi.mock('@hooks/useBakerPreferences', () => ({
+vi.mock('../../src/features/Baker/hooks/useBakerPreferences', () => ({
   useBakerPreferences: vi.fn(() => ({
     preferences: {
       maxDepth: 3,
@@ -47,7 +47,7 @@ vi.mock('@hooks/useBakerPreferences', () => ({
   }))
 }))
 
-vi.mock('@hooks/useLiveBreadcrumbsReader', () => ({
+vi.mock('../../src/features/Baker/hooks/useLiveBreadcrumbsReader', () => ({
   useLiveBreadcrumbsReader: vi.fn(() => ({
     breadcrumbs: null,
     isLoading: false,
@@ -57,7 +57,7 @@ vi.mock('@hooks/useLiveBreadcrumbsReader', () => ({
   }))
 }))
 
-vi.mock('@hooks/useBreadcrumbsPreview', () => ({
+vi.mock('../../src/features/Baker/hooks/useBreadcrumbsPreview', () => ({
   useBreadcrumbsPreview: vi.fn(() => ({
     previews: new Map(),
     isGenerating: false,
@@ -79,9 +79,15 @@ vi.mock('hooks/useTrelloBoard', () => ({
   }))
 }))
 
-vi.mock('@features/Trello/hooks/useBakerTrelloIntegration', () => ({
+vi.mock('@features/Trello', () => ({
   useBakerTrelloIntegration: vi.fn(() => ({
     updateTrelloCards: vi.fn().mockResolvedValue([])
+  })),
+  useTrelloBoard: vi.fn(() => ({
+    apiKey: 'test-api-key',
+    token: 'test-token',
+    grouped: {},
+    isLoading: false
   }))
 }))
 

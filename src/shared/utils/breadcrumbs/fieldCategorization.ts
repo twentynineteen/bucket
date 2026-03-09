@@ -9,7 +9,7 @@ import type {
   DetailedFieldChange,
   FieldChange,
   ProjectChangeDetail
-} from '@/types/baker'
+} from '@features/Baker'
 
 import { logger } from '../logger'
 import { formatFieldName, formatFieldValue } from './displayFormatting'

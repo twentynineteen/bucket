@@ -10,7 +10,7 @@
  */
 
 import type { FootageFile } from '@/hooks/useCameraAutoRemap'
-import { useProjectBreadcrumbs } from '@/hooks/useProjectBreadcrumbs'
+import { useProjectBreadcrumbs } from '@features/Baker'
 import { appStore } from '@shared/store'
 import { invoke } from '@tauri-apps/api/core'
 import { writeTextFile } from '@tauri-apps/plugin-fs'

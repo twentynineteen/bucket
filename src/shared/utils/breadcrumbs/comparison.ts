@@ -4,7 +4,7 @@
  * Core functions for comparing breadcrumbs files and generating diffs.
  */
 
-import type { BreadcrumbsDiff, BreadcrumbsFile, FieldChange } from '@/types/baker'
+import type { BreadcrumbsDiff, BreadcrumbsFile, FieldChange } from '@features/Baker'
 
 /**
  * Deep equality check for any value type

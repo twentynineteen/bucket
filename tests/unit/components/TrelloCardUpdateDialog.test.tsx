@@ -14,7 +14,7 @@
  * Total: 15 tests
  */
 
-import type { TrelloCard } from '@/types/baker'
+import type { TrelloCard } from '@features/Baker'
 import { TrelloCardUpdateDialog } from '@features/Trello'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

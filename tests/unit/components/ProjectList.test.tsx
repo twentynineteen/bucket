@@ -14,8 +14,8 @@
  * Total: 16 tests
  */
 
-import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '@/types/baker'
-import { ProjectList } from '@components/Baker/ProjectList'
+import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '@features/Baker'
+import { ProjectList } from '../../../src/features/Baker/components/ProjectList'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'

@@ -7,16 +7,16 @@
 import { validateVideoLink } from '@shared/utils/validation'
 import { useState } from 'react'
 
-import type { BreadcrumbsFile, VideoLink } from '@/types/baker'
+import type { BreadcrumbsFile, VideoLink } from '@features/Baker'
 import { logger } from '@shared/utils/logger'
 
 import { useSproutVideoApiKey, useTrelloApiKeys } from '@shared/hooks'
 import {
   generateBreadcrumbsBlock,
   updateTrelloCardWithBreadcrumbs
-} from '@hooks/useAppendBreadcrumbs'
+} from '@features/Baker'
 import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
-import { useBreadcrumbsVideoLinks } from '@hooks/useBreadcrumbsVideoLinks'
+import { useBreadcrumbsVideoLinks } from '@features/Baker'
 import {
   useFileUpload,
   useSproutVideoApi,

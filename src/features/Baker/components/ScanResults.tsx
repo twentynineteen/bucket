@@ -8,7 +8,7 @@ import { formatFileSize } from '@shared/utils/breadcrumbs'
 import { RefreshCw } from 'lucide-react'
 import React from 'react'
 
-import type { ScanResult } from '@/types/baker'
+import type { ScanResult } from '../types'
 
 interface ScanResultsProps {
   scanResult: ScanResult | null

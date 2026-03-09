@@ -9,12 +9,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@testing-library/jest-dom'
 
 import * as useApiKeysModule from '@shared/hooks/useApiKeys'
-import * as useBreadcrumbsTrelloCardsModule from '@features/Trello/hooks/useBreadcrumbsTrelloCards'
-import * as useBreadcrumbsVideoLinksModule from '@hooks/useBreadcrumbsVideoLinks'
-import * as useFileUploadModule from '@features/Upload/hooks/useFileUpload'
-import * as useSproutVideoApiModule from '@features/Upload/hooks/useSproutVideoApi'
-import * as useSproutVideoProcessorModule from '@features/Upload/hooks/useSproutVideoProcessor'
-import * as useUploadEventsModule from '@features/Upload/hooks/useUploadEvents'
+import * as useBreadcrumbsTrelloCardsModule from '@features/Trello'
+import * as useBreadcrumbsVideoLinksModule from '../hooks/useBreadcrumbsVideoLinks'
+import * as useFileUploadModule from '@features/Upload'
+import * as useSproutVideoApiModule from '@features/Upload'
+import * as useSproutVideoProcessorModule from '@features/Upload'
+import * as useUploadEventsModule from '@features/Upload'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { SproutUploadResponse } from '@shared/types/types'
@@ -23,13 +23,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { VideoLinksManager } from './VideoLinksManager'
 
 // Mock hooks
-vi.mock('@hooks/useBreadcrumbsVideoLinks')
-vi.mock('@features/Trello/hooks/useBreadcrumbsTrelloCards')
-vi.mock('@features/Upload/hooks/useSproutVideoApi')
+vi.mock('../hooks/useBreadcrumbsVideoLinks')
+vi.mock('@features/Trello')
+vi.mock('@features/Upload')
 vi.mock('@shared/hooks/useApiKeys')
-vi.mock('@features/Upload/hooks/useFileUpload')
-vi.mock('@features/Upload/hooks/useUploadEvents')
-vi.mock('@features/Upload/hooks/useSproutVideoProcessor')
+vi.mock('@features/Upload')
+vi.mock('@features/Upload')
+vi.mock('@features/Upload')
 
 // Helper function to create a complete mock SproutUploadResponse
 const createMockSproutUploadResponse = (

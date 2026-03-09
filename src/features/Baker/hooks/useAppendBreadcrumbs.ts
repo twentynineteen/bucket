@@ -1,11 +1,16 @@
-// Target: @features/Baker
 import { appStore } from '@shared/store'
 import { useQueryClient } from '@tanstack/react-query'
-import { ask, confirm, open } from '@tauri-apps/plugin-dialog'
-import { readTextFile } from '@tauri-apps/plugin-fs'
 import type { TrelloCard as LegacyTrelloCard } from '@features/Trello'
 import type { Breadcrumb } from '@shared/types/types'
 
+import {
+  addTrelloCardComment,
+  askDialog,
+  confirmDialog,
+  openJsonFileDialog,
+  readTextFileContents,
+  updateTrelloCardDesc
+} from '../api'
 import { logger } from '@shared/utils/logger'
 
 function formatBreadcrumbsForHumans(breadcrumbs: Breadcrumb): string {
@@ -124,29 +129,18 @@ export async function updateTrelloCardWithBreadcrumbs(
       updatedDesc = `${currentDesc}\n\n${breadcrumbsBlock}`
     }
 
-    const response = await fetch(
-      `https://api.trello.com/1/cards/${card.id}?key=${apiKey}&token=${token}`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ desc: updatedDesc })
-      }
-    )
+    const response = await updateTrelloCardDesc(card.id, updatedDesc, apiKey, token)
 
     if (!response.ok) {
       throw new Error(`Failed to update card: ${response.statusText}`)
     }
 
     // Add a comment to the card indicating breadcrumbs were linked
-    const commentResponse = await fetch(
-      `https://api.trello.com/1/cards/${card.id}/actions/comments?key=${apiKey}&token=${token}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: 'Linked this card to the project and left some breadcrumbs...'
-        })
-      }
+    const commentResponse = await addTrelloCardComment(
+      card.id,
+      'Linked this card to the project and left some breadcrumbs...',
+      apiKey,
+      token
     )
 
     if (!commentResponse.ok) {
@@ -193,7 +187,7 @@ export function useAppendBreadcrumbs(
         // UploadTrello mode: use dialogs to get breadcrumbs
         const breadcrumbs = appStore.getState().breadcrumbs
 
-        const useCurrent: boolean = await ask(
+        const useCurrent: boolean = await askDialog(
           'Use current in-app breadcrumbs? Click "No" to load from a JSON file.',
           {
             title: 'Choose Breadcrumb Source',
@@ -205,12 +199,9 @@ export function useAppendBreadcrumbs(
         finalBreadcrumbs = breadcrumbs
 
         if (!useCurrent) {
-          const selectedFile = await open({
-            multiple: false,
-            filters: [{ name: 'JSON Files', extensions: ['json'] }]
-          })
+          const selectedFile = await openJsonFileDialog()
           if (typeof selectedFile === 'string') {
-            const fileContents: string = await readTextFile(selectedFile)
+            const fileContents: string = await readTextFileContents(selectedFile)
             finalBreadcrumbs = JSON.parse(fileContents)
           } else {
             return null // User canceled file selection
@@ -271,7 +262,7 @@ export function useAppendBreadcrumbs(
             : 'legacy breadcrumbs'
           const warningMessage = `This Trello card already contains ${breadcrumbsType} from a previous project link.\n\nReplacing them will remove the existing project connection and add the new one.\n\nDo you want to continue?`
 
-          const shouldReplace: boolean = await confirm(warningMessage, {
+          const shouldReplace: boolean = await confirmDialog(warningMessage, {
             title: 'Breadcrumbs Already Exist',
             okLabel: 'Replace Existing',
             cancelLabel: 'Cancel'
@@ -283,29 +274,18 @@ export function useAppendBreadcrumbs(
         updatedDesc = `${currentDesc}\n\n${breadcrumbsBlock}`
       }
 
-      const response = await fetch(
-        `https://api.trello.com/1/cards/${card.id}?key=${apiKey}&token=${token}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ desc: updatedDesc })
-        }
-      )
+      const response = await updateTrelloCardDesc(card.id, updatedDesc, apiKey!, token!)
 
       if (!response.ok) {
         throw new Error(`Failed to update card: ${response.statusText}`)
       }
 
       // Add a comment to the card indicating breadcrumbs were linked
-      const commentResponse = await fetch(
-        `https://api.trello.com/1/cards/${card.id}/actions/comments?key=${apiKey}&token=${token}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: 'Linked this card to the project and left some breadcrumbs...'
-          })
-        }
+      const commentResponse = await addTrelloCardComment(
+        card.id,
+        'Linked this card to the project and left some breadcrumbs...',
+        apiKey!,
+        token!
       )
 
       if (!commentResponse.ok) {

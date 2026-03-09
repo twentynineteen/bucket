@@ -130,12 +130,9 @@ vi.mock('@tanstack/react-query', () => ({
 }))
 
 // Mock hooks that cross module boundaries
-vi.mock('@hooks/useAppendBreadcrumbs', () => ({
+vi.mock('@features/Baker', () => ({
   generateBreadcrumbsBlock: vi.fn().mockReturnValue(''),
-  updateTrelloCardWithBreadcrumbs: vi.fn().mockResolvedValue(undefined)
-}))
-
-vi.mock('@hooks/useBreadcrumbsVideoLinks', () => ({
+  updateTrelloCardWithBreadcrumbs: vi.fn().mockResolvedValue(undefined),
   useBreadcrumbsVideoLinks: () => ({
     videoLinks: [],
     isLoading: false,
@@ -145,8 +142,14 @@ vi.mock('@hooks/useBreadcrumbsVideoLinks', () => ({
     reorderVideoLinks: vi.fn(),
     isUpdating: false,
     addError: null
+  }),
+  useAppendBreadcrumbs: vi.fn().mockReturnValue({
+    getBreadcrumbsBlock: vi.fn().mockResolvedValue(null),
+    applyBreadcrumbsToCard: vi.fn().mockResolvedValue(undefined)
   })
 }))
+
+// useBreadcrumbsVideoLinks mock is included in @features/Baker mock above
 
 vi.mock('@features/Upload', () => ({
   useFileUpload: () => ({

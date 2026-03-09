@@ -1,4 +1,3 @@
-// Target: @features/Baker
 /**
  * useBakerPreferences Hook
  *
@@ -8,7 +7,7 @@
 
 import { useCallback, useState } from 'react'
 
-import type { ScanPreferences, UseBakerPreferencesResult } from '@/types/baker'
+import type { ScanPreferences, UseBakerPreferencesResult } from '../types'
 import { logger } from '@shared/utils/logger'
 
 const STORAGE_KEY = 'baker-preferences'

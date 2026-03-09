@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import React from 'react'
 
-import type { BreadcrumbsPreview, FieldChange } from '@/types/baker'
+import type { BreadcrumbsPreview, FieldChange } from '@features/Baker'
 
 import { Field, formatFileSize } from './fieldUtils'
 

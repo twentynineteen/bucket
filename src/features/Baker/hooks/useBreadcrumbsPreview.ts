@@ -1,4 +1,3 @@
-// Target: @features/Baker
 /**
  * useBreadcrumbsPreview Hook
  *
@@ -11,7 +10,6 @@
  * - Error handling and graceful fallbacks
  */
 
-import { invoke } from '@tauri-apps/api/core'
 import {
   compareBreadcrumbsMeaningful,
   generateBreadcrumbsPreview
@@ -19,7 +17,8 @@ import {
 import pLimit from 'p-limit'
 import { useCallback, useMemo, useState } from 'react'
 
-import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '@/types/baker'
+import { bakerReadBreadcrumbs, bakerScanCurrentFiles, getFolderSize } from '../api'
+import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '../types'
 import { logger } from '@shared/utils/logger'
 
 // Concurrency limit for batch operations to prevent system overload
@@ -67,12 +66,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
         let currentBreadcrumbs: BreadcrumbsFile | null = null
         if (projectData.hasBreadcrumbs) {
           try {
-            currentBreadcrumbs = await invoke<BreadcrumbsFile | null>(
-              'baker_read_breadcrumbs',
-              {
-                projectPath
-              }
-            )
+            currentBreadcrumbs = await bakerReadBreadcrumbs(projectPath)
           } catch (readError) {
             logger.warn(
               `Failed to read existing breadcrumbs for ${projectPath}:`,
@@ -87,11 +81,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
 
         try {
           // Get actual current files from file system
-          actualFiles = await invoke<
-            Array<{ camera: number; name: string; path: string }>
-          >('baker_scan_current_files', {
-            projectPath
-          })
+          actualFiles = await bakerScanCurrentFiles(projectPath)
         } catch (scanError) {
           logger.warn(
             `Failed to scan current files for ${projectPath}, falling back to breadcrumbs/placeholder:`,
@@ -121,9 +111,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
 
         // Always calculate current folder size to detect changes
         try {
-          const currentFolderSize = await invoke<number>('get_folder_size', {
-            folderPath: projectPath
-          })
+          const currentFolderSize = await getFolderSize(projectPath)
           preview.updated.folderSizeBytes = currentFolderSize
 
           // Update the diff to reflect folder size changes

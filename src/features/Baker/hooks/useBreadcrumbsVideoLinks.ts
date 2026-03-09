@@ -1,13 +1,18 @@
-// Target: @features/Baker
 /**
  * Custom hook for managing video links in breadcrumbs
  * Feature: 004-embed-multiple-video
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { invoke } from '@tauri-apps/api/core'
 
-import type { BreadcrumbsFile, VideoLink } from '@/types/baker'
+import {
+  bakerAssociateVideoLink,
+  bakerGetVideoLinks,
+  bakerRemoveVideoLink,
+  bakerReorderVideoLinks,
+  bakerUpdateVideoLink
+} from '../api'
+import type { VideoLink } from '../types'
 
 interface UseBreadcrumbsVideoLinksOptions {
   projectPath: string
@@ -28,7 +33,7 @@ export function useBreadcrumbsVideoLinks({
   } = useQuery({
     queryKey: ['breadcrumbs', 'videoLinks', projectPath],
     queryFn: async () => {
-      return await invoke<VideoLink[]>('baker_get_video_links', { projectPath })
+      return await bakerGetVideoLinks(projectPath)
     },
     enabled: enabled && !!projectPath
   })
@@ -36,10 +41,7 @@ export function useBreadcrumbsVideoLinks({
   // Mutation: Add video link
   const addVideoLink = useMutation({
     mutationFn: async (videoLink: VideoLink) => {
-      return await invoke<BreadcrumbsFile>('baker_associate_video_link', {
-        projectPath,
-        videoLink
-      })
+      return await bakerAssociateVideoLink(projectPath, videoLink)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -52,10 +54,7 @@ export function useBreadcrumbsVideoLinks({
   // Mutation: Remove video link
   const removeVideoLink = useMutation({
     mutationFn: async (videoIndex: number) => {
-      return await invoke<BreadcrumbsFile>('baker_remove_video_link', {
-        projectPath,
-        videoIndex
-      })
+      return await bakerRemoveVideoLink(projectPath, videoIndex)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -74,11 +73,7 @@ export function useBreadcrumbsVideoLinks({
       videoIndex: number
       updatedLink: VideoLink
     }) => {
-      return await invoke<BreadcrumbsFile>('baker_update_video_link', {
-        projectPath,
-        videoIndex,
-        updatedLink
-      })
+      return await bakerUpdateVideoLink(projectPath, videoIndex, updatedLink)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -97,11 +92,7 @@ export function useBreadcrumbsVideoLinks({
       fromIndex: number
       toIndex: number
     }) => {
-      return await invoke<BreadcrumbsFile>('baker_reorder_video_links', {
-        projectPath,
-        fromIndex,
-        toIndex
-      })
+      return await bakerReorderVideoLinks(projectPath, fromIndex, toIndex)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

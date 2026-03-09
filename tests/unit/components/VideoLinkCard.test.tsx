@@ -13,9 +13,9 @@
  * Total: 8 tests
  */
 
-import type { VideoLink } from '@/types/baker'
+import type { VideoLink } from '../../../src/features/Baker/types'
 import { logger } from '@shared/utils/logger'
-import { VideoLinkCard } from '@components/Baker/VideoLinkCard'
+import { VideoLinkCard } from '../../../src/features/Baker/components/VideoLinkCard'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

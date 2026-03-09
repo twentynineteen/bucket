@@ -7,9 +7,9 @@
  * Following TDD methodology - tests written before implementation.
  */
 
-import { ProjectListPanel } from '@/components/Baker/ProjectListPanel'
+import { ProjectListPanel } from '../../../../src/features/Baker/components/ProjectListPanel'
 import { BAKER_ANIMATIONS, DURATION } from '@shared/constants/animations'
-import type { ProjectFolder } from '@/types/baker'
+import type { ProjectFolder } from '../../../../src/features/Baker/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expectMotionComponent, mockReducedMotion } from '@tests/utils/animation-testing'

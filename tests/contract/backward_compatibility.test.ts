@@ -1,4 +1,4 @@
-import type { BreadcrumbsFile } from '@/types/baker'
+import type { BreadcrumbsFile } from '@features/Baker'
 import { invoke } from '@tauri-apps/api/core'
 import { createTestBreadcrumbs } from '@tests/utils/test-helpers'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'

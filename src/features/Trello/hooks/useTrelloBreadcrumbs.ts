@@ -10,7 +10,7 @@ import { useCallback } from 'react'
 import { logger } from '@shared/utils/logger'
 
 import { writeBreadcrumbsFile } from '../api'
-import { useAppendBreadcrumbs } from '@hooks/useAppendBreadcrumbs'
+import { useAppendBreadcrumbs } from '@features/Baker'
 import { useParsedTrelloDescription } from './useParsedTrelloDescription'
 
 /**

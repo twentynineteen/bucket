@@ -10,7 +10,7 @@ import { createNamespacedLogger } from '@shared/utils/logger'
 import type { SproutUploadResponse } from '@shared/types/types'
 import { useEffect, useRef } from 'react'
 
-import type { VideoLink } from '@/types/baker'
+import type { VideoLink } from '@features/Baker'
 
 const logger = createNamespacedLogger('useSproutVideoProcessor')
 

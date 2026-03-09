@@ -6,7 +6,7 @@
  */
 
 // Import and re-export media types for convenience
-import type { TrelloCard, VideoLink } from './media'
+import type { TrelloCard, VideoLink } from '@shared/types/media'
 
 export type { VideoLink, TrelloCard }
 

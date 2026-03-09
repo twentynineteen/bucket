@@ -5,7 +5,6 @@
  * Part of master-detail layout pattern.
  */
 
-import { open } from '@tauri-apps/plugin-shell'
 import { formatBreadcrumbDateSimple } from '@shared/utils/breadcrumbs'
 import {
   AlertTriangle,
@@ -24,7 +23,8 @@ import React, { useRef } from 'react'
 
 import { formatFileSize } from '@/components/BreadcrumbsViewer/fieldUtils'
 import { Button } from '@shared/ui/button'
-import type { BreadcrumbsFile, BreadcrumbsPreview } from '@/types/baker'
+import { openInShell } from '../api'
+import type { BreadcrumbsFile, BreadcrumbsPreview } from '../types'
 
 import { TrelloCardsManager } from '@features/Trello'
 import { VideoLinksManager } from './VideoLinksManager'
@@ -286,7 +286,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ breadcrumbs }) => {
               variant="outline"
               size="sm"
               onClick={async () => {
-                await open(breadcrumbs.trelloCardUrl!)
+                await openInShell(breadcrumbs.trelloCardUrl!)
               }}
               className="h-6 flex-shrink-0 px-2 py-1 text-xs"
             >

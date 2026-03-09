@@ -50,7 +50,7 @@ async function updateSingleTrelloCard(
     idList: ''
   }
 
-  const { updateTrelloCardWithBreadcrumbs } = await import('@hooks/useAppendBreadcrumbs')
+  const { updateTrelloCardWithBreadcrumbs } = await import('@features/Baker')
 
   await updateTrelloCardWithBreadcrumbs(mockCard, breadcrumbsBlock, apiKey, token, {
     autoReplace: true,
@@ -67,7 +67,7 @@ async function updateProjectTrelloCards(
   apiKey: string,
   token: string
 ): Promise<void> {
-  const { generateBreadcrumbsBlock } = await import('@hooks/useAppendBreadcrumbs')
+  const { generateBreadcrumbsBlock } = await import('@features/Baker')
 
   const block = generateBreadcrumbsBlock(breadcrumbsData)
   if (!block) return

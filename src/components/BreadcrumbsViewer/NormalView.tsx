@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import React from 'react'
 
-import type { BreadcrumbsFile } from '@/types/baker'
+import type { BreadcrumbsFile } from '@features/Baker'
 
 import { TrelloCardsManager } from '@features/Trello'
 import { VideoLinksManager } from '../Baker/VideoLinksManager'

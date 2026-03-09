@@ -7,7 +7,7 @@ import { formatFieldValue } from '@shared/utils/breadcrumbs'
 import { Edit, Minus, Plus } from 'lucide-react'
 import React from 'react'
 
-import type { FieldChange } from '@/types/baker'
+import type { FieldChange } from '@features/Baker'
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B'

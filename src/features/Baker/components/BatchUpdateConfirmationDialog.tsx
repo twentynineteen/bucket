@@ -10,13 +10,13 @@ import {
   calculateBatchUpdateSummary,
   hasAnyChanges,
   type BatchUpdateSummary
-} from '@utils/batchUpdateSummary'
+} from '../utils/batchUpdateSummary'
 import { AlertTriangle, CheckCircle, Clock } from 'lucide-react'
 import React from 'react'
 
-import type { BreadcrumbsPreview } from '@/types/baker'
+import type { BreadcrumbsPreview } from '../types'
 
-import { DetailedChangesSection } from './BatchUpdate'
+import { DetailedChangesSection } from './DetailedChangesSection'
 import { Button } from '@shared/ui/button'
 import {
   Dialog,

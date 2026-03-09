@@ -6,10 +6,10 @@
 
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
-import { open } from '@tauri-apps/plugin-dialog'
 import { FolderOpen, Play, RefreshCw, Square } from 'lucide-react'
 import React, { useCallback } from 'react'
 
+import { openFolderDialog } from '../api'
 import { logger } from '@shared/utils/logger'
 
 interface FolderSelectorProps {
@@ -35,13 +35,9 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
 }) => {
   const handleSelectFolder = useCallback(async () => {
     try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: 'Select folder to scan for projects'
-      })
+      const selected = await openFolderDialog('Select folder to scan for projects')
 
-      if (selected && typeof selected === 'string') {
+      if (selected) {
         onFolderChange(selected)
       }
     } catch (error) {

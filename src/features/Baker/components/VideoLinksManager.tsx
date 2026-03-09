@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@shared/ui/alert'
 
 import { TrelloCardUpdateDialog } from '@features/Trello'
 import { VideoLinkCard } from './VideoLinkCard'
-import { AddVideoDialog } from './VideoLinks/AddVideoDialog'
+import { AddVideoDialog } from './AddVideoDialog'
 
 interface VideoLinksManagerProps {
   projectPath: string

@@ -8,7 +8,7 @@ import { SproutUploadResponse } from '@shared/types/types'
 import { useMemo, useState } from 'react'
 
 import { useFuzzySearch } from '@shared/hooks'
-import { useAppendBreadcrumbs } from '@hooks/useAppendBreadcrumbs'
+import { useAppendBreadcrumbs } from '@features/Baker'
 import { useAppendVideoInfo } from '@hooks/useAppendVideoInfo'
 import { useVideoInfoBlock } from '@hooks/useVideoInfoBlock'
 import { open } from '@tauri-apps/plugin-shell'

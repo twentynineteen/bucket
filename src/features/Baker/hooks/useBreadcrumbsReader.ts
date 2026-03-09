@@ -1,14 +1,13 @@
-// Target: @features/Baker
 /**
  * useBreadcrumbsReader Hook
  *
  * Custom React hook for reading and displaying breadcrumbs.json files.
  */
 
-import { invoke } from '@tauri-apps/api/core'
 import { useCallback, useState } from 'react'
 
-import type { BreadcrumbsFile } from '@/types/baker'
+import { bakerReadBreadcrumbs } from '../api'
+import type { BreadcrumbsFile } from '../types'
 
 interface UseBreadcrumbsReaderResult {
   breadcrumbs: BreadcrumbsFile | null
@@ -28,9 +27,7 @@ export function useBreadcrumbsReader(): UseBreadcrumbsReaderResult {
     setError(null)
 
     try {
-      const result = await invoke<BreadcrumbsFile | null>('baker_read_breadcrumbs', {
-        projectPath
-      })
+      const result = await bakerReadBreadcrumbs(projectPath)
 
       setBreadcrumbs(result)
     } catch (err) {

@@ -4,7 +4,7 @@
  * Functions for generating breadcrumbs preview data.
  */
 
-import type { BreadcrumbsFile, BreadcrumbsPreview } from '@/types/baker'
+import type { BreadcrumbsFile, BreadcrumbsPreview } from '@features/Baker'
 
 import { compareBreadcrumbs, compareBreadcrumbsMeaningful } from './comparison'
 import { debugComparison } from './debug'

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import React from 'react'
 
-import type { BreadcrumbsViewerProps } from '@/types/baker'
+import type { BreadcrumbsViewerProps } from '@features/Baker'
 
 import { Button } from '@shared/ui/button'
 

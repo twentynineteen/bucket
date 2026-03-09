@@ -3,7 +3,7 @@
  * Feature: 004-embed-multiple-video
  */
 
-import type { BreadcrumbsFile, TrelloCard } from '@/types/baker'
+import type { BreadcrumbsFile, TrelloCard } from '@features/Baker'
 
 import { extractTrelloCardId } from './validation'
 

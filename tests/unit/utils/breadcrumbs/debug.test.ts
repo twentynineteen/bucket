@@ -5,7 +5,7 @@
  * for development-only debugging output.
  */
 
-import type { BreadcrumbsFile } from '@/types/baker'
+import type { BreadcrumbsFile } from '@features/Baker'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Create mock functions that will be used

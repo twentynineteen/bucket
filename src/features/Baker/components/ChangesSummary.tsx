@@ -3,7 +3,7 @@
  * Extracted from BatchUpdateConfirmationDialog (DEBT-002)
  */
 
-import type { BatchUpdateSummary } from '@utils/batchUpdateSummary'
+import type { BatchUpdateSummary } from '../utils/batchUpdateSummary'
 import { Edit, Minus, Plus } from 'lucide-react'
 import React from 'react'
 

@@ -7,7 +7,7 @@
 import { extractTrelloCardId, validateTrelloCard } from '@shared/utils/validation'
 import { useMemo, useState } from 'react'
 
-import type { TrelloCard } from '@/types/baker'
+import type { TrelloCard } from '@features/Baker'
 import { logger } from '@shared/utils/logger'
 
 import { fetchTrelloCardById, readBreadcrumbsFile } from '../api'
@@ -125,7 +125,7 @@ export function useTrelloCardsManager({
       const breadcrumbsData = JSON.parse(breadcrumbsContent)
 
       const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } = await import(
-        '@hooks/useAppendBreadcrumbs'
+        '@features/Baker'
       )
 
       const apiCard = {

@@ -1,4 +1,3 @@
-// Target: @features/Baker
 /**
  * useBreadcrumbsManager Hook
  *
@@ -6,10 +5,10 @@
  * Handles batch updates, creation, and error management.
  */
 
-import { invoke } from '@tauri-apps/api/core'
 import { useCallback, useState } from 'react'
 
-import type { BatchUpdateResult, UseBreadcrumbsManagerResult } from '@/types/baker'
+import { bakerUpdateBreadcrumbs } from '../api'
+import type { BatchUpdateResult, UseBreadcrumbsManagerResult } from '../types'
 
 export function useBreadcrumbsManager(): UseBreadcrumbsManagerResult {
   const [isUpdating, setIsUpdating] = useState(false)
@@ -37,11 +36,11 @@ export function useBreadcrumbsManager(): UseBreadcrumbsManagerResult {
       setError(null)
 
       try {
-        const result = await invoke<BatchUpdateResult>('baker_update_breadcrumbs', {
+        const result = await bakerUpdateBreadcrumbs(
           projectPaths,
-          createMissing: options.createMissing,
-          backupOriginals: options.backupOriginals
-        })
+          options.createMissing,
+          options.backupOriginals
+        )
 
         setLastUpdateResult(result)
         return result

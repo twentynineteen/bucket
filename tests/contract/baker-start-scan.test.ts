@@ -5,7 +5,7 @@
  * Uses mocked Tauri backend for testing the contract interface.
  */
 
-import type { ScanOptions } from '@/types/baker'
+import type { ScanOptions } from '@features/Baker'
 import { invoke } from '@tauri-apps/api/core'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { setupTauriMocks } from '../setup/tauri-mocks'

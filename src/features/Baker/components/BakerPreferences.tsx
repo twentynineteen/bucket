@@ -16,7 +16,7 @@ import {
 import { Settings } from 'lucide-react'
 import React from 'react'
 
-import type { ScanPreferences } from '@/types/baker'
+import type { ScanPreferences } from '../types'
 
 interface BakerPreferencesProps {
   preferences: ScanPreferences

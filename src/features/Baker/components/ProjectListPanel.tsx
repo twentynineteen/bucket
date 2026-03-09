@@ -17,7 +17,7 @@ import React from 'react'
 
 import { BAKER_ANIMATIONS } from '@shared/constants/animations'
 import { useReducedMotion } from '@shared/hooks'
-import type { ProjectFolder } from '@/types/baker'
+import type { ProjectFolder } from '../types'
 
 // Threshold for enabling virtual scrolling (performance optimization for large lists)
 const VIRTUAL_SCROLLING_THRESHOLD = 50

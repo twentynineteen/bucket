@@ -1,4 +1,3 @@
-// Target: @features/Baker
 /**
  * useBakerScan Hook
  *
@@ -6,18 +5,17 @@
  * Handles scan initiation, progress tracking, and cancellation.
  */
 
-import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
 import { useCallback, useEffect, useState } from 'react'
 
-import type {
-  ScanCompleteEvent,
-  ScanErrorEvent,
-  ScanOptions,
-  ScanProgressEvent,
-  ScanResult,
-  UseBakerScanResult
-} from '@/types/baker'
+import {
+  bakerCancelScan,
+  bakerStartScan,
+  listenScanComplete,
+  listenScanError,
+  listenScanProgress
+} from '../api'
+
+import type { ScanOptions, ScanResult, UseBakerScanResult } from '../types'
 
 export function useBakerScan(): UseBakerScanResult {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
@@ -31,7 +29,7 @@ export function useBakerScan(): UseBakerScanResult {
 
     // Progress event listener
     unlistenPromises.push(
-      listen<ScanProgressEvent>('baker_scan_progress', (event) => {
+      listenScanProgress((event) => {
         const progressData = event.payload
         if (currentScanId && progressData.scanId === currentScanId) {
           setScanResult((prev) =>
@@ -49,7 +47,7 @@ export function useBakerScan(): UseBakerScanResult {
 
     // Completion event listener
     unlistenPromises.push(
-      listen<ScanCompleteEvent>('baker_scan_complete', (event) => {
+      listenScanComplete((event) => {
         const completeData = event.payload
         if (currentScanId && completeData.scanId === currentScanId) {
           setScanResult(completeData.result)
@@ -61,7 +59,7 @@ export function useBakerScan(): UseBakerScanResult {
 
     // Error event listener
     unlistenPromises.push(
-      listen<ScanErrorEvent>('baker_scan_error', (event) => {
+      listenScanError((event) => {
         const errorData = event.payload
         if (currentScanId && errorData.scanId === currentScanId) {
           setError(errorData.error.message)
@@ -98,10 +96,7 @@ export function useBakerScan(): UseBakerScanResult {
         setIsScanning(true)
         setScanResult(null)
 
-        const scanId = await invoke<string>('baker_start_scan', {
-          rootPath,
-          options
-        })
+        const scanId = await bakerStartScan(rootPath, options)
 
         setCurrentScanId(scanId)
         // Note: Real-time updates are handled via event listeners (see useEffect above)
@@ -118,7 +113,7 @@ export function useBakerScan(): UseBakerScanResult {
   const cancelScan = useCallback(async () => {
     if (currentScanId) {
       try {
-        await invoke('baker_cancel_scan', { scanId: currentScanId })
+        await bakerCancelScan(currentScanId)
         setIsScanning(false)
         setCurrentScanId(null)
       } catch (cancelError) {

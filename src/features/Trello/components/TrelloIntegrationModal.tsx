@@ -11,7 +11,7 @@ import { appStore } from '@shared/store'
 import { open } from '@tauri-apps/plugin-shell'
 import TrelloCardList from '../internal/TrelloCardList'
 import { useFuzzySearch } from '@shared/hooks'
-import { useAppendBreadcrumbs } from '@hooks/useAppendBreadcrumbs'
+import { useAppendBreadcrumbs } from '@features/Baker'
 import { ExternalLink, Search } from 'lucide-react'
 import React, { useEffect, useMemo, useState } from 'react'
 

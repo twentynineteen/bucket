@@ -4,7 +4,7 @@
  * Extracted from BatchUpdateConfirmationDialog to reduce complexity (DEBT-002)
  */
 
-import type { BreadcrumbsPreview } from '@/types/baker'
+import type { BreadcrumbsPreview } from '../types'
 
 export interface BatchUpdateSummary {
   totalProjects: number

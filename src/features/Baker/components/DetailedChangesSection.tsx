@@ -8,7 +8,7 @@ import { cn } from '@components/lib/utils'
 import { ChevronRight, Edit, Info, Minus, Plus } from 'lucide-react'
 import React, { useState } from 'react'
 
-import type { BreadcrumbsPreview } from '@/types/baker'
+import type { BreadcrumbsPreview } from '../types'
 
 interface DetailedChangesSectionProps {
   previews: BreadcrumbsPreview[]

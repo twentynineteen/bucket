@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@shared/ui/dialog'
-import type { TrelloCard } from '@/types/baker'
+import type { TrelloCard } from '@features/Baker'
 
 interface TrelloCardUpdateDialogProps {
   open: boolean

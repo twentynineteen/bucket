@@ -1,4 +1,4 @@
-import type { BreadcrumbsFile, FileInfo } from '@/types/baker'
+import type { BreadcrumbsFile, FileInfo } from '@features/Baker'
 import {
   getErrorMessage,
   hasSchemaIssues,

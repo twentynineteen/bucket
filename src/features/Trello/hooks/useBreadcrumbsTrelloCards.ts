@@ -5,7 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import type { BreadcrumbsFile, TrelloCard } from '@/types/baker'
+import type { BreadcrumbsFile, TrelloCard } from '@features/Baker'
 
 import {
   bakerAssociateTrelloCard,

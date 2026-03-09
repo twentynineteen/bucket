@@ -3,7 +3,7 @@
  * Handles breadcrumbs operations including file I/O
  */
 
-import { useAppendBreadcrumbs } from '@/hooks/useAppendBreadcrumbs'
+import { useAppendBreadcrumbs } from '@features/Baker'
 import { useParsedTrelloDescription, useTrelloBreadcrumbs } from '@features/Trello'
 import { appStore } from '@shared/store'
 import type { TrelloCard } from '@features/Trello'
@@ -16,7 +16,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   writeTextFile: vi.fn()
 }))
 
-vi.mock('@/hooks/useAppendBreadcrumbs', () => ({
+vi.mock('@features/Baker', () => ({
   useAppendBreadcrumbs: vi.fn()
 }))
 

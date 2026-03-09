@@ -3,12 +3,12 @@
  * Feature: 004-embed-multiple-video
  */
 
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { ChevronDown, ChevronUp, ExternalLink, Trash2, Video } from 'lucide-react'
 import React from 'react'
 
 import { Button } from '@shared/ui/button'
-import type { VideoLink } from '@/types/baker'
+import { openExternalUrl } from '../api'
+import type { VideoLink } from '../types'
 import { logger } from '@shared/utils/logger'
 
 interface VideoLinkCardProps {
@@ -40,7 +40,7 @@ function VideoLinkCardComponent({
 
   const openInBrowser = async () => {
     try {
-      await openUrl(videoLink.url)
+      await openExternalUrl(videoLink.url)
     } catch (error) {
       logger.error('Failed to open video URL:', error)
     }

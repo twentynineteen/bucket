@@ -5,7 +5,7 @@
  * and providing graceful fallbacks for edge cases.
  */
 
-import type { BreadcrumbsFile, FileInfo } from '@/types/baker'
+import type { BreadcrumbsFile, FileInfo } from '@features/Baker'
 
 export interface ValidationError {
   field: string

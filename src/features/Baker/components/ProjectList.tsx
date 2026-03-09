@@ -9,7 +9,7 @@ import { Button } from '@shared/ui/button'
 import { AlertTriangle, Eye, RefreshCw } from 'lucide-react'
 import React from 'react'
 
-import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '@/types/baker'
+import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '../types'
 
 interface ProjectListProps {
   projects: ProjectFolder[]

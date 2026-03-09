@@ -5,24 +5,25 @@
  * Refactored to separate concerns into focused components and hooks.
  */
 
-import { BakerPreferences } from '@components/Baker/BakerPreferences'
-import { BatchActions } from '@components/Baker/BatchActions'
-import { FolderSelector } from '@components/Baker/FolderSelector'
-import { PreviewProgress } from '@components/Baker/PreviewProgress'
-import { ProjectDetailPanel } from '@components/Baker/ProjectDetailPanel'
-import { ProjectListPanel } from '@components/Baker/ProjectListPanel'
-import { ScanResults } from '@components/Baker/ScanResults'
-import { BatchUpdateConfirmationDialog } from '@components/BatchUpdateConfirmationDialog'
+import { BakerPreferences } from './components/BakerPreferences'
+import { BatchActions } from './components/BatchActions'
+import { FolderSelector } from './components/FolderSelector'
+import { PreviewProgress } from './components/PreviewProgress'
+import { ProjectDetailPanel } from './components/ProjectDetailPanel'
+import { ProjectListPanel } from './components/ProjectListPanel'
+import { ScanResults } from './components/ScanResults'
+import { BatchUpdateConfirmationDialog } from './components/BatchUpdateConfirmationDialog'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import { Button } from '@shared/ui/button'
-import { useBakerPreferences } from '@hooks/useBakerPreferences'
-import { useBakerScan } from '@hooks/useBakerScan'
+import { useBakerPreferences } from './hooks/useBakerPreferences'
+import { useBakerScan } from './hooks/useBakerScan'
 import { useBakerTrelloIntegration } from '@features/Trello'
 import { useBreadcrumb } from '@shared/hooks'
-import { useBreadcrumbsManager } from '@hooks/useBreadcrumbsManager'
-import { useBreadcrumbsPreview } from '@hooks/useBreadcrumbsPreview'
-import { useLiveBreadcrumbsReader } from '@hooks/useLiveBreadcrumbsReader'
+import { useBreadcrumbsManager } from './hooks/useBreadcrumbsManager'
+import { useBreadcrumbsPreview } from './hooks/useBreadcrumbsPreview'
+import { useLiveBreadcrumbsReader } from './hooks/useLiveBreadcrumbsReader'
 import { AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
 import React, { useCallback, useState } from 'react'
 
 import { useTrelloBoard } from '@features/Trello'
@@ -74,7 +75,7 @@ const BakerPageContent: React.FC = () => {
   // Event handlers - simplified to essential page-level coordination
   const handleStartScan = useCallback(async () => {
     if (!selectedFolder.trim()) {
-      alert('Please select a folder to scan')
+      toast.warning('Please select a folder to scan')
       return
     }
 
@@ -125,7 +126,7 @@ const BakerPageContent: React.FC = () => {
 
   const handleApplyChanges = useCallback(async () => {
     if (selectedProjects.length === 0) {
-      alert('Please select projects to update')
+      toast.warning('Please select projects to update')
       return
     }
 
@@ -161,10 +162,10 @@ const BakerPageContent: React.FC = () => {
         const errorMessage =
           `Breadcrumbs updated successfully, but ${trelloErrors.length} Trello card update(s) failed:\n\n` +
           trelloErrors.map(({ project, error }) => `• ${project}: ${error}`).join('\n')
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (error) {
-      alert(`Failed to update breadcrumbs: ${error}`)
+      toast.error(`Failed to update breadcrumbs: ${error}`)
       setShowBatchConfirmation(false)
     }
   }, [selectedProjects, preferences, updateBreadcrumbs, updateTrelloCards, clearPreviews])

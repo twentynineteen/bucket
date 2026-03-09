@@ -1,4 +1,3 @@
-// Target: @features/Baker
 /**
  * useLiveBreadcrumbsReader Hook
  *
@@ -6,10 +5,14 @@
  * instead of stale cached breadcrumbs data.
  */
 
-import { invoke } from '@tauri-apps/api/core'
 import { useCallback, useState } from 'react'
 
-import type { BreadcrumbsFile, FileInfo } from '@/types/baker'
+import {
+  bakerReadBreadcrumbs,
+  bakerReadRawBreadcrumbs,
+  bakerScanCurrentFiles
+} from '../api'
+import type { BreadcrumbsFile, FileInfo } from '../types'
 import { logger } from '@shared/utils/logger'
 
 // Constants
@@ -36,12 +39,7 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
       // Read existing breadcrumbs file for metadata
       let existingBreadcrumbs: BreadcrumbsFile | null = null
       try {
-        existingBreadcrumbs = await invoke<BreadcrumbsFile | null>(
-          'baker_read_breadcrumbs',
-          {
-            projectPath
-          }
-        )
+        existingBreadcrumbs = await bakerReadBreadcrumbs(projectPath)
       } catch (breadcrumbsError) {
         logger.warn(
           `Failed to read existing breadcrumbs for ${projectPath}:`,
@@ -53,9 +51,7 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
       // Get actual current files from file system
       let actualFiles: FileInfo[] = []
       try {
-        actualFiles = await invoke<FileInfo[]>('baker_scan_current_files', {
-          projectPath
-        })
+        actualFiles = await bakerScanCurrentFiles(projectPath)
       } catch (scanError) {
         logger.warn(
           `Failed to scan current files for ${projectPath}, using cached data:`,
@@ -94,17 +90,13 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
     } catch (err) {
       // Check if we have an invalid breadcrumbs file that we can show raw content for
       try {
-        const rawContent = await invoke<string | null>('baker_read_raw_breadcrumbs', {
-          projectPath
-        })
+        const rawContent = await bakerReadRawBreadcrumbs(projectPath)
 
         if (rawContent) {
           // We have a corrupted breadcrumbs file - try to get file system data as fallback
           let actualFiles: FileInfo[] = []
           try {
-            actualFiles = await invoke<FileInfo[]>('baker_scan_current_files', {
-              projectPath
-            })
+            actualFiles = await bakerScanCurrentFiles(projectPath)
           } catch {
             // Ignore file scan errors
           }

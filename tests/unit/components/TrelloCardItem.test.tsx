@@ -13,7 +13,7 @@
  * Total: 8 tests
  */
 
-import type { TrelloCard } from '@/types/baker'
+import type { TrelloCard } from '@features/Baker'
 import { logger } from '@shared/utils/logger'
 import { TrelloCardItem } from '@features/Trello'
 import { openUrl } from '@tauri-apps/plugin-opener'

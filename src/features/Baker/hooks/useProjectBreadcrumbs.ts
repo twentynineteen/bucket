@@ -1,4 +1,3 @@
-// Target: @features/Baker
 /**
  * useProjectBreadcrumbs Hook
  * Purpose: Handle breadcrumbs generation and storage
@@ -14,13 +13,12 @@
  */
 
 import { appStore } from '@shared/store'
-import { invoke } from '@tauri-apps/api/core'
-import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { Breadcrumb } from '@shared/types/types'
 
+import { getFolderSize, writeTextFileContents } from '../api'
 import { logger } from '@shared/utils/logger'
 
-import { FootageFile } from './useCameraAutoRemap'
+import { FootageFile } from '@hooks/useCameraAutoRemap'
 
 interface CreateBreadcrumbsParams {
   title: string
@@ -47,7 +45,7 @@ export function useProjectBreadcrumbs() {
    */
   const calculateFolderSize = async (folderPath: string): Promise<number | undefined> => {
     try {
-      const size = await invoke<number>('get_folder_size', { folderPath })
+      const size = await getFolderSize(folderPath)
       return size
     } catch (error) {
       logger.warn('Failed to calculate folder size:', error)
@@ -95,7 +93,7 @@ export function useProjectBreadcrumbs() {
   ): Promise<void> => {
     const filePath = `${projectFolder}/breadcrumbs.json`
     const content = JSON.stringify(breadcrumbs, null, 2)
-    await writeTextFile(filePath, content)
+    await writeTextFileContents(filePath, content)
   }
 
   /**

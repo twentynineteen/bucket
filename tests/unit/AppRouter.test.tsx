@@ -34,8 +34,8 @@ vi.mock('@features/Premiere', () => ({
   PremierePluginManager: () => <div>Premiere Plugin Manager</div>
 }))
 
-vi.mock('@pages/Baker/Baker', () => ({
-  default: () => <div>Baker</div>
+vi.mock('@features/Baker', () => ({
+  BakerPage: () => <div>Baker</div>
 }))
 
 vi.mock('@pages/BuildProject/BuildProject', () => ({
