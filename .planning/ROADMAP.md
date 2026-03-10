@@ -234,7 +234,7 @@ Plans:
   2. `ProgressTracker` and `UserFeedbackService` removed from `@shared/services` barrel (or confirmed needed)
   3. Contract test export counts updated to match reduced barrel surfaces
   4. Tests pass and dev server starts without errors after export removal
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 14-01-PLAN.md -- Remove 7 dead barrel exports, delete 3 unused source files, update contract tests
@@ -259,4 +259,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 11. Legacy & Stub Cleanup | 1/1 | Complete    | 2026-03-10 |
 | 12. Residual Cleanup & Navigation Fixes | 1/1 | Complete    | 2026-03-10 |
 | 13. Import Convention Alignment | 2/2 | Complete    | 2026-03-10 |
-| 14. Dead Export Removal | 0/1 | Planned | - |
+| 14. Dead Export Removal | 1/1 | Complete   | 2026-03-10 |

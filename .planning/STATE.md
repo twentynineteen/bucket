@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-03-10T20:04:10.516Z"
-last_activity: 2026-03-10 -- Completed plan 13-02 (Fix @shared/lib poisoned barrel)
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-03-10T20:35:29Z"
+last_activity: 2026-03-10 -- Completed plan 14-01 (Dead export removal)
 progress:
   total_phases: 14
-  completed_phases: 13
-  total_plans: 23
-  completed_plans: 23
+  completed_phases: 14
+  total_plans: 24
+  completed_plans: 24
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Every feature module has a simple public interface that fully describes its capabilities -- nothing reaches past the boundary, and contract tests lock down the behavior.
-**Current focus:** Phase 13: Import Convention Alignment (complete, both plans)
+**Current focus:** Phase 14: Dead Export Removal (complete)
 
 ## Current Position
 
-Phase: 13 of 13 (Import Convention Alignment)
-Plan: 2 of 2 in current phase
-Status: Phase 13 plan 02 complete -- all phases finished
-Last activity: 2026-03-10 -- Completed plan 13-02 (Fix @shared/lib poisoned barrel)
+Phase: 14 of 14 (Dead Export Removal)
+Plan: 1 of 1 in current phase
+Status: Phase 14 plan 01 complete -- all phases finished
+Last activity: 2026-03-10 -- Completed plan 14-01 (Dead export removal)
 
 Progress: [██████████] 100%
 
@@ -74,6 +74,7 @@ Progress: [██████████] 100%
 | Phase 12 P01 | 4 | 2 tasks | 9 files |
 | Phase 13 P01 | 12 | 2 tasks | 138 files |
 | Phase 13 P02 | 3 | 2 tasks | 3 files |
+| Phase 14 P01 | 4 | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,7 @@ Recent decisions affecting current work:
 - [13-01]: All @shared/utils/logger mocks must include createNamespacedLogger due to transitive barrel loading of breadcrumbs/debug.ts
 - [13-02]: Used @vite-ignore and variable-based module specifier for dynamic import() to prevent Vite static analysis from resolving Tauri plugin-store
 - [13-02]: Consolidated hooks contract test mocks from sub-path to barrel import pattern
+- [14-01]: Deleted stale unit test files for removed source files (usePremiereIntegration.test.tsx, ProgressTracker.test.ts, UserFeedbackService.test.ts)
 
 ### Pending Todos
 
@@ -164,6 +166,6 @@ None -- all todos resolved.
 
 ## Session Continuity
 
-Last session: 2026-03-10T19:59:00Z
-Stopped at: Completed 13-02-PLAN.md
-Resume file: .planning/phases/13-import-convention-alignment/13-02-SUMMARY.md
+Last session: 2026-03-10T20:35:29Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: .planning/phases/14-dead-export-removal/14-01-SUMMARY.md
