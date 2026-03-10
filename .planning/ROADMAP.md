@@ -204,10 +204,10 @@ Plans:
   3. `src/hooks/index.ts` has no broken re-exports (useAppendVideoInfo reference removed)
   4. `tests/unit/AppRouter.test.tsx` has no stale `vi.mock` for removed pages
   5. `ThemeImport.tsx` is either properly implemented or removed — no TODO placeholder remains
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- (none yet — run `/gsd:plan-phase 12`)
+- [ ] 12-01-PLAN.md — Migrate useWindowState, delete orphans, add sidebar entry, modernize test mocks
 
 ## Progress
 
