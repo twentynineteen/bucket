@@ -9,7 +9,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock the api layer (single mock point for all Premiere I/O)
@@ -74,54 +73,15 @@ describe('Premiere Barrel Exports - Shape', () => {
     expect(typeof premiereBarrel.PremierePluginManager).toBe('function')
   })
 
-  it('exports usePremiereIntegration as a function', () => {
-    expect(typeof premiereBarrel.usePremiereIntegration).toBe('function')
-  })
-
   it('exports exactly the expected named exports', () => {
     const exportNames = Object.keys(premiereBarrel)
     expect(exportNames.sort()).toEqual([
-      'PremierePluginManager',
-      'usePremiereIntegration'
+      'PremierePluginManager'
     ])
   })
-})
 
-// --- Behavioral Tests ---
-
-describe('usePremiereIntegration - Behavior', () => {
-  it('returns copyPremiereTemplate function', () => {
-    const { result } = renderHook(() => premiereBarrel.usePremiereIntegration())
-    expect(typeof result.current.copyPremiereTemplate).toBe('function')
-  })
-
-  it('returns showCompletionDialog function', () => {
-    const { result } = renderHook(() => premiereBarrel.usePremiereIntegration())
-    expect(typeof result.current.showCompletionDialog).toBe('function')
-  })
-
-  it('returns handlePostCompletion function', () => {
-    const { result } = renderHook(() => premiereBarrel.usePremiereIntegration())
-    expect(typeof result.current.handlePostCompletion).toBe('function')
-  })
-
-  it('calls copyPremiereProject via api layer', async () => {
-    const { copyPremiereProject } = await import('../api')
-    const { result } = renderHook(() => premiereBarrel.usePremiereIntegration())
-
-    const setLoading = vi.fn()
-    const setMessage = vi.fn()
-
-    await result.current.copyPremiereTemplate({
-      projectFolder: '/test',
-      projectTitle: 'Test Project',
-      setLoading,
-      setMessage
-    })
-
-    expect(copyPremiereProject).toHaveBeenCalledWith('/test/Projects/', 'Test Project')
-    expect(setLoading).toHaveBeenCalledWith(true)
-    expect(setLoading).toHaveBeenCalledWith(false)
+  it('exports exactly 1 member', () => {
+    expect(Object.keys(premiereBarrel)).toHaveLength(1)
   })
 })
 

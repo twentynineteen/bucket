@@ -209,9 +209,7 @@ describe('Trello Barrel Exports - Shape', () => {
     'useParsedTrelloDescription',
     'useBakerTrelloIntegration',
     'useVideoLinksManager',
-    'useBreadcrumbsTrelloCards',
-    // Factory functions
-    'createDefaultSproutUploadResponse'
+    'useBreadcrumbsTrelloCards'
   ].sort()
 
   it('exports exactly the expected named exports (no more, no fewer)', () => {
@@ -219,8 +217,8 @@ describe('Trello Barrel Exports - Shape', () => {
     expect(exportNames).toEqual(expectedExports)
   })
 
-  it('exports exactly 26 members', () => {
-    expect(Object.keys(trelloBarrel)).toHaveLength(26)
+  it('exports exactly 25 members', () => {
+    expect(Object.keys(trelloBarrel)).toHaveLength(25)
   })
 
   // Component shape checks
@@ -267,10 +265,6 @@ describe('Trello Barrel Exports - Shape', () => {
       expect(typeof trelloBarrel[name]).toBe('function')
     })
   }
-
-  it('exports createDefaultSproutUploadResponse as a function', () => {
-    expect(typeof trelloBarrel.createDefaultSproutUploadResponse).toBe('function')
-  })
 
   it('does NOT export internal modules (TrelloCards, trelloBoardValidation)', () => {
     const exportNames = Object.keys(trelloBarrel)
@@ -355,16 +349,6 @@ describe('useVideoLinksManager - Behavior', () => {
     // Computed
     expect(result.current).toHaveProperty('hasApiKey')
     expect(result.current).toHaveProperty('canAddVideo')
-  })
-})
-
-describe('createDefaultSproutUploadResponse - Behavior', () => {
-  it('returns object with expected default fields', () => {
-    const result = trelloBarrel.createDefaultSproutUploadResponse()
-
-    expect(result).toHaveProperty('id')
-    expect(result).toHaveProperty('title')
-    expect(result).toHaveProperty('state')
   })
 })
 
