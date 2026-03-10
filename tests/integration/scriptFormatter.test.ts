@@ -16,7 +16,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 // Will fail during RED phase - components not implemented yet
-// import { ScriptFormatter } from '@pages/AI/ScriptFormatter/ScriptFormatter'
+// import { ScriptFormatter } from '@features/AITools'
 
 describe('Script Formatter - Full Workflow Integration (T030)', () => {
   beforeAll(async () => {

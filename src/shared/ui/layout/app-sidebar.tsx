@@ -81,6 +81,10 @@ const data = {
         {
           title: 'Trello',
           url: '/upload/trello'
+        },
+        {
+          title: 'Transcription',
+          url: '/upload/otter'
         }
       ]
     },

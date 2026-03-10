@@ -17,12 +17,9 @@ vi.mock('../../src/app/dashboard/page', () => ({
   default: () => <div data-testid="page-layout">Page Layout</div>
 }))
 
-vi.mock('@pages/AI/ExampleEmbeddings/ExampleEmbeddings', () => ({
-  ExampleEmbeddings: () => <div>Example Embeddings</div>
-}))
-
-vi.mock('@pages/AI/ScriptFormatter/ScriptFormatter', () => ({
-  default: () => <div>Script Formatter</div>
+vi.mock('@features/AITools', () => ({
+  ExampleEmbeddings: () => <div>Example Embeddings</div>,
+  ScriptFormatter: () => <div>Script Formatter</div>
 }))
 
 vi.mock('@features/Auth', () => ({
@@ -38,32 +35,18 @@ vi.mock('@features/Baker', () => ({
   BakerPage: () => <div>Baker</div>
 }))
 
-vi.mock('@pages/BuildProject/BuildProject', () => ({
-  default: () => <div data-testid="build-project">Build Project</div>
+vi.mock('@features/BuildProject', () => ({
+  BuildProjectPage: () => <div data-testid="build-project">Build Project</div>
 }))
 
-vi.mock('@pages/ConnectedApps', () => ({
-  default: () => <div>Connected Apps</div>
+vi.mock('@features/Upload', () => ({
+  Posterframe: () => <div>Posterframe</div>,
+  UploadOtter: () => <div>Upload Otter</div>,
+  UploadSprout: () => <div>Upload Sprout</div>
 }))
 
-vi.mock('@pages/IngestHistory', () => ({
-  default: () => <div>Ingest History</div>
-}))
-
-vi.mock('@pages/Posterframe', () => ({
-  default: () => <div>Posterframe</div>
-}))
-
-vi.mock('@pages/Settings', () => ({
-  default: () => <div>Settings</div>
-}))
-
-vi.mock('@pages/UploadOtter', () => ({
-  default: () => <div>Upload Otter</div>
-}))
-
-vi.mock('@pages/UploadSprout', () => ({
-  default: () => <div>Upload Sprout</div>
+vi.mock('@features/Settings', () => ({
+  Settings: () => <div>Settings</div>
 }))
 
 vi.mock('@features/Trello', () => ({
