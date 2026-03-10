@@ -12,7 +12,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import type { TrelloBoard } from '@shared/types'
 import type { TrelloCard, TrelloList, TrelloMember } from './types'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 // --- Tauri Commands ---
 

@@ -1,9 +1,9 @@
 import { appStore } from '@shared/store'
-import { SproutUploadResponse } from '@shared/types/types'
+import { SproutUploadResponse } from '@shared/types'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import {
   listenUploadComplete,

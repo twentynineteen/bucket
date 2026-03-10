@@ -7,7 +7,7 @@
 
 import { createAIModel, searchSimilarScripts } from '../../api'
 import { buildRAGPrompt } from '../../internal/aiPrompts'
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 import { streamText } from 'ai'
 import { useRef, useState } from 'react'
 

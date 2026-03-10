@@ -5,11 +5,11 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { CACHE } from '@shared/constants/timing'
-import { queryKeys } from '@shared/lib/query-keys'
+import { CACHE } from '@shared/constants'
+import { queryKeys } from '@shared/lib'
 import { useAppStore } from '@shared/store'
-import { TrelloBoard } from '@shared/types/media'
-import { loadApiKeys, saveApiKeys } from '@shared/utils/storage'
+import { TrelloBoard } from '@shared/types'
+import { loadApiKeys, saveApiKeys } from '@shared/utils'
 import { validateBoardAccess } from '../internal/trelloBoardValidation'
 
 // Default board ID (original hardcoded value)

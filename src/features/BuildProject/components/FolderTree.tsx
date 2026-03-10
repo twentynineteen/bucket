@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import { openFolderDialog } from '../api'
 

@@ -1,8 +1,8 @@
-import { CACHE, getBackoffDelay, RETRY, SECONDS } from '@shared/constants/timing'
+import { CACHE, getBackoffDelay, RETRY, SECONDS } from '@shared/constants'
 import { QueryClient } from '@tanstack/react-query'
 import { persistQueryClient } from '@tanstack/react-query-persist-client'
 import { del, get, set } from '@tauri-apps/plugin-store'
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 
 const logger = createNamespacedLogger('QueryClient')
 

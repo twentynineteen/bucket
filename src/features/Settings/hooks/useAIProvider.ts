@@ -8,11 +8,7 @@ import { getDefaultConfig, providerRegistry } from '@shared/services/ai/provider
 import { useAppStore } from '@shared/store'
 import { useState } from 'react'
 
-import {
-  STORAGE_KEYS,
-  type AIProvider,
-  type ProviderConfiguration
-} from '@shared/types/scriptFormatter'
+import { STORAGE_KEYS, type AIProvider, type ProviderConfiguration } from '@shared/types'
 
 import { validateAIConnection } from '../api'
 

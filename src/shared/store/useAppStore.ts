@@ -1,4 +1,4 @@
-import { Breadcrumb, SproutUploadResponse } from '@shared/types/types'
+import { Breadcrumb, SproutUploadResponse } from '@shared/types'
 import { create } from 'zustand'
 
 // Global state definition

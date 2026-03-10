@@ -6,8 +6,8 @@
  */
 
 import { useMutation } from '@tanstack/react-query'
-import { createNamespacedLogger } from '@shared/utils/logger'
-import type { SproutUploadResponse } from '@shared/types/types'
+import { createNamespacedLogger } from '@shared/utils'
+import type { SproutUploadResponse } from '@shared/types'
 import { useEffect, useRef } from 'react'
 
 import type { VideoLink } from '@features/Baker'

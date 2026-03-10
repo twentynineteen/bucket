@@ -2,9 +2,9 @@
 
 import type { BuildProjectEvent } from '../types'
 import { appStore } from '@shared/store'
-import { Breadcrumb } from '@shared/types/types'
+import { Breadcrumb } from '@shared/types'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import type { FootageFile } from '../types'
 import {

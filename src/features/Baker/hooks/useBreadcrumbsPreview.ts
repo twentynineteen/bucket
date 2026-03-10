@@ -12,14 +12,14 @@
 
 import {
   compareBreadcrumbsMeaningful,
-  generateBreadcrumbsPreview
-} from '@shared/utils/breadcrumbs'
+  generateBreadcrumbsPreview,
+  logger
+} from '@shared/utils'
 import pLimit from 'p-limit'
 import { useCallback, useMemo, useState } from 'react'
 
 import { bakerReadBreadcrumbs, bakerScanCurrentFiles, getFolderSize } from '../api'
 import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '../types'
-import { logger } from '@shared/utils/logger'
 
 // Concurrency limit for batch operations to prevent system overload
 const CONCURRENCY_LIMIT = 5

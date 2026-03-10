@@ -1,4 +1,4 @@
-import { SproutUploadResponse } from '@shared/types/types'
+import { SproutUploadResponse } from '@shared/types'
 import React from 'react'
 
 interface Props {

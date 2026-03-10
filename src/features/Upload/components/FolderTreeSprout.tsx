@@ -1,8 +1,8 @@
 // FolderTreeSprout.tsx
-import { GetFoldersResponse, SproutFolder } from '@shared/types/types'
+import { GetFoldersResponse, SproutFolder } from '@shared/types'
 import React, { useState } from 'react'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import { getFolders } from '../api'
 

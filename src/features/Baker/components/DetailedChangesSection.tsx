@@ -4,7 +4,7 @@
  * Refactored: 2025-11-18 - Flattened nesting from 6 levels to 2 levels
  */
 
-import { cn } from '@shared/utils/cn'
+import { cn } from '@shared/utils'
 import { ChevronRight, Edit, Info, Minus, Plus } from 'lucide-react'
 import React, { useState } from 'react'
 

@@ -264,8 +264,7 @@ describe('AITools Module - No Direct Plugin Imports', () => {
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name)
       if (entry.isDirectory()) {
-        if (entry.name === '__contracts__' || entry.name === 'node_modules')
-          continue
+        if (entry.name === '__contracts__' || entry.name === 'node_modules') continue
         files.push(...getFilesRecursive(fullPath, extensions))
       } else if (extensions.some((ext) => entry.name.endsWith(ext))) {
         files.push(fullPath)
@@ -280,9 +279,7 @@ describe('AITools Module - No Direct Plugin Imports', () => {
     for (const file of nonApiFiles) {
       const content = fs.readFileSync(file, 'utf-8')
       const lines = content.split('\n')
-      const tauriImports = lines.filter((line) =>
-        line.includes("from '@tauri-apps")
-      )
+      const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
       expect(tauriImports).toEqual([])
     }
   })

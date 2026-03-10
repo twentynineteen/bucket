@@ -6,9 +6,8 @@
 import { Button } from '@shared/ui/button'
 import { useAppStore } from '@shared/store'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { queryKeys } from '@shared/lib/query-keys'
-import { createQueryError } from '@shared/lib/query-utils'
-import { logger } from '@shared/utils/logger'
+import { queryKeys, createQueryError } from '@shared/lib'
+import { logger } from '@shared/utils'
 import React from 'react'
 
 import { openFolderPicker, saveSettingsApiKeys } from '../api'

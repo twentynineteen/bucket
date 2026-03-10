@@ -4,7 +4,7 @@
  */
 
 import { appStore } from '@shared/store'
-import { SproutUploadResponse } from '@shared/types/types'
+import { SproutUploadResponse } from '@shared/types'
 import { useMemo, useState } from 'react'
 
 import { useFuzzySearch } from '@shared/hooks'
@@ -12,7 +12,7 @@ import { useAppendBreadcrumbs } from '@features/Baker'
 import { useAppendVideoInfo } from './useAppendVideoInfo'
 import { useVideoInfoBlock } from '@features/BuildProject'
 import { openExternalUrl } from '../api'
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 import { toast } from 'sonner'
 
 import { writeBreadcrumbsFile } from '../api'

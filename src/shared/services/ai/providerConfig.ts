@@ -6,9 +6,9 @@
  */
 
 // import { createOpenAI } from '@ai-sdk/openai' // Commented out for Phase 1
-import { SECONDS, TIMEOUTS } from '@shared/constants/timing'
-import type { ProviderConfiguration } from '@shared/types/scriptFormatter'
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { SECONDS, TIMEOUTS } from '@shared/constants'
+import type { ProviderConfiguration } from '@shared/types'
+import { createNamespacedLogger } from '@shared/utils'
 import type { LanguageModel } from 'ai'
 import { createOllama } from 'ollama-ai-provider-v2'
 

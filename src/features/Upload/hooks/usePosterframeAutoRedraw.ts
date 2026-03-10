@@ -1,12 +1,7 @@
-import { CACHE } from '@shared/constants/timing'
-import { queryKeys } from '@shared/lib/query-keys'
-import {
-  createQueryError,
-  createQueryOptions,
-  shouldRetry
-} from '@shared/lib/query-utils'
+import { CACHE } from '@shared/constants'
+import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
-import { debounce } from '@shared/utils/debounce'
+import { debounce } from '@shared/utils'
 import { useEffect, useMemo, useRef } from 'react'
 
 interface AutoRedrawProps {

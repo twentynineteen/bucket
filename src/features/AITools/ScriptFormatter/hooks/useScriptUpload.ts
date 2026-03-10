@@ -9,10 +9,10 @@
  * - Transition callbacks
  */
 
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 import { useCallback, useState } from 'react'
 
-import type { ScriptDocument } from '@shared/types/scriptFormatter'
+import type { ScriptDocument } from '@shared/types'
 
 import { useDocxParser } from './useDocxParser'
 

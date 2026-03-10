@@ -1,15 +1,8 @@
-import { CACHE } from '@shared/constants/timing'
-import { queryKeys } from '@shared/lib/query-keys'
-import {
-  createQueryError,
-  createQueryOptions,
-  shouldRetry
-} from '@shared/lib/query-utils'
+import { CACHE } from '@shared/constants'
+import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
-import { loadApiKeys } from '@shared/utils/storage'
+import { loadApiKeys, logger } from '@shared/utils'
 import { useMemo } from 'react'
-
-import { logger } from '@shared/utils/logger'
 
 import { fetchBoardCards, fetchBoardLists } from '../api'
 import { groupCardsByList } from '../internal/TrelloCards'

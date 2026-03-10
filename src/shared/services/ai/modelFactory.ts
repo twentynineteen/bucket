@@ -6,7 +6,7 @@
 
 import type { LanguageModel } from 'ai'
 
-import type { ProviderConfiguration } from '@shared/types/scriptFormatter'
+import type { ProviderConfiguration } from '@shared/types'
 
 import { providerRegistry } from './providerConfig'
 import type { ModelCreationOptions } from './types'

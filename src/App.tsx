@@ -9,13 +9,12 @@ import { ChunkErrorBoundary } from './shared/ui/layout/ChunkErrorBoundary'
 import { QueryErrorBoundary } from './shared/ui/layout/ErrorBoundary'
 import { RouteLoadingSpinner } from './shared/ui/layout/RouteLoadingSpinner'
 import { TitleBar } from './shared/ui/layout/TitleBar'
-import { CACHE, getBackoffDelay, RETRY } from '@shared/constants/timing'
+import { CACHE, getBackoffDelay, RETRY } from '@shared/constants'
 import { AuthProvider } from '@features/Auth'
 import { useWindowState } from '@shared/hooks/useWindowState'
-import { initializePerformanceMonitor } from '@shared/lib/performance-monitor'
-import { initializePrefetchManager } from '@shared/lib/prefetch-strategies'
+import { initializePerformanceMonitor, initializePrefetchManager } from '@shared/lib'
 import { initializeCacheService } from '@shared/services'
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 // The app component acts as the main routing generator for the application.
 // AppRouter wraps the app routes to make use of the useLocation method within react-router-dom

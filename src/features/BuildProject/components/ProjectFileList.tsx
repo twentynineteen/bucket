@@ -1,6 +1,6 @@
 // components/BuildProject/ProjectFileList.tsx
 
-import { FILE_LIST_ANIMATION } from '@shared/constants/animations'
+import { FILE_LIST_ANIMATION } from '@shared/constants'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Film, Trash2, Video } from 'lucide-react'
 import React from 'react'

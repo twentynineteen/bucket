@@ -1,5 +1,5 @@
 import { Button } from '@shared/ui/button'
-import { STEP_CARD_ANIMATION } from '@shared/constants/animations'
+import { STEP_CARD_ANIMATION } from '@shared/constants'
 import { FolderPlus } from 'lucide-react'
 
 interface CreateProjectStepProps {

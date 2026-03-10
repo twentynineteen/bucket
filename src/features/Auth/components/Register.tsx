@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 const registerSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),

@@ -6,12 +6,16 @@
  */
 
 // Import and re-export media types for convenience
-import type { TrelloCard, VideoLink } from '@shared/types/media'
+import type {
+  TrelloCard,
+  VideoLink,
+  BreadcrumbsFile,
+  BreadcrumbsPreview
+} from '@shared/types'
 
 export type { VideoLink, TrelloCard }
 
 // Import breadcrumbs types for local use (BreadcrumbsViewerProps)
-import type { BreadcrumbsFile, BreadcrumbsPreview } from '@shared/types/breadcrumbs'
 
 // Re-export breadcrumbs domain types from shared (canonical source)
 export type {
@@ -23,7 +27,7 @@ export type {
   DetailedFieldChange,
   ProjectChangeDetail,
   BreadcrumbsPreview
-} from '@shared/types/breadcrumbs'
+} from '@shared/types'
 
 export interface ProjectFolder {
   path: string

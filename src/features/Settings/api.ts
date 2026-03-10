@@ -8,12 +8,12 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { open as openShell } from '@tauri-apps/plugin-shell'
 
 import { providerRegistry } from '@shared/services/ai/providerConfig'
-import { loadApiKeys, saveApiKeys } from '@shared/utils/storage'
+import { loadApiKeys, saveApiKeys } from '@shared/utils'
 
-import type { ProviderConfiguration } from '@shared/types/scriptFormatter'
+import type { ProviderConfiguration } from '@shared/types'
 
 // Re-export type for consumers
-export type { ApiKeys } from '@shared/utils/storage'
+export type { ApiKeys } from '@shared/utils'
 
 // --- Dialog ---
 

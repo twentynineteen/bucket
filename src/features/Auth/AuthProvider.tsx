@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import { AuthContext } from './AuthContext'
 import { addToken, clearStoredCredentials, setStoredCredentials } from './api'

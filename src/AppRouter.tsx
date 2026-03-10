@@ -9,7 +9,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 // subsequent components are loaded within the page window via the Outlet component.
 
 import Page from './app/dashboard/page'
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 
 // Lazy-loaded route components -- each produces a separate chunk for
 // smaller initial bundle and faster startup.

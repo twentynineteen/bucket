@@ -4,7 +4,7 @@
  */
 
 import { openExternalUrl } from '../api'
-import { formatBreadcrumbDateSimple } from '@shared/utils/breadcrumbs'
+import { formatBreadcrumbDateSimple } from '@shared/utils'
 import {
   Calendar,
   Camera,

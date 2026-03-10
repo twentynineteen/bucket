@@ -7,7 +7,7 @@ import { appStore } from '@shared/store'
 import type { TrelloCard } from '../types'
 import { useCallback } from 'react'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 import { toast } from 'sonner'
 
 import { writeBreadcrumbsFile } from '../api'

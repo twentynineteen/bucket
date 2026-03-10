@@ -4,7 +4,7 @@
  * Purpose: Generate embeddings using Ollama's nomic-embed-text model
  */
 
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 
 import { checkOllamaModels, generateOllamaEmbedding } from '../../api'
 import { useEffect, useState } from 'react'

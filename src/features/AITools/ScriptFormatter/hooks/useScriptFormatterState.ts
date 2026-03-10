@@ -8,10 +8,10 @@
  * - Additional feature: Save formatted text as example for RAG
  */
 
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 import { useCallback, useState } from 'react'
 
-import { ExampleCategory } from '@shared/types/exampleEmbeddings'
+import { ExampleCategory } from '@shared/types'
 
 import { useExampleManagement } from '../../ExampleEmbeddings/hooks/useExampleManagement'
 import { useScriptWorkflow } from './useScriptWorkflow'
@@ -19,7 +19,7 @@ import { useScriptWorkflow } from './useScriptWorkflow'
 const log = createNamespacedLogger('ScriptFormatterState')
 
 // Re-export WorkflowStep type for backward compatibility
-export type { WorkflowStep } from '@shared/types/scriptFormatter'
+export type { WorkflowStep } from '@shared/types'
 
 export function useScriptFormatterState() {
   // Use the new orchestration hook

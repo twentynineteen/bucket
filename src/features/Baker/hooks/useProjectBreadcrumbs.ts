@@ -13,10 +13,10 @@
  */
 
 import { appStore } from '@shared/store'
-import { Breadcrumb } from '@shared/types/types'
+import { Breadcrumb } from '@shared/types'
 
 import { getFolderSize, writeTextFileContents } from '../api'
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import { type FootageFile } from '@features/BuildProject'
 

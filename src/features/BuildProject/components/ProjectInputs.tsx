@@ -1,4 +1,4 @@
-import { PROJECT_LIMITS } from '@shared/constants/project'
+import { PROJECT_LIMITS } from '@shared/constants'
 import { AlertCircle, Camera, FileText } from 'lucide-react'
 import React from 'react'
 

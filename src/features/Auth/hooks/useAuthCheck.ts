@@ -1,7 +1,7 @@
-import { CACHE } from '@shared/constants/timing'
+import { CACHE } from '@shared/constants'
 import { useQuery } from '@tanstack/react-query'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import {
   checkAuth,

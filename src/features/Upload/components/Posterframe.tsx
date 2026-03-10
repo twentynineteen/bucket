@@ -35,7 +35,7 @@ import {
 import React, { useRef, useState } from 'react'
 import { toast } from 'sonner'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 const PosterframeContent: React.FC = () => {
   const [videoTitle, setVideoTitle] = useState('')

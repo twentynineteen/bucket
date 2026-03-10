@@ -5,7 +5,7 @@ import App from './App'
 
 import './index.css'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 const rootElement = document.getElementById('root')
 

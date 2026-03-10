@@ -15,12 +15,7 @@ export type {
   UploadError,
   DeleteError,
   ReplaceError,
-  FileValidation
-} from '@shared/types/exampleEmbeddings'
-export { ExampleCategory } from '@shared/types/exampleEmbeddings'
-
-// Re-export relevant types from scriptFormatter
-export type {
+  FileValidation,
   ProviderConfiguration,
   ProcessedOutput,
   AIProvider,
@@ -28,7 +23,10 @@ export type {
   ScriptDocument,
   FormattingMetadata,
   WorkflowStep
-} from '@shared/types/scriptFormatter'
+} from '@shared/types'
+export { ExampleCategory } from '@shared/types'
+
+// Re-export relevant types from scriptFormatter
 
 /**
  * Similar example returned from vector search

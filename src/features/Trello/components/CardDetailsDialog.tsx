@@ -16,7 +16,7 @@ import { appStore } from '@shared/store'
 import CardDetailsAccordion from '../internal/CardDetailsAccordion'
 import TooltipPreview from '../internal/TooltipPreview'
 import VideoInfoTooltip from '../internal/VideoInfoTooltip'
-import { Breadcrumb, SproutUploadResponse } from '@shared/types/types'
+import { Breadcrumb, SproutUploadResponse } from '@shared/types'
 import { ExternalLink } from 'lucide-react'
 import React from 'react'
 

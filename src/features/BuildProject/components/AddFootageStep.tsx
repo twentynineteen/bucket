@@ -1,5 +1,5 @@
 import { Button } from '@shared/ui/button'
-import { STEP_CARD_ANIMATION } from '@shared/constants/animations'
+import { STEP_CARD_ANIMATION } from '@shared/constants'
 import { RefreshCw, Upload } from 'lucide-react'
 
 import type { FootageFile } from '../types'

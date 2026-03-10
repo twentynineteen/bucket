@@ -4,11 +4,10 @@
  * Extracted to reduce component complexity (DEBT-002)
  */
 
-import { validateVideoLink } from '@shared/utils/validation'
+import { validateVideoLink, logger } from '@shared/utils'
 import { useState } from 'react'
 
 import type { BreadcrumbsFile, VideoLink } from '@features/Baker'
-import { logger } from '@shared/utils/logger'
 
 import { useSproutVideoApiKey, useTrelloApiKeys } from '@shared/hooks'
 import {

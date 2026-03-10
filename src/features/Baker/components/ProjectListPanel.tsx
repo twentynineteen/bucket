@@ -15,7 +15,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { motion } from 'framer-motion'
 import React from 'react'
 
-import { BAKER_ANIMATIONS } from '@shared/constants/animations'
+import { BAKER_ANIMATIONS } from '@shared/constants'
 import { useReducedMotion } from '@shared/hooks'
 import type { ProjectFolder } from '../types'
 

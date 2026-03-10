@@ -11,7 +11,7 @@ import {
 } from '@shared/ui/accordion'
 import React, { useState } from 'react'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 import type { TrelloCard } from '../types'
 
 interface TrelloCardListProps {

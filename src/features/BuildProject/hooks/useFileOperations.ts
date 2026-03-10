@@ -3,7 +3,7 @@
  * Purpose: Handle file moving operations with progress tracking
  */
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import type { FootageFile } from '../types'
 import { moveFiles as apiMoveFiles, listenCopyComplete } from '../api'

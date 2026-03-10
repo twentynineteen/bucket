@@ -13,7 +13,7 @@ import {
   bakerScanCurrentFiles
 } from '../api'
 import type { BreadcrumbsFile, FileInfo } from '../types'
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 // Constants
 const RAW_CONTENT_PREVIEW_LIMIT = 200

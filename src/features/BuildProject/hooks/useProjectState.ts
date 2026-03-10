@@ -1,5 +1,5 @@
-import { PROJECT_LIMITS } from '@shared/constants/project'
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { PROJECT_LIMITS } from '@shared/constants'
+import { createNamespacedLogger } from '@shared/utils'
 import { useCallback, useMemo, useState } from 'react'
 
 import type { FootageFile } from '../types'

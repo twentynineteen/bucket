@@ -9,7 +9,7 @@ import React from 'react'
 import { Button } from '@shared/ui/button'
 import { openExternalUrl } from '../api'
 import type { VideoLink } from '../types'
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 interface VideoLinkCardProps {
   videoLink: VideoLink

@@ -5,7 +5,7 @@
  * Part of master-detail layout pattern.
  */
 
-import { formatBreadcrumbDateSimple } from '@shared/utils/breadcrumbs'
+import { formatBreadcrumbDateSimple } from '@shared/utils'
 import {
   AlertTriangle,
   Calendar,

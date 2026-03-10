@@ -3,7 +3,7 @@
 import type { BuildProjectEvent } from '../types'
 import { useEffect, useRef } from 'react'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 import { copyPremiereProject, showConfirmationDialog } from '../api'
 
 interface UsePostProjectCompletionOptions {

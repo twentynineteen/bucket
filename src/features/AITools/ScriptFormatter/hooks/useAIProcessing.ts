@@ -10,13 +10,10 @@
  * - Processing error handling and cancellation
  */
 
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 import { useCallback, useEffect, useState } from 'react'
 
-import type {
-  ProcessedOutput,
-  ProviderConfiguration
-} from '@shared/types/scriptFormatter'
+import type { ProcessedOutput, ProviderConfiguration } from '@shared/types'
 
 import { useAIModels } from './useAIModels'
 import { useAIProvider } from '@features/Settings'

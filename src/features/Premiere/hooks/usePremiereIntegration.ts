@@ -12,7 +12,7 @@
  * Lines: ~70
  */
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import { copyPremiereProject, showConfirmationDialog } from '../api'
 import type { DialogParams, PremiereParams } from '../types'

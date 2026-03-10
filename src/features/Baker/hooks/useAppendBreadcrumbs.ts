@@ -1,7 +1,7 @@
 import { appStore } from '@shared/store'
 import { useQueryClient } from '@tanstack/react-query'
 import type { TrelloCard as LegacyTrelloCard } from '@features/Trello'
-import type { Breadcrumb } from '@shared/types/types'
+import type { Breadcrumb } from '@shared/types'
 
 import {
   addTrelloCardComment,
@@ -11,7 +11,7 @@ import {
   readTextFileContents,
   updateTrelloCardDesc
 } from '../api'
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 function formatBreadcrumbsForHumans(breadcrumbs: Breadcrumb): string {
   const lines = ['PROJECT DETAILS', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━']

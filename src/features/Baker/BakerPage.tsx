@@ -27,7 +27,7 @@ import { toast } from 'sonner'
 import React, { useCallback, useState } from 'react'
 
 import { useTrelloBoard } from '@features/Trello'
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 const BakerPageContent: React.FC = () => {
   // Set breadcrumbs for navigation

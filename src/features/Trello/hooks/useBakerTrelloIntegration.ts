@@ -7,7 +7,7 @@
 
 import { useCallback } from 'react'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import { readBreadcrumbsFile } from '../api'
 

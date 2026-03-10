@@ -10,7 +10,7 @@ import { FolderOpen, Play, RefreshCw, Square } from 'lucide-react'
 import React, { useCallback } from 'react'
 
 import { openFolderDialog } from '../api'
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 interface FolderSelectorProps {
   selectedFolder: string

@@ -15,7 +15,7 @@ import { useAppendBreadcrumbs } from '@features/Baker'
 import { ExternalLink, Search } from 'lucide-react'
 import React, { useEffect, useMemo, useState } from 'react'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 import { writeBreadcrumbsFile } from '../api'
 import type { TrelloCard } from '../types'

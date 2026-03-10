@@ -3,8 +3,8 @@
  * Provides interactive user feedback and notifications during updates
  */
 
-import { TIMEOUTS } from '@shared/constants/timing'
-import { logger } from '@shared/utils/logger'
+import { TIMEOUTS } from '@shared/constants'
+import { logger } from '@shared/utils'
 
 import { ProgressTracker, ProgressUpdate } from './ProgressTracker'
 

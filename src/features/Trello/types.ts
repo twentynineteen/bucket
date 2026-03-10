@@ -6,7 +6,7 @@
  * - src/pages/UploadTrello/UploadTrelloTypes.ts (SelectedCard, UploadTrelloState)
  */
 
-import { SproutUploadResponse } from '@shared/types/types'
+import { SproutUploadResponse } from '@shared/types'
 
 // --- From TrelloCards.tsx ---
 

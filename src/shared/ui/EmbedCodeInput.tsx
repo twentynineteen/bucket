@@ -1,7 +1,7 @@
 import { Button } from '@shared/ui/button'
 import React, { useState } from 'react'
 
-import { logger } from '@shared/utils/logger'
+import { logger } from '@shared/utils'
 
 interface EmbedCodeInputProps {
   embedCode: string

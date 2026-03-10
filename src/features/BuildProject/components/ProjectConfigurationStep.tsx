@@ -1,4 +1,4 @@
-import { STEP_CARD_ANIMATION } from '@shared/constants/animations'
+import { STEP_CARD_ANIMATION } from '@shared/constants'
 
 import FolderSelector from './FolderSelector'
 import ProjectInputs from './ProjectInputs'

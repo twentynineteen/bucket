@@ -6,7 +6,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { searchSimilarScripts } from '../../api'
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 
 import type { SimilarExample } from '../../types'
 

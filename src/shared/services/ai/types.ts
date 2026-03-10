@@ -4,7 +4,7 @@
  * Purpose: Provider-agnostic architecture for multiple AI services
  */
 
-import type { ProviderConfiguration, ProviderType } from '@shared/types/scriptFormatter'
+import type { ProviderConfiguration, ProviderType } from '@shared/types'
 import type { LanguageModel } from 'ai'
 
 // ============================================================================

@@ -4,12 +4,11 @@
  * Extracted to reduce component complexity (DEBT-002)
  */
 
-import { extractTrelloCardId, validateTrelloCard } from '@shared/utils/validation'
+import { extractTrelloCardId, validateTrelloCard, logger } from '@shared/utils'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import type { TrelloCard } from '@features/Baker'
-import { logger } from '@shared/utils/logger'
 
 import { fetchTrelloCardById, readBreadcrumbsFile } from '../api'
 import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'

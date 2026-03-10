@@ -1,5 +1,5 @@
 import { useTrelloApiKeys } from '@shared/hooks'
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 import { useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 

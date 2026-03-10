@@ -9,7 +9,7 @@ import type { SimilarExample } from '../types'
 import { tool } from 'ai'
 import { z } from 'zod'
 
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 
 const logger = createNamespacedLogger('buildRAGPrompt')
 

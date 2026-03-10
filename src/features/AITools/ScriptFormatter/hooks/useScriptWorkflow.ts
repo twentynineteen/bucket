@@ -10,11 +10,10 @@
  * - Navigation warnings for unsaved work
  */
 
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger, logger } from '@shared/utils'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import type { ProcessedOutput, WorkflowStep } from '@shared/types/scriptFormatter'
-import { logger } from '@shared/utils/logger'
+import type { ProcessedOutput, WorkflowStep } from '@shared/types'
 
 import { useAIProcessing } from './useAIProcessing'
 import { useScriptDownload } from './useScriptDownload'

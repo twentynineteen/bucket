@@ -7,8 +7,8 @@
 import mammoth from 'mammoth'
 import { useState } from 'react'
 
-import type { FormattingMetadata, ScriptDocument } from '@shared/types/scriptFormatter'
-import { logger } from '@shared/utils/logger'
+import type { FormattingMetadata, ScriptDocument } from '@shared/types'
+import { logger } from '@shared/utils'
 
 interface UseDocxParserResult {
   parseFile: (file: File) => Promise<ScriptDocument>

@@ -1,6 +1,6 @@
 import { Accordion } from '@shared/ui/accordion'
 import { type VideoInfoData } from '@features/BuildProject'
-import { Breadcrumb } from '@shared/types/types'
+import { Breadcrumb } from '@shared/types'
 import React from 'react'
 
 import BreadcrumbsAccordionItem from './BreadcrumbsAccordionItem'

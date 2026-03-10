@@ -1,9 +1,9 @@
 // Target: @features/BuildProject
 import { extractVideoInfoBlock } from '../internal/extractVideoInfoBlock'
-import { createNamespacedLogger } from '@shared/utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
 import type { TrelloCard } from '@features/Trello'
-import { updateTrelloCard } from '@features/Trello/api'
-import { SproutUploadResponse } from '@shared/types/types'
+import { updateTrelloCard } from '../api'
+import { SproutUploadResponse } from '@shared/types'
 
 const logger = createNamespacedLogger('useAppendVideoInfo')
 
