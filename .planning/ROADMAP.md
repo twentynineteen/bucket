@@ -222,7 +222,7 @@ Plans:
 
 Plans:
 - [x] 13-01-PLAN.md -- Bulk import rewrite script to convert ~190 sub-path imports to barrel imports, fix Trello intra-module bypass
-- [ ] 13-02-PLAN.md -- Gap closure: lazy-load Tauri dependency in query-client-config.ts, convert remaining 26 @shared/lib sub-path imports to barrel imports
+- [x] 13-02-PLAN.md -- Gap closure: lazy-load Tauri dependency in query-client-config.ts, convert remaining 26 @shared/lib sub-path imports to barrel imports
 
 ### Phase 14: Dead Export Removal
 **Goal**: Remove barrel exports with zero cross-module consumers and unused shared services
@@ -254,5 +254,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 10. API Bypass Fixes & Baker Bookkeeping | 2/2 | Complete    | 2026-03-10 |
 | 11. Legacy & Stub Cleanup | 1/1 | Complete    | 2026-03-10 |
 | 12. Residual Cleanup & Navigation Fixes | 1/1 | Complete    | 2026-03-10 |
-| 13. Import Convention Alignment | 1/2 | In Progress | - |
+| 13. Import Convention Alignment | 2/2 | Complete | 2026-03-10 |
 | 14. Dead Export Removal | 0/0 | Planned | - |

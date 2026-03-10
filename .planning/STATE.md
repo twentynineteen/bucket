@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-03-10T16:14:19Z"
-last_activity: 2026-03-10 -- Completed plan 13-01 (Import convention alignment)
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-03-10T19:59:00Z"
+last_activity: 2026-03-10 -- Completed plan 13-02 (Fix @shared/lib poisoned barrel)
 progress:
   total_phases: 13
   completed_phases: 13
-  total_plans: 22
-  completed_plans: 22
+  total_plans: 23
+  completed_plans: 23
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Every feature module has a simple public interface that fully describes its capabilities -- nothing reaches past the boundary, and contract tests lock down the behavior.
-**Current focus:** Phase 13: Import Convention Alignment (complete)
+**Current focus:** Phase 13: Import Convention Alignment (complete, both plans)
 
 ## Current Position
 
 Phase: 13 of 13 (Import Convention Alignment)
-Plan: 1 of 1 in current phase
-Status: Phase 13 plan 01 complete -- all phases finished
-Last activity: 2026-03-10 -- Completed plan 13-01 (Import convention alignment)
+Plan: 2 of 2 in current phase
+Status: Phase 13 plan 02 complete -- all phases finished
+Last activity: 2026-03-10 -- Completed plan 13-02 (Fix @shared/lib poisoned barrel)
 
 Progress: [██████████] 100%
 
@@ -73,6 +73,7 @@ Progress: [██████████] 100%
 | Phase 11 P01 | 3 | 2 tasks | 19 files |
 | Phase 12 P01 | 4 | 2 tasks | 9 files |
 | Phase 13 P01 | 12 | 2 tasks | 138 files |
+| Phase 13 P02 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,8 @@ Recent decisions affecting current work:
 - [12-01]: useWindowState excluded from barrel (Tauri runtime dependency) matching existing convention for useMacOSEffects etc.
 - [13-01]: @shared/lib barrel excluded from barrel import conversion -- query-client-config.ts imports @tauri-apps/plugin-store which crashes test environments
 - [13-01]: All @shared/utils/logger mocks must include createNamespacedLogger due to transitive barrel loading of breadcrumbs/debug.ts
+- [13-02]: Used @vite-ignore and variable-based module specifier for dynamic import() to prevent Vite static analysis from resolving Tauri plugin-store
+- [13-02]: Consolidated hooks contract test mocks from sub-path to barrel import pattern
 
 ### Pending Todos
 
@@ -161,6 +164,6 @@ None -- all todos resolved.
 
 ## Session Continuity
 
-Last session: 2026-03-10T16:14:19Z
-Stopped at: Completed 13-01-PLAN.md
-Resume file: .planning/phases/13-import-convention-alignment/13-01-SUMMARY.md
+Last session: 2026-03-10T19:59:00Z
+Stopped at: Completed 13-02-PLAN.md
+Resume file: .planning/phases/13-import-convention-alignment/13-02-SUMMARY.md
