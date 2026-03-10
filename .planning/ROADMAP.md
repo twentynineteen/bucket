@@ -204,7 +204,7 @@ Plans:
   3. `src/hooks/index.ts` has no broken re-exports (useAppendVideoInfo reference removed)
   4. `tests/unit/AppRouter.test.tsx` has no stale `vi.mock` for removed pages
   5. `ThemeImport.tsx` is either properly implemented or removed — no TODO placeholder remains
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [x] 12-01-PLAN.md — Migrate useWindowState, delete orphans, add sidebar entry, modernize test mocks
@@ -227,4 +227,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 9. App Shell & Enforcement | 2/3 | In Progress|  |
 | 10. API Bypass Fixes & Baker Bookkeeping | 2/2 | Complete    | 2026-03-10 |
 | 11. Legacy & Stub Cleanup | 1/1 | Complete    | 2026-03-10 |
-| 12. Residual Cleanup & Navigation Fixes | 1/1 | Complete | 2026-03-10 |
+| 12. Residual Cleanup & Navigation Fixes | 1/1 | Complete    | 2026-03-10 |
