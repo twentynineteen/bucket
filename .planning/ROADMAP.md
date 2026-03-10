@@ -188,7 +188,7 @@ Plans:
   2. IngestHistory.tsx is either implemented or its route is removed
   3. FolderTreeNavigator.tsx is either wired to a route or removed
   4. Stale todo (fix-eslint-boundaries-no-unknown-files-warning) is closed
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 11-01-PLAN.md -- Delete 12 orphaned legacy files, remove stub routes, close stale todo, verify clean build
@@ -210,4 +210,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 8. BuildProject Module | 0/1 | Planned | - |
 | 9. App Shell & Enforcement | 2/3 | In Progress|  |
 | 10. API Bypass Fixes & Baker Bookkeeping | 2/2 | Complete    | 2026-03-10 |
-| 11. Legacy & Stub Cleanup | 0/1 | Planned | - |
+| 11. Legacy & Stub Cleanup | 1/1 | Complete   | 2026-03-10 |
