@@ -172,7 +172,7 @@ Plans:
   5. Trello contract test no-bypass covers plugin-shell and plugin-opener imports
   6. SUMMARY 07-01 requirements_completed lists BAKR-01, BAKR-02, BAKR-03
   7. REQUIREMENTS.md BAKR-01/02/03 checkboxes checked and status Complete
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 10-01-PLAN.md -- Fix Baker/Trello bypass violations, add Baker barrel export, update both modules' contract tests
@@ -209,5 +209,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 7. Baker Module | 1/1 | Complete   | 2026-03-09 |
 | 8. BuildProject Module | 0/1 | Planned | - |
 | 9. App Shell & Enforcement | 2/3 | In Progress|  |
-| 10. API Bypass Fixes & Baker Bookkeeping | 1/2 | In Progress|  |
+| 10. API Bypass Fixes & Baker Bookkeeping | 2/2 | Complete   | 2026-03-10 |
 | 11. Legacy & Stub Cleanup | 0/0 | Planned | - |
