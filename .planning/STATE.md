@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-03-10T15:27:22.292Z"
-last_activity: 2026-03-10 -- Completed plan 12-01 (Residual cleanup)
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-03-10T16:14:19Z"
+last_activity: 2026-03-10 -- Completed plan 13-01 (Import convention alignment)
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 21
-  completed_plans: 21
+  total_phases: 13
+  completed_phases: 13
+  total_plans: 22
+  completed_plans: 22
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Every feature module has a simple public interface that fully describes its capabilities -- nothing reaches past the boundary, and contract tests lock down the behavior.
-**Current focus:** Phase 12: Residual Cleanup (complete)
+**Current focus:** Phase 13: Import Convention Alignment (complete)
 
 ## Current Position
 
-Phase: 12 of 12 (Residual Cleanup)
+Phase: 13 of 13 (Import Convention Alignment)
 Plan: 1 of 1 in current phase
-Status: Phase 12 plan 01 complete -- all phases finished
-Last activity: 2026-03-10 -- Completed plan 12-01 (Residual cleanup)
+Status: Phase 13 plan 01 complete -- all phases finished
+Last activity: 2026-03-10 -- Completed plan 13-01 (Import convention alignment)
 
 Progress: [██████████] 100%
 
@@ -72,6 +72,7 @@ Progress: [██████████] 100%
 | Phase 10 P02 | 2 | 2 tasks | 6 files |
 | Phase 11 P01 | 3 | 2 tasks | 19 files |
 | Phase 12 P01 | 4 | 2 tasks | 9 files |
+| Phase 13 P01 | 12 | 2 tasks | 138 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,8 @@ Recent decisions affecting current work:
 - [11-01]: Deleted stale test file breadcrumbsValidation.test.ts (tested deleted legacy module with no canonical counterpart)
 - [11-01]: Removed src/services/ parent directory (empty after ai/ subdirectory deletion)
 - [12-01]: useWindowState excluded from barrel (Tauri runtime dependency) matching existing convention for useMacOSEffects etc.
+- [13-01]: @shared/lib barrel excluded from barrel import conversion -- query-client-config.ts imports @tauri-apps/plugin-store which crashes test environments
+- [13-01]: All @shared/utils/logger mocks must include createNamespacedLogger due to transitive barrel loading of breadcrumbs/debug.ts
 
 ### Pending Todos
 
@@ -158,6 +161,6 @@ None -- all todos resolved.
 
 ## Session Continuity
 
-Last session: 2026-03-10T15:22:58Z
-Stopped at: Completed 12-01-PLAN.md
-Resume file: .planning/phases/12-residual-cleanup/12-01-SUMMARY.md
+Last session: 2026-03-10T16:14:19Z
+Stopped at: Completed 13-01-PLAN.md
+Resume file: .planning/phases/13-import-convention-alignment/13-01-SUMMARY.md
