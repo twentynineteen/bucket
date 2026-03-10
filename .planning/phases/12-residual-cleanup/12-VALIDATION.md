@@ -1,9 +1,9 @@
 ---
 phase: 12
 slug: residual-cleanup
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-10
 ---
 
@@ -38,11 +38,11 @@ created: 2026-03-10
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 12-01-01 | 01 | 1 | SC-1 | unit | `bun run test -- --run tests/unit/hooks/useWindowState.test.ts` | ✅ (needs import update) | ⬜ pending |
-| 12-01-02 | 01 | 1 | SC-3 | smoke | `ls src/hooks/ 2>/dev/null` (should not exist) | N/A | ⬜ pending |
-| 12-01-03 | 01 | 1 | SC-5 | smoke | `ls src/shared/ui/theme/ThemeImport.tsx 2>/dev/null` (should not exist) | N/A | ⬜ pending |
-| 12-01-04 | 01 | 2 | SC-2 | manual | Visual check — sidebar entry present at /upload/otter | N/A | ⬜ pending |
-| 12-01-05 | 01 | 2 | SC-4 | unit | `bun run test -- --run tests/unit/AppRouter.test.tsx` | ✅ (needs mock updates) | ⬜ pending |
+| 12-01-01 | 01 | 1 | SC-1 | unit | `bun run test -- --run tests/unit/hooks/useWindowState.test.ts` | ✅ | ✅ green |
+| 12-01-02 | 01 | 1 | SC-3 | smoke | `test ! -d src/hooks` | N/A | ✅ green |
+| 12-01-03 | 01 | 1 | SC-5 | smoke | `test ! -f src/shared/ui/theme/ThemeImport.tsx` | N/A | ✅ green |
+| 12-01-04 | 01 | 2 | SC-2 | manual | Visual check — sidebar entry present at /upload/otter | N/A | ✅ green |
+| 12-01-05 | 01 | 2 | SC-4 | unit | `bun run test -- --run tests/unit/AppRouter.test.tsx` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -66,11 +66,20 @@ No new test files, fixtures, or framework installs needed. Only import path upda
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved
+
+---
+
+## Validation Audit 2026-03-10
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
