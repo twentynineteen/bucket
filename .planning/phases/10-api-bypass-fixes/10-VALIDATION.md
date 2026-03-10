@@ -1,9 +1,9 @@
 ---
 phase: 10
 slug: api-bypass-fixes
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-10
 ---
 
@@ -38,13 +38,13 @@ created: 2026-03-10
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 10-01-01 | 01 | 1 | BAKR-02 | no-bypass | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | ✅ (needs update) | ⬜ pending |
-| 10-01-02 | 01 | 1 | BAKR-01 | shape | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | ✅ (needs update) | ⬜ pending |
-| 10-01-03 | 01 | 1 | BAKR-03 | no-bypass | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | ✅ (needs update) | ⬜ pending |
-| 10-02-01 | 02 | 1 | — | no-bypass | `bun run test -- --run src/features/Trello/__contracts__/trello.contract.test.ts` | ✅ (needs update) | ⬜ pending |
-| 10-02-02 | 02 | 1 | — | no-bypass | `bun run test -- --run src/features/Trello/__contracts__/trello.contract.test.ts` | ✅ (needs update) | ⬜ pending |
-| 10-03-01 | 03 | 2 | — | no-bypass | `bun run test -- --run` | ✅ / ❌ varies | ⬜ pending |
-| 10-04-01 | 04 | 2 | BAKR-01, BAKR-02, BAKR-03 | bookkeeping | manual file check | ✅ | ⬜ pending |
+| 10-01-01 | 01 | 1 | BAKR-02 | no-bypass | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | ✅ | ✅ green |
+| 10-01-02 | 01 | 1 | BAKR-01 | shape | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | ✅ | ✅ green |
+| 10-01-03 | 01 | 1 | BAKR-03 | no-bypass | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | ✅ | ✅ green |
+| 10-02-01 | 02 | 1 | — | no-bypass | `bun run test -- --run src/features/Auth/__contracts__/ src/features/Premiere/__contracts__/ src/features/Upload/__contracts__/ src/features/Settings/__contracts__/ src/features/AITools/__contracts__/` | ✅ | ✅ green |
+| 10-02-02 | 02 | 1 | — | no-bypass | `bun run test -- --run src/features/Trello/__contracts__/trello.contract.test.ts` | ✅ | ✅ green |
+| 10-03-01 | 02 | 2 | — | no-bypass | `bun run test -- --run` | ✅ | ✅ green |
+| 10-04-01 | 02 | 2 | BAKR-01, BAKR-02, BAKR-03 | bookkeeping | manual file check | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -67,11 +67,23 @@ Existing infrastructure covers all phase requirements. Contract test files alrea
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved
+
+---
+
+## Validation Audit 2026-03-10
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+All 7 tasks verified with automated tests or manual file checks. Full test suite: 127 files, 2064 tests green. All 8 feature modules have comprehensive recursive no-bypass contract tests.
