@@ -46,7 +46,7 @@ patterns-established:
   - "Event listener wrappers return unlisten functions for cleanup"
   - "No-bypass contract tests using grep to validate zero direct plugin imports"
 
-requirements-completed: []
+requirements-completed: [BAKR-01, BAKR-02, BAKR-03]
 
 # Metrics
 duration: 30min
