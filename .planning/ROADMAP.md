@@ -209,6 +209,27 @@ Plans:
 Plans:
 - [x] 12-01-PLAN.md — Migrate useWindowState, delete orphans, add sidebar entry, modernize test mocks
 
+### Phase 13: Import Convention Alignment
+**Goal**: All imports follow barrel conventions — no sub-path bypasses for @shared/* barrels, no intra-module barrel bypasses
+**Depends on**: Phase 12
+**Requirements**: SHRD-04, SHRD-06, SHRD-07, SHRD-08, TREL-01
+**Gap Closure:** Closes INT-01, INT-02 from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. `useAppendVideoInfo.ts` imports from `@features/Trello` barrel, not `@features/Trello/api` sub-path
+  2. All `@shared/lib`, `@shared/utils`, `@shared/types`, `@shared/constants` imports use barrel paths — zero sub-path imports remain
+  3. Tests pass and dev server starts without errors after import migration
+
+### Phase 14: Dead Export Removal
+**Goal**: Remove barrel exports with zero cross-module consumers and unused shared services
+**Depends on**: Phase 13
+**Requirements**: (tech debt — no new requirements)
+**Gap Closure:** Closes dead export tech debt from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. `usePremiereIntegration`, `PluginInfo`, `InstallResult`, `SimilarExample`, `createDefaultSproutUploadResponse` removed from their respective barrels (or confirmed needed)
+  2. `ProgressTracker` and `UserFeedbackService` removed from `@shared/services` barrel (or confirmed needed)
+  3. Contract test export counts updated to match reduced barrel surfaces
+  4. Tests pass and dev server starts without errors after export removal
+
 ## Progress
 
 **Execution Order:**
@@ -228,3 +249,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 10. API Bypass Fixes & Baker Bookkeeping | 2/2 | Complete    | 2026-03-10 |
 | 11. Legacy & Stub Cleanup | 1/1 | Complete    | 2026-03-10 |
 | 12. Residual Cleanup & Navigation Fixes | 1/1 | Complete    | 2026-03-10 |
+| 13. Import Convention Alignment | 0/0 | Planned | - |
+| 14. Dead Export Removal | 0/0 | Planned | - |

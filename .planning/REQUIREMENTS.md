@@ -173,6 +173,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOCS-03 | Phase 1 | Complete |
 | DOCS-04 | Phase 9 | Complete |
 
+**Gap Closure Phases (convention polish):**
+
+| Gap | Phase | Status |
+|-----|-------|--------|
+| INT-01 (Trello barrel bypass) | Phase 13 | Pending |
+| INT-02 (~123 sub-path imports) | Phase 13 | Pending |
+| Dead exports (7 unused) | Phase 14 | Pending |
+| Unused services (2) | Phase 14 | Pending |
+
 **Coverage:**
 - v1 requirements: 47 total
 - Mapped to phases: 47
