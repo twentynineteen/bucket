@@ -1,9 +1,9 @@
 ---
 phase: 7
 slug: baker-module
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-09
 ---
 
@@ -38,9 +38,9 @@ created: 2026-03-09
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 07-01-01 | 01 | 1 | BAKR-01 | unit (contract) | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | Wave 0 | pending |
-| 07-01-02 | 01 | 1 | BAKR-02 | unit (contract) | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | Wave 0 | pending |
-| 07-01-03 | 01 | 1 | BAKR-03 | unit (contract) | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | Wave 0 | pending |
+| 07-01-01 | 01 | 1 | BAKR-01 | unit (contract) | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | ✅ | ✅ green |
+| 07-01-02 | 01 | 1 | BAKR-02 | unit (contract) | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | ✅ | ✅ green |
+| 07-01-03 | 01 | 1 | BAKR-03 | unit (contract) | `bun run test -- --run src/features/Baker/__contracts__/baker.contract.test.ts` | ✅ | ✅ green |
 
 *Status: pending / green / red / flaky*
 
@@ -48,9 +48,9 @@ created: 2026-03-09
 
 ## Wave 0 Requirements
 
-- [ ] `src/features/Baker/__contracts__/baker.contract.test.ts` -- covers BAKR-01, BAKR-02, BAKR-03
-- [ ] `src/features/Baker/api.ts` -- I/O boundary (must exist before contract tests run)
-- [ ] `src/features/Baker/index.ts` -- barrel exports (must exist before contract tests run)
+- [x] `src/features/Baker/__contracts__/baker.contract.test.ts` — 47 contract tests for barrel shape, api shape, hook behavior, no-bypass, no-alert
+- [x] `src/features/Baker/api.ts` — I/O boundary with 25 wrapper functions
+- [x] `src/features/Baker/index.ts` — barrel with 7 runtime exports + 14 type exports
 
 ---
 
@@ -63,13 +63,21 @@ created: 2026-03-09
 
 ---
 
+## Validation Audit 2026-03-10
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved — all 47 tests green, 0 gaps
