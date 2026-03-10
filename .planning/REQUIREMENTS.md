@@ -79,8 +79,8 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### App Shell & Enforcement
 
-- [ ] **SHEL-01**: User can see all feature routes loaded via React.lazy()
-- [ ] **SHEL-02**: User can see ESLint boundary rules promoted from warn to error
+- [x] **SHEL-01**: User can see all feature routes loaded via React.lazy()
+- [x] **SHEL-02**: User can see ESLint boundary rules promoted from warn to error
 - [x] **SHEL-03**: User can see old path aliases (`@hooks/*`, `@pages/*`, etc.) removed after migration
 
 ### Documentation & Cleanup
@@ -165,8 +165,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BLDP-02 | Phase 8 | Complete |
 | BLDP-03 | Phase 8 | Complete |
 | BLDP-04 | Phase 8 | Complete |
-| SHEL-01 | Phase 9 | Pending |
-| SHEL-02 | Phase 9 | Pending |
+| SHEL-01 | Phase 9 | Complete |
+| SHEL-02 | Phase 9 | Complete |
 | SHEL-03 | Phase 9 | Complete |
 | DOCS-01 | Phase 9 | Complete |
 | DOCS-02 | Phase 9 | Complete |
