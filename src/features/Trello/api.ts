@@ -7,6 +7,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { ask, confirm, open as openDialog } from '@tauri-apps/plugin-dialog'
+import { openUrl } from '@tauri-apps/plugin-opener'
 
 import type { TrelloBoard } from '@shared/types'
 import type { TrelloCard, TrelloList, TrelloMember } from './types'
@@ -218,4 +219,10 @@ export async function openFileDialog(options: {
     return selectedFile
   }
   return null
+}
+
+// --- URL Opening ---
+
+export async function openExternalUrl(url: string): Promise<void> {
+  return openUrl(url)
 }

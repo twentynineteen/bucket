@@ -11,7 +11,7 @@ import { useFuzzySearch } from '@shared/hooks'
 import { useAppendBreadcrumbs } from '@features/Baker'
 import { useAppendVideoInfo } from './useAppendVideoInfo'
 import { useVideoInfoBlock } from '@features/BuildProject'
-import { open } from '@tauri-apps/plugin-shell'
+import { openExternalUrl } from '../api'
 import { logger } from '@shared/utils/logger'
 import { toast } from 'sonner'
 
@@ -186,7 +186,7 @@ export function useUploadTrello() {
   const handleOpenInTrello = async () => {
     if (selectedCard) {
       const url = new URL(`https://trello.com/c/${selectedCard.id}`)
-      await open(url.toString())
+      await openExternalUrl(url.toString())
     }
   }
 

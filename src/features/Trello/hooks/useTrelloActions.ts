@@ -4,7 +4,7 @@
  */
 
 import type { SelectedCard } from '../types'
-import { open } from '@tauri-apps/plugin-shell'
+import { openExternalUrl } from '../api'
 import { useCallback } from 'react'
 
 export function useTrelloActions(
@@ -15,7 +15,7 @@ export function useTrelloActions(
     if (!selectedCard) return
 
     const url = `https://trello.com/c/${selectedCard.id}`
-    await open(url)
+    await openExternalUrl(url)
   }, [selectedCard])
 
   const handleCloseDialog = useCallback(() => {

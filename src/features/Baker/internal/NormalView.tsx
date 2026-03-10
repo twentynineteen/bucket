@@ -3,7 +3,7 @@
  * Extracted from BreadcrumbsViewerEnhanced.tsx (DEBT-002)
  */
 
-import { open } from '@tauri-apps/plugin-shell'
+import { openExternalUrl } from '../api'
 import { formatBreadcrumbDateSimple } from '@shared/utils/breadcrumbs'
 import {
   Calendar,
@@ -147,7 +147,7 @@ const TrelloCardLink: React.FC<TrelloCardLinkProps> = ({ url }) => (
         variant="outline"
         size="sm"
         onClick={async () => {
-          await open(url)
+          await openExternalUrl(url)
         }}
         className="h-6 px-2 py-1 text-xs"
       >

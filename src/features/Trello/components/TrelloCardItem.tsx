@@ -3,7 +3,7 @@
  * Feature: 004-embed-multiple-video
  */
 
-import { openUrl } from '@tauri-apps/plugin-opener'
+import { openExternalUrl } from '../api'
 import { ExternalLink, RefreshCw, Trash2 } from 'lucide-react'
 
 import { Button } from '@shared/ui/button'
@@ -43,7 +43,7 @@ export function TrelloCardItem({ trelloCard, onRemove, onRefresh }: TrelloCardIt
 
   const openInBrowser = async () => {
     try {
-      await openUrl(trelloCard.url)
+      await openExternalUrl(trelloCard.url)
     } catch (error) {
       logger.error('Failed to open Trello URL:', error)
     }

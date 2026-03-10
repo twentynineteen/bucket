@@ -45,3 +45,9 @@ export type { ScanPreferences } from './types'
 export type { VideoLink } from './types'
 /** Trello card reference stored in breadcrumbs with card ID and URL */
 export type { TrelloCard } from './types'
+/** Props for the BreadcrumbsViewer component with project path and display options */
+export type { BreadcrumbsViewerProps } from './types'
+/** Detailed field-level change with old/new values for breadcrumbs comparison */
+export type { DetailedFieldChange } from './types'
+/** Complete project change detail combining path, status, and field-level changes */
+export type { ProjectChangeDetail } from './types'

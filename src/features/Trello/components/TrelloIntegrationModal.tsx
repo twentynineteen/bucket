@@ -8,7 +8,7 @@ import {
 } from '@shared/ui/dialog'
 import { Input } from '@shared/ui/input'
 import { appStore } from '@shared/store'
-import { open } from '@tauri-apps/plugin-shell'
+import { openExternalUrl } from '../api'
 import TrelloCardList from '../internal/TrelloCardList'
 import { useFuzzySearch } from '@shared/hooks'
 import { useAppendBreadcrumbs } from '@features/Baker'
@@ -241,7 +241,7 @@ const TrelloIntegrationModal: React.FC<TrelloIntegrationModalProps> = ({
                   onClick={async () => {
                     if (selectedCard) {
                       const url = new URL(`https://trello.com/c/${selectedCard.id}`)
-                      await open(url.toString())
+                      await openExternalUrl(url.toString())
                     }
                   }}
                   disabled={isUpdating}
