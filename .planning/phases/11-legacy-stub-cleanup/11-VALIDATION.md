@@ -1,9 +1,9 @@
 ---
 phase: 11
 slug: legacy-stub-cleanup
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-10
 ---
 
@@ -38,10 +38,10 @@ created: 2026-03-10
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 11-01-01 | 01 | 1 | SC-1 (orphaned files removed) | lint+test | `bun run test && bun run eslint:fix` | ✅ | ⬜ pending |
-| 11-01-02 | 01 | 1 | SC-2 (IngestHistory resolved) | grep+lint | `bun run eslint:fix` | ✅ | ⬜ pending |
-| 11-01-03 | 01 | 1 | SC-3 (FolderTreeNavigator resolved) | grep | `test ! -f src/pages/FolderTreeNavigator.tsx` | ✅ | ⬜ pending |
-| 11-01-04 | 01 | 1 | SC-4 (stale todo closed) | manual | Check file moved to done/ | ✅ | ⬜ pending |
+| 11-01-01 | 01 | 1 | SC-1 (orphaned files removed) | lint+test | `bun run test && bun run eslint:fix` | ✅ | ✅ green |
+| 11-01-02 | 01 | 1 | SC-2 (IngestHistory resolved) | grep+lint | `bun run eslint:fix` | ✅ | ✅ green |
+| 11-01-03 | 01 | 1 | SC-3 (FolderTreeNavigator resolved) | grep | `test ! -f src/pages/FolderTreeNavigator.tsx` | ✅ | ✅ green |
+| 11-01-04 | 01 | 1 | SC-4 (stale todo closed) | shell | `test -f .planning/todos/done/2026-03-10-fix-eslint-boundaries-no-unknown-files-warning-on-lazy-routes.md` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -68,11 +68,23 @@ No new test files needed -- this is a deletion-only phase. Validation relies on:
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved
+
+---
+
+## Validation Audit 2026-03-10
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+All 4 requirements verified via automated shell checks + existing test suite (127 files, 2064 tests passing). No new test files needed — deletion-only phase validated by absence checks and passing infrastructure.
