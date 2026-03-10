@@ -193,6 +193,22 @@ Plans:
 Plans:
 - [ ] 11-01-PLAN.md -- Delete 12 orphaned legacy files, remove stub routes, close stale todo, verify clean build
 
+### Phase 12: Residual Cleanup & Navigation Fixes
+**Goal**: Resolve remaining tech debt: migrate useWindowState, add UploadOtter navigation, fix broken re-exports, remove stale test mocks, and replace ThemeImport placeholder
+**Depends on**: Phase 11
+**Requirements**: (tech debt — no new requirements)
+**Gap Closure:** Closes integration/flow/tech-debt gaps from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. `useWindowState` lives in `@shared/hooks/` and is exported from the hooks barrel — App.tsx imports via `@shared/hooks`
+  2. UploadOtter has a sidebar navigation entry and is reachable via normal app navigation
+  3. `src/hooks/index.ts` has no broken re-exports (useAppendVideoInfo reference removed)
+  4. `tests/unit/AppRouter.test.tsx` has no stale `vi.mock` for removed pages
+  5. `ThemeImport.tsx` is either properly implemented or removed — no TODO placeholder remains
+**Plans:** 0 plans
+
+Plans:
+- (none yet — run `/gsd:plan-phase 12`)
+
 ## Progress
 
 **Execution Order:**
@@ -211,3 +227,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 9. App Shell & Enforcement | 2/3 | In Progress|  |
 | 10. API Bypass Fixes & Baker Bookkeeping | 2/2 | Complete    | 2026-03-10 |
 | 11. Legacy & Stub Cleanup | 1/1 | Complete    | 2026-03-10 |
+| 12. Residual Cleanup & Navigation Fixes | 0/0 | Planned | - |
