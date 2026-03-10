@@ -5,7 +5,7 @@
 
 import type { BreadcrumbsFile, TrelloCard } from '@features/Baker'
 
-import { extractTrelloCardId } from './validation'
+import { extractTrelloCardId } from '@shared/utils/validation'
 
 /**
  * Migrates legacy trelloCardUrl to trelloCards array format

@@ -61,6 +61,11 @@ export default tseslint.config(
       boundaries
     },
     settings: {
+      'import/resolver': {
+        typescript: {
+          project: './tsconfig.json'
+        }
+      },
       'boundaries/elements': [
         {
           type: 'app',
@@ -85,21 +90,21 @@ export default tseslint.config(
         {
           type: 'legacy',
           pattern: [
-            'src/pages/*',
-            'src/hooks/*',
-            'src/components/*',
-            'src/store/*',
-            'src/utils/*',
-            'src/constants/*',
-            'src/services/*',
-            'src/machines/*',
-            'src/context/*',
-            'src/lib/*',
-            'src/types/*'
+            'src/pages/**',
+            'src/hooks/**',
+            'src/components/**',
+            'src/store/**',
+            'src/utils/**',
+            'src/constants/**',
+            'src/services/**',
+            'src/machines/**',
+            'src/context/**',
+            'src/lib/**',
+            'src/types/**'
           ]
         }
       ],
-      'boundaries/ignore': ['**/*.test.*', '**/*.spec.*', '**/*.d.ts']
+      'boundaries/ignore': ['**/*.test.*', '**/*.spec.*', '**/*.d.ts', '**/*.css']
     },
     rules: {
       'boundaries/element-types': [
@@ -118,15 +123,15 @@ export default tseslint.config(
             },
             {
               from: ['shared'],
-              disallow: ['feature']
+              disallow: ['feature'],
+              importKind: 'value'
             }
           ]
         }
       ],
-      // Set to 'warn' until path alias resolver is configured for boundaries
-      // and the legacy → features/shared migration is complete
-      'boundaries/no-unknown-files': ['warn'],
-      'boundaries/no-unknown': ['warn']
+      // All boundary rules at error severity -- violations fail lint
+      'boundaries/no-unknown-files': ['error'],
+      'boundaries/no-unknown': ['error']
     }
   }
 )

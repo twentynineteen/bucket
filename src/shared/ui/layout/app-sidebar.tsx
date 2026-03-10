@@ -9,7 +9,6 @@ import {
   SidebarHeader
 } from '@shared/ui/sidebar/SidebarLayout'
 import { UpdateDialog } from './UpdateDialog'
-import { useAuth } from '@features/Auth'
 import { useMacOSEffects } from '@shared/hooks/useMacOSEffects'
 import { useUpdateManager } from '@shared/hooks/useUpdateManager'
 import { useUsername } from '@shared/hooks'
@@ -132,8 +131,11 @@ const data = {
   ]
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { logout } = useAuth()
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  onLogout?: () => void
+}
+
+export function AppSidebar({ onLogout, ...props }: AppSidebarProps) {
   const { data: username } = useUsername()
 
   // Apply macOS sidebar vibrancy effect
@@ -164,7 +166,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarContent>
         <SidebarFooter>
           <ThemeToggle />
-          <NavUser user={user} onLogout={logout} onUpdateClicked={onUpdateClicked} />
+          <NavUser user={user} onLogout={onLogout} onUpdateClicked={onUpdateClicked} />
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
