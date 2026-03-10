@@ -4,9 +4,12 @@ import { persistQueryClient } from '@tanstack/react-query-persist-client'
 import { createNamespacedLogger } from '@shared/utils'
 
 // Lazy-load Tauri plugin-store to avoid crashing test environments
-// when the @shared/lib barrel is imported
+// when the @shared/lib barrel is imported. The module specifier is
+// constructed via a variable to prevent Vite's static import analysis
+// from resolving it at build/test time.
+const TAURI_STORE_MODULE = '@tauri-apps/plugin-store'
 async function getTauriStore() {
-  const { del, get, set } = await import('@tauri-apps/plugin-store')
+  const { del, get, set } = await import(/* @vite-ignore */ TAURI_STORE_MODULE)
   return { del, get, set }
 }
 

@@ -34,16 +34,13 @@ vi.mock('@shared/store', () => ({
   )
 }))
 
-// Mock query infrastructure
-vi.mock('@shared/lib/query-keys', () => ({
+// Mock query infrastructure (barrel import)
+vi.mock('@shared/lib', () => ({
   queryKeys: {
     user: {
       breadcrumb: () => ['breadcrumb']
     }
-  }
-}))
-
-vi.mock('@shared/lib/query-utils', () => ({
+  },
   createQueryOptions: (
     queryKey: string[],
     queryFn: () => Promise<unknown>,
@@ -54,13 +51,6 @@ vi.mock('@shared/lib/query-utils', () => ({
     queryFn,
     ...opts
   })
-}))
-
-vi.mock('@shared/constants/timing', () => ({
-  CACHE: {
-    STANDARD: 300000,
-    GC_MEDIUM: 600000
-  }
 }))
 
 // --- Shape Tests ---
