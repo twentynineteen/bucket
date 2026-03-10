@@ -85,8 +85,8 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### Documentation & Cleanup
 
-- [ ] **DOCS-01**: User can see CLAUDE.md updated to reflect new module structure
-- [ ] **DOCS-02**: User can see JSDoc on every public export in barrel files
+- [x] **DOCS-01**: User can see CLAUDE.md updated to reflect new module structure
+- [x] **DOCS-02**: User can see JSDoc on every public export in barrel files
 - [x] **DOCS-03**: User can see stale specs, `.old` files, and orphaned markdown removed
 - [x] **DOCS-04**: User can see all `alert()`/`confirm()` calls replaced with Sonner toasts and Radix dialogs
 
@@ -168,8 +168,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SHEL-01 | Phase 9 | Pending |
 | SHEL-02 | Phase 9 | Pending |
 | SHEL-03 | Phase 9 | Complete |
-| DOCS-01 | Phase 9 | Pending |
-| DOCS-02 | Phase 9 | Pending |
+| DOCS-01 | Phase 9 | Complete |
+| DOCS-02 | Phase 9 | Complete |
 | DOCS-03 | Phase 1 | Complete |
 | DOCS-04 | Phase 9 | Complete |
 
