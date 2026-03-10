@@ -210,4 +210,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 8. BuildProject Module | 0/1 | Planned | - |
 | 9. App Shell & Enforcement | 2/3 | In Progress|  |
 | 10. API Bypass Fixes & Baker Bookkeeping | 2/2 | Complete    | 2026-03-10 |
-| 11. Legacy & Stub Cleanup | 1/1 | Complete   | 2026-03-10 |
+| 11. Legacy & Stub Cleanup | 1/1 | Complete    | 2026-03-10 |
