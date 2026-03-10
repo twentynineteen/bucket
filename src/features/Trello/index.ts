@@ -63,5 +63,3 @@ export type { TrelloMember } from './types'
 export type { SelectedCard } from './types'
 /** State shape for the UploadTrello page workflow */
 export type { UploadTrelloState } from './types'
-/** Factory function returning a default empty SproutUploadResponse */
-export { createDefaultSproutUploadResponse } from './types'

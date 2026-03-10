@@ -12,6 +12,3 @@ export { useExampleManagement } from './ExampleEmbeddings/hooks/useExampleManage
 /** Hook for uploading script files as new example embeddings */
 export { useScriptFileUpload } from './ExampleEmbeddings/hooks/useScriptFileUpload'
 
-// Types
-/** Similar example match returned by RAG vector search with score and content */
-export type { SimilarExample } from './types'

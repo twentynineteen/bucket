@@ -1,25 +1,3 @@
-/** Service for tracking multi-step operation progress with subscriber notifications */
-export { ProgressTracker } from './ProgressTracker'
-/** Progress event payload with percentage, message, and operation metadata */
-export type { ProgressUpdate } from './ProgressTracker'
-/** Subscription handle for receiving progress updates with unsubscribe */
-export type { ProgressSubscription } from './ProgressTracker'
-/** Filter criteria for subscribing to specific operation progress events */
-export type { ProgressFilter } from './ProgressTracker'
-/** Aggregated progress summary across multiple concurrent operations */
-export type { ProgressSummary } from './ProgressTracker'
-
-/** Service for displaying user-facing notifications, confirmations, and prompts */
-export { UserFeedbackService } from './UserFeedbackService'
-/** Configuration options for user feedback display -- severity, duration, actions */
-export type { FeedbackOptions } from './UserFeedbackService'
-/** Prompt configuration for user input dialogs with validation */
-export type { UserPrompt } from './UserFeedbackService'
-/** Notification display configuration -- position, style, auto-dismiss */
-export type { NotificationConfig } from './UserFeedbackService'
-/** Action button configuration for interactive notifications */
-export type { NotificationAction } from './UserFeedbackService'
-
 /** Service for coordinating React Query cache invalidation across modules */
 export { CacheInvalidationService } from './cache-invalidation'
 /** Factory function for creating a CacheInvalidationService instance */
