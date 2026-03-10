@@ -6,6 +6,9 @@
  * can rely on stable exports.
  */
 
+import fs from 'node:fs'
+import path from 'node:path'
+
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -322,40 +325,50 @@ describe('useBreadcrumbsVideoLinks - Behavior', () => {
 // --- No-Bypass Tests ---
 
 describe('Baker Module - No Direct Plugin Imports', () => {
-  it('hooks/ directory has zero direct @tauri-apps imports', async () => {
-    // This test validates BAKR-02: all I/O must go through api.ts
-    const { execSync } = await import('child_process')
-    const result = execSync(
-      'grep -rn "@tauri-apps" src/features/Baker/hooks/ 2>/dev/null || true',
-      { encoding: 'utf-8', cwd: '/Users/danielmills/Documents/CODE/bucket' }
-    )
-    expect(result.trim()).toBe('')
+  const projectRoot = path.resolve(__dirname, '../../../../')
+  const modulePath = path.resolve(projectRoot, 'src/features/Baker')
+
+  function getFilesRecursive(dir: string, extensions: string[]): string[] {
+    const files: string[] = []
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (entry.name === '__contracts__' || entry.name === 'node_modules') continue
+        files.push(...getFilesRecursive(fullPath, extensions))
+      } else if (extensions.some((ext) => entry.name.endsWith(ext))) {
+        files.push(fullPath)
+      }
+    }
+    return files
+  }
+
+  it('all non-api.ts files have zero direct @tauri-apps imports', () => {
+    const allFiles = getFilesRecursive(modulePath, ['.ts', '.tsx'])
+    const nonApiFiles = allFiles.filter((f) => !f.endsWith('/api.ts'))
+    for (const file of nonApiFiles) {
+      const content = fs.readFileSync(file, 'utf-8')
+      const lines = content.split('\n')
+      const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
+      expect(tauriImports, `Found @tauri-apps import in ${file}`).toEqual([])
+    }
   })
 
-  it('components/ directory has zero direct @tauri-apps imports', async () => {
-    const { execSync } = await import('child_process')
-    const result = execSync(
-      'grep -rn "@tauri-apps" src/features/Baker/components/ 2>/dev/null || true',
-      { encoding: 'utf-8', cwd: '/Users/danielmills/Documents/CODE/bucket' }
-    )
-    expect(result.trim()).toBe('')
-  })
-
-  it('BakerPage has zero direct @tauri-apps imports', async () => {
-    const { execSync } = await import('child_process')
-    const result = execSync(
-      'grep -rn "@tauri-apps" src/features/Baker/BakerPage.tsx 2>/dev/null || true',
-      { encoding: 'utf-8', cwd: '/Users/danielmills/Documents/CODE/bucket' }
-    )
-    expect(result.trim()).toBe('')
-  })
-
-  it('no alert() calls in Baker module', async () => {
-    const { execSync } = await import('child_process')
-    const result = execSync(
-      'grep -rn "alert(" src/features/Baker/ --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v "AlertCircle\\|AlertDescription\\|alert-\\|Alert,\\|Alert }\\|\\.test\\." || true',
-      { encoding: 'utf-8', cwd: '/Users/danielmills/Documents/CODE/bucket' }
-    )
-    expect(result.trim()).toBe('')
+  it('no alert() calls in Baker module', () => {
+    const allFiles = getFilesRecursive(modulePath, ['.ts', '.tsx'])
+    for (const file of allFiles) {
+      const content = fs.readFileSync(file, 'utf-8')
+      const lines = content.split('\n')
+      const alertCalls = lines.filter(
+        (line) =>
+          line.includes('alert(') &&
+          !line.includes('AlertCircle') &&
+          !line.includes('AlertDescription') &&
+          !line.includes('alert-') &&
+          !line.includes('Alert,') &&
+          !line.includes('Alert }')
+      )
+      expect(alertCalls, `Found alert() call in ${file}`).toEqual([])
+    }
   })
 })

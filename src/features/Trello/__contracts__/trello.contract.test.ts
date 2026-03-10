@@ -6,6 +6,9 @@
  * can rely on stable exports.
  */
 
+import fs from 'node:fs'
+import path from 'node:path'
+
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -28,7 +31,8 @@ vi.mock('../api', () => ({
   bakerReadBreadcrumbs: vi.fn().mockResolvedValue({}),
   askDialog: vi.fn().mockResolvedValue(true),
   confirmDialog: vi.fn().mockResolvedValue(true),
-  openFileDialog: vi.fn().mockResolvedValue(null)
+  openFileDialog: vi.fn().mockResolvedValue(null),
+  openExternalUrl: vi.fn().mockResolvedValue(undefined)
 }))
 
 // Mock shared dependencies
@@ -361,5 +365,38 @@ describe('createDefaultSproutUploadResponse - Behavior', () => {
     expect(result).toHaveProperty('id')
     expect(result).toHaveProperty('title')
     expect(result).toHaveProperty('state')
+  })
+})
+
+// --- No-Bypass Tests ---
+
+describe('Trello Module - No Direct Plugin Imports', () => {
+  const projectRoot = path.resolve(__dirname, '../../../../')
+  const modulePath = path.resolve(projectRoot, 'src/features/Trello')
+
+  function getFilesRecursive(dir: string, extensions: string[]): string[] {
+    const files: string[] = []
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (entry.name === '__contracts__' || entry.name === 'node_modules') continue
+        files.push(...getFilesRecursive(fullPath, extensions))
+      } else if (extensions.some((ext) => entry.name.endsWith(ext))) {
+        files.push(fullPath)
+      }
+    }
+    return files
+  }
+
+  it('all non-api.ts files have zero direct @tauri-apps imports', () => {
+    const allFiles = getFilesRecursive(modulePath, ['.ts', '.tsx'])
+    const nonApiFiles = allFiles.filter((f) => !f.endsWith('/api.ts'))
+    for (const file of nonApiFiles) {
+      const content = fs.readFileSync(file, 'utf-8')
+      const lines = content.split('\n')
+      const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
+      expect(tauriImports, `Found @tauri-apps import in ${file}`).toEqual([])
+    }
   })
 })
