@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 12 context updated
-last_updated: "2026-03-10T15:09:24.776Z"
-last_activity: 2026-03-10 -- Completed plan 11-01 (Legacy stub cleanup)
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-03-10T15:22:58Z"
+last_activity: 2026-03-10 -- Completed plan 12-01 (Residual cleanup)
 progress:
   total_phases: 12
-  completed_phases: 11
-  total_plans: 20
-  completed_plans: 20
+  completed_phases: 12
+  total_plans: 21
+  completed_plans: 21
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Every feature module has a simple public interface that fully describes its capabilities -- nothing reaches past the boundary, and contract tests lock down the behavior.
-**Current focus:** Phase 11: Legacy Stub Cleanup (complete)
+**Current focus:** Phase 12: Residual Cleanup (complete)
 
 ## Current Position
 
-Phase: 11 of 11 (Legacy Stub Cleanup)
+Phase: 12 of 12 (Residual Cleanup)
 Plan: 1 of 1 in current phase
-Status: Phase 11 plan 01 complete -- all phases finished
-Last activity: 2026-03-10 -- Completed plan 11-01 (Legacy stub cleanup)
+Status: Phase 12 plan 01 complete -- all phases finished
+Last activity: 2026-03-10 -- Completed plan 12-01 (Residual cleanup)
 
 Progress: [██████████] 100%
 
@@ -71,6 +71,7 @@ Progress: [██████████] 100%
 | Phase 10 P01 | 6 | 2 tasks | 10 files |
 | Phase 10 P02 | 2 | 2 tasks | 6 files |
 | Phase 11 P01 | 3 | 2 tasks | 19 files |
+| Phase 12 P01 | 4 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,7 @@ Recent decisions affecting current work:
 - [11-01]: Deleted additional orphan src/components/lib/utils.ts (zero consumers, canonical cn() in @shared/utils)
 - [11-01]: Deleted stale test file breadcrumbsValidation.test.ts (tested deleted legacy module with no canonical counterpart)
 - [11-01]: Removed src/services/ parent directory (empty after ai/ subdirectory deletion)
+- [12-01]: useWindowState excluded from barrel (Tauri runtime dependency) matching existing convention for useMacOSEffects etc.
 
 ### Pending Todos
 
@@ -156,6 +158,6 @@ None -- all todos resolved.
 
 ## Session Continuity
 
-Last session: 2026-03-10T15:09:24.773Z
-Stopped at: Phase 12 context updated
-Resume file: .planning/phases/12-residual-cleanup/12-CONTEXT.md
+Last session: 2026-03-10T15:22:58Z
+Stopped at: Completed 12-01-PLAN.md
+Resume file: .planning/phases/12-residual-cleanup/12-01-SUMMARY.md

@@ -207,7 +207,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 12-01-PLAN.md — Migrate useWindowState, delete orphans, add sidebar entry, modernize test mocks
+- [x] 12-01-PLAN.md — Migrate useWindowState, delete orphans, add sidebar entry, modernize test mocks
 
 ## Progress
 
@@ -227,4 +227,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 9. App Shell & Enforcement | 2/3 | In Progress|  |
 | 10. API Bypass Fixes & Baker Bookkeeping | 2/2 | Complete    | 2026-03-10 |
 | 11. Legacy & Stub Cleanup | 1/1 | Complete    | 2026-03-10 |
-| 12. Residual Cleanup & Navigation Fixes | 0/0 | Planned | - |
+| 12. Residual Cleanup & Navigation Fixes | 1/1 | Complete | 2026-03-10 |
