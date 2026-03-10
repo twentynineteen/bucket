@@ -261,7 +261,9 @@ export function useTrelloCardsManager({
   }
 
   // AlertDialog state for card removal confirmation
-  const [pendingRemoveCardIndex, setPendingRemoveCardIndex] = useState<number | null>(null)
+  const [pendingRemoveCardIndex, setPendingRemoveCardIndex] = useState<number | null>(
+    null
+  )
 
   // Handler: Request card removal (opens AlertDialog)
   const requestRemoveCard = (index: number) => {
@@ -301,7 +303,9 @@ export function useTrelloCardsManager({
         addTrelloCard(updatedCard)
       }, 100)
     } catch (err) {
-      toast.error(`Failed to refresh card: ${err instanceof Error ? err.message : String(err)}`)
+      toast.error(
+        `Failed to refresh card: ${err instanceof Error ? err.message : String(err)}`
+      )
     }
   }
 

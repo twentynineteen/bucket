@@ -145,7 +145,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
   }
 
   // AlertDialog state for video link removal confirmation
-  const [pendingRemoveVideoIndex, setPendingRemoveVideoIndex] = useState<number | null>(null)
+  const [pendingRemoveVideoIndex, setPendingRemoveVideoIndex] = useState<number | null>(
+    null
+  )
 
   const requestRemoveVideo = (index: number) => {
     setPendingRemoveVideoIndex(index)

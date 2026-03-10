@@ -30,7 +30,7 @@ const Baker = React.lazy(() =>
 )
 const BuildProjectPage = React.lazy(() =>
   import('@features/BuildProject').then((m) => ({
-    default: m.BuildProjectPage,
+    default: m.BuildProjectPage
   }))
 )
 const IngestHistory = React.lazy(() => import('./pages/IngestHistory'))
@@ -48,7 +48,7 @@ const UploadSprout = React.lazy(() =>
 )
 const PremierePluginManager = React.lazy(() =>
   import('@features/Premiere').then((m) => ({
-    default: m.PremierePluginManager,
+    default: m.PremierePluginManager
   }))
 )
 const UploadTrello = React.lazy(() =>

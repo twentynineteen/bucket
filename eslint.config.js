@@ -63,6 +63,16 @@ export default tseslint.config(
     settings: {
       'boundaries/elements': [
         {
+          type: 'app',
+          pattern: [
+            'src/App.tsx',
+            'src/AppRouter.tsx',
+            'src/index.tsx',
+            'src/app/dashboard/page.tsx'
+          ],
+          mode: 'file'
+        },
+        {
           type: 'feature',
           pattern: ['src/features/*'],
           capture: ['featureName']
@@ -89,11 +99,11 @@ export default tseslint.config(
           ]
         }
       ],
-      'boundaries/ignore': ['**/*.test.*', '**/*.spec.*']
+      'boundaries/ignore': ['**/*.test.*', '**/*.spec.*', '**/*.d.ts']
     },
     rules: {
       'boundaries/element-types': [
-        'warn',
+        'error',
         {
           default: 'allow',
           rules: [
@@ -103,7 +113,6 @@ export default tseslint.config(
             },
             {
               // Features can import other features -- barrel-only restriction
-              // will be refined when actual feature modules exist in Phase 3
               from: ['feature'],
               allow: [['feature', { featureName: '!${featureName}' }]]
             },
@@ -114,6 +123,8 @@ export default tseslint.config(
           ]
         }
       ],
+      // Set to 'warn' until path alias resolver is configured for boundaries
+      // and the legacy → features/shared migration is complete
       'boundaries/no-unknown-files': ['warn'],
       'boundaries/no-unknown': ['warn']
     }

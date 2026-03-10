@@ -342,7 +342,7 @@ describe('useVideoLinksManager - Behavior', () => {
 
     // Handlers
     expect(result.current).toHaveProperty('handleAddVideo')
-    expect(result.current).toHaveProperty('handleRemove')
+    expect(result.current).toHaveProperty('requestRemoveVideo')
     expect(result.current).toHaveProperty('handleMoveUp')
     expect(result.current).toHaveProperty('handleMoveDown')
     expect(result.current).toHaveProperty('handleUploadAndAdd')

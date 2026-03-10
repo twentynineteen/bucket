@@ -10,6 +10,7 @@ import '@testing-library/jest-dom'
 
 import * as useApiKeysModule from '@shared/hooks/useApiKeys'
 import * as useBreadcrumbsTrelloCardsModule from '@features/Trello'
+import * as useBreadcrumbsTrelloCardsHookModule from '../../Trello/hooks/useBreadcrumbsTrelloCards'
 import * as useBreadcrumbsVideoLinksModule from '../hooks/useBreadcrumbsVideoLinks'
 import * as useFileUploadModule from '@features/Upload'
 import * as useSproutVideoApiModule from '@features/Upload'
@@ -24,12 +25,19 @@ import { VideoLinksManager } from './VideoLinksManager'
 
 // Mock hooks
 vi.mock('../hooks/useBreadcrumbsVideoLinks')
-vi.mock('@features/Trello')
+vi.mock('@features/Trello', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@features/Trello')>()
+  return {
+    ...actual,
+    useBreadcrumbsTrelloCards: vi.fn()
+  }
+})
+// Mock useBreadcrumbsTrelloCards at its actual file path so useVideoLinksManager's
+// relative import also gets the mock
+vi.mock('../../Trello/hooks/useBreadcrumbsTrelloCards')
+vi.mock('../../Trello/api')
 vi.mock('@features/Upload')
 vi.mock('@shared/hooks/useApiKeys')
-vi.mock('@features/Upload')
-vi.mock('@features/Upload')
-vi.mock('@features/Upload')
 
 // Helper function to create a complete mock SproutUploadResponse
 const createMockSproutUploadResponse = (
@@ -147,8 +155,8 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       reset: vi.fn()
     })
 
-    // Mock useBreadcrumbsTrelloCards
-    vi.mocked(useBreadcrumbsTrelloCardsModule.useBreadcrumbsTrelloCards).mockReturnValue({
+    // Mock useBreadcrumbsTrelloCards (barrel export for test assertions)
+    const trelloCardsMockReturn = {
       trelloCards: [],
       isLoading: false,
       error: null,
@@ -164,7 +172,14 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       removeError: null,
       fetchError: null,
       fetchedCardData: undefined
-    })
+    }
+    vi.mocked(useBreadcrumbsTrelloCardsModule.useBreadcrumbsTrelloCards).mockReturnValue(
+      trelloCardsMockReturn
+    )
+    // Also mock at the direct file level (used by useVideoLinksManager's relative import)
+    vi.mocked(
+      useBreadcrumbsTrelloCardsHookModule.useBreadcrumbsTrelloCards
+    ).mockReturnValue(trelloCardsMockReturn)
 
     // Mock useSproutVideoApiKey
     vi.mocked(useApiKeysModule.useSproutVideoApiKey).mockReturnValue({
