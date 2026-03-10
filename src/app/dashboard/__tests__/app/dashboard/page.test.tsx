@@ -20,6 +20,13 @@ vi.mock('@shared/ui/layout/app-sidebar', () => ({
   AppSidebar: () => <div>AppSidebar</div>
 }))
 
+// Mock useAuth hook
+vi.mock('@features/Auth', () => ({
+  useAuth: () => ({
+    logout: vi.fn()
+  })
+}))
+
 // Mock the breadcrumb store before tests run
 vi.mock('@shared/store/useBreadcrumbStore', () => ({
   useBreadcrumbStore: () => ({

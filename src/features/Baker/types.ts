@@ -10,6 +10,24 @@ import type { TrelloCard, VideoLink } from '@shared/types/media'
 
 export type { VideoLink, TrelloCard }
 
+// Import breadcrumbs types for local use (BreadcrumbsViewerProps)
+import type {
+  BreadcrumbsFile,
+  BreadcrumbsPreview
+} from '@shared/types/breadcrumbs'
+
+// Re-export breadcrumbs domain types from shared (canonical source)
+export type {
+  BreadcrumbsFile,
+  FileInfo,
+  FieldChangeType,
+  FieldChange,
+  BreadcrumbsDiff,
+  DetailedFieldChange,
+  ProjectChangeDetail,
+  BreadcrumbsPreview
+} from '@shared/types/breadcrumbs'
+
 export interface ProjectFolder {
   path: string
   name: string
@@ -20,34 +38,6 @@ export interface ProjectFolder {
   lastScanned: string // ISO timestamp
   cameraCount: number
   validationErrors: string[]
-}
-
-export interface BreadcrumbsFile {
-  projectTitle: string
-  numberOfCameras: number
-  files: FileInfo[]
-  parentFolder: string
-  createdBy: string
-  creationDateTime: string
-  folderSizeBytes?: number
-  lastModified?: string
-  scannedBy?: string
-
-  // === DEPRECATED FIELD (keep for backward compatibility) ===
-  trelloCardUrl?: string
-
-  // === NEW FIELDS (Phase 004) ===
-  /** Array of video links associated with this project */
-  videoLinks?: VideoLink[]
-
-  /** Array of Trello cards associated with this project */
-  trelloCards?: TrelloCard[]
-}
-
-export interface FileInfo {
-  camera: number
-  name: string
-  path: string
 }
 
 export interface ScanResult {
@@ -190,60 +180,6 @@ export interface UseBakerPreferencesResult {
   // Actions
   updatePreferences: (newPrefs: Partial<ScanPreferences>) => void
   resetToDefaults: () => void
-}
-
-// Breadcrumbs comparison and diff types
-export type FieldChangeType = 'added' | 'modified' | 'removed' | 'unchanged'
-
-export interface FieldChange {
-  type: FieldChangeType
-  field: string
-  oldValue?: unknown
-  newValue?: unknown
-}
-
-export interface BreadcrumbsDiff {
-  hasChanges: boolean
-  changes: FieldChange[]
-  summary: {
-    added: number
-    modified: number
-    removed: number
-    unchanged: number
-  }
-}
-
-export interface DetailedFieldChange extends FieldChange {
-  fieldDisplayName: string
-  formattedOldValue: string
-  formattedNewValue: string
-  category: 'content' | 'metadata' | 'maintenance'
-  impact: 'high' | 'medium' | 'low'
-}
-
-export interface ProjectChangeDetail {
-  projectPath: string
-  projectName: string
-  hasChanges: boolean
-  changeCategories: {
-    content: DetailedFieldChange[]
-    metadata: DetailedFieldChange[]
-    maintenance: DetailedFieldChange[]
-  }
-  summary: {
-    contentChanges: number
-    metadataChanges: number
-    maintenanceChanges: number
-    totalChanges: number
-  }
-}
-
-export interface BreadcrumbsPreview {
-  current: BreadcrumbsFile | null
-  updated: BreadcrumbsFile
-  diff: BreadcrumbsDiff // Full diff including maintenance fields (for display)
-  meaningfulDiff?: BreadcrumbsDiff // Only meaningful changes (for confirmation logic)
-  detailedChanges?: ProjectChangeDetail // Enhanced detailed change information
 }
 
 export interface BreadcrumbsViewerProps {

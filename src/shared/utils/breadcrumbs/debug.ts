@@ -4,7 +4,7 @@
  * Debug helpers for development - should not be used in production.
  */
 
-import type { BreadcrumbsFile } from '@features/Baker'
+import type { BreadcrumbsFile } from '@shared/types'
 
 import { createNamespacedLogger } from '../logger'
 import { compareBreadcrumbs, compareBreadcrumbsMeaningful } from './comparison'

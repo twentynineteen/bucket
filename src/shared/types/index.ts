@@ -56,6 +56,24 @@ export { STORAGE_KEYS } from './scriptFormatter'
 /** Query key factory for script formatter data fetching */
 export { queryKeys } from './scriptFormatter'
 
+// Breadcrumbs domain types (comparison, diffing, preview)
+/** Breadcrumbs file structure with project metadata, files, and linked resources */
+export type { BreadcrumbsFile } from './breadcrumbs'
+/** File info entry within a breadcrumbs file -- camera number, name, path */
+export type { FileInfo } from './breadcrumbs'
+/** Type of change detected in a field comparison -- added, modified, removed, unchanged */
+export type { FieldChangeType } from './breadcrumbs'
+/** Single field change with type, field name, and old/new values */
+export type { FieldChange } from './breadcrumbs'
+/** Diff result from comparing two breadcrumbs files -- changes and summary counts */
+export type { BreadcrumbsDiff } from './breadcrumbs'
+/** Enriched field change with display name, formatted values, category, and impact */
+export type { DetailedFieldChange } from './breadcrumbs'
+/** Per-project change detail with categorized changes and summary counts */
+export type { ProjectChangeDetail } from './breadcrumbs'
+/** Preview of breadcrumbs update with current, updated, full diff, and meaningful diff */
+export type { BreadcrumbsPreview } from './breadcrumbs'
+
 // Example embeddings types (AI tools)
 /** Script example with metadata, embedding vector, and source classification */
 export type { ExampleWithMetadata } from './exampleEmbeddings'
