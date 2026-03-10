@@ -10,6 +10,6 @@ export { useUsername } from './useUsername'
 export { useApiKeys, useSproutVideoApiKey, useTrelloApiKeys } from './useApiKeys'
 /** Hook for detecting mobile viewport breakpoints via media query */
 export { useIsMobile } from './use-mobile'
-// Note: useMacOSEffects, useUpdateManager, useSystemTheme, useVersionCheck
+// Note: useMacOSEffects, useUpdateManager, useSystemTheme, useVersionCheck, useWindowState
 // are NOT barrel-exported because they depend on Tauri runtime plugins.
-// Import them directly: import { useMacOSEffects } from '@shared/hooks/useMacOSEffects'
+// Import them directly: import { useWindowState } from '@shared/hooks/useWindowState'

@@ -3,7 +3,7 @@
  * Purpose: Test window position and size persistence with throttling
  */
 
-import { useWindowState } from '../../../src/hooks/useWindowState'
+import { useWindowState } from '../../../src/shared/hooks/useWindowState'
 import { LogicalPosition, LogicalSize } from '@tauri-apps/api/window'
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
