@@ -142,7 +142,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-1. Fix ESLint boundaries no-unknown-files warning on lazy routes (tooling) - 2026-03-10
+None -- all todos resolved.
 
 ### Blockers/Concerns
 
