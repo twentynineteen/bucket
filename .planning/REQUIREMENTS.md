@@ -158,9 +158,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AITL-01 | Phase 6 | Complete |
 | AITL-02 | Phase 6 | Complete |
 | AITL-03 | Phase 6 | Complete |
-| BAKR-01 | Phase 7 | Pending |
-| BAKR-02 | Phase 7 | Pending |
-| BAKR-03 | Phase 7 | Pending |
+| BAKR-01 | Phase 10 | Pending |
+| BAKR-02 | Phase 10 | Pending |
+| BAKR-03 | Phase 10 | Pending |
 | BLDP-01 | Phase 8 | Complete |
 | BLDP-02 | Phase 8 | Complete |
 | BLDP-03 | Phase 8 | Complete |
