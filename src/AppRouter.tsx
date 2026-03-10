@@ -33,7 +33,6 @@ const BuildProjectPage = React.lazy(() =>
     default: m.BuildProjectPage
   }))
 )
-const IngestHistory = React.lazy(() => import('./pages/IngestHistory'))
 const Settings = React.lazy(() =>
   import('@features/Settings').then((m) => ({ default: m.Settings }))
 )
@@ -150,7 +149,6 @@ export const AppRouter: React.FC = () => {
           <Route path="/" element={<Page />}>
             <Route path="ingest">
               <Route index element={<Navigate to="/ingest/build" replace />} />
-              <Route path="history" element={<IngestHistory />} />
               <Route path="build" element={<BuildProjectPage />} />
               <Route path="baker" element={<Baker />} />
             </Route>
