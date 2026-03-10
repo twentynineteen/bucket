@@ -22,14 +22,11 @@ BARREL_MAP = {
     '@shared/utils/cn': '@shared/utils',
     '@shared/utils/debounce': '@shared/utils',
     '@shared/utils/versionUtils': '@shared/utils',
-    # NOTE: @shared/lib barrel is EXCLUDED from conversion because
-    # query-client-config.ts imports @tauri-apps/plugin-store which crashes
-    # in test environments. All @shared/lib imports must stay as sub-paths.
-    # '@shared/lib/query-keys': '@shared/lib',        # POISONED BARREL
-    # '@shared/lib/query-utils': '@shared/lib',        # POISONED BARREL
-    # '@shared/lib/performance-monitor': '@shared/lib', # POISONED BARREL
-    # '@shared/lib/prefetch-strategies': '@shared/lib', # POISONED BARREL
-    # '@shared/lib/query-client-config': '@shared/lib', # POISONED BARREL
+    '@shared/lib/query-keys': '@shared/lib',
+    '@shared/lib/query-utils': '@shared/lib',
+    '@shared/lib/performance-monitor': '@shared/lib',
+    '@shared/lib/prefetch-strategies': '@shared/lib',
+    '@shared/lib/query-client-config': '@shared/lib',
     '@shared/types/types': '@shared/types',
     '@shared/types/media': '@shared/types',
     '@shared/types/breadcrumbs': '@shared/types',
@@ -65,12 +62,9 @@ SELF_IMPORT_SCOPES = {
     '@shared/constants': 'src/shared/constants',
 }
 
-# Poisoned barrels: these barrel imports pull in Tauri-dependent modules that crash
-# in test environments. All files within src/shared/ must use sub-path imports for these.
-# (Feature files are fine because they run in Tauri runtime, not test runner.)
-POISONED_BARREL_SCOPES = {
-    '@shared/lib': 'src/shared/',  # query-client-config.ts depends on @tauri-apps/plugin-store
-}
+# Previously poisoned barrels (resolved via lazy-loading in query-client-config.ts).
+# Kept empty for documentation; remove entirely if desired.
+POISONED_BARREL_SCOPES = {}
 
 # Root directory
 ROOT = Path(__file__).parent.parent

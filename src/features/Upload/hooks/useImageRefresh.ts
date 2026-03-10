@@ -1,6 +1,5 @@
 import { REFRESH } from '@shared/constants'
-import { queryKeys } from '@shared/lib/query-keys'
-import { createQueryOptions } from '@shared/lib/query-utils'
+import { queryKeys, createQueryOptions } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { SproutUploadResponse } from '@shared/types'
 import { useState } from 'react'

@@ -1,6 +1,5 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys } from '@shared/lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '@shared/lib/query-utils'
+import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { debounce } from '@shared/utils'
 import { useEffect, useMemo, useRef } from 'react'

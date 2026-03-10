@@ -1,5 +1,5 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys } from '@shared/lib/query-keys'
+import { queryKeys } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { TrelloBoard } from '@shared/types'
 

@@ -1,6 +1,5 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys } from '@shared/lib/query-keys'
-import { createQueryOptions } from '@shared/lib/query-utils'
+import { queryKeys, createQueryOptions } from '@shared/lib'
 import { useBreadcrumbStore } from '@shared/store'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'

@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { CACHE } from '@shared/constants'
-import { queryKeys } from '@shared/lib/query-keys'
+import { queryKeys } from '@shared/lib'
 import { useAppStore } from '@shared/store'
 import { TrelloBoard } from '@shared/types'
 import { loadApiKeys, saveApiKeys } from '@shared/utils'

@@ -1,8 +1,14 @@
 import { CACHE, getBackoffDelay, RETRY, SECONDS } from '@shared/constants'
 import { QueryClient } from '@tanstack/react-query'
 import { persistQueryClient } from '@tanstack/react-query-persist-client'
-import { del, get, set } from '@tauri-apps/plugin-store'
 import { createNamespacedLogger } from '@shared/utils'
+
+// Lazy-load Tauri plugin-store to avoid crashing test environments
+// when the @shared/lib barrel is imported
+async function getTauriStore() {
+  const { del, get, set } = await import('@tauri-apps/plugin-store')
+  return { del, get, set }
+}
 
 const logger = createNamespacedLogger('QueryClient')
 
@@ -32,6 +38,7 @@ class TauriStorePersister {
 
   async persistClient(persistedClient: unknown) {
     try {
+      const { set } = await getTauriStore()
       const dataToStore = {
         ...persistedClient,
         timestamp: Date.now()
@@ -45,6 +52,7 @@ class TauriStorePersister {
 
   async restoreClient(): Promise<unknown | undefined> {
     try {
+      const { get } = await getTauriStore()
       const stored = await get<string>(this.storeName)
       if (!stored) return undefined
 
@@ -69,6 +77,7 @@ class TauriStorePersister {
 
   async removeClient() {
     try {
+      const { del } = await getTauriStore()
       await del(this.storeName)
     } catch (error) {
       logger.error('Failed to remove persisted client:', error)
