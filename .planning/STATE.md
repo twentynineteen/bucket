@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 10 context gathered
+status: in-progress
+stopped_at: Completed 10-01-PLAN.md
 last_updated: "2026-03-10T12:40:58.377Z"
 last_activity: 2026-03-10 -- Completed plan 09-03 (JSDoc documentation and CLAUDE.md rewrite)
 progress:
   total_phases: 11
   completed_phases: 9
-  total_plans: 17
-  completed_plans: 17
-  percent: 100
+  total_plans: 19
+  completed_plans: 18
+  percent: 90
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 ## Current Position
 
-Phase: 9 of 9 (App Shell Enforcement)
-Plan: 3 of 3 in current phase
-Status: Phase 9 plan 03 complete
-Last activity: 2026-03-10 -- Completed plan 09-03 (JSDoc documentation and CLAUDE.md rewrite)
+Phase: 10 of 11 (API Bypass Fixes)
+Plan: 1 of 2 in current phase
+Status: Phase 10 plan 01 complete
+Last activity: 2026-03-10 -- Completed plan 10-01 (Baker/Trello API bypass fixes)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [██████████] 100%
 | Phase 09 P01 | 19 | 2 tasks | 119 files |
 | Phase 09 P03 | 3 | 2 tasks | 1 file |
 | Phase 09 P02 | 11 | 2 tasks | 8 files |
+| Phase 10 P01 | 6 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,9 @@ Recent decisions affecting current work:
 - [Phase 09-02]: Added eslint-import-resolver-typescript for boundary path alias resolution
 - [Phase 09-02]: importKind: value on shared->feature disallow allows type-only imports across boundary
 - [Phase 09-02]: Legacy element patterns changed from src/X/* to src/X/** for correct eslint-plugin-boundaries v5 matching
+- [10-01]: Consolidated URL opening to plugin-opener (not plugin-shell) for all Trello api.ts calls
+- [10-01]: Added DetailedFieldChange and ProjectChangeDetail to Baker barrel (consumed externally but missing)
+- [10-01]: Replaced grep/execSync no-bypass tests with fs.readdirSync recursive pattern for comprehensive subdirectory scanning
 
 ### Pending Todos
 
@@ -146,6 +150,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-10T12:40:58.374Z
-Stopped at: Phase 10 context gathered
-Resume file: .planning/phases/10-api-bypass-fixes/10-CONTEXT.md
+Last session: 2026-03-10T13:09:15Z
+Stopped at: Completed 10-01-PLAN.md
+Resume file: .planning/phases/10-api-bypass-fixes/10-02-PLAN.md

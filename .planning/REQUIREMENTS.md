@@ -66,9 +66,9 @@ Requirements for the deep module refactor. Each maps to roadmap phases.
 
 ### Baker Module
 
-- [ ] **BAKR-01**: User can import Baker components, hooks, and types from `@features/Baker` barrel only
-- [ ] **BAKR-02**: User can see an API layer wrapping Baker-related Tauri commands
-- [ ] **BAKR-03**: User can see contract tests validating Baker module's public interface
+- [x] **BAKR-01**: User can import Baker components, hooks, and types from `@features/Baker` barrel only
+- [x] **BAKR-02**: User can see an API layer wrapping Baker-related Tauri commands
+- [x] **BAKR-03**: User can see contract tests validating Baker module's public interface
 
 ### BuildProject Module
 
@@ -158,9 +158,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AITL-01 | Phase 6 | Complete |
 | AITL-02 | Phase 6 | Complete |
 | AITL-03 | Phase 6 | Complete |
-| BAKR-01 | Phase 10 | Pending |
-| BAKR-02 | Phase 10 | Pending |
-| BAKR-03 | Phase 10 | Pending |
+| BAKR-01 | Phase 10 | Complete |
+| BAKR-02 | Phase 10 | Complete |
+| BAKR-03 | Phase 10 | Complete |
 | BLDP-01 | Phase 8 | Complete |
 | BLDP-02 | Phase 8 | Complete |
 | BLDP-03 | Phase 8 | Complete |
