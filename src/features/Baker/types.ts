@@ -11,10 +11,7 @@ import type { TrelloCard, VideoLink } from '@shared/types/media'
 export type { VideoLink, TrelloCard }
 
 // Import breadcrumbs types for local use (BreadcrumbsViewerProps)
-import type {
-  BreadcrumbsFile,
-  BreadcrumbsPreview
-} from '@shared/types/breadcrumbs'
+import type { BreadcrumbsFile, BreadcrumbsPreview } from '@shared/types/breadcrumbs'
 
 // Re-export breadcrumbs domain types from shared (canonical source)
 export type {
