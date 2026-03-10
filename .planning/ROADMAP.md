@@ -259,4 +259,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 11. Legacy & Stub Cleanup | 1/1 | Complete    | 2026-03-10 |
 | 12. Residual Cleanup & Navigation Fixes | 1/1 | Complete    | 2026-03-10 |
 | 13. Import Convention Alignment | 2/2 | Complete    | 2026-03-10 |
-| 14. Dead Export Removal | 1/1 | Complete   | 2026-03-10 |
+| 14. Dead Export Removal | 1/1 | Complete    | 2026-03-10 |
