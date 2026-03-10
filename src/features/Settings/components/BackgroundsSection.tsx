@@ -6,7 +6,8 @@
 import { Button } from '@shared/ui/button'
 import { useAppStore } from '@shared/store'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { queryKeys, createQueryError } from '@shared/lib'
+import { queryKeys } from '@shared/lib/query-keys'
+import { createQueryError } from '@shared/lib/query-utils'
 import { logger } from '@shared/utils'
 import React from 'react'
 

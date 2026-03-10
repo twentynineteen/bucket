@@ -1,5 +1,6 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@shared/lib'
+import { queryKeys } from '@shared/lib/query-keys'
+import { createQueryError, createQueryOptions, shouldRetry } from '@shared/lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
 import { loadApiKeys, logger } from '@shared/utils'
 import { useMemo } from 'react'

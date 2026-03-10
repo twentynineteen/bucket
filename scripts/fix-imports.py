@@ -22,11 +22,14 @@ BARREL_MAP = {
     '@shared/utils/cn': '@shared/utils',
     '@shared/utils/debounce': '@shared/utils',
     '@shared/utils/versionUtils': '@shared/utils',
-    '@shared/lib/query-keys': '@shared/lib',
-    '@shared/lib/query-utils': '@shared/lib',
-    '@shared/lib/performance-monitor': '@shared/lib',
-    '@shared/lib/prefetch-strategies': '@shared/lib',
-    '@shared/lib/query-client-config': '@shared/lib',
+    # NOTE: @shared/lib barrel is EXCLUDED from conversion because
+    # query-client-config.ts imports @tauri-apps/plugin-store which crashes
+    # in test environments. All @shared/lib imports must stay as sub-paths.
+    # '@shared/lib/query-keys': '@shared/lib',        # POISONED BARREL
+    # '@shared/lib/query-utils': '@shared/lib',        # POISONED BARREL
+    # '@shared/lib/performance-monitor': '@shared/lib', # POISONED BARREL
+    # '@shared/lib/prefetch-strategies': '@shared/lib', # POISONED BARREL
+    # '@shared/lib/query-client-config': '@shared/lib', # POISONED BARREL
     '@shared/types/types': '@shared/types',
     '@shared/types/media': '@shared/types',
     '@shared/types/breadcrumbs': '@shared/types',
@@ -62,6 +65,13 @@ SELF_IMPORT_SCOPES = {
     '@shared/constants': 'src/shared/constants',
 }
 
+# Poisoned barrels: these barrel imports pull in Tauri-dependent modules that crash
+# in test environments. All files within src/shared/ must use sub-path imports for these.
+# (Feature files are fine because they run in Tauri runtime, not test runner.)
+POISONED_BARREL_SCOPES = {
+    '@shared/lib': 'src/shared/',  # query-client-config.ts depends on @tauri-apps/plugin-store
+}
+
 # Root directory
 ROOT = Path(__file__).parent.parent
 SRC = ROOT / 'src'
@@ -92,10 +102,15 @@ def is_exception_path(import_path):
 
 
 def is_self_import(filepath, barrel_target):
-    """Check if converting this import would create a self-import (importing from own barrel)."""
+    """Check if converting this import would create a self-import (importing from own barrel)
+    or would pull in a poisoned barrel from within src/shared/."""
     rel_path = str(Path(filepath).relative_to(ROOT))
     scope = SELF_IMPORT_SCOPES.get(barrel_target)
     if scope and rel_path.startswith(scope + '/'):
+        return True
+    # Check poisoned barrel scopes: shared modules must not use these barrels
+    poisoned_scope = POISONED_BARREL_SCOPES.get(barrel_target)
+    if poisoned_scope and rel_path.startswith(poisoned_scope):
         return True
     return False
 

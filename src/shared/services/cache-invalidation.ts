@@ -1,5 +1,5 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys } from '@shared/lib'
+import { queryKeys } from '@shared/lib/query-keys'
 import { QueryClient } from '@tanstack/react-query'
 
 import { logger } from '@shared/utils'

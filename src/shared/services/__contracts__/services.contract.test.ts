@@ -35,7 +35,14 @@ vi.mock('@shared/utils/logger', () => ({
     warn: vi.fn(),
     debug: vi.fn(),
     info: vi.fn()
-  }
+  },
+  createNamespacedLogger: vi.fn(() => ({
+    log: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn()
+  }))
 }))
 
 describe('Services Barrel Exports - Shape', () => {

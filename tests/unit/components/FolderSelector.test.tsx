@@ -51,7 +51,13 @@ vi.mock('@shared/utils/logger', () => ({
     warn: vi.fn(),
     info: vi.fn(),
     debug: vi.fn()
-  }
+  },
+  createNamespacedLogger: vi.fn(() => ({
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn()
+  }))
 }))
 
 describe('FolderSelector Component', () => {
