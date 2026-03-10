@@ -196,33 +196,37 @@ Plans:
 ### Phase 12: Residual Cleanup & Navigation Fixes
 **Goal**: Resolve remaining tech debt: migrate useWindowState, add UploadOtter navigation, fix broken re-exports, remove stale test mocks, and replace ThemeImport placeholder
 **Depends on**: Phase 11
-**Requirements**: (tech debt — no new requirements)
+**Requirements**: (tech debt -- no new requirements)
 **Gap Closure:** Closes integration/flow/tech-debt gaps from v1.0 milestone audit
 **Success Criteria** (what must be TRUE):
-  1. `useWindowState` lives in `@shared/hooks/` and is exported from the hooks barrel — App.tsx imports via `@shared/hooks`
+  1. `useWindowState` lives in `@shared/hooks/` and is exported from the hooks barrel -- App.tsx imports via `@shared/hooks`
   2. UploadOtter has a sidebar navigation entry and is reachable via normal app navigation
   3. `src/hooks/index.ts` has no broken re-exports (useAppendVideoInfo reference removed)
   4. `tests/unit/AppRouter.test.tsx` has no stale `vi.mock` for removed pages
-  5. `ThemeImport.tsx` is either properly implemented or removed — no TODO placeholder remains
+  5. `ThemeImport.tsx` is either properly implemented or removed -- no TODO placeholder remains
 **Plans:** 1/1 plans complete
 
 Plans:
-- [x] 12-01-PLAN.md — Migrate useWindowState, delete orphans, add sidebar entry, modernize test mocks
+- [x] 12-01-PLAN.md -- Migrate useWindowState, delete orphans, add sidebar entry, modernize test mocks
 
 ### Phase 13: Import Convention Alignment
-**Goal**: All imports follow barrel conventions — no sub-path bypasses for @shared/* barrels, no intra-module barrel bypasses
+**Goal**: All imports follow barrel conventions -- no sub-path bypasses for @shared/* barrels, no intra-module barrel bypasses
 **Depends on**: Phase 12
 **Requirements**: SHRD-04, SHRD-06, SHRD-07, SHRD-08, TREL-01
 **Gap Closure:** Closes INT-01, INT-02 from v1.0 milestone audit
 **Success Criteria** (what must be TRUE):
   1. `useAppendVideoInfo.ts` imports from `@features/Trello` barrel, not `@features/Trello/api` sub-path
-  2. All `@shared/lib`, `@shared/utils`, `@shared/types`, `@shared/constants` imports use barrel paths — zero sub-path imports remain
+  2. All `@shared/lib`, `@shared/utils`, `@shared/types`, `@shared/constants` imports use barrel paths -- zero sub-path imports remain
   3. Tests pass and dev server starts without errors after import migration
+**Plans:** 1 plan
+
+Plans:
+- [ ] 13-01-PLAN.md -- Bulk import rewrite script to convert ~190 sub-path imports to barrel imports, fix Trello intra-module bypass
 
 ### Phase 14: Dead Export Removal
 **Goal**: Remove barrel exports with zero cross-module consumers and unused shared services
 **Depends on**: Phase 13
-**Requirements**: (tech debt — no new requirements)
+**Requirements**: (tech debt -- no new requirements)
 **Gap Closure:** Closes dead export tech debt from v1.0 milestone audit
 **Success Criteria** (what must be TRUE):
   1. `usePremiereIntegration`, `PluginInfo`, `InstallResult`, `SimilarExample`, `createDefaultSproutUploadResponse` removed from their respective barrels (or confirmed needed)
@@ -249,5 +253,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4/5/6 (parallelizable) -> 7/8 (p
 | 10. API Bypass Fixes & Baker Bookkeeping | 2/2 | Complete    | 2026-03-10 |
 | 11. Legacy & Stub Cleanup | 1/1 | Complete    | 2026-03-10 |
 | 12. Residual Cleanup & Navigation Fixes | 1/1 | Complete    | 2026-03-10 |
-| 13. Import Convention Alignment | 0/0 | Planned | - |
+| 13. Import Convention Alignment | 0/1 | Planned | - |
 | 14. Dead Export Removal | 0/0 | Planned | - |
