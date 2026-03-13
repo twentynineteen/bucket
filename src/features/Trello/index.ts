@@ -1,8 +1,4 @@
 // Components
-/** Button to open the Trello integration modal from project views */
-export { default as TrelloIntegrationButton } from './components/TrelloIntegrationButton'
-/** Modal for linking Trello cards to a project with board selection and search */
-export { default as TrelloIntegrationModal } from './components/TrelloIntegrationModal'
 /** Manager component for displaying and editing linked Trello cards on a project */
 export { TrelloCardsManager } from './components/TrelloCardsManager'
 /** Single Trello card display with title, labels, and action buttons */

@@ -9,7 +9,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock the api layer (single mock point for all AITools I/O)
@@ -90,13 +89,7 @@ import * as api from '../api'
 // --- Shape Tests: Barrel ---
 
 describe('AITools Barrel Exports - Shape', () => {
-  const expectedExports = [
-    'ExampleEmbeddings',
-    'ScriptFormatter',
-    'useExampleManagement',
-    'useScriptFileUpload',
-    'useScriptFormatterState'
-  ].sort()
+  const expectedExports = ['ExampleEmbeddings', 'ScriptFormatter'].sort()
 
   it('exports exactly the expected named exports (no more, no fewer)', () => {
     const exportNames = Object.keys(aitoolsBarrel).sort()
@@ -111,22 +104,13 @@ describe('AITools Barrel Exports - Shape', () => {
     expect(typeof aitoolsBarrel.ScriptFormatter).toBe('function')
   })
 
-  it('useExampleManagement is a function', () => {
-    expect(typeof aitoolsBarrel.useExampleManagement).toBe('function')
-  })
-
-  it('useScriptFileUpload is a function', () => {
-    expect(typeof aitoolsBarrel.useScriptFileUpload).toBe('function')
-  })
-
-  it('useScriptFormatterState is a function', () => {
-    expect(typeof aitoolsBarrel.useScriptFormatterState).toBe('function')
-  })
-
   it('does not leak internal hooks through barrel', () => {
     const exportNames = Object.keys(aitoolsBarrel)
     // These internal hooks should NOT be accessible from the barrel
     const internalHooks = [
+      'useScriptFormatterState',
+      'useExampleManagement',
+      'useScriptFileUpload',
       'useScriptProcessor',
       'useEmbedding',
       'useOllamaEmbedding',
@@ -181,74 +165,6 @@ describe('AITools API Layer - Shape', () => {
   it('exports exactly 19 functions (no extras)', () => {
     const apiExportNames = Object.keys(api).sort()
     expect(apiExportNames).toEqual(expectedFunctions.sort())
-  })
-})
-
-// --- Behavioral Tests: useExampleManagement ---
-
-describe('AITools useExampleManagement - Behavior', () => {
-  it('returns expected hook shape', () => {
-    const { result } = renderHook(() => aitoolsBarrel.useExampleManagement())
-
-    expect(result.current).toHaveProperty('examples')
-    expect(result.current).toHaveProperty('isLoading')
-    expect(result.current).toHaveProperty('error')
-    expect(result.current).toHaveProperty('refetch')
-    expect(result.current).toHaveProperty('uploadExample')
-    expect(result.current).toHaveProperty('replaceExample')
-    expect(result.current).toHaveProperty('deleteExample')
-  })
-
-  it('examples defaults to an empty array', () => {
-    const { result } = renderHook(() => aitoolsBarrel.useExampleManagement())
-    expect(Array.isArray(result.current.examples)).toBe(true)
-    expect(result.current.examples).toHaveLength(0)
-  })
-
-  it('isLoading defaults to false', () => {
-    const { result } = renderHook(() => aitoolsBarrel.useExampleManagement())
-    expect(result.current.isLoading).toBe(false)
-  })
-
-  it('mutations have mutate function', () => {
-    const { result } = renderHook(() => aitoolsBarrel.useExampleManagement())
-    expect(typeof result.current.uploadExample.mutate).toBe('function')
-    expect(typeof result.current.replaceExample.mutate).toBe('function')
-    expect(typeof result.current.deleteExample.mutate).toBe('function')
-  })
-})
-
-// --- Behavioral Tests: useScriptFileUpload ---
-
-describe('AITools useScriptFileUpload - Behavior', () => {
-  it('returns expected hook shape', () => {
-    const { result } = renderHook(() => aitoolsBarrel.useScriptFileUpload())
-
-    expect(result.current).toHaveProperty('isReading')
-    expect(result.current).toHaveProperty('error')
-    expect(result.current).toHaveProperty('selectFile')
-    expect(result.current).toHaveProperty('readFileContent')
-    expect(result.current).toHaveProperty('validateFile')
-  })
-
-  it('isReading defaults to false', () => {
-    const { result } = renderHook(() => aitoolsBarrel.useScriptFileUpload())
-    expect(result.current.isReading).toBe(false)
-  })
-
-  it('error defaults to null', () => {
-    const { result } = renderHook(() => aitoolsBarrel.useScriptFileUpload())
-    expect(result.current.error).toBeNull()
-  })
-
-  it('selectFile is an async function', () => {
-    const { result } = renderHook(() => aitoolsBarrel.useScriptFileUpload())
-    expect(typeof result.current.selectFile).toBe('function')
-  })
-
-  it('validateFile is a function', () => {
-    const { result } = renderHook(() => aitoolsBarrel.useScriptFileUpload())
-    expect(typeof result.current.validateFile).toBe('function')
   })
 })
 

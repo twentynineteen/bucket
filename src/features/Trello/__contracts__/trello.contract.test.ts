@@ -184,8 +184,6 @@ import * as trelloBarrel from '../index'
 describe('Trello Barrel Exports - Shape', () => {
   const expectedExports = [
     // Components
-    'TrelloIntegrationButton',
-    'TrelloIntegrationModal',
     'TrelloCardsManager',
     'TrelloCardItem',
     'TrelloCardUpdateDialog',
@@ -217,14 +215,12 @@ describe('Trello Barrel Exports - Shape', () => {
     expect(exportNames).toEqual(expectedExports)
   })
 
-  it('exports exactly 25 members', () => {
-    expect(Object.keys(trelloBarrel)).toHaveLength(25)
+  it('exports exactly 23 members', () => {
+    expect(Object.keys(trelloBarrel)).toHaveLength(23)
   })
 
   // Component shape checks
   const componentNames = [
-    'TrelloIntegrationButton',
-    'TrelloIntegrationModal',
     'TrelloCardsManager',
     'TrelloCardItem',
     'TrelloCardUpdateDialog',

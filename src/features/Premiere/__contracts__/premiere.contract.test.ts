@@ -75,9 +75,7 @@ describe('Premiere Barrel Exports - Shape', () => {
 
   it('exports exactly the expected named exports', () => {
     const exportNames = Object.keys(premiereBarrel)
-    expect(exportNames.sort()).toEqual([
-      'PremierePluginManager'
-    ])
+    expect(exportNames.sort()).toEqual(['PremierePluginManager'])
   })
 
   it('exports exactly 1 member', () => {

@@ -57,7 +57,6 @@ describe('Services Barrel Exports - Shape', () => {
   it('exports useCacheInvalidation as a function', () => {
     expect(typeof useCacheInvalidation).toBe('function')
   })
-
 })
 
 describe('CacheInvalidationService - Behavior', () => {
