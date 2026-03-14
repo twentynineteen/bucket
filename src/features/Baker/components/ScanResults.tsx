@@ -6,16 +6,49 @@
 
 import { formatFileSize } from '@shared/utils'
 import { RefreshCw } from 'lucide-react'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 
 import type { ScanResult } from '../types'
 
 interface ScanResultsProps {
   scanResult: ScanResult | null
   isScanning: boolean
+  scanStartTime: number | null
 }
 
-export const ScanResults: React.FC<ScanResultsProps> = ({ scanResult, isScanning }) => {
+function formatElapsed(seconds: number): string {
+  if (seconds >= 60) {
+    const minutes = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${minutes}m ${secs}s`
+  }
+  return `${seconds}s`
+}
+
+export const ScanResults: React.FC<ScanResultsProps> = ({
+  scanResult,
+  isScanning,
+  scanStartTime
+}) => {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    if (!scanStartTime) {
+      return
+    }
+
+    const computeElapsed = () => Math.floor((Date.now() - scanStartTime) / 1000)
+
+    const interval = setInterval(() => {
+      setElapsed(computeElapsed())
+    }, 1000)
+
+    return () => {
+      clearInterval(interval)
+      setElapsed(0)
+    }
+  }, [scanStartTime])
+
   if (!scanResult) return null
 
   // Show progress during scan
@@ -35,6 +68,9 @@ export const ScanResults: React.FC<ScanResultsProps> = ({ scanResult, isScanning
               {scanResult.totalFolders} folders scanned • {scanResult.validProjects}{' '}
               projects found
             </p>
+            <span className="text-muted-foreground text-sm">
+              Elapsed: {formatElapsed(elapsed)}
+            </span>
           </div>
           <RefreshCw className="h-5 w-5 animate-spin" />
         </div>
@@ -53,6 +89,15 @@ export const ScanResults: React.FC<ScanResultsProps> = ({ scanResult, isScanning
     (p) => !p.hasBreadcrumbs && !p.invalidBreadcrumbs
   ).length
 
+  // Compute elapsed from backend timestamps
+  const elapsedSeconds = scanResult.endTime
+    ? Math.round(
+        (new Date(scanResult.endTime).getTime() -
+          new Date(scanResult.startTime).getTime()) /
+          1000
+      )
+    : null
+
   // Show results summary after scan
   return (
     <div className="bg-card border-border rounded-xl border p-4 shadow-sm">
@@ -61,7 +106,9 @@ export const ScanResults: React.FC<ScanResultsProps> = ({ scanResult, isScanning
           <div className="bg-primary/10 text-primary flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold">
             2
           </div>
-          <h2 className="text-foreground text-sm font-semibold">Scan Results</h2>
+          <h2 className="text-foreground text-sm font-semibold">
+            {scanResult.validProjects === 0 ? 'No Projects Found' : 'Scan Results'}
+          </h2>
         </div>
 
         {/* Compact stats inline */}
@@ -72,6 +119,17 @@ export const ScanResults: React.FC<ScanResultsProps> = ({ scanResult, isScanning
               {scanResult.totalFolders}
             </span>
           </div>
+          {elapsedSeconds !== null && (
+            <>
+              <div className="bg-border h-3 w-px" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">in</span>
+                <span className="text-foreground font-semibold">
+                  {formatElapsed(elapsedSeconds)}
+                </span>
+              </div>
+            </>
+          )}
           <div className="bg-border h-3 w-px" />
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">Projects:</span>

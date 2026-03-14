@@ -42,8 +42,15 @@ const BakerPageContent: React.FC = () => {
   const [showBatchConfirmation, setShowBatchConfirmation] = useState(false)
 
   // Custom hooks - all business logic moved to hooks
-  const { scanResult, isScanning, error, startScan, cancelScan, clearResults } =
-    useBakerScan()
+  const {
+    scanResult,
+    isScanning,
+    error,
+    scanStartTime,
+    startScan,
+    cancelScan,
+    clearResults
+  } = useBakerScan()
   const {
     updateBreadcrumbs,
     isUpdating,
@@ -228,18 +235,27 @@ const BakerPageContent: React.FC = () => {
             hasResults={!!scanResult}
           />
 
-          {/* Error Display */}
+          {/* Inline Error Display */}
           {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-              <div className="flex items-center">
-                <AlertTriangle className="mr-2 h-4 w-4 text-red-600" />
-                <span className="text-red-800">{error}</span>
+            <div className="border-destructive/20 bg-destructive/5 rounded-lg border p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <AlertTriangle className="text-destructive mr-2 h-4 w-4" />
+                  <span className="text-destructive">{error}</span>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleStartScan}>
+                  Retry Scan
+                </Button>
               </div>
             </div>
           )}
 
           {/* Scan Results */}
-          <ScanResults scanResult={scanResult} isScanning={isScanning} />
+          <ScanResults
+            scanResult={scanResult}
+            isScanning={isScanning}
+            scanStartTime={scanStartTime}
+          />
 
           {/* Project Results - Master-Detail Layout */}
           {scanResult?.projects && (
