@@ -33,21 +33,27 @@ export function useBakerScan(): UseBakerScanResult {
     }
   }, [])
 
-  const completeScan = useCallback((result: ScanResult) => {
-    scanIdRef.current = null
-    stopPolling()
-    setScanResult(result)
-    setIsScanning(false)
-    setScanStartTime(null)
-  }, [stopPolling])
+  const completeScan = useCallback(
+    (result: ScanResult) => {
+      scanIdRef.current = null
+      stopPolling()
+      setScanResult(result)
+      setIsScanning(false)
+      setScanStartTime(null)
+    },
+    [stopPolling]
+  )
 
-  const failScan = useCallback((message: string) => {
-    scanIdRef.current = null
-    stopPolling()
-    setError(message)
-    setIsScanning(false)
-    setScanStartTime(null)
-  }, [stopPolling])
+  const failScan = useCallback(
+    (message: string) => {
+      scanIdRef.current = null
+      stopPolling()
+      setError(message)
+      setIsScanning(false)
+      setScanStartTime(null)
+    },
+    [stopPolling]
+  )
 
   // Set up event listeners once on mount (mount-once pattern)
   // Using useRef for scanId avoids the race condition where listener
