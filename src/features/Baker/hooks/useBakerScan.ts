@@ -5,7 +5,7 @@
  * Handles scan initiation, progress tracking, and cancellation.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   bakerCancelScan,
@@ -21,9 +21,12 @@ export function useBakerScan(): UseBakerScanResult {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [currentScanId, setCurrentScanId] = useState<string | null>(null)
+  const [scanStartTime, setScanStartTime] = useState<number | null>(null)
+  const scanIdRef = useRef<string | null>(null)
 
-  // Set up event listeners for scan progress and completion
+  // Set up event listeners once on mount (mount-once pattern)
+  // Using useRef for scanId avoids the race condition where listener
+  // teardown/setup gaps caused baker_scan_complete events to be lost
   useEffect(() => {
     const unlistenPromises: Promise<() => void>[] = []
 
@@ -31,7 +34,7 @@ export function useBakerScan(): UseBakerScanResult {
     unlistenPromises.push(
       listenScanProgress((event) => {
         const progressData = event.payload
-        if (currentScanId && progressData.scanId === currentScanId) {
+        if (progressData.scanId === scanIdRef.current) {
           setScanResult((prev) =>
             prev
               ? {
@@ -49,10 +52,11 @@ export function useBakerScan(): UseBakerScanResult {
     unlistenPromises.push(
       listenScanComplete((event) => {
         const completeData = event.payload
-        if (currentScanId && completeData.scanId === currentScanId) {
+        if (completeData.scanId === scanIdRef.current) {
+          scanIdRef.current = null
           setScanResult(completeData.result)
           setIsScanning(false)
-          setCurrentScanId(null)
+          setScanStartTime(null)
         }
       })
     )
@@ -61,15 +65,16 @@ export function useBakerScan(): UseBakerScanResult {
     unlistenPromises.push(
       listenScanError((event) => {
         const errorData = event.payload
-        if (currentScanId && errorData.scanId === currentScanId) {
+        if (errorData.scanId === scanIdRef.current) {
+          scanIdRef.current = null
           setError(errorData.error.message)
           setIsScanning(false)
-          setCurrentScanId(null)
+          setScanStartTime(null)
         }
       })
     )
 
-    // Clean up listeners on unmount or when currentScanId changes
+    // Clean up listeners on unmount only
     return () => {
       Promise.all(unlistenPromises)
         .then((unlisteners) => {
@@ -83,7 +88,7 @@ export function useBakerScan(): UseBakerScanResult {
           // Ignore cleanup errors in test environments
         })
     }
-  }, [currentScanId])
+  }, [])
 
   const startScan = useCallback(
     async (rootPath: string, options: ScanOptions) => {
@@ -98,42 +103,53 @@ export function useBakerScan(): UseBakerScanResult {
 
         const scanId = await bakerStartScan(rootPath, options)
 
-        setCurrentScanId(scanId)
-        // Note: Real-time updates are handled via event listeners (see useEffect above)
-        // No polling needed - events provide instant feedback
+        // Set ref BEFORE state updates so listeners can match events immediately
+        scanIdRef.current = scanId
+        setScanStartTime(Date.now())
       } catch (scanError) {
-        setError(scanError instanceof Error ? scanError.message : String(scanError))
+        setError(
+          scanError instanceof Error
+            ? scanError.message
+            : String(scanError)
+        )
         setIsScanning(false)
-        setCurrentScanId(null)
+        scanIdRef.current = null
       }
     },
     [isScanning]
   )
 
   const cancelScan = useCallback(async () => {
-    if (currentScanId) {
+    if (scanIdRef.current) {
       try {
-        await bakerCancelScan(currentScanId)
+        await bakerCancelScan(scanIdRef.current)
+        scanIdRef.current = null
         setIsScanning(false)
-        setCurrentScanId(null)
+        setScanStartTime(null)
       } catch (cancelError) {
-        setError(cancelError instanceof Error ? cancelError.message : String(cancelError))
+        setError(
+          cancelError instanceof Error
+            ? cancelError.message
+            : String(cancelError)
+        )
       }
     }
-  }, [currentScanId])
+  }, [])
 
   const clearResults = useCallback(() => {
     setScanResult(null)
     setError(null)
     if (!isScanning) {
-      setCurrentScanId(null)
+      scanIdRef.current = null
     }
+    setScanStartTime(null)
   }, [isScanning])
 
   return {
     scanResult,
     isScanning,
     error,
+    scanStartTime,
     startScan,
     cancelScan,
     clearResults
