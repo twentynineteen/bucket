@@ -6,8 +6,8 @@
  * Following TDD methodology - these should fail initially
  */
 
-import { Button } from '@/components/ui/button'
-import { BUTTON_ANIMATIONS, DURATION, EASING } from '@/constants/animations'
+import { Button } from '@shared/ui/button'
+import { BUTTON_ANIMATIONS, DURATION, EASING } from '@shared/constants/animations'
 import { render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockReducedMotion } from '@tests/utils/animation-testing'

@@ -3,8 +3,8 @@
  * Feature: 007-frontend-script-example
  */
 
-import { useExampleManagement } from '@/hooks/useExampleManagement'
-import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
+import { useExampleManagement } from '@features/AITools/ExampleEmbeddings/hooks/useExampleManagement'
+import type { ExampleWithMetadata } from '@shared/types/exampleEmbeddings'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as tauriCore from '@tauri-apps/api/core'
 import { renderHook, waitFor } from '@testing-library/react'

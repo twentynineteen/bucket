@@ -1,8 +1,6 @@
-/**
- * DOCX Command Handlers
- * Feature: 006-i-wish-to
- * Purpose: Tauri commands for .docx file parsing and generation
- */
+// DOCX Command Handlers
+// Feature: 006-i-wish-to
+// Purpose: Tauri commands for .docx file parsing and generation
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -85,7 +83,7 @@ pub fn parse_docx_file(file_path: String) -> Result<ParseResult, String> {
     // FR-003: Validate file extension
     if !path
         .extension()
-        .map_or(false, |ext| ext.eq_ignore_ascii_case("docx"))
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("docx"))
     {
         return Err("File must be a .docx document".to_string());
     }
@@ -150,7 +148,7 @@ pub fn validate_docx_file(file_path: String) -> Result<bool, String> {
 
     if !path
         .extension()
-        .map_or(false, |ext| ext.eq_ignore_ascii_case("docx"))
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("docx"))
     {
         return Err("File is not a .docx file".to_string());
     }

@@ -8,10 +8,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import { ReviewStep } from '@/pages/AI/ScriptFormatter/steps/ReviewStep'
+import { ReviewStep } from '@features/AITools/ScriptFormatter/components/steps/ReviewStep'
 
 // Mock DiffEditor component to avoid Monaco Editor dependencies
-vi.mock('@/pages/AI/ScriptFormatter/DiffEditor', () => ({
+vi.mock('@features/AITools/ScriptFormatter/components/DiffEditor', () => ({
   DiffEditor: ({ original, modified }: { original: string; modified: string }) => (
     <div data-testid="diff-editor">
       <div>Original: {original}</div>

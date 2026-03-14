@@ -1,4 +1,4 @@
-import { TitleBar } from '@components/TitleBar'
+import { TitleBar } from '@shared/ui/layout/TitleBar'
 import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 

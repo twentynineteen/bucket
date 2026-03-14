@@ -1,6 +1,6 @@
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
-import type { BreadcrumbsFile, TrelloCard, VideoLink } from '@/types/baker'
+import type { BreadcrumbsFile, TrelloCard, VideoLink } from '@features/Baker'
 import { mockIPC } from '@tauri-apps/api/mocks'
 
 export function setupTauriMocks() {

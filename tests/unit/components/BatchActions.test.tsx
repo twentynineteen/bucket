@@ -13,7 +13,7 @@
  * Total: 12 tests
  */
 
-import { BatchActions } from '@components/Baker/BatchActions'
+import { BatchActions } from '../../../src/features/Baker/components/BatchActions'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'

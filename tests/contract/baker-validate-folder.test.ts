@@ -6,7 +6,7 @@
  */
 
 import { resolve } from 'path'
-import type { ProjectFolder } from '@/types/baker'
+import type { ProjectFolder } from '@features/Baker'
 import { invoke } from '@tauri-apps/api/core'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { setupTauriMocks } from '../setup/tauri-mocks'

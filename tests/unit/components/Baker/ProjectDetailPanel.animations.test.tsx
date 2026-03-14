@@ -7,9 +7,9 @@
  * Following TDD methodology - tests written before implementation.
  */
 
-import { ProjectDetailPanel } from '@/components/Baker/ProjectDetailPanel'
-import { BAKER_ANIMATIONS, DURATION } from '@/constants/animations'
-import type { BreadcrumbsFile } from '@/types/baker'
+import { ProjectDetailPanel } from '../../../../src/features/Baker/components/ProjectDetailPanel'
+import { BAKER_ANIMATIONS, DURATION } from '@shared/constants/animations'
+import type { BreadcrumbsFile } from '../../../../src/features/Baker/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

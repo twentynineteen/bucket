@@ -3,14 +3,14 @@
  * Feature: 007-frontend-script-example
  */
 
-import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
-import { ExampleList } from '@pages/AI/ExampleEmbeddings/ExampleList'
+import type { ExampleWithMetadata } from '@shared/types/exampleEmbeddings'
+import { ExampleList } from '@features/AITools/ExampleEmbeddings/components/ExampleList'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock the ExampleCard component to simplify testing
-vi.mock('@pages/AI/ExampleEmbeddings/ExampleCard', () => ({
+vi.mock('@features/AITools/ExampleEmbeddings/components/ExampleCard', () => ({
   ExampleCard: ({ example, onDelete, onReplace }: any) => (
     <div data-testid={`example-card-${example.id}`}>
       <span>{example.title}</span>

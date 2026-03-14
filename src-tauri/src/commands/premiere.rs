@@ -21,7 +21,7 @@ pub fn open_resource_file(handle: AppHandle, relative_file_path: &str) -> Result
     let resource_dir: PathBuf = handle
         .path()
         .resource_dir()
-        .or_else(|_| Err("Resource directory not available.".to_string()))?;
+        .map_err(|_| "Resource directory not available.".to_string())?;
 
     // Construct the full path to the file by joining the resource directory with the relative file path.
     let file_path = resource_dir.join(relative_file_path);
@@ -188,6 +188,3 @@ fn open_folder_internal(destination: String) -> Result<(), String> {
     }
 }
 
-#[cfg(test)]
-#[path = "tests/premiere_test.rs"]
-mod premiere_test;

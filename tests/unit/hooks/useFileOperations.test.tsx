@@ -9,20 +9,18 @@
  * - Clean up event listeners
  */
 
-import type { FootageFile } from '@/hooks/useCameraAutoRemap'
-import { useFileOperations } from '@/hooks/useFileOperations'
-import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import type { FootageFile } from '@features/BuildProject'
+import { useFileOperations } from '@features/BuildProject/hooks/useFileOperations'
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock Tauri APIs
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn()
-}))
+// Mock the BuildProject api layer
+const mockMoveFiles = vi.fn()
+const mockListenCopyComplete = vi.fn()
 
-vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn()
+vi.mock('@features/BuildProject/api', () => ({
+  moveFiles: (...args: unknown[]) => mockMoveFiles(...args),
+  listenCopyComplete: (...args: unknown[]) => mockListenCopyComplete(...args)
 }))
 
 describe('useFileOperations', () => {
@@ -37,8 +35,8 @@ describe('useFileOperations', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(invoke).mockResolvedValue(undefined)
-    vi.mocked(listen).mockResolvedValue(mockUnlisten)
+    mockMoveFiles.mockResolvedValue(undefined)
+    mockListenCopyComplete.mockResolvedValue(mockUnlisten)
   })
 
   describe('prepareFileList', () => {
@@ -69,7 +67,7 @@ describe('useFileOperations', () => {
       const onComplete = vi.fn()
       await result.current.setupProgressListener(onComplete)
 
-      expect(listen).toHaveBeenCalledWith('copy_complete', expect.any(Function))
+      expect(mockListenCopyComplete).toHaveBeenCalledWith(expect.any(Function))
     })
 
     it('should return unlisten function', async () => {
@@ -84,7 +82,7 @@ describe('useFileOperations', () => {
       const { result } = renderHook(() => useFileOperations())
 
       let eventHandler: any
-      vi.mocked(listen).mockImplementation(async (event, handler) => {
+      mockListenCopyComplete.mockImplementation(async (handler: any) => {
         eventHandler = handler
         return mockUnlisten
       })
@@ -105,19 +103,19 @@ describe('useFileOperations', () => {
 
       await result.current.moveFiles(mockFiles, '/destination/Project')
 
-      expect(invoke).toHaveBeenCalledWith('move_files', {
-        files: [
+      expect(mockMoveFiles).toHaveBeenCalledWith(
+        [
           ['/source/video1.mp4', 1],
           ['/source/video2.mp4', 2]
         ],
-        baseDest: '/destination/Project'
-      })
+        '/destination/Project'
+      )
     })
 
     it('should handle move error', async () => {
       const { result } = renderHook(() => useFileOperations())
 
-      vi.mocked(invoke).mockRejectedValueOnce(new Error('File not found'))
+      mockMoveFiles.mockRejectedValueOnce(new Error('File not found'))
 
       await expect(
         result.current.moveFiles(mockFiles, '/destination/Project')
@@ -130,7 +128,7 @@ describe('useFileOperations', () => {
       const { result } = renderHook(() => useFileOperations())
 
       let eventHandler: any
-      vi.mocked(listen).mockImplementation(async (event, handler) => {
+      mockListenCopyComplete.mockImplementation(async (handler: any) => {
         eventHandler = handler
         return mockUnlisten
       })
@@ -145,7 +143,7 @@ describe('useFileOperations', () => {
 
       expect(mockSetProgress).toHaveBeenCalledWith(0)
       expect(mockSetCompleted).toHaveBeenCalledWith(false)
-      expect(invoke).toHaveBeenCalledWith('move_files', expect.any(Object))
+      expect(mockMoveFiles).toHaveBeenCalled()
       expect(moveResult.success).toBe(true)
       expect(moveResult.unlisten).toBe(mockUnlisten)
     })
@@ -165,7 +163,7 @@ describe('useFileOperations', () => {
     it('should cleanup on error', async () => {
       const { result } = renderHook(() => useFileOperations())
 
-      vi.mocked(invoke).mockRejectedValueOnce(new Error('Move failed'))
+      mockMoveFiles.mockRejectedValueOnce(new Error('Move failed'))
 
       const moveResult = await result.current.moveFilesWithProgress({
         files: mockFiles,

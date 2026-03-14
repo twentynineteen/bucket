@@ -203,3 +203,7 @@ BUILD_PROJECT_*.md
 *.bak
 
 /templates/
+
+# Generated dependency graphs
+dependency-graph.svg
+dependency-graph.html

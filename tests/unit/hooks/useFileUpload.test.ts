@@ -3,7 +3,7 @@
  * Feature: 007-frontend-script-example
  */
 
-import { useScriptFileUpload } from '@/hooks/useScriptFileUpload'
+import { useScriptFileUpload } from '@features/AITools/ExampleEmbeddings/hooks/useScriptFileUpload'
 import * as tauriDialog from '@tauri-apps/plugin-dialog'
 import * as tauriFs from '@tauri-apps/plugin-fs'
 import { act, renderHook } from '@testing-library/react'

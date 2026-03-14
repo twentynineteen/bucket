@@ -10,33 +10,33 @@
  * - Processing error handling
  */
 
-import type { ProcessedOutput, ProviderConfiguration } from '@/types/scriptFormatter'
-import { useAIModels } from '@hooks/useAIModels'
-import { useAIProcessing } from '@hooks/useAIProcessing'
-import { useAIProvider } from '@hooks/useAIProvider'
-import { useExampleManagement } from '@hooks/useExampleManagement'
-import { useScriptProcessor } from '@hooks/useScriptProcessor'
+import type { ProcessedOutput, ProviderConfiguration } from '@shared/types/scriptFormatter'
+import { useAIModels } from '@features/AITools/ScriptFormatter/hooks/useAIModels'
+import { useAIProcessing } from '@features/AITools/ScriptFormatter/hooks/useAIProcessing'
+import { useAIProvider } from '@features/Settings'
+import { useExampleManagement } from '@features/AITools/ExampleEmbeddings/hooks/useExampleManagement'
+import { useScriptProcessor } from '@features/AITools/ScriptFormatter/hooks/useScriptProcessor'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock dependencies
-vi.mock('@hooks/useAIProvider', () => ({
+vi.mock('@features/Settings', () => ({
   useAIProvider: vi.fn()
 }))
 
-vi.mock('@hooks/useAIModels', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useAIModels', () => ({
   useAIModels: vi.fn()
 }))
 
-vi.mock('@hooks/useScriptProcessor', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useScriptProcessor', () => ({
   useScriptProcessor: vi.fn()
 }))
 
-vi.mock('@hooks/useExampleManagement', () => ({
+vi.mock('@features/AITools/ExampleEmbeddings/hooks/useExampleManagement', () => ({
   useExampleManagement: vi.fn()
 }))
 
-vi.mock('@utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   createNamespacedLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

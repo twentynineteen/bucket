@@ -1,5 +1,5 @@
-import type { BreadcrumbsFile, ProjectFolder, ScanResult } from '@/types/baker'
-import type { ExampleWithMetadata } from '@/types/exampleEmbeddings'
+import type { BreadcrumbsFile, ProjectFolder, ScanResult } from '@features/Baker'
+import type { ExampleWithMetadata } from '@shared/types/exampleEmbeddings'
 import { Page } from '@playwright/test'
 
 /**

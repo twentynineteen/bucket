@@ -1,4 +1,4 @@
-import { calculateProgress, createQueryError, inferErrorType } from '@lib/query-utils'
+import { calculateProgress, createQueryError, inferErrorType } from '@shared/lib/query-utils'
 import { describe, expect, it } from 'vitest'
 
 describe('Query Utils', () => {

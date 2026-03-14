@@ -11,7 +11,7 @@ import {
   getThemesByCategory,
   isCustomTheme,
   getGroupedThemes,
-} from '@/constants/themes'
+} from '@shared/ui/theme/themes'
 import { describe, expect, it } from 'vitest'
 
 describe('themes constants', () => {

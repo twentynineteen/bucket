@@ -4,7 +4,7 @@
  * Phase: RED (Write failing tests)
  */
 
-import { useScriptFileUpload } from '@/hooks/useScriptFileUpload'
+import { useScriptFileUpload } from '@features/AITools/ExampleEmbeddings/hooks/useScriptFileUpload'
 import { open } from '@tauri-apps/plugin-dialog'
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { act, renderHook } from '@testing-library/react'

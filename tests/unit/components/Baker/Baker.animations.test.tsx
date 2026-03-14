@@ -7,7 +7,7 @@
  * Following TDD methodology - tests written before implementation.
  */
 
-import { BAKER_ANIMATIONS, DURATION, SPRING } from '@/constants/animations'
+import { BAKER_ANIMATIONS, DURATION, SPRING } from '@shared/constants/animations'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockReducedMotion } from '@tests/utils/animation-testing'

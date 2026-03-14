@@ -3,11 +3,11 @@
  * Purpose: Test React Query cache invalidation utilities
  */
 
-import { queryKeys } from '@/lib/query-keys'
+import { queryKeys } from '@shared/lib/query-keys'
 import {
   CacheInvalidationService,
   createCacheInvalidationService
-} from '@/services/cache-invalidation'
+} from '@shared/services'
 import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -338,7 +338,7 @@ describe('CacheInvalidationService', () => {
 
     it('should initialize global cache service', async () => {
       const { initializeCacheService, CacheInvalidationService } = await import(
-        '@/services/cache-invalidation'
+        '@shared/services/cache-invalidation'
       )
       const globalService = initializeCacheService(queryClient)
 
@@ -347,7 +347,7 @@ describe('CacheInvalidationService', () => {
 
     it('should return initialized global service', async () => {
       const { initializeCacheService, getCacheService, CacheInvalidationService } =
-        await import('@/services/cache-invalidation')
+        await import('@shared/services/cache-invalidation')
       initializeCacheService(queryClient)
       const service = getCacheService()
 
@@ -355,7 +355,7 @@ describe('CacheInvalidationService', () => {
     })
 
     it('should throw error when getting service before initialization', async () => {
-      const { getCacheService } = await import('@/services/cache-invalidation')
+      const { getCacheService } = await import('@shared/services/cache-invalidation')
       expect(() => getCacheService()).toThrow('Cache service not initialized')
     })
   })

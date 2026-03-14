@@ -9,9 +9,9 @@
  * - Update app store with breadcrumbs data
  */
 
-import type { FootageFile } from '@/hooks/useCameraAutoRemap'
-import { useProjectBreadcrumbs } from '@/hooks/useProjectBreadcrumbs'
-import { appStore } from '@store/useAppStore'
+import type { FootageFile } from '@features/BuildProject'
+import { useProjectBreadcrumbs } from '@features/Baker'
+import { appStore } from '@shared/store'
 import { invoke } from '@tauri-apps/api/core'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { renderHook, waitFor } from '@testing-library/react'
@@ -26,7 +26,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   writeTextFile: vi.fn()
 }))
 
-vi.mock('@store/useAppStore', () => ({
+vi.mock('@shared/store/useAppStore', () => ({
   appStore: {
     getState: vi.fn(() => ({
       setBreadcrumbs: vi.fn()

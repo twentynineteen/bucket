@@ -1,7 +1,7 @@
 // tauri auto updater on app launch
 import { relaunch } from '@tauri-apps/plugin-process'
 import { check } from '@tauri-apps/plugin-updater'
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 // The AppRouter component switches the display if the user is not logged in
@@ -9,21 +9,50 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 // subsequent components are loaded within the page window via the Outlet component.
 
 import Page from './app/dashboard/page'
-import { ExampleEmbeddings } from './pages/AI/ExampleEmbeddings/ExampleEmbeddings'
-import ScriptFormatter from './pages/AI/ScriptFormatter/ScriptFormatter'
-import Login from './pages/auth/Login'
-import Register from './pages/auth/Register'
-import Baker from './pages/Baker/Baker'
-import BuildProject from './pages/BuildProject/BuildProject'
-import ConnectedApps from './pages/ConnectedApps'
-import IngestHistory from './pages/IngestHistory'
-import Posterframe from './pages/Posterframe'
-import PremierePluginManager from './pages/PremierePluginManager/PremierePluginManager'
-import Settings from './pages/Settings'
-import UploadOtter from './pages/UploadOtter'
-import UploadSprout from './pages/UploadSprout'
-import UploadTrello from './pages/UploadTrello'
-import { createNamespacedLogger } from './utils/logger'
+import { createNamespacedLogger } from '@shared/utils'
+
+// Lazy-loaded route components -- each produces a separate chunk for
+// smaller initial bundle and faster startup.
+const ExampleEmbeddings = React.lazy(() =>
+  import('@features/AITools').then((m) => ({ default: m.ExampleEmbeddings }))
+)
+const ScriptFormatter = React.lazy(() =>
+  import('@features/AITools').then((m) => ({ default: m.ScriptFormatter }))
+)
+const Login = React.lazy(() =>
+  import('@features/Auth').then((m) => ({ default: m.Login }))
+)
+const Register = React.lazy(() =>
+  import('@features/Auth').then((m) => ({ default: m.Register }))
+)
+const Baker = React.lazy(() =>
+  import('@features/Baker').then((m) => ({ default: m.BakerPage }))
+)
+const BuildProjectPage = React.lazy(() =>
+  import('@features/BuildProject').then((m) => ({
+    default: m.BuildProjectPage
+  }))
+)
+const Settings = React.lazy(() =>
+  import('@features/Settings').then((m) => ({ default: m.Settings }))
+)
+const Posterframe = React.lazy(() =>
+  import('@features/Upload').then((m) => ({ default: m.Posterframe }))
+)
+const UploadOtter = React.lazy(() =>
+  import('@features/Upload').then((m) => ({ default: m.UploadOtter }))
+)
+const UploadSprout = React.lazy(() =>
+  import('@features/Upload').then((m) => ({ default: m.UploadSprout }))
+)
+const PremierePluginManager = React.lazy(() =>
+  import('@features/Premiere').then((m) => ({
+    default: m.PremierePluginManager
+  }))
+)
+const UploadTrello = React.lazy(() =>
+  import('@features/Trello').then((m) => ({ default: m.UploadTrello }))
+)
 
 const log = createNamespacedLogger('AppRouter')
 
@@ -120,8 +149,7 @@ export const AppRouter: React.FC = () => {
           <Route path="/" element={<Page />}>
             <Route path="ingest">
               <Route index element={<Navigate to="/ingest/build" replace />} />
-              <Route path="history" element={<IngestHistory />} />
-              <Route path="build" element={<BuildProject />} />
+              <Route path="build" element={<BuildProjectPage />} />
               <Route path="baker" element={<Baker />} />
             </Route>
             <Route path="ai-tools">
@@ -149,7 +177,6 @@ export const AppRouter: React.FC = () => {
             <Route path="settings">
               <Route index element={<Navigate to="/settings/general" replace />} />
               <Route path="general" element={<Settings />} />
-              <Route path="connected-apps" element={<ConnectedApps />} />
             </Route>
           </Route>
         </>
