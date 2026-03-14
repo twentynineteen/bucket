@@ -33,3 +33,14 @@ Full details: .planning/milestones/v1.0-ROADMAP.md
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
 | 1-14 | v1.0 | 24/24 | Complete | 2026-03-10 |
+
+### Phase 1: fix stall on scanning during baker scan - not registering scan complete
+
+**Goal:** Fix the Baker scan race condition where `baker_scan_complete` events are lost due to listener re-attachment on scanId state change, add elapsed timer UX, and add contract tests proving the fix
+**Requirements**: [RACE-01, ERROR-01, NOBYPASS-01, TIMER-01]
+**Depends on:** None
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Fix useBakerScan mount-once pattern, update types, add contract tests
+- [ ] 01-02-PLAN.md — Add elapsed timer to ScanResults and inline error display to BakerPage
