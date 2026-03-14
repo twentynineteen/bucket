@@ -9,7 +9,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock the api layer (single mock point for all Baker I/O)
@@ -370,5 +370,232 @@ describe('Baker Module - No Direct Plugin Imports', () => {
       )
       expect(alertCalls, `Found alert() call in ${file}`).toEqual([])
     }
+  })
+})
+
+// --- useBakerScan Behavioral Tests ---
+
+import { useBakerScan } from '../hooks/useBakerScan'
+import type { ScanOptions, ScanResult } from '../types'
+import type { Event } from '@tauri-apps/api/event'
+
+describe('useBakerScan - Behavior', () => {
+  const defaultOptions: ScanOptions = {
+    maxDepth: 5,
+    includeHidden: false,
+    createMissing: false,
+    backupOriginals: false
+  }
+
+  const mockScanResult: ScanResult = {
+    startTime: '2026-03-14T10:00:00Z',
+    endTime: '2026-03-14T10:01:00Z',
+    rootPath: '/test/root',
+    totalFolders: 10,
+    validProjects: 3,
+    updatedBreadcrumbs: 1,
+    createdBreadcrumbs: 2,
+    totalFolderSize: 1024000,
+    errors: [],
+    projects: []
+  }
+
+  it('race condition regression: mount-once listeners catch events after scanId is set', async () => {
+    // Capture the completion callback so we can fire it manually
+    let capturedCompleteCallback: ((event: Event<unknown>) => void) | null =
+      null
+    const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
+    mockListenComplete.mockImplementation(async (cb) => {
+      capturedCompleteCallback =
+        cb as unknown as (event: Event<unknown>) => void
+      return () => {}
+    })
+
+    const mockStartScan = vi.mocked(bakerApi.bakerStartScan)
+    mockStartScan.mockResolvedValue('scan-123')
+
+    const { result } = renderHook(() => useBakerScan())
+
+    // Start a scan
+    await act(async () => {
+      await result.current.startScan('/test/root', defaultOptions)
+    })
+
+    expect(result.current.isScanning).toBe(true)
+    expect(capturedCompleteCallback).not.toBeNull()
+
+    // Fire the completion event (simulates Tauri event arriving)
+    await act(async () => {
+      capturedCompleteCallback!({
+        event: 'baker_scan_complete',
+        id: 1,
+        payload: { scanId: 'scan-123', result: mockScanResult }
+      })
+    })
+
+    // With mount-once pattern, listener should catch this event
+    expect(result.current.isScanning).toBe(false)
+    expect(result.current.scanResult).toEqual(mockScanResult)
+  })
+
+  it('error event path: sets error state and isScanning=false', async () => {
+    let capturedErrorCallback: ((event: Event<unknown>) => void) | null = null
+    const mockListenError = vi.mocked(bakerApi.listenScanError)
+    mockListenError.mockImplementation(async (cb) => {
+      capturedErrorCallback =
+        cb as unknown as (event: Event<unknown>) => void
+      return () => {}
+    })
+
+    const mockStartScan = vi.mocked(bakerApi.bakerStartScan)
+    mockStartScan.mockResolvedValue('scan-456')
+
+    const { result } = renderHook(() => useBakerScan())
+
+    await act(async () => {
+      await result.current.startScan('/test/root', defaultOptions)
+    })
+
+    expect(result.current.isScanning).toBe(true)
+
+    // Fire error event
+    await act(async () => {
+      capturedErrorCallback!({
+        event: 'baker_scan_error',
+        id: 2,
+        payload: {
+          scanId: 'scan-456',
+          error: {
+            path: '/test/root',
+            type: 'filesystem',
+            message: 'Permission denied',
+            timestamp: '2026-03-14T10:00:00Z'
+          }
+        }
+      })
+    })
+
+    expect(result.current.isScanning).toBe(false)
+    expect(result.current.error).toBe('Permission denied')
+    expect(result.current.scanResult).toBeNull()
+  })
+
+  it('useBakerScan has no direct @tauri-apps imports', () => {
+    const hookPath = path.resolve(
+      __dirname,
+      '../hooks/useBakerScan.ts'
+    )
+    const content = fs.readFileSync(hookPath, 'utf-8')
+    const lines = content.split('\n')
+    const tauriImports = lines.filter((line) =>
+      line.includes("from '@tauri-apps")
+    )
+    expect(
+      tauriImports,
+      'useBakerScan should not have direct @tauri-apps imports'
+    ).toEqual([])
+  })
+
+  it('timestamp tracking: scanStartTime set on start, cleared on completion', async () => {
+    let capturedCompleteCallback: ((event: Event<unknown>) => void) | null =
+      null
+    const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
+    mockListenComplete.mockImplementation(async (cb) => {
+      capturedCompleteCallback =
+        cb as unknown as (event: Event<unknown>) => void
+      return () => {}
+    })
+
+    const mockStartScan = vi.mocked(bakerApi.bakerStartScan)
+    mockStartScan.mockResolvedValue('scan-789')
+
+    const { result } = renderHook(() => useBakerScan())
+
+    // Initially null
+    expect(result.current.scanStartTime).toBeNull()
+
+    // After start, should be a number (epoch ms)
+    await act(async () => {
+      await result.current.startScan('/test/root', defaultOptions)
+    })
+
+    expect(result.current.scanStartTime).toEqual(expect.any(Number))
+    expect(result.current.scanStartTime).toBeGreaterThan(0)
+
+    // After completion, should be null
+    await act(async () => {
+      capturedCompleteCallback!({
+        event: 'baker_scan_complete',
+        id: 3,
+        payload: { scanId: 'scan-789', result: mockScanResult }
+      })
+    })
+
+    expect(result.current.scanStartTime).toBeNull()
+  })
+
+  it('timestamp tracking: scanStartTime cleared on clearResults', async () => {
+    const mockStartScan = vi.mocked(bakerApi.bakerStartScan)
+    mockStartScan.mockResolvedValue('scan-timer-clear')
+
+    let capturedCompleteCallback: ((event: Event<unknown>) => void) | null =
+      null
+    const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
+    mockListenComplete.mockImplementation(async (cb) => {
+      capturedCompleteCallback =
+        cb as unknown as (event: Event<unknown>) => void
+      return () => {}
+    })
+
+    const { result } = renderHook(() => useBakerScan())
+
+    // Start and complete a scan so we have results
+    await act(async () => {
+      await result.current.startScan('/test/root', defaultOptions)
+    })
+
+    await act(async () => {
+      capturedCompleteCallback!({
+        event: 'baker_scan_complete',
+        id: 4,
+        payload: { scanId: 'scan-timer-clear', result: mockScanResult }
+      })
+    })
+
+    // Clear results
+    act(() => {
+      result.current.clearResults()
+    })
+
+    expect(result.current.scanStartTime).toBeNull()
+  })
+
+  it('concurrent scan blocking: second startScan is a no-op while scanning', async () => {
+    const mockStartScan = vi.mocked(bakerApi.bakerStartScan)
+    mockStartScan.mockResolvedValue('scan-concurrent')
+
+    // Need to capture listeners for cleanup
+    vi.mocked(bakerApi.listenScanComplete).mockResolvedValue(() => {})
+    vi.mocked(bakerApi.listenScanError).mockResolvedValue(() => {})
+    vi.mocked(bakerApi.listenScanProgress).mockResolvedValue(() => {})
+
+    const { result } = renderHook(() => useBakerScan())
+
+    // First scan
+    await act(async () => {
+      await result.current.startScan('/test/root', defaultOptions)
+    })
+
+    expect(result.current.isScanning).toBe(true)
+    expect(mockStartScan).toHaveBeenCalledTimes(1)
+
+    // Second scan attempt while first is running
+    await act(async () => {
+      await result.current.startScan('/test/other', defaultOptions)
+    })
+
+    // Should still only have called bakerStartScan once
+    expect(mockStartScan).toHaveBeenCalledTimes(1)
+    expect(result.current.isScanning).toBe(true)
   })
 })

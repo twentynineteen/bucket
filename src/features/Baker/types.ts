@@ -148,6 +148,7 @@ export interface UseBakerScanResult {
   scanResult: ScanResult | null
   isScanning: boolean
   error: string | null
+  scanStartTime: number | null
 
   // Actions
   startScan: (rootPath: string, options: ScanOptions) => Promise<void>
