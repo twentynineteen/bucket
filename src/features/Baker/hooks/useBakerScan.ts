@@ -24,6 +24,30 @@ export function useBakerScan(): UseBakerScanResult {
   const [error, setError] = useState<string | null>(null)
   const [scanStartTime, setScanStartTime] = useState<number | null>(null)
   const scanIdRef = useRef<string | null>(null)
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+  }, [])
+
+  const completeScan = useCallback((result: ScanResult) => {
+    scanIdRef.current = null
+    stopPolling()
+    setScanResult(result)
+    setIsScanning(false)
+    setScanStartTime(null)
+  }, [stopPolling])
+
+  const failScan = useCallback((message: string) => {
+    scanIdRef.current = null
+    stopPolling()
+    setError(message)
+    setIsScanning(false)
+    setScanStartTime(null)
+  }, [stopPolling])
 
   // Set up event listeners once on mount (mount-once pattern)
   // Using useRef for scanId avoids the race condition where listener
@@ -54,10 +78,7 @@ export function useBakerScan(): UseBakerScanResult {
       listenScanComplete((event) => {
         const completeData = event.payload
         if (completeData.scanId === scanIdRef.current) {
-          scanIdRef.current = null
-          setScanResult(completeData.result)
-          setIsScanning(false)
-          setScanStartTime(null)
+          completeScan(completeData.result)
         }
       })
     )
@@ -67,10 +88,7 @@ export function useBakerScan(): UseBakerScanResult {
       listenScanError((event) => {
         const errorData = event.payload
         if (errorData.scanId === scanIdRef.current) {
-          scanIdRef.current = null
-          setError(errorData.error.message)
-          setIsScanning(false)
-          setScanStartTime(null)
+          failScan(errorData.error.message)
         }
       })
     )
@@ -89,35 +107,29 @@ export function useBakerScan(): UseBakerScanResult {
           // Ignore cleanup errors in test environments
         })
     }
-  }, [])
+  }, [completeScan, failScan])
 
-  // Polling fallback: if event-based completion is missed, poll baker_get_scan_status
-  // This catches cases where the Tauri event fires before listeners are registered
-  useEffect(() => {
-    if (!isScanning || !scanIdRef.current) return
-
-    const scanId = scanIdRef.current
-    const pollInterval = setInterval(async () => {
-      if (!scanIdRef.current || scanIdRef.current !== scanId) {
-        clearInterval(pollInterval)
-        return
-      }
-      try {
-        const result = await bakerGetScanStatus(scanId)
-        if (result.endTime) {
-          scanIdRef.current = null
-          setScanResult(result)
-          setIsScanning(false)
-          setScanStartTime(null)
-          clearInterval(pollInterval)
+  // Start polling for scan status as a fallback for missed events
+  const startPolling = useCallback(
+    (scanId: string) => {
+      stopPolling()
+      pollIntervalRef.current = setInterval(async () => {
+        if (!scanIdRef.current || scanIdRef.current !== scanId) {
+          stopPolling()
+          return
         }
-      } catch {
-        // Scan not found or still running — continue polling
-      }
-    }, 2000)
-
-    return () => clearInterval(pollInterval)
-  }, [isScanning])
+        try {
+          const result = await bakerGetScanStatus(scanId)
+          if (result.endTime) {
+            completeScan(result)
+          }
+        } catch {
+          // Scan not found or still running — continue polling
+        }
+      }, 2000)
+    },
+    [completeScan, stopPolling]
+  )
 
   const startScan = useCallback(
     async (rootPath: string, options: ScanOptions) => {
@@ -135,13 +147,16 @@ export function useBakerScan(): UseBakerScanResult {
         // Set ref BEFORE state updates so listeners can match events immediately
         scanIdRef.current = scanId
         setScanStartTime(Date.now())
+
+        // Start polling fallback after ref is set
+        startPolling(scanId)
       } catch (scanError) {
         setError(scanError instanceof Error ? scanError.message : String(scanError))
         setIsScanning(false)
         scanIdRef.current = null
       }
     },
-    [isScanning]
+    [isScanning, startPolling]
   )
 
   const cancelScan = useCallback(async () => {
@@ -149,13 +164,14 @@ export function useBakerScan(): UseBakerScanResult {
       try {
         await bakerCancelScan(scanIdRef.current)
         scanIdRef.current = null
+        stopPolling()
         setIsScanning(false)
         setScanStartTime(null)
       } catch (cancelError) {
         setError(cancelError instanceof Error ? cancelError.message : String(cancelError))
       }
     }
-  }, [])
+  }, [stopPolling])
 
   const clearResults = useCallback(() => {
     setScanResult(null)
@@ -165,6 +181,11 @@ export function useBakerScan(): UseBakerScanResult {
     }
     setScanStartTime(null)
   }, [isScanning])
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => stopPolling()
+  }, [stopPolling])
 
   return {
     scanResult,
