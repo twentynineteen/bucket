@@ -39,7 +39,7 @@ Full details: .planning/milestones/v1.0-ROADMAP.md
 **Goal:** Fix the Baker scan race condition where `baker_scan_complete` events are lost due to listener re-attachment on scanId state change, add elapsed timer UX, and add contract tests proving the fix
 **Requirements**: [RACE-01, ERROR-01, NOBYPASS-01, TIMER-01]
 **Depends on:** None
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 01-01-PLAN.md — Fix useBakerScan mount-once pattern, update types, add contract tests
