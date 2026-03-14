@@ -38,6 +38,10 @@ export async function bakerCancelScan(scanId: string): Promise<void> {
   return invoke('baker_cancel_scan', { scanId })
 }
 
+export async function bakerGetScanStatus(scanId: string): Promise<ScanResult> {
+  return invoke<ScanResult>('baker_get_scan_status', { scanId })
+}
+
 export async function bakerReadBreadcrumbs(
   projectPath: string
 ): Promise<BreadcrumbsFile | null> {

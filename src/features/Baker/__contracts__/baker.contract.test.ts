@@ -16,6 +16,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('../api', () => ({
   bakerStartScan: vi.fn().mockResolvedValue('scan-id'),
   bakerCancelScan: vi.fn().mockResolvedValue(undefined),
+  bakerGetScanStatus: vi.fn().mockRejectedValue(new Error('Scan ID not found')),
   bakerReadBreadcrumbs: vi.fn().mockResolvedValue(null),
   bakerReadRawBreadcrumbs: vi.fn().mockResolvedValue(null),
   bakerScanCurrentFiles: vi.fn().mockResolvedValue([]),
@@ -203,9 +204,10 @@ describe('Baker Barrel Exports - Shape', () => {
 
 describe('Baker api.ts Exports - Shape', () => {
   const expectedApiExports = [
-    // Tauri Commands (12)
+    // Tauri Commands (13)
     'bakerStartScan',
     'bakerCancelScan',
+    'bakerGetScanStatus',
     'bakerReadBreadcrumbs',
     'bakerReadRawBreadcrumbs',
     'bakerScanCurrentFiles',
@@ -236,13 +238,13 @@ describe('Baker api.ts Exports - Shape', () => {
     'addTrelloCardComment'
   ].sort()
 
-  it('exports exactly 25 I/O wrapper functions', () => {
+  it('exports exactly 26 I/O wrapper functions', () => {
     const exportNames = Object.keys(bakerApi).sort()
     expect(exportNames).toEqual(expectedApiExports)
   })
 
-  it('exports exactly 25 members', () => {
-    expect(Object.keys(bakerApi)).toHaveLength(25)
+  it('exports exactly 26 members', () => {
+    expect(Object.keys(bakerApi)).toHaveLength(26)
   })
 
   for (const name of expectedApiExports) {
@@ -402,12 +404,10 @@ describe('useBakerScan - Behavior', () => {
 
   it('race condition regression: mount-once listeners catch events after scanId is set', async () => {
     // Capture the completion callback so we can fire it manually
-    let capturedCompleteCallback: ((event: Event<unknown>) => void) | null =
-      null
+    let capturedCompleteCallback: ((event: Event<unknown>) => void) | null = null
     const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
     mockListenComplete.mockImplementation(async (cb) => {
-      capturedCompleteCallback =
-        cb as unknown as (event: Event<unknown>) => void
+      capturedCompleteCallback = cb as unknown as (event: Event<unknown>) => void
       return () => {}
     })
 
@@ -442,8 +442,7 @@ describe('useBakerScan - Behavior', () => {
     let capturedErrorCallback: ((event: Event<unknown>) => void) | null = null
     const mockListenError = vi.mocked(bakerApi.listenScanError)
     mockListenError.mockImplementation(async (cb) => {
-      capturedErrorCallback =
-        cb as unknown as (event: Event<unknown>) => void
+      capturedErrorCallback = cb as unknown as (event: Event<unknown>) => void
       return () => {}
     })
 
@@ -481,15 +480,10 @@ describe('useBakerScan - Behavior', () => {
   })
 
   it('useBakerScan has no direct @tauri-apps imports', () => {
-    const hookPath = path.resolve(
-      __dirname,
-      '../hooks/useBakerScan.ts'
-    )
+    const hookPath = path.resolve(__dirname, '../hooks/useBakerScan.ts')
     const content = fs.readFileSync(hookPath, 'utf-8')
     const lines = content.split('\n')
-    const tauriImports = lines.filter((line) =>
-      line.includes("from '@tauri-apps")
-    )
+    const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
     expect(
       tauriImports,
       'useBakerScan should not have direct @tauri-apps imports'
@@ -497,12 +491,10 @@ describe('useBakerScan - Behavior', () => {
   })
 
   it('timestamp tracking: scanStartTime set on start, cleared on completion', async () => {
-    let capturedCompleteCallback: ((event: Event<unknown>) => void) | null =
-      null
+    let capturedCompleteCallback: ((event: Event<unknown>) => void) | null = null
     const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
     mockListenComplete.mockImplementation(async (cb) => {
-      capturedCompleteCallback =
-        cb as unknown as (event: Event<unknown>) => void
+      capturedCompleteCallback = cb as unknown as (event: Event<unknown>) => void
       return () => {}
     })
 
@@ -538,12 +530,10 @@ describe('useBakerScan - Behavior', () => {
     const mockStartScan = vi.mocked(bakerApi.bakerStartScan)
     mockStartScan.mockResolvedValue('scan-timer-clear')
 
-    let capturedCompleteCallback: ((event: Event<unknown>) => void) | null =
-      null
+    let capturedCompleteCallback: ((event: Event<unknown>) => void) | null = null
     const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
     mockListenComplete.mockImplementation(async (cb) => {
-      capturedCompleteCallback =
-        cb as unknown as (event: Event<unknown>) => void
+      capturedCompleteCallback = cb as unknown as (event: Event<unknown>) => void
       return () => {}
     })
 

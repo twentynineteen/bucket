@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   bakerCancelScan,
+  bakerGetScanStatus,
   bakerStartScan,
   listenScanComplete,
   listenScanError,
@@ -90,6 +91,34 @@ export function useBakerScan(): UseBakerScanResult {
     }
   }, [])
 
+  // Polling fallback: if event-based completion is missed, poll baker_get_scan_status
+  // This catches cases where the Tauri event fires before listeners are registered
+  useEffect(() => {
+    if (!isScanning || !scanIdRef.current) return
+
+    const scanId = scanIdRef.current
+    const pollInterval = setInterval(async () => {
+      if (!scanIdRef.current || scanIdRef.current !== scanId) {
+        clearInterval(pollInterval)
+        return
+      }
+      try {
+        const result = await bakerGetScanStatus(scanId)
+        if (result.endTime) {
+          scanIdRef.current = null
+          setScanResult(result)
+          setIsScanning(false)
+          setScanStartTime(null)
+          clearInterval(pollInterval)
+        }
+      } catch {
+        // Scan not found or still running — continue polling
+      }
+    }, 2000)
+
+    return () => clearInterval(pollInterval)
+  }, [isScanning])
+
   const startScan = useCallback(
     async (rootPath: string, options: ScanOptions) => {
       if (isScanning) {
@@ -107,11 +136,7 @@ export function useBakerScan(): UseBakerScanResult {
         scanIdRef.current = scanId
         setScanStartTime(Date.now())
       } catch (scanError) {
-        setError(
-          scanError instanceof Error
-            ? scanError.message
-            : String(scanError)
-        )
+        setError(scanError instanceof Error ? scanError.message : String(scanError))
         setIsScanning(false)
         scanIdRef.current = null
       }
@@ -127,11 +152,7 @@ export function useBakerScan(): UseBakerScanResult {
         setIsScanning(false)
         setScanStartTime(null)
       } catch (cancelError) {
-        setError(
-          cancelError instanceof Error
-            ? cancelError.message
-            : String(cancelError)
-        )
+        setError(cancelError instanceof Error ? cancelError.message : String(cancelError))
       }
     }
   }, [])
