@@ -3,7 +3,7 @@
  * Feature: 007-frontend-script-example
  */
 
-import { UploadDialog } from '@/pages/AI/ExampleEmbeddings/UploadDialog'
+import { UploadDialog } from '@features/AITools/ExampleEmbeddings/components/UploadDialog'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -27,14 +27,14 @@ vi.mock('framer-motion', () => ({
 }))
 
 // Mock the hooks
-vi.mock('@/hooks/useDocxParser', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useDocxParser', () => ({
   useDocxParser: () => ({
     parseFile: vi.fn(),
     isLoading: false
   })
 }))
 
-vi.mock('@/hooks/useOllamaEmbedding', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useOllamaEmbedding', () => ({
   useOllamaEmbedding: () => ({
     embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
     isReady: true,

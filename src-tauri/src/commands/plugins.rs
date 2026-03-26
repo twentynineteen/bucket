@@ -1,9 +1,7 @@
-/**
- * Premiere Pro Plugin Management Commands
- *
- * Handles installation and management of CEP (Common Extensibility Platform) extensions
- * for Adobe Premiere Pro. CEP extensions are packaged as ZXP files (signed ZIP archives).
- */
+// Premiere Pro Plugin Management Commands
+//
+// Handles installation and management of CEP (Common Extensibility Platform) extensions
+// for Adobe Premiere Pro. CEP extensions are packaged as ZXP files (signed ZIP archives).
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -197,7 +195,7 @@ pub async fn install_plugin(
     // In production: app.app/Contents/Resources/plugins/
     let resource_path = app_handle
         .path()
-        .resolve(&format!("plugins/{}", plugin_filename), tauri::path::BaseDirectory::Resource)
+        .resolve(format!("plugins/{}", plugin_filename), tauri::path::BaseDirectory::Resource)
         .map_err(|e| {
             let err_msg = format!("Could not resolve plugin path: {}", e);
             err_msg

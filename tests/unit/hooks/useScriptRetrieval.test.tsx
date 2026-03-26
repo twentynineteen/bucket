@@ -14,8 +14,8 @@
  * Total: 12 tests
  */
 
-import { useEmbedding } from '@/hooks/useEmbedding'
-import { useScriptRetrieval, type SimilarExample } from '@/hooks/useScriptRetrieval'
+import { useEmbedding } from '@features/AITools/ScriptFormatter/hooks/useEmbedding'
+import { useScriptRetrieval, type SimilarExample } from '@features/AITools/ScriptFormatter/hooks/useScriptRetrieval'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { renderHook, waitFor } from '@testing-library/react'
@@ -27,11 +27,11 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn()
 }))
 
-vi.mock('@/hooks/useEmbedding', () => ({
+vi.mock('@features/AITools/ScriptFormatter/hooks/useEmbedding', () => ({
   useEmbedding: vi.fn()
 }))
 
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   createNamespacedLogger: () => ({
     log: vi.fn(),
     debug: vi.fn(),

@@ -3,29 +3,38 @@
  * Handles breadcrumbs operations including file I/O
  */
 
-import { useAppendBreadcrumbs } from '@/hooks/useAppendBreadcrumbs'
-import { useParsedTrelloDescription } from '@/hooks/useParsedTrelloDescription'
-import { useTrelloBreadcrumbs } from '@/hooks/useTrelloBreadcrumbs'
-import { appStore } from '@/store/useAppStore'
-import type { TrelloCard } from '@/utils/TrelloCards'
+import { useAppendBreadcrumbs } from '@features/Baker'
+import { useParsedTrelloDescription, useTrelloBreadcrumbs } from '@features/Trello'
+import { appStore } from '@shared/store'
+import type { TrelloCard } from '@features/Trello'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+
+// Mock sonner toast
+const mockToastError = vi.fn()
+vi.mock('sonner', () => ({
+  toast: {
+    error: (...args: unknown[]) => mockToastError(...args),
+    info: vi.fn(),
+    success: vi.fn()
+  }
+}))
 
 // Mock dependencies
 vi.mock('@tauri-apps/plugin-fs', () => ({
   writeTextFile: vi.fn()
 }))
 
-vi.mock('@/hooks/useAppendBreadcrumbs', () => ({
+vi.mock('@features/Baker', () => ({
   useAppendBreadcrumbs: vi.fn()
 }))
 
-vi.mock('@/hooks/useParsedTrelloDescription', () => ({
+vi.mock('@features/Trello/hooks/useParsedTrelloDescription', () => ({
   useParsedTrelloDescription: vi.fn()
 }))
 
-vi.mock('@/store/useAppStore', () => ({
+vi.mock('@shared/store/useAppStore', () => ({
   appStore: {
     getState: vi.fn()
   }
@@ -237,7 +246,6 @@ describe('useTrelloBreadcrumbs', () => {
     })
 
     test('handles file write errors gracefully', async () => {
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       vi.mocked(writeTextFile).mockRejectedValueOnce(new Error('File write failed'))
@@ -250,18 +258,16 @@ describe('useTrelloBreadcrumbs', () => {
         await result.current.handleAppendBreadcrumbs()
       })
 
-      expect(alertSpy).toHaveBeenCalledWith(
+      expect(mockToastError).toHaveBeenCalledWith(
         'Failed to save breadcrumbs: File write failed'
       )
       expect(consoleErrorSpy).toHaveBeenCalled()
       expect(mockRefetchCard).toHaveBeenCalled() // Should still refresh card
 
-      alertSpy.mockRestore()
       consoleErrorSpy.mockRestore()
     })
 
     test('handles non-Error exceptions in file write', async () => {
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       vi.mocked(writeTextFile).mockRejectedValueOnce('String error')
@@ -274,10 +280,9 @@ describe('useTrelloBreadcrumbs', () => {
         await result.current.handleAppendBreadcrumbs()
       })
 
-      expect(alertSpy).toHaveBeenCalledWith('Failed to save breadcrumbs: String error')
+      expect(mockToastError).toHaveBeenCalledWith('Failed to save breadcrumbs: String error')
       expect(consoleErrorSpy).toHaveBeenCalled()
 
-      alertSpy.mockRestore()
       consoleErrorSpy.mockRestore()
     })
   })

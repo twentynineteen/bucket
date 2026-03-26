@@ -9,21 +9,25 @@
  * - Check folder existence and confirm overwrite
  */
 
-import { useProjectValidation } from '@/hooks/useProjectValidation'
-import { confirm } from '@tauri-apps/plugin-dialog'
-import { exists, remove } from '@tauri-apps/plugin-fs'
+import { useProjectValidation } from '@features/BuildProject/hooks/useProjectValidation'
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock Tauri APIs
-vi.mock('@tauri-apps/plugin-dialog', () => ({
-  confirm: vi.fn()
+// Mock the BuildProject api layer
+const mockConfirmDialog = vi.fn()
+const mockPathExists = vi.fn()
+const mockRemovePath = vi.fn()
+
+vi.mock('@features/BuildProject/api', () => ({
+  confirmDialog: (...args: unknown[]) => mockConfirmDialog(...args),
+  pathExists: (...args: unknown[]) => mockPathExists(...args),
+  removePath: (...args: unknown[]) => mockRemovePath(...args)
 }))
 
-vi.mock('@tauri-apps/plugin-fs', () => ({
-  exists: vi.fn(),
-  remove: vi.fn()
-}))
+// Aliases for backward compat in tests
+const confirm = mockConfirmDialog
+const exists = mockPathExists
+const remove = mockRemovePath
 
 describe('useProjectValidation', () => {
   beforeEach(() => {
@@ -114,7 +118,7 @@ describe('useProjectValidation', () => {
     it('should confirm when no files provided', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(confirm).mockResolvedValueOnce(false)
+      mockConfirmDialog.mockResolvedValueOnce(false)
 
       const validation = await result.current.validateFiles([])
 
@@ -128,7 +132,7 @@ describe('useProjectValidation', () => {
     it('should return valid when user confirms no files', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(confirm).mockResolvedValueOnce(true)
+      mockConfirmDialog.mockResolvedValueOnce(true)
 
       const validation = await result.current.validateFiles([])
 
@@ -156,7 +160,7 @@ describe('useProjectValidation', () => {
     it('should return not exists when folder does not exist', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(exists).mockResolvedValueOnce(false)
+      mockPathExists.mockResolvedValueOnce(false)
 
       const check = await result.current.checkFolderExists('/test/path')
 
@@ -168,8 +172,8 @@ describe('useProjectValidation', () => {
     it('should confirm overwrite when folder exists', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(exists).mockResolvedValueOnce(true)
-      vi.mocked(confirm).mockResolvedValueOnce(false)
+      mockPathExists.mockResolvedValueOnce(true)
+      mockConfirmDialog.mockResolvedValueOnce(false)
 
       const check = await result.current.checkFolderExists('/test/path')
 
@@ -183,8 +187,8 @@ describe('useProjectValidation', () => {
     it('should proceed when user confirms overwrite', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(exists).mockResolvedValueOnce(true)
-      vi.mocked(confirm).mockResolvedValueOnce(true)
+      mockPathExists.mockResolvedValueOnce(true)
+      mockConfirmDialog.mockResolvedValueOnce(true)
 
       const check = await result.current.checkFolderExists('/test/path')
 
@@ -196,9 +200,9 @@ describe('useProjectValidation', () => {
     it('should remove existing folder when confirmed', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(exists).mockResolvedValueOnce(true)
-      vi.mocked(confirm).mockResolvedValueOnce(true)
-      vi.mocked(remove).mockResolvedValueOnce(undefined)
+      mockPathExists.mockResolvedValueOnce(true)
+      mockConfirmDialog.mockResolvedValueOnce(true)
+      mockRemovePath.mockResolvedValueOnce(undefined)
 
       const check = await result.current.checkFolderExists('/test/path')
 
@@ -218,7 +222,7 @@ describe('useProjectValidation', () => {
     it('should validate all inputs and return combined result', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(exists).mockResolvedValueOnce(false)
+      mockPathExists.mockResolvedValueOnce(false)
 
       const validation = await result.current.validateAll({
         title: 'Test Project',
@@ -260,8 +264,8 @@ describe('useProjectValidation', () => {
     it('should fail if user cancels file confirmation', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(confirm).mockResolvedValueOnce(false) // Cancel file confirmation
-      vi.mocked(exists).mockResolvedValueOnce(false)
+      mockConfirmDialog.mockResolvedValueOnce(false) // Cancel file confirmation
+      mockPathExists.mockResolvedValueOnce(false)
 
       const validation = await result.current.validateAll({
         title: 'Test Project',
@@ -276,9 +280,9 @@ describe('useProjectValidation', () => {
     it('should fail if folder exists and user cancels overwrite', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(confirm).mockResolvedValueOnce(true) // Confirm no files
-      vi.mocked(exists).mockResolvedValueOnce(true) // Folder exists
-      vi.mocked(confirm).mockResolvedValueOnce(false) // Cancel overwrite
+      mockConfirmDialog.mockResolvedValueOnce(true) // Confirm no files
+      mockPathExists.mockResolvedValueOnce(true) // Folder exists
+      mockConfirmDialog.mockResolvedValueOnce(false) // Cancel overwrite
 
       const validation = await result.current.validateAll({
         title: 'Test Project',
@@ -293,9 +297,9 @@ describe('useProjectValidation', () => {
     it('should succeed and remove folder if all validations pass', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(exists).mockResolvedValueOnce(true) // Folder exists
-      vi.mocked(confirm).mockResolvedValueOnce(true) // Confirm overwrite
-      vi.mocked(remove).mockResolvedValueOnce(undefined)
+      mockPathExists.mockResolvedValueOnce(true) // Folder exists
+      mockConfirmDialog.mockResolvedValueOnce(true) // Confirm overwrite
+      mockRemovePath.mockResolvedValueOnce(undefined)
 
       const validation = await result.current.validateAll({
         title: 'Test Project',
@@ -319,7 +323,7 @@ describe('useProjectValidation', () => {
     it('should handle exists check error', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(exists).mockRejectedValueOnce(new Error('Permission denied'))
+      mockPathExists.mockRejectedValueOnce(new Error('Permission denied'))
 
       const check = await result.current.checkFolderExists('/test/path')
 
@@ -330,7 +334,7 @@ describe('useProjectValidation', () => {
     it('should handle remove folder error', async () => {
       const { result } = renderHook(() => useProjectValidation())
 
-      vi.mocked(remove).mockRejectedValueOnce(new Error('Permission denied'))
+      mockRemovePath.mockRejectedValueOnce(new Error('Permission denied'))
 
       await expect(result.current.removeExistingFolder('/test/path')).rejects.toThrow(
         'Permission denied'

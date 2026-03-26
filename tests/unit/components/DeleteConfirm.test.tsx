@@ -3,7 +3,7 @@
  * Feature: 007-frontend-script-example
  */
 
-import { DeleteConfirm } from '@/pages/AI/ExampleEmbeddings/DeleteConfirm'
+import { DeleteConfirm } from '@features/AITools/ExampleEmbeddings/components/DeleteConfirm'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'

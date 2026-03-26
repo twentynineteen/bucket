@@ -1,8 +1,6 @@
-/**
- * RAG (Retrieval-Augmented Generation) Commands
- * Feature: 006-i-wish-to RAG Enhancement
- * Purpose: Vector similarity search for autocue script examples
- */
+// RAG (Retrieval-Augmented Generation) Commands
+// Feature: 006-i-wish-to RAG Enhancement
+// Purpose: Vector similarity search for autocue script examples
 
 use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
@@ -341,13 +339,12 @@ fn merge_bundled_examples(app: &tauri::AppHandle, active_db_path: &PathBuf) -> R
     }
 
     // Update version metadata in active database
-    if let Some(bundled_ver) = bundled_conn
+    if let Ok(bundled_ver) = bundled_conn
         .query_row(
             "SELECT value FROM db_metadata WHERE key = 'bundled_version'",
             [],
             |row| row.get::<_, String>(0),
         )
-        .ok()
     {
         active_conn
             .execute(

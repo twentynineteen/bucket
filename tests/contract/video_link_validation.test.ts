@@ -1,6 +1,6 @@
-import type { VideoLink } from '@/types/media'
+import type { VideoLink } from '@shared/types/media'
 import { createMockVideoLink } from '@tests/utils/test-helpers'
-import { validateVideoLink } from '@utils/validation'
+import { validateVideoLink } from '@shared/utils/validation'
 import { describe, expect, it } from 'vitest'
 
 describe('VideoLink Validation Contract', () => {

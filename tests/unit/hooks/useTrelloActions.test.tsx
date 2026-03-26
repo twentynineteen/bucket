@@ -3,15 +3,16 @@
  * Handles external actions: opening card in Trello, closing dialog
  */
 
-import { useTrelloActions } from '@/hooks/useTrelloActions'
-import { SelectedCard } from '@/pages/UploadTrello/UploadTrelloTypes'
-import { open } from '@tauri-apps/plugin-shell'
+import { useTrelloActions } from '@features/Trello'
+import type { SelectedCard } from '@features/Trello'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-// Mock Tauri shell plugin
-vi.mock('@tauri-apps/plugin-shell', () => ({
-  open: vi.fn()
+// Mock Trello api.ts (single I/O boundary -- routes through api.ts, not direct plugin)
+const mockOpenExternalUrl = vi.fn()
+
+vi.mock('@features/Trello/api', () => ({
+  openExternalUrl: (...args: unknown[]) => mockOpenExternalUrl(...args)
 }))
 
 describe('useTrelloActions', () => {
@@ -32,7 +33,9 @@ describe('useTrelloActions', () => {
         await result.current.handleOpenInTrello()
       })
 
-      expect(open).toHaveBeenCalledWith('https://trello.com/c/abc123')
+      expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+        'https://trello.com/c/abc123'
+      )
     })
 
     test('does nothing when no card is selected', async () => {
@@ -42,16 +45,16 @@ describe('useTrelloActions', () => {
         await result.current.handleOpenInTrello()
       })
 
-      expect(open).not.toHaveBeenCalled()
+      expect(mockOpenExternalUrl).not.toHaveBeenCalled()
     })
 
-    test('handles open() errors gracefully', async () => {
+    test('handles openExternalUrl errors gracefully', async () => {
       const selectedCard: SelectedCard = {
         id: 'abc123',
         name: 'Test Card'
       }
 
-      vi.mocked(open).mockRejectedValueOnce(new Error('Failed to open'))
+      mockOpenExternalUrl.mockRejectedValueOnce(new Error('Failed to open'))
 
       const { result } = renderHook(() => useTrelloActions(selectedCard))
 
@@ -81,7 +84,7 @@ describe('useTrelloActions', () => {
           await result.current.handleOpenInTrello()
         })
 
-        expect(open).toHaveBeenCalledWith(expected)
+        expect(mockOpenExternalUrl).toHaveBeenCalledWith(expected)
       }
     })
   })
@@ -129,14 +132,18 @@ describe('useTrelloActions', () => {
       }
       const onClose = vi.fn()
 
-      const { result } = renderHook(() => useTrelloActions(selectedCard, onClose))
+      const { result } = renderHook(() =>
+        useTrelloActions(selectedCard, onClose)
+      )
 
       // Open card in Trello
       await act(async () => {
         await result.current.handleOpenInTrello()
       })
 
-      expect(open).toHaveBeenCalledWith('https://trello.com/c/abc123')
+      expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+        'https://trello.com/c/abc123'
+      )
 
       // Close dialog
       act(() => {
@@ -150,14 +157,19 @@ describe('useTrelloActions', () => {
       const card1: SelectedCard = { id: 'card1', name: 'Card 1' }
       const card2: SelectedCard = { id: 'card2', name: 'Card 2' }
 
-      const { result, rerender } = renderHook(({ card }) => useTrelloActions(card), {
-        initialProps: { card: card1 }
-      })
+      const { result, rerender } = renderHook(
+        ({ card }) => useTrelloActions(card),
+        {
+          initialProps: { card: card1 }
+        }
+      )
 
       await act(async () => {
         await result.current.handleOpenInTrello()
       })
-      expect(open).toHaveBeenCalledWith('https://trello.com/c/card1')
+      expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+        'https://trello.com/c/card1'
+      )
 
       // Change card
       rerender({ card: card2 })
@@ -166,7 +178,9 @@ describe('useTrelloActions', () => {
       await act(async () => {
         await result.current.handleOpenInTrello()
       })
-      expect(open).toHaveBeenCalledWith('https://trello.com/c/card2')
+      expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+        'https://trello.com/c/card2'
+      )
     })
   })
 
@@ -183,7 +197,9 @@ describe('useTrelloActions', () => {
         await result.current.handleOpenInTrello()
       })
 
-      expect(open).toHaveBeenCalledWith('https://trello.com/c/abc-123_XYZ')
+      expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+        'https://trello.com/c/abc-123_XYZ'
+      )
     })
 
     test('handles empty card ID', async () => {
@@ -198,8 +214,10 @@ describe('useTrelloActions', () => {
         await result.current.handleOpenInTrello()
       })
 
-      // Should still call open with empty ID (URL will be invalid but that's expected)
-      expect(open).toHaveBeenCalledWith('https://trello.com/c/')
+      // Should still call openExternalUrl with empty ID (URL will be invalid but that's expected)
+      expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+        'https://trello.com/c/'
+      )
     })
 
     test('onClose callback can be changed dynamically', () => {

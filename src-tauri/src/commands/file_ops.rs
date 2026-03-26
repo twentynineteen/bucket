@@ -1,43 +1,9 @@
+use crate::utils::file_copy::copy_file_with_overall_progress;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 use std::sync::Arc;
 use std::thread;
 use tauri::{command, AppHandle, Emitter};
-
-/// Copy a file using Finder's native UI via AppleScript
-/// This shows the familiar macOS progress dialog with pause/cancel controls
-fn copy_file_with_finder(src: &Path, dest: &Path) -> Result<(), String> {
-    let src_str = src.to_string_lossy();
-    let dest_parent = dest.parent().ok_or("Invalid destination path")?;
-    let dest_parent_str = dest_parent.to_string_lossy();
-
-    // AppleScript to copy file using Finder
-    // This triggers the native macOS copy dialog with progress
-    let script = format!(
-        r#"
-        tell application "Finder"
-            set sourceFile to POSIX file "{}" as alias
-            set destFolder to POSIX file "{}" as alias
-            duplicate sourceFile to destFolder with replacing
-        end tell
-        "#,
-        src_str, dest_parent_str
-    );
-
-    let output = Command::new("osascript")
-        .arg("-e")
-        .arg(&script)
-        .output()
-        .map_err(|e| format!("Failed to execute AppleScript: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Finder copy failed: {}", stderr));
-    }
-
-    Ok(())
-}
 
 #[command]
 pub fn move_files(
@@ -45,12 +11,13 @@ pub fn move_files(
     base_dest: String,
     app_handle: AppHandle,
 ) -> Result<(), String> {
-    let app_handle = Arc::new(app_handle);
-    let base_dest = Arc::new(base_dest);
+    let app_handle = Arc::new(app_handle); // Allow sharing across threads
+    let base_dest = Arc::new(base_dest); // Shared reference
 
     // Run file moving in a separate thread
     thread::spawn(move || {
         let mut moved_files = Vec::new();
+        let mut failed_files: Vec<(String, String)> = Vec::new();
         let total_files = files.len();
 
         for (index, (file_path, camera_number)) in files.iter().enumerate() {
@@ -61,31 +28,64 @@ pub fn move_files(
             // Ensure the Camera folder exists
             if !camera_folder.exists() {
                 if let Err(e) = fs::create_dir_all(&camera_folder) {
-                    eprintln!("Failed to create camera folder {}: {}", camera_number, e);
+                    let error_msg = format!("Failed to create camera folder {}: {}", camera_number, e);
+                    eprintln!("{}", error_msg);
+
+                    // Emit individual error event
+                    let _ = app_handle.emit("copy_file_error", serde_json::json!({
+                        "file": file_path,
+                        "error": error_msg
+                    }));
+
+                    failed_files.push((file_path.clone(), error_msg));
                     continue;
                 }
             }
 
             let dest_file_path = camera_folder.join(src_path.file_name().unwrap());
 
-            // Emit progress before starting each file (for UI feedback)
-            let progress = (index as f64 / total_files as f64) * 100.0;
-            let _ = app_handle.emit("copy_progress", progress);
+            // Copy file with overall progress tracking
+            if let Err(e) = copy_file_with_overall_progress(
+                src_path,
+                &dest_file_path,
+                &app_handle,
+                index,
+                total_files,
+            ) {
+                let error_msg = format!("Failed to copy file {}: {}", file_path, e);
+                eprintln!("{}", error_msg);
 
-            // Copy file using Finder's native UI
-            if let Err(e) = copy_file_with_finder(src_path, &dest_file_path) {
-                eprintln!("Failed to copy file {}: {}", file_path, e);
+                // Emit individual error event
+                let _ = app_handle.emit("copy_file_error", serde_json::json!({
+                    "file": file_path,
+                    "error": error_msg
+                }));
+
+                failed_files.push((file_path.clone(), error_msg));
                 continue;
             }
 
             moved_files.push(dest_file_path.to_string_lossy().to_string());
         }
 
-        // Emit 100% progress before completion
-        let _ = app_handle.emit("copy_progress", 100.0_f64);
+        // Emit completion event based on whether there were errors
+        if failed_files.is_empty() {
+            let _ = app_handle.emit("copy_complete", moved_files);
+        } else {
+            // Convert failed_files to array of objects for consistent frontend format
+            let failed_files_json: Vec<serde_json::Value> = failed_files
+                .iter()
+                .map(|(file, error)| serde_json::json!({"file": file, "error": error}))
+                .collect();
 
-        // Emit completion event when done
-        let _ = app_handle.emit("copy_complete", moved_files);
+            let _ = app_handle.emit("copy_complete_with_errors", serde_json::json!({
+                "successful_files": moved_files,
+                "failed_files": failed_files_json,
+                "failure_count": failed_files.len(),
+                "success_count": moved_files.len(),
+                "total_files": total_files
+            }));
+        }
     });
 
     Ok(()) // Return immediately so UI remains responsive

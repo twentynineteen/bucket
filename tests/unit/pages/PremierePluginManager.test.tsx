@@ -13,7 +13,7 @@
  * - Installation interactions
  */
 
-import PremierePluginManager from '@/pages/PremierePluginManager/PremierePluginManager'
+import { PremierePluginManager } from '@features/Premiere'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -21,7 +21,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock hooks and Tauri APIs
-vi.mock('@/hooks/useBreadcrumb', () => ({
+vi.mock('@shared/hooks/useBreadcrumb', () => ({
   useBreadcrumb: vi.fn()
 }))
 
@@ -30,7 +30,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 }))
 
 // Mock Button component to avoid framer-motion issues in tests
-vi.mock('@/components/ui/button', () => ({
+vi.mock('@shared/ui/button', () => ({
   Button: ({ children, onClick, disabled, ...props }: any) => (
     <button onClick={onClick} disabled={disabled} {...props}>
       {children}
@@ -95,7 +95,7 @@ describe('PremierePluginManager', () => {
 
   describe('Navigation', () => {
     it('should set breadcrumb navigation', async () => {
-      const { useBreadcrumb } = await import('@/hooks/useBreadcrumb')
+      const { useBreadcrumb } = await import('@shared/hooks/useBreadcrumb')
 
       renderWithProviders(<PremierePluginManager />)
 

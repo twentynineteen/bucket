@@ -5,8 +5,8 @@
  * It MUST FAIL initially until the hook implementation is complete.
  */
 
-import type { ScanPreferences } from '@/types/baker'
-import { useBakerPreferences } from '@hooks/useBakerPreferences'
+import type { ScanPreferences } from '../../src/features/Baker/types'
+import { useBakerPreferences } from '../../src/features/Baker/hooks/useBakerPreferences'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 

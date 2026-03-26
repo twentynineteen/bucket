@@ -151,9 +151,8 @@ fn test_embedding_binary_conversion() {
 /// - Orders by quality_score DESC, title ASC
 #[test]
 fn contract_get_all_examples_with_metadata() {
-    // This test documents the contract
+    // Contract documented: get_all_examples_with_metadata returns all examples with full metadata
     // Actual integration testing requires Tauri runtime
-    assert!(true, "Contract documented: get_all_examples_with_metadata returns all examples with full metadata");
 }
 
 /// Documents the contract for upload_example
@@ -166,7 +165,7 @@ fn contract_get_all_examples_with_metadata() {
 /// - Returns new example ID
 #[test]
 fn contract_upload_example() {
-    assert!(true, "Contract documented: upload_example validates, stores, and returns new UUID");
+    // Contract documented: upload_example validates, stores, and returns new UUID
 }
 
 /// Documents the contract for replace_example
@@ -178,7 +177,7 @@ fn contract_upload_example() {
 /// - Transaction-safe
 #[test]
 fn contract_replace_example() {
-    assert!(true, "Contract documented: replace_example updates user-uploaded examples only");
+    // Contract documented: replace_example updates user-uploaded examples only
 }
 
 /// Documents the contract for delete_example
@@ -189,5 +188,5 @@ fn contract_replace_example() {
 /// - Transaction-safe
 #[test]
 fn contract_delete_example() {
-    assert!(true, "Contract documented: delete_example removes user-uploaded examples only");
+    // Contract documented: delete_example removes user-uploaded examples only
 }

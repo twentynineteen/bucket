@@ -1,6 +1,6 @@
-import type { TrelloCard } from '@/types/media'
+import type { TrelloCard } from '@shared/types/media'
 import { createMockTrelloCard } from '@tests/utils/test-helpers'
-import { extractTrelloCardId, validateTrelloCard } from '@utils/validation'
+import { extractTrelloCardId, validateTrelloCard } from '@shared/utils/validation'
 import { describe, expect, it } from 'vitest'
 
 describe('TrelloCard Validation Contract', () => {

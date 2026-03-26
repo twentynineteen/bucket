@@ -1,19 +1,20 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ThemeProvider } from 'next-themes'
-import React from 'react'
+import React, { Suspense } from 'react'
 import { BrowserRouter as Router } from 'react-router-dom'
 
 import AppRouter from './AppRouter'
-import { QueryErrorBoundary } from './components/ErrorBoundary'
-import { TitleBar } from './components/TitleBar'
-import { CACHE, getBackoffDelay, RETRY } from './constants/timing'
-import { AuthProvider } from './context/AuthProvider'
-import { useWindowState } from './hooks/useWindowState'
-import { initializePerformanceMonitor } from './lib/performance-monitor'
-import { initializePrefetchManager } from './lib/prefetch-strategies'
-import { initializeCacheService } from './services/cache-invalidation'
-import { logger } from './utils/logger'
+import { ChunkErrorBoundary } from './shared/ui/layout/ChunkErrorBoundary'
+import { QueryErrorBoundary } from './shared/ui/layout/ErrorBoundary'
+import { RouteLoadingSpinner } from './shared/ui/layout/RouteLoadingSpinner'
+import { TitleBar } from './shared/ui/layout/TitleBar'
+import { CACHE, getBackoffDelay, RETRY } from '@shared/constants'
+import { AuthProvider } from '@features/Auth'
+import { useWindowState } from '@shared/hooks/useWindowState'
+import { initializePerformanceMonitor, initializePrefetchManager } from '@shared/lib'
+import { initializeCacheService } from '@shared/services'
+import { logger } from '@shared/utils'
 
 // The app component acts as the main routing generator for the application.
 // AppRouter wraps the app routes to make use of the useLocation method within react-router-dom
@@ -100,7 +101,11 @@ const App: React.FC = () => {
           <AuthProvider>
             <Router>
               <TitleBar />
-              <AppRouter />
+              <ChunkErrorBoundary>
+                <Suspense fallback={<RouteLoadingSpinner />}>
+                  <AppRouter />
+                </Suspense>
+              </ChunkErrorBoundary>
             </Router>
           </AuthProvider>
         </QueryErrorBoundary>

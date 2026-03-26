@@ -3,23 +3,16 @@
  * Handles card selection state, details fetching, and validation
  */
 
-import { useTrelloCardDetails } from '@/hooks/useTrelloCardDetails'
-import { useTrelloCardSelection } from '@/hooks/useTrelloCardSelection'
-import type { SelectedCard } from '@/pages/UploadTrello/UploadTrelloTypes'
-import type { TrelloCard } from '@/utils/TrelloCards'
+import { useTrelloCardDetails, useTrelloCardSelection } from '@features/Trello'
+import type { SelectedCard, TrelloCard } from '@features/Trello'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock dependencies
-vi.mock('@/hooks/useTrelloCardDetails', () => ({
+vi.mock('@features/Trello/hooks/useTrelloCardDetails', () => ({
   useTrelloCardDetails: vi.fn()
-}))
-
-vi.mock('@/pages/UploadTrello/UploadTrelloHooks', () => ({
-  useCardDetailsSync: vi.fn(),
-  useCardValidation: vi.fn()
 }))
 
 const mockCardDetails: TrelloCard = {

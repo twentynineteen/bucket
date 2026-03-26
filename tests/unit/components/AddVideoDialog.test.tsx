@@ -5,7 +5,7 @@
  * TDD Phase: RED - These tests expect the new grouped parameter interface
  */
 
-import { AddVideoDialog } from '@/components/Baker/VideoLinks/AddVideoDialog'
+import { AddVideoDialog } from '../../../src/features/Baker/components/AddVideoDialog'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'

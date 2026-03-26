@@ -9,20 +9,24 @@
  * - Handle folder creation errors gracefully
  */
 
-import { useProjectFolders } from '@/hooks/useProjectFolders'
-import { mkdir } from '@tauri-apps/plugin-fs'
+import { useProjectFolders } from '@features/BuildProject/hooks/useProjectFolders'
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock Tauri APIs
-vi.mock('@tauri-apps/plugin-fs', () => ({
-  mkdir: vi.fn()
+// Mock the BuildProject api layer
+const mockCreateDirectory = vi.fn()
+
+vi.mock('@features/BuildProject/api', () => ({
+  createDirectory: (...args: unknown[]) => mockCreateDirectory(...args)
 }))
+
+// Alias for backward compat in tests
+const mkdir = mockCreateDirectory
 
 describe('useProjectFolders', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(mkdir).mockResolvedValue(undefined)
+    mockCreateDirectory.mockResolvedValue(undefined)
   })
 
   // ============================================================================
@@ -154,7 +158,7 @@ describe('useProjectFolders', () => {
     it('should handle folder creation error', async () => {
       const { result } = renderHook(() => useProjectFolders())
 
-      vi.mocked(mkdir).mockRejectedValueOnce(new Error('Permission denied'))
+      mockCreateDirectory.mockRejectedValueOnce(new Error('Permission denied'))
 
       await expect(
         result.current.createMainFolder('/destination/Test Project')
@@ -190,7 +194,7 @@ describe('useProjectFolders', () => {
     it('should handle error in one camera folder creation', async () => {
       const { result } = renderHook(() => useProjectFolders())
 
-      vi.mocked(mkdir)
+      mockCreateDirectory
         .mockResolvedValueOnce(undefined) // Camera 1 succeeds
         .mockRejectedValueOnce(new Error('Permission denied')) // Camera 2 fails
 
@@ -223,7 +227,7 @@ describe('useProjectFolders', () => {
     it('should handle error in support folder creation', async () => {
       const { result } = renderHook(() => useProjectFolders())
 
-      vi.mocked(mkdir).mockRejectedValueOnce(new Error('Disk full'))
+      mockCreateDirectory.mockRejectedValueOnce(new Error('Disk full'))
 
       await expect(
         result.current.createSupportFolders('/destination/Test Project')
@@ -239,7 +243,7 @@ describe('useProjectFolders', () => {
     it('should return error result when main folder creation fails', async () => {
       const { result } = renderHook(() => useProjectFolders())
 
-      vi.mocked(mkdir).mockRejectedValueOnce(new Error('Permission denied'))
+      mockCreateDirectory.mockRejectedValueOnce(new Error('Permission denied'))
 
       const createResult = await result.current.createFolderStructure(
         '/destination/Test Project',
@@ -253,7 +257,7 @@ describe('useProjectFolders', () => {
     it('should return error result when camera folder creation fails', async () => {
       const { result } = renderHook(() => useProjectFolders())
 
-      vi.mocked(mkdir)
+      mockCreateDirectory
         .mockResolvedValueOnce(undefined) // Main folder succeeds
         .mockRejectedValueOnce(new Error('Disk full')) // Camera folder fails
 
@@ -269,7 +273,7 @@ describe('useProjectFolders', () => {
     it('should return error result when support folder creation fails', async () => {
       const { result } = renderHook(() => useProjectFolders())
 
-      vi.mocked(mkdir)
+      mockCreateDirectory
         .mockResolvedValueOnce(undefined) // Main folder succeeds
         .mockResolvedValueOnce(undefined) // Camera 1 succeeds
         .mockResolvedValueOnce(undefined) // Camera 2 succeeds
@@ -288,7 +292,7 @@ describe('useProjectFolders', () => {
       const { result } = renderHook(() => useProjectFolders())
 
       const customError = new Error('Custom error message')
-      vi.mocked(mkdir).mockRejectedValueOnce(customError)
+      mockCreateDirectory.mockRejectedValueOnce(customError)
 
       const createResult = await result.current.createFolderStructure(
         '/destination/Test Project',

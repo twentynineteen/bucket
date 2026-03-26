@@ -6,7 +6,7 @@
  */
 
 import { resolve } from 'path'
-import type { BatchUpdateResult } from '@/types/baker'
+import type { BatchUpdateResult } from '@features/Baker'
 import { invoke } from '@tauri-apps/api/core'
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { setupTauriMocks } from '../setup/tauri-mocks'

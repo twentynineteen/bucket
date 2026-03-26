@@ -4,8 +4,8 @@
  * Tests for the color preview swatch component.
  */
 
-import { ThemeColorSwatch } from '@/components/Settings/ThemeColorSwatch'
-import type { ThemeColorSwatch as ThemeColorSwatchType } from '@/constants/themes'
+import { ThemeColorSwatch } from '@shared/ui/theme/ThemeColorSwatch'
+import type { ThemeColorSwatch as ThemeColorSwatchType } from '@shared/ui/theme/themes'
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 

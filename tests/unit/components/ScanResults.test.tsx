@@ -13,8 +13,8 @@
  * Total: 12 tests
  */
 
-import type { ProjectFolder, ScanResult } from '@/types/baker'
-import { ScanResults } from '@components/Baker/ScanResults'
+import type { ProjectFolder, ScanResult } from '@features/Baker'
+import { ScanResults } from '../../../src/features/Baker/components/ScanResults'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
@@ -38,7 +38,7 @@ vi.mock('framer-motion', () => ({
 }))
 
 // Mock formatFileSize utility
-vi.mock('@utils/breadcrumbsComparison', () => ({
+vi.mock('@shared/utils/breadcrumbs', () => ({
   formatFileSize: vi.fn((bytes: number) => {
     if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GB`
     if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(2)} MB`

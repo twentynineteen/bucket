@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "src/index.tsx",
+    "src/App.tsx",
+    "tests/setup/vitest-setup.ts",
+    "tests/setup/msw-server.ts",
+    "src/**/*.test.{ts,tsx}",
+    "eslint.config.js"
+  ],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": [
+    "src-tauri/**",
+    "scripts/**"
+  ],
+  "ignoreDependencies": [
+    "@tauri-apps/cli",
+    "@tauri-apps/api",
+    "vite-plugin-monaco-editor",
+    "@vitejs/plugin-react",
+    "vite-tsconfig-paths",
+    "lightningcss",
+    "@tailwindcss/postcss",
+    "postcss",
+    "tailwindcss",
+    "prettier-plugin-tailwindcss",
+    "@ianvs/prettier-plugin-sort-imports",
+    "babel-plugin-transform-import-meta"
+  ],
+  "vite": false,
+  "vitest": false,
+  "eslint": false
+}

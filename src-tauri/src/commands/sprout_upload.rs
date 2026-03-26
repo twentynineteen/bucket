@@ -175,7 +175,7 @@ async fn upload_video_task(
     // Send the request asynchronously
     let response = client
         .post("https://api.sproutvideo.com/v1/videos")
-        .header("SproutVideo-Api-Key", format!("{}", api_key))
+        .header("SproutVideo-Api-Key", api_key.to_string())
         .multipart(form)
         .send()
         .await

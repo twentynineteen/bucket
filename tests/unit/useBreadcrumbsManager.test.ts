@@ -5,8 +5,8 @@
  * It MUST FAIL initially until the hook implementation is complete.
  */
 
-import type { BatchUpdateResult } from '@/types/baker'
-import { useBreadcrumbsManager } from '@hooks/useBreadcrumbsManager'
+import type { BatchUpdateResult } from '../../src/features/Baker/types'
+import { useBreadcrumbsManager } from '../../src/features/Baker/hooks/useBreadcrumbsManager'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 

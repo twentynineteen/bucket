@@ -6,8 +6,8 @@
  * Following TDD methodology - tests written before memoization implementation.
  */
 
-import { ProjectListPanel } from '@/components/Baker/ProjectListPanel'
-import type { ProjectFolder } from '@/types/baker'
+import { ProjectListPanel } from '../../../../src/features/Baker/components/ProjectListPanel'
+import type { ProjectFolder } from '../../../../src/features/Baker/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'

@@ -8,13 +8,13 @@ import {
   createOllamaModel,
   createOpenAIModel,
   ModelFactory
-} from '@/services/ai/modelFactory'
-import { providerRegistry } from '@/services/ai/providerConfig'
-import type { ConnectionValidationResult, ProviderAdapter } from '@/services/ai/types'
+} from '@shared/services/ai/modelFactory'
+import { providerRegistry } from '@shared/services/ai/providerConfig'
+import type { ConnectionValidationResult, ProviderAdapter } from '@shared/services/ai/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock the provider registry
-vi.mock('@/services/ai/providerConfig', () => ({
+vi.mock('@shared/services/ai/providerConfig', () => ({
   providerRegistry: {
     get: vi.fn(),
     list: vi.fn(),

@@ -7,18 +7,28 @@ import { describe, expect, it, vi } from 'vitest'
 import Page from '../../../page'
 
 // Mock the sidebar components
-vi.mock('@components/ui/sidebar', () => ({
-  SidebarProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+vi.mock('@shared/ui/sidebar/Sidebar', () => ({
   SidebarInset: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SidebarTrigger: () => <div>SidebarTrigger</div>
 }))
 
-vi.mock('@components/app-sidebar', () => ({
+vi.mock('@shared/ui/sidebar/SidebarProvider', () => ({
+  SidebarProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+}))
+
+vi.mock('@shared/ui/layout/app-sidebar', () => ({
   AppSidebar: () => <div>AppSidebar</div>
 }))
 
+// Mock useAuth hook
+vi.mock('@features/Auth', () => ({
+  useAuth: () => ({
+    logout: vi.fn()
+  })
+}))
+
 // Mock the breadcrumb store before tests run
-vi.mock('../../../../../store/useBreadcrumbStore.ts', () => ({
+vi.mock('@shared/store/useBreadcrumbStore', () => ({
   useBreadcrumbStore: () => ({
     breadcrumbs: [
       { href: '/', label: 'Home' },

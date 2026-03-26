@@ -3,19 +3,22 @@
  * Handles board data fetching, searching, and filtering
  */
 
-import { useTrelloBoard } from '@/hooks/useTrelloBoard'
-import { loadApiKeys } from '@/utils/storage'
-import { fetchTrelloCards, fetchTrelloLists } from '@/utils/TrelloCards'
+import { useTrelloBoard } from '@features/Trello'
+import { loadApiKeys } from '@shared/utils/storage'
+import { fetchBoardCards, fetchBoardLists } from '@features/Trello/api'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock dependencies
-vi.mock('@/utils/TrelloCards', () => ({
-  fetchTrelloCards: vi.fn(),
-  fetchTrelloLists: vi.fn(),
-  groupCardsByList: vi.fn((cards, lists) => {
+vi.mock('@features/Trello/api', () => ({
+  fetchBoardCards: vi.fn(),
+  fetchBoardLists: vi.fn()
+}))
+
+vi.mock('@features/Trello/internal/TrelloCards', () => ({
+  groupCardsByList: vi.fn((cards: any[], lists: any[]) => {
     const grouped: Record<string, any[]> = {}
     const listMap = lists.reduce((acc: Record<string, string>, list: any) => {
       acc[list.id] = list.name
@@ -33,7 +36,7 @@ vi.mock('@/utils/TrelloCards', () => ({
   })
 }))
 
-vi.mock('@/lib/query-keys', () => ({
+vi.mock('@shared/lib/query-keys', () => ({
   queryKeys: {
     trello: {
       cards: (boardId: string) => ['trello', 'cards', boardId],
@@ -42,11 +45,11 @@ vi.mock('@/lib/query-keys', () => ({
   }
 }))
 
-vi.mock('@/utils/storage', () => ({
+vi.mock('@shared/utils/storage', () => ({
   loadApiKeys: vi.fn()
 }))
 
-vi.mock('@/lib/query-utils', () => ({
+vi.mock('@shared/lib/query-utils', () => ({
   createQueryError: vi.fn((message: string) => new Error(message)),
   createQueryOptions: vi.fn((queryKey, queryFn, type, options) => ({
     queryKey,
@@ -89,8 +92,8 @@ describe('useTrelloBoard', () => {
       trello: 'test-api-key',
       trelloToken: 'test-token'
     })
-    vi.mocked(fetchTrelloCards).mockResolvedValue(mockCards)
-    vi.mocked(fetchTrelloLists).mockResolvedValue(mockLists)
+    vi.mocked(fetchBoardCards).mockResolvedValue(mockCards)
+    vi.mocked(fetchBoardLists).mockResolvedValue(mockLists)
   })
 
   describe('data fetching', () => {
@@ -104,15 +107,15 @@ describe('useTrelloBoard', () => {
       })
 
       expect(loadApiKeys).toHaveBeenCalled()
-      expect(fetchTrelloCards).toHaveBeenCalledWith(
+      expect(fetchBoardCards).toHaveBeenCalledWith(
+        'board123',
         'test-api-key',
-        'test-token',
-        'board123'
+        'test-token'
       )
-      expect(fetchTrelloLists).toHaveBeenCalledWith(
+      expect(fetchBoardLists).toHaveBeenCalledWith(
+        'board123',
         'test-api-key',
-        'test-token',
-        'board123'
+        'test-token'
       )
     })
 
@@ -168,12 +171,12 @@ describe('useTrelloBoard', () => {
 
       expect(result.current.apiKey).toBeNull()
       expect(result.current.token).toBeNull()
-      expect(fetchTrelloCards).not.toHaveBeenCalled()
-      expect(fetchTrelloLists).not.toHaveBeenCalled()
+      expect(fetchBoardCards).not.toHaveBeenCalled()
+      expect(fetchBoardLists).not.toHaveBeenCalled()
     })
 
     test('handles fetch errors gracefully', async () => {
-      vi.mocked(fetchTrelloCards).mockRejectedValue(new Error('API Error'))
+      vi.mocked(fetchBoardCards).mockRejectedValue(new Error('API Error'))
 
       const { result } = renderHook(() => useTrelloBoard('board123'), {
         wrapper: createWrapper()
@@ -202,7 +205,7 @@ describe('useTrelloBoard', () => {
     })
 
     test('returns empty array when no cards loaded', async () => {
-      vi.mocked(fetchTrelloCards).mockResolvedValue([])
+      vi.mocked(fetchBoardCards).mockResolvedValue([])
 
       const { result } = renderHook(() => useTrelloBoard('board123'), {
         wrapper: createWrapper()
@@ -218,8 +221,8 @@ describe('useTrelloBoard', () => {
 
   describe('edge cases', () => {
     test('handles empty board (no cards)', async () => {
-      vi.mocked(fetchTrelloCards).mockResolvedValue([])
-      vi.mocked(fetchTrelloLists).mockResolvedValue(mockLists)
+      vi.mocked(fetchBoardCards).mockResolvedValue([])
+      vi.mocked(fetchBoardLists).mockResolvedValue(mockLists)
 
       const { result } = renderHook(() => useTrelloBoard('board123'), {
         wrapper: createWrapper()
@@ -234,8 +237,8 @@ describe('useTrelloBoard', () => {
     })
 
     test('handles empty lists', async () => {
-      vi.mocked(fetchTrelloCards).mockResolvedValue(mockCards)
-      vi.mocked(fetchTrelloLists).mockResolvedValue([])
+      vi.mocked(fetchBoardCards).mockResolvedValue(mockCards)
+      vi.mocked(fetchBoardLists).mockResolvedValue([])
 
       const { result } = renderHook(() => useTrelloBoard('board123'), {
         wrapper: createWrapper()
@@ -253,7 +256,7 @@ describe('useTrelloBoard', () => {
         ...mockCards,
         { id: 'orphan', name: 'Orphan Card', desc: '', idList: 'nonexistent' }
       ]
-      vi.mocked(fetchTrelloCards).mockResolvedValue(cardsWithOrphan)
+      vi.mocked(fetchBoardCards).mockResolvedValue(cardsWithOrphan)
 
       const { result } = renderHook(() => useTrelloBoard('board123'), {
         wrapper: createWrapper()
@@ -280,10 +283,10 @@ describe('useTrelloBoard', () => {
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
-      expect(fetchTrelloCards).toHaveBeenCalledWith(
+      expect(fetchBoardCards).toHaveBeenCalledWith(
+        'board1',
         'test-api-key',
-        'test-token',
-        'board1'
+        'test-token'
       )
 
       // Change board ID
@@ -291,10 +294,10 @@ describe('useTrelloBoard', () => {
       rerender({ boardId: 'board2' })
 
       await waitFor(() => {
-        expect(fetchTrelloCards).toHaveBeenCalledWith(
+        expect(fetchBoardCards).toHaveBeenCalledWith(
+          'board2',
           'test-api-key',
-          'test-token',
-          'board2'
+          'test-token'
         )
       })
     })

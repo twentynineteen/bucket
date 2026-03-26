@@ -13,9 +13,9 @@
  * Total: 8 tests
  */
 
-import type { VideoLink } from '@/types/baker'
-import { logger } from '@/utils/logger'
-import { VideoLinkCard } from '@components/Baker/VideoLinkCard'
+import type { VideoLink } from '../../../src/features/Baker/types'
+import { logger } from '@shared/utils/logger'
+import { VideoLinkCard } from '../../../src/features/Baker/components/VideoLinkCard'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -28,13 +28,19 @@ vi.mock('@tauri-apps/plugin-opener', () => ({
 }))
 
 // Mock logger
-vi.mock('@/utils/logger', () => ({
+vi.mock('@shared/utils/logger', () => ({
   logger: {
     error: vi.fn(),
     warn: vi.fn(),
     info: vi.fn(),
     debug: vi.fn()
-  }
+  },
+  createNamespacedLogger: vi.fn(() => ({
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn()
+  }))
 }))
 
 // Mock framer-motion to avoid animation issues in tests
