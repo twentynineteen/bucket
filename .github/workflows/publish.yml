@@ -30,7 +30,7 @@ jobs:
       app-version: ${{ steps.get_version.outputs.version }}
       release-notes: ${{ steps.release_notes.outputs.body }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -91,7 +91,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: setup bun
         uses: oven-sh/setup-bun@v2
@@ -104,7 +104,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Set up cargo cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         continue-on-error: false
         with:
           path: |
@@ -169,14 +169,14 @@ jobs:
           tauriScript: 'bun run tauri'
 
       - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dmg-${{ matrix.target }}
           path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
           retention-days: 1
 
       - name: Upload updater artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: updater-${{ matrix.target }}
           path: |
@@ -200,10 +200,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: ./artifacts
 
@@ -309,10 +309,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: ./artifacts
 

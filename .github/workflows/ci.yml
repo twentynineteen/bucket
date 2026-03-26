@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -41,7 +41,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -58,7 +58,7 @@ jobs:
     needs: [lint, test]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install system dependencies
         run: |
@@ -69,7 +69,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Set up cargo cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         continue-on-error: false
         with:
           path: |
@@ -102,7 +102,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/release'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install system dependencies
         run: |
@@ -114,7 +114,7 @@ jobs:
           targets: aarch64-apple-darwin
 
       - name: Set up cargo cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         continue-on-error: false
         with:
           path: |
@@ -187,7 +187,7 @@ jobs:
     needs: [lint, test]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -196,7 +196,7 @@ jobs:
         run: bun install
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lockb') }}
@@ -209,7 +209,7 @@ jobs:
         run: bunx playwright test --config tests/e2e/playwright.config.ts --project=chromium
 
       - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: failure()  # Only upload on failure to save storage
         with:
           name: playwright-report
@@ -217,7 +217,7 @@ jobs:
           retention-days: 7
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: test-results
