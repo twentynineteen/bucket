@@ -2,6 +2,7 @@
 
 // Module declarations
 mod baker;
+mod build_project;
 mod commands;
 mod state;
 mod utils;
@@ -13,6 +14,7 @@ use std::sync::Mutex;
 
 // Re-exports from modules
 use baker::*;
+use build_project::{transfer_files_with_progress, cancel_file_transfer, OperationRegistry};
 use commands::*;
 use state::AuthState;
 
@@ -34,6 +36,7 @@ fn main() {
             tokens: Mutex::new(vec![]),
         })
         .manage(baker::ScanState::new())
+        .manage(OperationRegistry::new())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -93,7 +96,10 @@ fn main() {
             check_plugin_installed,
             get_cep_directory,
             enable_cep_debug_mode,
-            open_cep_folder
+            open_cep_folder,
+            // BuildProject: File transfer with progress and cancellation
+            transfer_files_with_progress,
+            cancel_file_transfer
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");
