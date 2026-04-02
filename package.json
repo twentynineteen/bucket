@@ -1,6 +1,6 @@
 {
   "name": "bucket",
-  "version": "0.14.4",
+  "version": "0.14.5",
   "description": "A desktop video editing workflow application that streamlines video ingest, project creation, and integrates with professional video production tools.",
   "author": "Dan Mills",
   "type": "module",
@@ -75,7 +75,6 @@
     "babel-plugin-transform-import-meta": "^2.3.3",
     "baseline-browser-mapping": "^2.9.7",
     "better-sqlite3": "^12.4.1",
-    "depcheck": "^1.4.7",
     "dependency-cruiser": "^17.3.8",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
@@ -92,7 +91,6 @@
     "playwright": "^1.56.1",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
-    "prettier-eslint-cli": "^8.0.1",
     "prettier-plugin-tailwindcss": "^0.7.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.20.6",
