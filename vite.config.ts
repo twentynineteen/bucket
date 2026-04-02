@@ -14,10 +14,16 @@ export default defineConfig({
   plugins: [
     react(),
     tsconfigPaths(),
-    monacoEditorPlugin({
-      // Include markdown for script formatter, plus common languages
-      languageWorkers: ['editorWorkerService', 'typescript', 'json', 'html', 'css']
-    })
+    // Monaco editor plugin is not needed in the test environment and slows down
+    // Vite worker module resolution, causing fetch timeouts in the test suite.
+    ...(!process.env.VITEST
+      ? [
+          monacoEditorPlugin({
+            // Include markdown for script formatter, plus common languages
+            languageWorkers: ['editorWorkerService', 'typescript', 'json', 'html', 'css']
+          })
+        ]
+      : [])
   ],
   // prevent vite from obscuring rust errors
   clearScreen: false,
@@ -62,6 +68,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup/vitest-setup.ts', './tests/setup/msw-server.ts'],
     mockReset: true,
-    exclude: ['**/node_modules/**', '**/dist/**', '**/tests/e2e/**']
+    exclude: ['**/node_modules/**', '**/dist/**', '**/tests/e2e/**'],
+    // Increased from the default 5000ms to accommodate async dialog interactions
+    // with Radix UI components which can be slow in the JSDOM environment.
+    testTimeout: 10000
   }
 })
