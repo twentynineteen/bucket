@@ -1,10 +1,11 @@
 {
   "name": "bucket",
-  "version": "0.14.6",
+  "version": "0.14.7",
   "description": "A desktop video editing workflow application that streamlines video ingest, project creation, and integrates with professional video production tools.",
   "author": "Dan Mills",
   "type": "module",
   "overrides": {
+    "vite": "^7.3.2",
     "rollup": "^4.60.1",
     "flatted": "^3.4.0",
     "underscore": "^1.13.8",
@@ -96,7 +97,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.1",
     "rollup": "^4.60.1",
-    "vite": "^7.3.1",
+    "vite": "^7.3.2",
     "vite-plugin-monaco-editor": "^1.1.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.2"
