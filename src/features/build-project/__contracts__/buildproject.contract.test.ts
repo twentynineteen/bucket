@@ -175,9 +175,9 @@ describe('build-project module — file layout invariants', () => {
   })
 
   it('has the XState machine at machine/buildProjectMachine.ts', () => {
-    expect(
-      fs.existsSync(path.join(modulePath, 'machine/buildProjectMachine.ts'))
-    ).toBe(true)
+    expect(fs.existsSync(path.join(modulePath, 'machine/buildProjectMachine.ts'))).toBe(
+      true
+    )
   })
 
   it('has the throttled transfer stage at stages/fileTransfer.ts', () => {
@@ -188,8 +188,6 @@ describe('build-project module — file layout invariants', () => {
     // useFileTransfer.ts was a redundant pre-migration hook that still invoked
     // the broken move_files command. It is intentionally removed; if anything
     // re-creates this file, that is almost certainly a mistake.
-    expect(
-      fs.existsSync(path.join(modulePath, 'hooks/useFileTransfer.ts'))
-    ).toBe(false)
+    expect(fs.existsSync(path.join(modulePath, 'hooks/useFileTransfer.ts'))).toBe(false)
   })
 })
