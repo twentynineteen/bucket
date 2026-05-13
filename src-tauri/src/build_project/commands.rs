@@ -8,13 +8,21 @@
 use crate::build_project::error::FileTransferError;
 use crate::build_project::registry::OperationRegistry;
 use serde::{Deserialize, Serialize};
-use std::fs::{self, File};
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::fs;
 use std::path::Path;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, State};
 
-/// Buffer size for file copying (64KB)
+// File/Read/Write/BufReader/BufWriter are only used by the Windows/Linux
+// buffered-loop fallback path. On macOS we use macos_copyfile, which doesn't
+// need them.
+#[cfg(not(target_os = "macos"))]
+use std::fs::File;
+#[cfg(not(target_os = "macos"))]
+use std::io::{BufReader, BufWriter, Read, Write};
+
+/// Buffer size for file copying (64KB) — used only by the non-macOS buffered loop.
+#[cfg(not(target_os = "macos"))]
 const BUFFER_SIZE: usize = 65536;
 
 /// Progress update interval (100ms throttling)
@@ -218,89 +226,113 @@ pub async fn transfer_files_with_progress(
                 }
             }
 
-            // Open source file
-            let src_file = match File::open(source_path) {
-                Ok(f) => f,
-                Err(e) => {
-                    let complete_event = TransferComplete::failed(
-                        operation_id.clone(),
-                        files_completed,
-                        format!("Failed to open source file: {}", e),
-                    );
-                    let _ = app.emit("file-transfer-complete", &complete_event);
-                    let rt = tokio::runtime::Handle::current();
-                    rt.block_on(async { registry_clone.complete(&operation_id).await });
-                    return;
-                }
-            };
+            // ===== Per-file copy =====
+            // macOS uses Apple's copyfile(3) syscall with COPYFILE_CLONE for
+            // O(1) same-volume APFS clones and kernel-level cross-volume copies
+            // that preserve xattrs/ACLs/resource forks. Windows/Linux keep the
+            // buffered byte loop below.
 
-            let _file_size = match src_file.metadata() {
-                Ok(m) => m.len(),
-                Err(e) => {
-                    let complete_event = TransferComplete::failed(
-                        operation_id.clone(),
-                        files_completed,
-                        format!("Failed to get file metadata: {}", e),
-                    );
-                    let _ = app.emit("file-transfer-complete", &complete_event);
-                    let rt = tokio::runtime::Handle::current();
-                    rt.block_on(async { registry_clone.complete(&operation_id).await });
-                    return;
-                }
-            };
+            #[cfg(target_os = "macos")]
+            {
+                use crate::utils::macos_copyfile::{
+                    copy_with_progress, ControlFlow, CopyError, COPYFILE_ALL, COPYFILE_CLONE,
+                };
 
-            // Create destination file
-            let dest_file = match File::create(dest_path) {
-                Ok(f) => f,
-                Err(e) => {
-                    let complete_event = TransferComplete::failed(
-                        operation_id.clone(),
-                        files_completed,
-                        format!("Failed to create destination file: {}", e),
-                    );
-                    let _ = app.emit("file-transfer-complete", &complete_event);
-                    let rt = tokio::runtime::Handle::current();
-                    rt.block_on(async { registry_clone.complete(&operation_id).await });
-                    return;
-                }
-            };
+                // Track per-file bytes so we can compute the delta added to
+                // the cumulative `bytes_transferred`. (The copyfile callback
+                // reports cumulative-for-this-file, not cumulative-across-files.)
+                let mut current_file_bytes: u64 = 0;
+                let item_source_cb = item.source.clone();
+                let operation_id_cb = operation_id.clone();
+                let app_cb = app.clone();
+                let cancel_receiver_cb = cancel_receiver.clone();
 
-            let mut reader = BufReader::new(src_file);
-            let mut writer = BufWriter::new(dest_file);
-            let mut buffer = vec![0u8; BUFFER_SIZE];
+                let copy_result = copy_with_progress(
+                    source_path,
+                    dest_path,
+                    COPYFILE_ALL | COPYFILE_CLONE,
+                    |bytes| {
+                        if OperationRegistry::is_cancelled(&cancel_receiver_cb) {
+                            return ControlFlow::Cancel;
+                        }
+                        let delta = bytes.saturating_sub(current_file_bytes);
+                        current_file_bytes = bytes;
+                        bytes_transferred += delta;
 
-            // Copy file in chunks
-            loop {
-                // Check cancellation via watch channel
-                if OperationRegistry::is_cancelled(&cancel_receiver) {
-                    let _ = fs::remove_file(dest_path);
-                    let duration_ms = start_time.elapsed().as_millis() as u64;
-                    let complete_event =
-                        TransferComplete::cancelled(operation_id.clone(), files_completed);
-                    log::info!(
-                        "[BuildProject] Transfer cancelled during copy: {} (files: {}/{}, duration: {}ms)",
-                        operation_id,
-                        files_completed,
-                        total_files,
-                        duration_ms
-                    );
-                    let _ = app.emit("file-transfer-complete", &complete_event);
-                    let rt = tokio::runtime::Handle::current();
-                    rt.block_on(async { registry_clone.complete(&operation_id).await });
-                    return;
-                }
+                        if last_progress_update.elapsed() >= PROGRESS_UPDATE_INTERVAL {
+                            let percentage = if total_bytes > 0 {
+                                (bytes_transferred as f64 / total_bytes as f64) * 100.0
+                            } else {
+                                0.0
+                            };
+                            let progress = TransferProgressEvent {
+                                operation_id: operation_id_cb.clone(),
+                                current_file: item_source_cb.clone(),
+                                files_completed,
+                                total_files,
+                                bytes_transferred,
+                                total_bytes,
+                                percentage,
+                            };
+                            let _ = app_cb.emit("file-transfer-progress", &progress);
+                            last_progress_update = Instant::now();
+                        }
+                        ControlFlow::Continue
+                    },
+                );
 
-                // Read chunk
-                let bytes_read = match reader.read(&mut buffer) {
-                    Ok(0) => break,
-                    Ok(n) => n,
-                    Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                match copy_result {
+                    Ok(result) => {
+                        // Catch any bytes that weren't observed via callback
+                        // (clonefile fast path skips progress events entirely).
+                        let final_delta =
+                            result.bytes_copied.saturating_sub(current_file_bytes);
+                        bytes_transferred += final_delta;
+                    }
+                    Err(CopyError::Cancelled) => {
+                        let _ = fs::remove_file(dest_path);
+                        let duration_ms = start_time.elapsed().as_millis() as u64;
+                        let complete_event = TransferComplete::cancelled(
+                            operation_id.clone(),
+                            files_completed,
+                        );
+                        log::info!(
+                            "[BuildProject] Transfer cancelled during copy: {} (files: {}/{}, duration: {}ms)",
+                            operation_id,
+                            files_completed,
+                            total_files,
+                            duration_ms
+                        );
+                        let _ = app.emit("file-transfer-complete", &complete_event);
+                        let rt = tokio::runtime::Handle::current();
+                        rt.block_on(async { registry_clone.complete(&operation_id).await });
+                        return;
+                    }
                     Err(e) => {
                         let _ = fs::remove_file(dest_path);
                         let complete_event = TransferComplete::failed(
                             operation_id.clone(),
                             files_completed,
-                            format!("Failed to read source file: {}", e),
+                            format!("Native copy failed: {}", e),
+                        );
+                        let _ = app.emit("file-transfer-complete", &complete_event);
+                        let rt = tokio::runtime::Handle::current();
+                        rt.block_on(async { registry_clone.complete(&operation_id).await });
+                        return;
+                    }
+                }
+            }
+
+            #[cfg(not(target_os = "macos"))]
+            {
+                // Open source file
+                let src_file = match File::open(source_path) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        let complete_event = TransferComplete::failed(
+                            operation_id.clone(),
+                            files_completed,
+                            format!("Failed to open source file: {}", e),
                         );
                         let _ = app.emit("file-transfer-complete", &complete_event);
                         let rt = tokio::runtime::Handle::current();
@@ -309,13 +341,131 @@ pub async fn transfer_files_with_progress(
                     }
                 };
 
-                // Write chunk
-                if let Err(e) = writer.write_all(&buffer[..bytes_read]) {
+                let _file_size = match src_file.metadata() {
+                    Ok(m) => m.len(),
+                    Err(e) => {
+                        let complete_event = TransferComplete::failed(
+                            operation_id.clone(),
+                            files_completed,
+                            format!("Failed to get file metadata: {}", e),
+                        );
+                        let _ = app.emit("file-transfer-complete", &complete_event);
+                        let rt = tokio::runtime::Handle::current();
+                        rt.block_on(async { registry_clone.complete(&operation_id).await });
+                        return;
+                    }
+                };
+
+                // Create destination file
+                let dest_file = match File::create(dest_path) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        let complete_event = TransferComplete::failed(
+                            operation_id.clone(),
+                            files_completed,
+                            format!("Failed to create destination file: {}", e),
+                        );
+                        let _ = app.emit("file-transfer-complete", &complete_event);
+                        let rt = tokio::runtime::Handle::current();
+                        rt.block_on(async { registry_clone.complete(&operation_id).await });
+                        return;
+                    }
+                };
+
+                let mut reader = BufReader::new(src_file);
+                let mut writer = BufWriter::new(dest_file);
+                let mut buffer = vec![0u8; BUFFER_SIZE];
+
+                // Copy file in chunks
+                loop {
+                    // Check cancellation via watch channel
+                    if OperationRegistry::is_cancelled(&cancel_receiver) {
+                        let _ = fs::remove_file(dest_path);
+                        let duration_ms = start_time.elapsed().as_millis() as u64;
+                        let complete_event = TransferComplete::cancelled(
+                            operation_id.clone(),
+                            files_completed,
+                        );
+                        log::info!(
+                            "[BuildProject] Transfer cancelled during copy: {} (files: {}/{}, duration: {}ms)",
+                            operation_id,
+                            files_completed,
+                            total_files,
+                            duration_ms
+                        );
+                        let _ = app.emit("file-transfer-complete", &complete_event);
+                        let rt = tokio::runtime::Handle::current();
+                        rt.block_on(async { registry_clone.complete(&operation_id).await });
+                        return;
+                    }
+
+                    // Read chunk
+                    let bytes_read = match reader.read(&mut buffer) {
+                        Ok(0) => break,
+                        Ok(n) => n,
+                        Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                        Err(e) => {
+                            let _ = fs::remove_file(dest_path);
+                            let complete_event = TransferComplete::failed(
+                                operation_id.clone(),
+                                files_completed,
+                                format!("Failed to read source file: {}", e),
+                            );
+                            let _ = app.emit("file-transfer-complete", &complete_event);
+                            let rt = tokio::runtime::Handle::current();
+                            rt.block_on(async {
+                                registry_clone.complete(&operation_id).await
+                            });
+                            return;
+                        }
+                    };
+
+                    // Write chunk
+                    if let Err(e) = writer.write_all(&buffer[..bytes_read]) {
+                        let _ = fs::remove_file(dest_path);
+                        let complete_event = TransferComplete::failed(
+                            operation_id.clone(),
+                            files_completed,
+                            format!("Failed to write to destination: {}", e),
+                        );
+                        let _ = app.emit("file-transfer-complete", &complete_event);
+                        let rt = tokio::runtime::Handle::current();
+                        rt.block_on(async { registry_clone.complete(&operation_id).await });
+                        return;
+                    }
+
+                    bytes_transferred += bytes_read as u64;
+
+                    // Emit throttled progress update
+                    if last_progress_update.elapsed() >= PROGRESS_UPDATE_INTERVAL {
+                        let percentage = if total_bytes > 0 {
+                            (bytes_transferred as f64 / total_bytes as f64) * 100.0
+                        } else {
+                            0.0
+                        };
+
+                        let progress = TransferProgressEvent {
+                            operation_id: operation_id.clone(),
+                            current_file: item.source.clone(),
+                            files_completed,
+                            total_files,
+                            bytes_transferred,
+                            total_bytes,
+                            percentage,
+                        };
+
+                        let _ = app.emit("file-transfer-progress", &progress);
+                        last_progress_update = Instant::now();
+                    }
+                }
+
+                // Flush and sync to ensure data is written to disk
+                if let Err(e) = writer.flush() {
                     let _ = fs::remove_file(dest_path);
                     let complete_event = TransferComplete::failed(
                         operation_id.clone(),
                         files_completed,
-                        format!("Failed to write to destination: {}", e),
+                        format!("Failed to flush write buffer: {}", e),
                     );
                     let _ = app.emit("file-transfer-complete", &complete_event);
                     let rt = tokio::runtime::Handle::current();
@@ -323,57 +473,32 @@ pub async fn transfer_files_with_progress(
                     return;
                 }
 
-                bytes_transferred += bytes_read as u64;
-
-                // Emit throttled progress update
-                if last_progress_update.elapsed() >= PROGRESS_UPDATE_INTERVAL {
-                    let percentage = if total_bytes > 0 {
-                        (bytes_transferred as f64 / total_bytes as f64) * 100.0
-                    } else {
-                        0.0
-                    };
-
-                    let progress = TransferProgressEvent {
-                        operation_id: operation_id.clone(),
-                        current_file: item.source.clone(),
-                        files_completed,
-                        total_files,
-                        bytes_transferred,
-                        total_bytes,
-                        percentage,
-                    };
-
-                    let _ = app.emit("file-transfer-progress", &progress);
-                    last_progress_update = Instant::now();
+                // Ensure all data is written to disk before completing.
+                // ENOTSUP is non-fatal: SMB/AFP/some NFS mounts don't
+                // implement durable sync, but the OS write cache flushes
+                // eventually. Without this carve-out ingesting to a network
+                // share fails — exactly the BuildProject use case. Rust's
+                // ErrorKind only maps EOPNOTSUPP (errno 102 on macOS) to
+                // Unsupported and leaves BSD ENOTSUP (45) as Uncategorized,
+                // so we check raw_os_error too.
+                if let Err(e) = writer.get_mut().sync_all() {
+                    let errno = e.raw_os_error();
+                    let is_unsupported =
+                        matches!(errno, Some(45) | Some(95) | Some(102))
+                            || e.kind() == std::io::ErrorKind::Unsupported;
+                    if !is_unsupported {
+                        let _ = fs::remove_file(dest_path);
+                        let complete_event = TransferComplete::failed(
+                            operation_id.clone(),
+                            files_completed,
+                            format!("Failed to sync file to disk: {}", e),
+                        );
+                        let _ = app.emit("file-transfer-complete", &complete_event);
+                        let rt = tokio::runtime::Handle::current();
+                        rt.block_on(async { registry_clone.complete(&operation_id).await });
+                        return;
+                    }
                 }
-            }
-
-            // Flush and sync to ensure data is written to disk
-            if let Err(e) = writer.flush() {
-                let _ = fs::remove_file(dest_path);
-                let complete_event = TransferComplete::failed(
-                    operation_id.clone(),
-                    files_completed,
-                    format!("Failed to flush write buffer: {}", e),
-                );
-                let _ = app.emit("file-transfer-complete", &complete_event);
-                let rt = tokio::runtime::Handle::current();
-                rt.block_on(async { registry_clone.complete(&operation_id).await });
-                return;
-            }
-
-            // CRITICAL: Ensure all data is written to disk before completing
-            if let Err(e) = writer.get_mut().sync_all() {
-                let _ = fs::remove_file(dest_path);
-                let complete_event = TransferComplete::failed(
-                    operation_id.clone(),
-                    files_completed,
-                    format!("Failed to sync file to disk: {}", e),
-                );
-                let _ = app.emit("file-transfer-complete", &complete_event);
-                let rt = tokio::runtime::Handle::current();
-                rt.block_on(async { registry_clone.complete(&operation_id).await });
-                return;
             }
 
             files_completed += 1;
