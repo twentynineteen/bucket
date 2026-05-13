@@ -1,27 +1,23 @@
 /**
  * BuildProject API Layer
  *
- * Single I/O boundary wrapping ALL external calls for the BuildProject module.
- * All hooks and components must use these wrappers instead of direct
- * plugin imports (invoke, listen, dialog, fs).
+ * Single I/O boundary wrapping the external calls still consumed by the
+ * BuildProject page and its remaining helper hooks. The file-transfer
+ * pipeline now lives in `@features/build-project` (see
+ * `src/features/build-project/stages/fileTransfer.ts`), which calls the
+ * throttled `transfer_files_with_progress` Tauri command directly — the
+ * legacy `move_files` + `copy_*` event wrappers were removed alongside the
+ * Rust command in Phase 5.
+ *
+ * All hooks and components in this module must use these wrappers instead of
+ * direct plugin imports (invoke, dialog, fs).
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
-import type { Event } from '@tauri-apps/api/event'
 import { confirm, open } from '@tauri-apps/plugin-dialog'
-import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
-
-import type { CopyCompleteWithErrors, CopyFileError } from './types'
+import { exists, mkdir, writeTextFile } from '@tauri-apps/plugin-fs'
 
 // --- Tauri Commands ---
-
-export async function moveFiles(
-  files: [string, number][],
-  baseDest: string
-): Promise<void> {
-  return invoke('move_files', { files, baseDest })
-}
 
 export async function getFolderSize(folderPath: string): Promise<number> {
   return invoke<number>('get_folder_size', { folderPath })
@@ -40,32 +36,6 @@ export async function showConfirmationDialog(
   destination: string
 ): Promise<void> {
   return invoke('show_confirmation_dialog', { message, title, destination })
-}
-
-// --- Event Listeners ---
-
-export async function listenCopyProgress(
-  callback: (event: Event<number>) => void
-): Promise<() => void> {
-  return listen('copy_progress', callback)
-}
-
-export async function listenCopyComplete(
-  callback: (event: Event<string[]>) => void
-): Promise<() => void> {
-  return listen('copy_complete', callback)
-}
-
-export async function listenCopyFileError(
-  callback: (event: Event<CopyFileError>) => void
-): Promise<() => void> {
-  return listen('copy_file_error', callback)
-}
-
-export async function listenCopyCompleteWithErrors(
-  callback: (event: Event<CopyCompleteWithErrors>) => void
-): Promise<() => void> {
-  return listen('copy_complete_with_errors', callback)
 }
 
 // --- Dialog ---
@@ -101,13 +71,6 @@ export async function createDirectory(
 
 export async function pathExists(path: string): Promise<boolean> {
   return exists(path)
-}
-
-export async function removePath(
-  path: string,
-  options?: { recursive?: boolean }
-): Promise<void> {
-  return remove(path, options)
 }
 
 export async function writeTextFileContents(
