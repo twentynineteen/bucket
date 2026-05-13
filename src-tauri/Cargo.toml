@@ -1,6 +1,6 @@
 [package]
 name = "Bucket"
-version = "0.14.5"
+version = "0.14.6"
 description = "An app to streamline ingesting and uploading video content"
 authors = ["Daniel Mills"]
 license = "UNLICENSED"
@@ -75,6 +75,11 @@ opt-level = "s"         # Optimize for binary size. Use `3` if you prefer speed.
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-updater = "2.9.0"
+
+# Native macOS file transfers via copyfile(3) / clonefile (used by build_project::commands).
+# Kept macOS-conditional so we never link libc symbols on Windows/Linux builds.
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
 
 [profile.dev.package.objc2]
 debug-assertions = false

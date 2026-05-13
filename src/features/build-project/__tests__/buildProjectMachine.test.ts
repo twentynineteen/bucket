@@ -32,14 +32,30 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   writeTextFile: vi.fn()
 }))
 
-// Mock Tauri event API - simulate copy_complete firing immediately
+// Mock Tauri event API - simulate transfer completion events firing immediately.
+// We fire both the legacy `copy_complete` event and the new throttled
+// `file-transfer-complete` event so the same mock works pre- and post-migration.
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn((event: string, callback: (event: { payload: string[] }) => void) => {
-    // Simulate the copy_complete event firing after a brief delay
+  listen: vi.fn((event: string, callback: (event: { payload: unknown }) => void) => {
     if (event === 'copy_complete') {
       setTimeout(() => callback({ payload: [] }), 10)
     }
-    // Return an unlisten function
+    if (event === 'file-transfer-complete') {
+      // The invoke mock returns undefined for transfer_files_with_progress,
+      // so the operationId filter inside transferFiles compares undefined === undefined.
+      setTimeout(
+        () =>
+          callback({
+            payload: {
+              operationId: undefined,
+              success: true,
+              filesTransferred: 0,
+              error: null
+            }
+          }),
+        10
+      )
+    }
     return Promise.resolve(() => {})
   })
 }))
@@ -821,6 +837,32 @@ describe('BuildProject State Machine', () => {
       await waitForState(actor, 'error')
 
       expect(actor.getSnapshot().context.error).toContain('cancelled by user')
+
+      actor.stop()
+    })
+  })
+
+  // ============================================================================
+  // File Transfer Command Contract
+  // ============================================================================
+
+  describe('file transfer command contract', () => {
+    it('should invoke transfer_files_with_progress (not move_files) during file transfer', async () => {
+      vi.mocked(exists).mockResolvedValue(false)
+      vi.mocked(mkdir).mockResolvedValue(undefined)
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      vi.mocked(writeTextFile).mockResolvedValue(undefined)
+
+      const actor = createActor(buildProjectMachine)
+      actor.start()
+
+      actor.send({ type: 'START', input: createValidInput() })
+
+      await waitForState(actor, 'success')
+
+      const invokedCommands = vi.mocked(invoke).mock.calls.map(([cmd]) => cmd)
+      expect(invokedCommands).toContain('transfer_files_with_progress')
+      expect(invokedCommands).not.toContain('move_files')
 
       actor.stop()
     })
