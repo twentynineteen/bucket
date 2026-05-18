@@ -32,7 +32,7 @@ import {
   ZoomIn,
   ZoomOut
 } from 'lucide-react'
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { logger } from '@shared/utils'
@@ -43,7 +43,21 @@ const PosterframeContent: React.FC = () => {
 
   const { files: backgroundFiles, loadFolder } = useBackgroundFolder()
   const { selectedFilePath, selectedFileBlob, selectFile } = useFileSelection()
-  const { canvasRef, draw } = usePosterframeCanvas()
+  const { canvasRef, draw, fontStatus } = usePosterframeCanvas()
+  // Toast exactly once when we first discover the font isn't installed —
+  // otherwise the user gets a blank thumbnail with no explanation and no
+  // diagnostic, exactly the silent-failure mode this fix is closing.
+  const fontMissingToastedRef = useRef(false)
+  useEffect(() => {
+    if (fontStatus === 'missing' && !fontMissingToastedRef.current) {
+      fontMissingToastedRef.current = true
+      toast.error('Posterframe font (Cabrito.otf) not found on this machine.', {
+        duration: 10000,
+        description:
+          'Text overlay requires Cabrito.otf in ~/Library/Fonts/. The background image will still render, but no title text will appear until the font is installed.'
+      })
+    }
+  }, [fontStatus])
   const { zoomLevel, pan, setZoomLevel, setPan } = useZoomPan('posterframe-canvas')
 
   useBreadcrumb([
@@ -74,10 +88,23 @@ const PosterframeContent: React.FC = () => {
   }
 
   const generateThumbnail = async () => {
-    if (!canvasRef.current || !savePath || !videoTitle.trim()) {
+    if (!canvasRef.current || !savePath || !videoTitle.trim() || !selectedFileBlob) {
       toast.error(
         'Please ensure you have selected a background, entered a title, and chosen a save path'
       )
+      return
+    }
+
+    // Force a synchronous-relative-to-this-handler redraw before snapshotting.
+    // The auto-redraw hook debounces by 300ms, so a quick "type-then-save"
+    // sequence can leave a pending redraw in flight when toBlob fires. Awaiting
+    // a fresh draw here guarantees the canvas reflects the current image+title
+    // when we capture it.
+    try {
+      await draw(selectedFileBlob, videoTitle)
+    } catch (err) {
+      logger.error('Pre-save draw failed:', err)
+      toast.error('Could not render the thumbnail. Please try again.')
       return
     }
 
