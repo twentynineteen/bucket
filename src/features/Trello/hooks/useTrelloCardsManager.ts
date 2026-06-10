@@ -50,6 +50,7 @@ export function useTrelloCardsManager({
     isLoading,
     error,
     addTrelloCard,
+    addTrelloCardAsync,
     removeTrelloCard,
     fetchCardDetailsAsync,
     isUpdating,
@@ -111,11 +112,19 @@ export function useTrelloCardsManager({
     return result
   }, [searchTerm, filteredCards, grouped])
 
-  // Helper function to sync breadcrumbs to Trello card description
-  const syncBreadcrumbsToTrello = async (cardData: TrelloCard) => {
+  // Sync the breadcrumbs block to ALL linked Trello cards.
+  //
+  // Reads the freshly persisted breadcrumbs file (source of truth for the full
+  // trelloCards + videoLinks set) and updates every linked card, not just the
+  // one most recently added. Each card's current description is fetched first so
+  // existing content is preserved and the breadcrumbs block is replaced in place.
+  const syncAllCardsToTrello = async () => {
     if (!autoSyncToTrello || !trelloApiKey || !trelloApiToken) {
       return
     }
+
+    const apiKey = trelloApiKey
+    const token = trelloApiToken
 
     try {
       setIsSyncingToTrello(true)
@@ -124,39 +133,58 @@ export function useTrelloCardsManager({
       const breadcrumbsContent = await readBreadcrumbsFile(breadcrumbsPath)
       const breadcrumbsData = JSON.parse(breadcrumbsContent)
 
+      const cards = (breadcrumbsData.trelloCards ?? []) as Array<{
+        cardId: string
+        url: string
+      }>
+      if (cards.length === 0) {
+        return
+      }
+
       const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } = await import(
         '@features/Baker'
       )
 
-      const apiCard = {
-        id: cardData.cardId,
-        name: cardData.title,
-        desc: '',
-        idList: ''
-      }
-
-      try {
-        const currentCard = await fetchTrelloCardById(
-          cardData.cardId,
-          trelloApiKey,
-          trelloApiToken
-        )
-        apiCard.desc = currentCard.desc || ''
-        apiCard.idList = currentCard.idList || ''
-      } catch {
-        // Card fetch failed, proceed with empty desc
-      }
-
       const block = generateBreadcrumbsBlock(breadcrumbsData)
-      await updateTrelloCardWithBreadcrumbs(
-        apiCard,
-        block,
-        trelloApiKey,
-        trelloApiToken,
-        { autoReplace: true, silentErrors: false }
+      if (!block) {
+        return
+      }
+
+      const results = await Promise.allSettled(
+        cards.map(async (card) => {
+          const apiCard = { id: card.cardId, name: '', desc: '', idList: '' }
+
+          try {
+            const currentCard = await fetchTrelloCardById(card.cardId, apiKey, token)
+            apiCard.name = currentCard.name || ''
+            apiCard.desc = currentCard.desc || ''
+            apiCard.idList = currentCard.idList || ''
+          } catch (err) {
+            logger.warn(`Could not fetch Trello card ${card.cardId}, proceeding:`, err)
+          }
+
+          await updateTrelloCardWithBreadcrumbs(apiCard, block, apiKey, token, {
+            autoReplace: true,
+            silentErrors: false
+          })
+        })
       )
+
+      const failed = results.filter(
+        (r): r is PromiseRejectedResult => r.status === 'rejected'
+      )
+      if (failed.length > 0) {
+        logger.error(
+          'Some Trello cards failed to sync:',
+          failed.map((r) => r.reason)
+        )
+        toast.error(
+          `${failed.length} of ${cards.length} Trello card(s) failed to update`
+        )
+      }
     } catch (err) {
       logger.error('Failed to sync breadcrumbs to Trello:', err)
+      toast.error('Failed to sync breadcrumbs to Trello')
     } finally {
       setIsSyncingToTrello(false)
     }
@@ -182,8 +210,10 @@ export function useTrelloCardsManager({
           apiToken: trelloApiToken
         })
 
-        addTrelloCard(cardData)
-        await syncBreadcrumbsToTrello(cardData)
+        // Await persistence before syncing so the breadcrumbs file we read
+        // includes the just-added card (and any prior cards / video links).
+        await addTrelloCardAsync(cardData)
+        await syncAllCardsToTrello()
         setIsDialogOpen(false)
       } catch (err) {
         setValidationErrors([
@@ -228,8 +258,10 @@ export function useTrelloCardsManager({
           return
         }
 
-        addTrelloCard(cardData)
-        await syncBreadcrumbsToTrello(cardData)
+        // Await persistence before syncing so the breadcrumbs file we read
+        // includes the just-added card (and any prior cards / video links).
+        await addTrelloCardAsync(cardData)
+        await syncAllCardsToTrello()
         setCardUrl('')
         setIsDialogOpen(false)
       } catch (err) {
@@ -252,8 +284,9 @@ export function useTrelloCardsManager({
         return
       }
 
+      // No API credentials: persist the card locally only. Trello sync requires
+      // credentials, so there is nothing to push to Trello here.
       addTrelloCard(newCard)
-      syncBreadcrumbsToTrello(newCard)
       setCardUrl('')
       setIsDialogOpen(false)
     }

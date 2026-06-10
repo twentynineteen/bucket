@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "Bucket"
-version = "0.14.5"
+version = "0.14.8"
 dependencies = [
  "argon2",
  "base64ct",
