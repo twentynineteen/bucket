@@ -4,11 +4,11 @@
  * Purpose: Test hook contract for AI script processing with provider-agnostic architecture
  *
  * CRITICAL: These tests MUST FAIL before implementation (RED phase of TDD)
- * IMPORTANT: Use MockLanguageModelV2 from ai/test for deterministic, fast tests
+ * IMPORTANT: Use MockLanguageModelV3 from ai/test for deterministic, fast tests
  */
 
 import { renderHook, waitFor } from '@testing-library/react'
-import { MockLanguageModelV2, simulateReadableStream } from 'ai/test'
+import { MockLanguageModelV3, simulateReadableStream } from 'ai/test'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Import the hook (will fail during RED phase - not implemented yet)
@@ -16,21 +16,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock language model for testing
 const createMockModel = () => {
-  return new MockLanguageModelV2({
+  return new MockLanguageModelV3({
     doStream: async () => ({
       stream: simulateReadableStream({
         chunks: [
-          { type: 'text-delta', textDelta: 'Formatted ' },
-          { type: 'text-delta', textDelta: 'script ' },
-          { type: 'text-delta', textDelta: 'content' },
+          { type: 'text-delta', id: 'text-1', delta: 'Formatted ' },
+          { type: 'text-delta', id: 'text-1', delta: 'script ' },
+          { type: 'text-delta', id: 'text-1', delta: 'content' },
           {
             type: 'finish',
             finishReason: 'stop',
-            usage: { promptTokens: 10, completionTokens: 20 }
+            usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 }
           }
         ]
-      }),
-      rawCall: { rawPrompt: null, rawSettings: {} }
+      })
     })
   })
 }
@@ -67,7 +66,7 @@ describe('useScriptProcessor - Contract Tests (T021)', () => {
     expect(true).toBe(true) // Placeholder
   })
 
-  it('should process script with MockLanguageModelV2', async () => {
+  it('should process script with MockLanguageModelV3', async () => {
     // Contract: Hook must integrate with AI SDK streamText
     // IMPORTANT: Use mock for unit tests, not real AI
 
@@ -120,7 +119,7 @@ describe('useScriptProcessor - Contract Tests (T021)', () => {
   it('should implement retry logic (3 attempts, FR-014)', async () => {
     // Contract: Hook must retry failed requests up to 3 times
 
-    const mockModelWithFailure = new MockLanguageModelV2({
+    const mockModelWithFailure = new MockLanguageModelV3({
       doStream: async () => {
         throw new Error('Connection timeout')
       }
@@ -179,7 +178,7 @@ describe('useScriptProcessor - Contract Tests (T021)', () => {
   it('should use tool calling for agent-based formatting', async () => {
     // Contract: Hook must pass autocue formatting tools to AI SDK
 
-    const mockModelWithTools = new MockLanguageModelV2({
+    const mockModelWithTools = new MockLanguageModelV3({
       doStream: async () => ({
         stream: simulateReadableStream({
           chunks: [
@@ -187,22 +186,16 @@ describe('useScriptProcessor - Contract Tests (T021)', () => {
               type: 'tool-call',
               toolCallId: 'call-1',
               toolName: 'formatParagraph',
-              args: { originalText: 'test' }
+              input: JSON.stringify({ originalText: 'test' })
             },
-            {
-              type: 'tool-result',
-              toolCallId: 'call-1',
-              result: { formattedText: 'TEST' }
-            },
-            { type: 'text-delta', textDelta: 'Formatted with tools' },
+            { type: 'text-delta', id: 'text-1', delta: 'Formatted with tools' },
             {
               type: 'finish',
               finishReason: 'stop',
-              usage: { promptTokens: 10, completionTokens: 20 }
+              usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 }
             }
           ]
-        }),
-        rawCall: { rawPrompt: null, rawSettings: {} }
+        })
       })
     })
 
@@ -227,7 +220,7 @@ describe('useScriptProcessor - Contract Tests (T021)', () => {
   it('should return proper error messages (FR-015, FR-025)', async () => {
     // Contract: Hook must provide clear error messages
 
-    const mockModelWithError = new MockLanguageModelV2({
+    const mockModelWithError = new MockLanguageModelV3({
       doStream: async () => {
         throw new Error('Provider not available')
       }

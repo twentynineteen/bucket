@@ -105,9 +105,8 @@ async function updateProjectTrelloCards(
   // Import the Baker helpers ONCE per project (not once per card). Doing N
   // concurrent dynamic imports of the same module is wasteful and also defeats
   // module mocking under concurrency.
-  const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } = await import(
-    '@features/Baker'
-  )
+  const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } =
+    await import('@features/Baker')
 
   const block = generateBreadcrumbsBlock(breadcrumbsData)
   if (!block) return

@@ -141,9 +141,8 @@ export function useTrelloCardsManager({
         return
       }
 
-      const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } = await import(
-        '@features/Baker'
-      )
+      const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } =
+        await import('@features/Baker')
 
       const block = generateBreadcrumbsBlock(breadcrumbsData)
       if (!block) {

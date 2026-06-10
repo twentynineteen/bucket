@@ -4,14 +4,11 @@
  * Purpose: Client-side text embedding using Xenova Transformers
  */
 
+import { type FeatureExtractionPipeline, pipeline } from '@huggingface/transformers'
 import { createNamespacedLogger, logger } from '@shared/utils'
-import { pipeline, type Pipeline } from '@xenova/transformers'
 import { useEffect, useRef, useState } from 'react'
 
 const log = createNamespacedLogger('Embedding')
-
-// Xenova feature extraction pipeline type
-type FeatureExtractionPipeline = Pipeline
 
 // Singleton instance to avoid reloading the model
 let embedderInstance: FeatureExtractionPipeline | null = null
