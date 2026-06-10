@@ -105,14 +105,36 @@ pub fn copy_premiere_project(
             e.kind()
         )
     })?;
-    file.sync_all().map_err(|e| {
-        format!(
-            "Failed to sync file '{}' to disk: {} ({:?})",
-            destination_path.display(),
-            e,
-            e.kind()
-        )
-    })?;
+    // sync_all is best-effort. SMB/AFP/some NFS mounts return ENOTSUP because
+    // the protocol doesn't support durable sync. The data is still written
+    // via write_all above and will flush via the OS write cache — Premiere
+    // reads the file fresh anyway, so we don't need a strict durability
+    // barrier here. Hard-failing on ENOTSUP makes ingest to network shares
+    // impossible, which is exactly the BuildProject use case.
+    //
+    // CAVEAT: Rust's std::io::Error::kind() only maps EOPNOTSUPP (102 on
+    // macOS) to ErrorKind::Unsupported — NOT the BSD-specific ENOTSUP (45 on
+    // macOS), which falls through to Uncategorized. So we check raw_os_error
+    // directly against the values these filesystems actually return.
+    if let Err(e) = file.sync_all() {
+        let errno = e.raw_os_error();
+        let is_unsupported = matches!(errno, Some(45) | Some(95) | Some(102))
+            || e.kind() == std::io::ErrorKind::Unsupported;
+        if is_unsupported {
+            eprintln!(
+                "Note: sync_all unsupported (errno {:?}) on filesystem for '{}'; proceeding without explicit sync",
+                errno,
+                destination_path.display()
+            );
+        } else {
+            return Err(format!(
+                "Failed to sync file '{}' to disk: {} ({:?})",
+                destination_path.display(),
+                e,
+                e.kind()
+            ));
+        }
+    }
 
     println!("File successfully copied to {:?}", destination_path);
     Ok(())

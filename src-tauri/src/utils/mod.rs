@@ -1,1 +1,2 @@
-pub mod file_copy;
+#[cfg(target_os = "macos")]
+pub mod macos_copyfile;

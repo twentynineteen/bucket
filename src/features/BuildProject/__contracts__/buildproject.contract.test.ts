@@ -1,9 +1,21 @@
 /**
  * BuildProject Contract Tests
  *
- * Verifies the shape and behavior of the BuildProject feature module barrel exports.
- * These tests lock down the public API so downstream consumers
- * can rely on stable exports.
+ * Verifies the shape and behavior of the (legacy) BuildProject feature
+ * module's barrel exports. After the @features/build-project migration this
+ * module exists only to host:
+ *   - the page component still wired at /build (`BuildProjectPage.tsx`),
+ *   - page-state helper hooks (`useProjectState`, `useCameraAutoRemap`,
+ *     `useFileSelector`, `useVideoInfoBlock`) the page composes against the
+ *     new module's hook,
+ *   - data types still imported by Trello + Baker (`FootageFile`, `VideoInfoData`),
+ *   - the I/O wrappers that the page (and some siblings) still call
+ *     (`copyPremiereProject`, `showConfirmationDialog`, dialogs, plugin-fs
+ *     helpers — minus the deleted `move_files` / `copy_progress` event
+ *     plumbing).
+ *
+ * These tests lock down the public API and the no-direct-Tauri-import
+ * boundary so downstream callers can rely on a stable surface.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -43,28 +55,17 @@ describe('BuildProject Barrel Exports - Shape', () => {
 
   it('does NOT export internal hooks', () => {
     const exportNames = Object.keys(buildProjectBarrel)
-    expect(exportNames).not.toContain('useBuildProjectMachine')
     expect(exportNames).not.toContain('useProjectState')
-    expect(exportNames).not.toContain('useCreateProjectWithMachine')
     expect(exportNames).not.toContain('useFileSelector')
     expect(exportNames).not.toContain('useCameraAutoRemap')
-    expect(exportNames).not.toContain('useFileOperations')
-    expect(exportNames).not.toContain('useProjectValidation')
-    expect(exportNames).not.toContain('useProjectFolders')
-    expect(exportNames).not.toContain('usePostProjectCompletion')
-  })
-
-  it('does NOT export the state machine directly', () => {
-    const exportNames = Object.keys(buildProjectBarrel)
-    expect(exportNames).not.toContain('buildProjectMachine')
   })
 
   it('does NOT export api layer functions directly', () => {
     const exportNames = Object.keys(buildProjectBarrel)
-    expect(exportNames).not.toContain('moveFiles')
     expect(exportNames).not.toContain('getFolderSize')
     expect(exportNames).not.toContain('openFileDialog')
-    expect(exportNames).not.toContain('listenCopyProgress')
+    expect(exportNames).not.toContain('copyPremiereProject')
+    expect(exportNames).not.toContain('showConfirmationDialog')
   })
 
   it('does NOT export internal components', () => {
@@ -81,35 +82,33 @@ describe('BuildProject Barrel Exports - Shape', () => {
 // --- Shape Tests (api.ts Exports) ---
 
 describe('BuildProject api.ts Exports - Shape', () => {
+  // After Phase 5 cleanup: the legacy `move_files` Rust command and its
+  // `copy_*` event listeners (`listenCopyProgress`, `listenCopyComplete`,
+  // `listenCopyFileError`, `listenCopyCompleteWithErrors`) and the `moveFiles`
+  // wrapper were all deleted. The path/remove helper was orphaned by the
+  // simultaneous deletion of `useProjectValidation` and `useProjectFolders`.
   const expectedApiExports = [
-    // Tauri Commands (4)
-    'moveFiles',
+    // Tauri Commands (3)
     'getFolderSize',
     'copyPremiereProject',
     'showConfirmationDialog',
-    // Event Listeners (4)
-    'listenCopyProgress',
-    'listenCopyComplete',
-    'listenCopyFileError',
-    'listenCopyCompleteWithErrors',
     // Dialog (3)
     'openFileDialog',
     'openFolderDialog',
     'confirmDialog',
-    // File System (4)
+    // File System (3)
     'createDirectory',
     'pathExists',
-    'removePath',
     'writeTextFileContents'
   ].sort()
 
-  it('exports exactly 15 I/O wrapper functions', () => {
+  it('exports exactly the expected I/O wrapper functions', () => {
     const exportNames = Object.keys(buildProjectApi).sort()
     expect(exportNames).toEqual(expectedApiExports)
   })
 
-  it('exports exactly 15 members', () => {
-    expect(Object.keys(buildProjectApi)).toHaveLength(15)
+  it('exports exactly 9 members', () => {
+    expect(Object.keys(buildProjectApi)).toHaveLength(9)
   })
 
   for (const name of expectedApiExports) {
@@ -117,6 +116,19 @@ describe('BuildProject api.ts Exports - Shape', () => {
       expect(typeof (buildProjectApi as Record<string, unknown>)[name]).toBe('function')
     })
   }
+
+  it('does NOT re-introduce the deleted legacy IPC wrappers', () => {
+    // The whole point of Phase 5 was to remove these; if a future change
+    // reintroduces them, this test fails loudly. The `moveFiles` wrapper
+    // invoked the broken un-throttled Rust command that hung on large
+    // transfers; the `listenCopy*` helpers listened to its events.
+    const exportNames = Object.keys(buildProjectApi)
+    expect(exportNames).not.toContain('moveFiles')
+    expect(exportNames).not.toContain('listenCopyProgress')
+    expect(exportNames).not.toContain('listenCopyComplete')
+    expect(exportNames).not.toContain('listenCopyFileError')
+    expect(exportNames).not.toContain('listenCopyCompleteWithErrors')
+  })
 })
 
 // --- No-Bypass Tests ---
@@ -169,36 +181,34 @@ describe('BuildProject Module - No Direct Plugin Imports', () => {
     const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
     expect(tauriImports).toEqual([])
   })
-
-  it('buildProjectMachine has zero direct @tauri-apps imports', () => {
-    const machineFile = path.join(modulePath, 'buildProjectMachine.ts')
-    const content = fs.readFileSync(machineFile, 'utf-8')
-    const lines = content.split('\n')
-    const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
-    expect(tauriImports).toEqual([])
-  })
 })
 
-// --- XState Colocation Test ---
+// --- Phase 5 Cleanup Invariants ---
 
-describe('BuildProject Module - XState Machine Colocation', () => {
+describe('BuildProject Module - Legacy Files Removed', () => {
   const projectRoot = path.resolve(__dirname, '../../../../')
+  const modulePath = path.resolve(projectRoot, 'src/features/BuildProject')
 
-  it('buildProjectMachine.ts exists at module root (not in hooks/ or components/)', () => {
-    const moduleMachinePath = path.resolve(
-      projectRoot,
-      'src/features/BuildProject/buildProjectMachine.ts'
-    )
-    expect(fs.existsSync(moduleMachinePath)).toBe(true)
-  })
+  // These files were the engine of the legacy un-throttled IPC path that
+  // hung on large file transfers. They are intentionally deleted; if any
+  // future change recreates them under the legacy module, that almost
+  // certainly means the new path has been bypassed.
+  const deletedLegacyFiles = [
+    'buildProjectMachine.ts',
+    'hooks/useBuildProjectMachine.ts',
+    'hooks/useCreateProjectWithMachine.ts',
+    'hooks/usePostProjectCompletion.ts',
+    'hooks/useFileOperations.ts',
+    'hooks/useProjectValidation.ts',
+    'hooks/useProjectFolders.ts'
+  ]
 
-  it('buildProjectMachine.ts does NOT exist at old src/machines/ location', () => {
-    const oldMachinePath = path.resolve(
-      projectRoot,
-      'src/machines/buildProjectMachine.ts'
-    )
-    expect(fs.existsSync(oldMachinePath)).toBe(false)
-  })
+  for (const relPath of deletedLegacyFiles) {
+    it(`legacy file is removed: ${relPath}`, () => {
+      const fullPath = path.join(modulePath, relPath)
+      expect(fs.existsSync(fullPath)).toBe(false)
+    })
+  }
 
   it('src/machines/ directory does not exist', () => {
     const machinesDir = path.resolve(projectRoot, 'src/machines')

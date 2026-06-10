@@ -6,42 +6,134 @@
  * and click "Create Project", then the XState machine progresses through all
  * stages and a complete project folder structure is created on disk.
  *
- * Tests the BuildProject state machine and useBuildProjectMachine hook.
- * Mocking strategy: mock the BuildProject api.ts layer; no direct @tauri-apps imports.
+ * Tests the actor-based BuildProject state machine (@features/build-project)
+ * and the useBuildProject hook that drives it. The legacy manual-event machine
+ * in @features/BuildProject was removed by the throttled native transfer
+ * rework (#112), so this suite targets the replacement pipeline.
+ *
+ * Mocking strategy: mock the Tauri plugin layer (fs, dialog, core, event) the
+ * stage actors call into, mirroring the machine unit tests.
  */
 
-import { buildProjectMachine } from '../../src/features/BuildProject/buildProjectMachine'
-import { useBuildProjectMachine } from '../../src/features/BuildProject/hooks/useBuildProjectMachine'
-import { act, renderHook } from '@testing-library/react'
+import { invoke } from '@tauri-apps/api/core'
+import { confirm } from '@tauri-apps/plugin-dialog'
+import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
+import { renderHook, waitFor } from '@testing-library/react'
+import { act } from 'react'
 import { createActor } from 'xstate'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock the BuildProject api.ts — the hook imports from here for event listeners
-vi.mock('../../src/features/BuildProject/api', () => ({
-  listenCopyProgress: vi.fn().mockResolvedValue(vi.fn()),
-  listenCopyComplete: vi.fn().mockResolvedValue(vi.fn()),
-  listenCopyFileError: vi.fn().mockResolvedValue(vi.fn()),
-  listenCopyCompleteWithErrors: vi.fn().mockResolvedValue(vi.fn()),
-  moveFiles: vi.fn().mockResolvedValue(undefined),
-  getFolderSize: vi.fn().mockResolvedValue(0),
-  copyPremiereProject: vi.fn().mockResolvedValue(undefined),
-  showConfirmationDialog: vi.fn().mockResolvedValue(undefined),
-  openFileDialog: vi.fn().mockResolvedValue(null),
-  openFolderDialog: vi.fn().mockResolvedValue(null),
-  confirmDialog: vi.fn().mockResolvedValue(true),
-  createDirectory: vi.fn().mockResolvedValue(undefined),
-  pathExists: vi.fn().mockResolvedValue(false),
-  removePath: vi.fn().mockResolvedValue(undefined),
-  writeTextFileContents: vi.fn().mockResolvedValue(undefined)
+import { useBuildProject } from '../../src/features/build-project/hooks/useBuildProject'
+import {
+  buildProjectMachine,
+  type BuildProjectInput
+} from '../../src/features/build-project/machine/buildProjectMachine'
+
+// Mock Tauri APIs used by the stage actors
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn()
 }))
 
+vi.mock('@tauri-apps/plugin-dialog', () => ({
+  confirm: vi.fn()
+}))
+
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  exists: vi.fn(),
+  mkdir: vi.fn(),
+  remove: vi.fn(),
+  writeTextFile: vi.fn()
+}))
+
+// Simulate transfer completion events firing immediately. Both the legacy
+// `copy_complete` event and the throttled `file-transfer-complete` event are
+// fired so the same mock works for the full pipeline.
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn((event: string, callback: (event: { payload: unknown }) => void) => {
+    if (event === 'copy_complete') {
+      setTimeout(() => callback({ payload: [] }), 10)
+    }
+    if (event === 'file-transfer-complete') {
+      setTimeout(
+        () =>
+          callback({
+            payload: {
+              operationId: undefined,
+              success: true,
+              filesTransferred: 0,
+              error: null
+            }
+          }),
+        10
+      )
+    }
+    return Promise.resolve(() => {})
+  })
+}))
+
+vi.stubGlobal('crypto', {
+  randomUUID: vi.fn(() => 'us02-test-uuid')
+})
+
+const createValidInput = (overrides?: Partial<BuildProjectInput>): BuildProjectInput => ({
+  projectName: 'Test Project',
+  destinationPath: '/output/path',
+  files: [{ file: { path: '/source/video.mp4', name: 'video.mp4' }, camera: 1 }],
+  numCameras: 2,
+  username: 'testuser',
+  ...overrides
+})
+
+const mockSuccessfulPipeline = () => {
+  vi.mocked(exists).mockResolvedValue(false)
+  vi.mocked(mkdir).mockResolvedValue(undefined)
+  vi.mocked(remove).mockResolvedValue(undefined)
+  vi.mocked(invoke).mockResolvedValue(undefined)
+  vi.mocked(writeTextFile).mockResolvedValue(undefined)
+  vi.mocked(confirm).mockResolvedValue(true)
+}
+
+const waitForState = async (
+  actor: ReturnType<typeof createActor<typeof buildProjectMachine>>,
+  targetState: string,
+  timeout = 5000
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(
+        new Error(
+          `Timeout waiting for state "${targetState}". Current state: ${actor.getSnapshot().value}`
+        )
+      )
+    }, timeout)
+
+    const subscription = actor.subscribe((snapshot) => {
+      if (snapshot.value === targetState) {
+        clearTimeout(timeoutId)
+        subscription.unsubscribe()
+        resolve()
+      }
+    })
+
+    if (actor.getSnapshot().value === targetState) {
+      clearTimeout(timeoutId)
+      subscription.unsubscribe()
+      resolve()
+    }
+  })
+}
+
 // ============================================================================
-// US-02: Machine State Transitions
+// US-02: Machine Workflow Integration
 // ============================================================================
 
 describe('US-02 — BuildProject State Machine', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   // US-02a — Full successful project creation flow
@@ -49,117 +141,136 @@ describe('US-02 — BuildProject State Machine', () => {
     it('should start in idle state', () => {
       const actor = createActor(buildProjectMachine)
       actor.start()
+
       expect(actor.getSnapshot().value).toBe('idle')
       actor.stop()
     })
 
-    it('should transition from idle to validating on START_PROJECT', () => {
+    it('should progress through all stages to success on START', async () => {
+      mockSuccessfulPipeline()
+
       const actor = createActor(buildProjectMachine)
       actor.start()
 
-      actor.send({ type: 'START_PROJECT' })
+      const visited: string[] = []
+      actor.subscribe((snapshot) => {
+        const state = String(snapshot.value)
+        if (visited[visited.length - 1] !== state) {
+          visited.push(state)
+        }
+      })
 
-      expect(actor.getSnapshot().value).toBe('validating')
+      actor.send({ type: 'START', input: createValidInput() })
+
+      await waitForState(actor, 'success')
+
+      const finalState = actor.getSnapshot()
+      expect(finalState.value).toBe('success')
+      expect(finalState.context.currentStage).toBe('success')
+      expect(finalState.context.progress).toBe(100)
+      expect(finalState.context.error).toBeNull()
+
+      // The pipeline must pass through every workflow stage in order
+      expect(visited).toContain('validating')
+      expect(visited).toContain('creatingFolders')
+      expect(visited).toContain('savingBreadcrumbs')
+      expect(visited.indexOf('validating')).toBeLessThan(
+        visited.indexOf('creatingFolders')
+      )
+
       actor.stop()
     })
 
-    it('should progress through all stages on full successful workflow', () => {
+    it('should derive projectFolder from destination and project name', async () => {
+      mockSuccessfulPipeline()
+
       const actor = createActor(buildProjectMachine)
       actor.start()
 
-      // Start the project creation
-      actor.send({ type: 'START_PROJECT' })
-      expect(actor.getSnapshot().value).toBe('validating')
+      actor.send({
+        type: 'START',
+        input: createValidInput({
+          projectName: 'My Project',
+          destinationPath: '/projects'
+        })
+      })
 
-      // Validation succeeds → creatingFolders
-      actor.send({ type: 'VALIDATION_SUCCESS', projectFolder: '/projects/My Project' })
-      expect(actor.getSnapshot().value).toBe('creatingFolders')
+      await waitForState(actor, 'creatingFolders')
       expect(actor.getSnapshot().context.projectFolder).toBe('/projects/My Project')
 
-      // Folders created → savingBreadcrumbs
-      actor.send({ type: 'FOLDERS_CREATED' })
-      expect(actor.getSnapshot().value).toBe('savingBreadcrumbs')
+      actor.stop()
+    })
 
-      // Breadcrumbs saved → copyingFiles
-      actor.send({ type: 'BREADCRUMBS_SAVED' })
-      expect(actor.getSnapshot().value).toBe('copyingFiles')
+    it('should write breadcrumbs with project metadata', async () => {
+      mockSuccessfulPipeline()
 
-      // Files copied → creatingTemplate
-      actor.send({ type: 'COPY_COMPLETE' })
-      expect(actor.getSnapshot().value).toBe('creatingTemplate')
+      const actor = createActor(buildProjectMachine)
+      actor.start()
 
-      // Template created → showingSuccess
-      actor.send({ type: 'TEMPLATE_COMPLETE' })
-      expect(actor.getSnapshot().value).toBe('showingSuccess')
+      actor.send({
+        type: 'START',
+        input: createValidInput({
+          username: 'john_doe',
+          projectName: 'Breadcrumb Test',
+          numCameras: 2
+        })
+      })
+
+      await waitForState(actor, 'success')
+
+      const breadcrumbs = actor.getSnapshot().context.breadcrumbs
+      expect(breadcrumbs).not.toBeNull()
+      expect(breadcrumbs?.projectTitle).toBe('Breadcrumb Test')
+      expect(breadcrumbs?.numberOfCameras).toBe(2)
+      expect(breadcrumbs?.createdBy).toBe('john_doe')
+      expect(writeTextFile).toHaveBeenCalled()
 
       actor.stop()
     })
 
-    it('should store project folder path in context during creatingFolders', () => {
+    it('should allow RESET from success back to idle', async () => {
+      mockSuccessfulPipeline()
+
       const actor = createActor(buildProjectMachine)
       actor.start()
 
-      actor.send({ type: 'VALIDATION_SUCCESS', projectFolder: '/output/Test Project' })
+      actor.send({ type: 'START', input: createValidInput() })
+      await waitForState(actor, 'success')
 
-      expect(actor.getSnapshot().context.projectFolder).toBe('/output/Test Project')
-      actor.stop()
-    })
-
-    it('should allow RESET from showingSuccess back to idle', () => {
-      const actor = createActor(buildProjectMachine)
-      actor.start()
-
-      // Progress to success
-      actor.send({ type: 'VALIDATION_SUCCESS', projectFolder: '/projects/Proj' })
-      actor.send({ type: 'FOLDERS_CREATED' })
-      actor.send({ type: 'BREADCRUMBS_SAVED' })
-      actor.send({ type: 'COPY_COMPLETE' })
-      actor.send({ type: 'TEMPLATE_COMPLETE' })
-      expect(actor.getSnapshot().value).toBe('showingSuccess')
-
-      // Reset back to idle
       actor.send({ type: 'RESET' })
-      expect(actor.getSnapshot().value).toBe('idle')
-      expect(actor.getSnapshot().context.projectFolder).toBeNull()
-      expect(actor.getSnapshot().context.error).toBeNull()
-      expect(actor.getSnapshot().context.copyProgress).toBe(0)
+
+      const snapshot = actor.getSnapshot()
+      expect(snapshot.value).toBe('idle')
+      expect(snapshot.context.error).toBeNull()
+      expect(snapshot.context.progress).toBe(0)
 
       actor.stop()
     })
   })
 
-  // US-02b — Existing project folder (overwrite confirmation)
-  describe('US-02b — Existing project folder overwrite', () => {
-    it('should support VALIDATION_SUCCESS from idle (skip validating)', () => {
+  // US-02b — Sequential project creation (new project after success)
+  describe('US-02b — Sequential project creation', () => {
+    it('should support a second build after RESET', async () => {
+      mockSuccessfulPipeline()
+
       const actor = createActor(buildProjectMachine)
       actor.start()
 
-      // Direct VALIDATION_SUCCESS from idle allows bypassing the validation state
-      actor.send({ type: 'VALIDATION_SUCCESS', projectFolder: '/projects/Existing Project' })
-
-      expect(actor.getSnapshot().value).toBe('creatingFolders')
-      expect(actor.getSnapshot().context.projectFolder).toBe('/projects/Existing Project')
-      actor.stop()
-    })
-
-    it('should support starting new project from showingSuccess state', () => {
-      const actor = createActor(buildProjectMachine)
-      actor.start()
-
-      // Reach success state
-      actor.send({ type: 'VALIDATION_SUCCESS', projectFolder: '/projects/First' })
-      actor.send({ type: 'FOLDERS_CREATED' })
-      actor.send({ type: 'BREADCRUMBS_SAVED' })
-      actor.send({ type: 'COPY_COMPLETE' })
-      actor.send({ type: 'TEMPLATE_COMPLETE' })
-      expect(actor.getSnapshot().value).toBe('showingSuccess')
-
-      // Start a new project without resetting first
       actor.send({
-        type: 'VALIDATION_SUCCESS',
-        projectFolder: '/projects/Second'
+        type: 'START',
+        input: createValidInput({ projectName: 'First', destinationPath: '/projects' })
       })
-      expect(actor.getSnapshot().value).toBe('creatingFolders')
+      await waitForState(actor, 'success')
+
+      actor.send({ type: 'RESET' })
+      expect(actor.getSnapshot().value).toBe('idle')
+
+      actor.send({
+        type: 'START',
+        input: createValidInput({ projectName: 'Second', destinationPath: '/projects' })
+      })
+      await waitForState(actor, 'success')
+
       expect(actor.getSnapshot().context.projectFolder).toBe('/projects/Second')
       expect(actor.getSnapshot().context.error).toBeNull()
 
@@ -167,254 +278,160 @@ describe('US-02 — BuildProject State Machine', () => {
     })
   })
 
-  // US-02d — Missing destination folder (validation error)
-  describe('US-02d — Validation error handling', () => {
-    it('should transition to error state on VALIDATION_ERROR', () => {
+  // US-02d — Validation / stage error handling
+  describe('US-02d — Error handling', () => {
+    it('should transition to error when validation fails', async () => {
+      vi.mocked(exists).mockRejectedValue(new Error('Path check failed'))
+
       const actor = createActor(buildProjectMachine)
       actor.start()
 
-      actor.send({ type: 'START_PROJECT' })
-      actor.send({
-        type: 'VALIDATION_ERROR',
-        error: 'Please select a destination folder.'
-      })
+      actor.send({ type: 'START', input: createValidInput() })
+      await waitForState(actor, 'error')
 
-      expect(actor.getSnapshot().value).toBe('error')
-      expect(actor.getSnapshot().context.error).toBe('Please select a destination folder.')
+      const context = actor.getSnapshot().context
+      expect(context.currentStage).toBe('error')
+      expect(context.error).toBeDefined()
+      expect(context.lastFailedStage).toBe('validating')
+
       actor.stop()
     })
 
-    it('should transition to error state on FOLDERS_ERROR', () => {
+    it('should transition to error when folder creation fails', async () => {
+      vi.mocked(exists).mockResolvedValue(false)
+      vi.mocked(mkdir).mockRejectedValue(new Error('Permission denied'))
+
       const actor = createActor(buildProjectMachine)
       actor.start()
 
-      actor.send({ type: 'VALIDATION_SUCCESS', projectFolder: '/projects/Proj' })
-      actor.send({ type: 'FOLDERS_ERROR', error: 'Permission denied creating folders' })
+      actor.send({ type: 'START', input: createValidInput() })
+      await waitForState(actor, 'error')
 
-      expect(actor.getSnapshot().value).toBe('error')
-      expect(actor.getSnapshot().context.error).toBe('Permission denied creating folders')
+      expect(actor.getSnapshot().context.lastFailedStage).toBe('creatingFolders')
+
       actor.stop()
     })
 
-    it('should transition to error state on BREADCRUMBS_ERROR', () => {
+    it('should reset from error state back to idle on RESET', async () => {
+      vi.mocked(exists).mockRejectedValue(new Error('Disk unavailable'))
+
       const actor = createActor(buildProjectMachine)
       actor.start()
 
-      actor.send({ type: 'VALIDATION_SUCCESS', projectFolder: '/projects/Proj' })
-      actor.send({ type: 'FOLDERS_CREATED' })
-      actor.send({ type: 'BREADCRUMBS_ERROR', error: 'Failed to write breadcrumbs.json' })
-
-      expect(actor.getSnapshot().value).toBe('error')
-      expect(actor.getSnapshot().context.error).toBe('Failed to write breadcrumbs.json')
-      actor.stop()
-    })
-
-    it('should reset from error state on RESET', () => {
-      const actor = createActor(buildProjectMachine)
-      actor.start()
-
-      actor.send({ type: 'START_PROJECT' })
-      actor.send({ type: 'VALIDATION_ERROR', error: 'Missing destination' })
-      expect(actor.getSnapshot().value).toBe('error')
+      actor.send({ type: 'START', input: createValidInput() })
+      await waitForState(actor, 'error')
 
       actor.send({ type: 'RESET' })
-      expect(actor.getSnapshot().value).toBe('idle')
-      expect(actor.getSnapshot().context.error).toBeNull()
+
+      const snapshot = actor.getSnapshot()
+      expect(snapshot.value).toBe('idle')
+      expect(snapshot.context.error).toBeNull()
+
       actor.stop()
     })
 
-    it('should not transition from idle on invalid events', () => {
+    it('should ignore workflow events while idle', () => {
       const actor = createActor(buildProjectMachine)
       actor.start()
 
-      actor.send({ type: 'COPY_COMPLETE' })
-      expect(actor.getSnapshot().value).toBe('idle')
-
-      actor.send({ type: 'FOLDERS_CREATED' })
+      actor.send({ type: 'CANCEL' })
       expect(actor.getSnapshot().value).toBe('idle')
 
       actor.send({ type: 'RESET' })
       expect(actor.getSnapshot().value).toBe('idle')
-      actor.stop()
-    })
-  })
 
-  // US-02 — UPDATE_CONFIG while idle
-  describe('UPDATE_CONFIG — configuration updates', () => {
-    it('should update context config fields while in idle', () => {
-      const actor = createActor(buildProjectMachine)
-      actor.start()
-
-      actor.send({
-        type: 'UPDATE_CONFIG',
-        config: { title: 'My Documentary', numCameras: 3 }
-      })
-
-      expect(actor.getSnapshot().context.title).toBe('My Documentary')
-      expect(actor.getSnapshot().context.numCameras).toBe(3)
-      expect(actor.getSnapshot().value).toBe('idle')
       actor.stop()
     })
   })
 })
 
 // ============================================================================
-// US-02 — useBuildProjectMachine Hook Integration
+// US-02 — useBuildProject Hook Integration
 // ============================================================================
 
-describe('US-02 — useBuildProjectMachine Hook', () => {
+describe('US-02 — useBuildProject Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('should initialize with idle state and expected derived booleans', () => {
-    const { result } = renderHook(() => useBuildProjectMachine())
+    const { result } = renderHook(() => useBuildProject())
 
+    expect(result.current.state.value).toBe('idle')
     expect(result.current.isIdle).toBe(true)
-    expect(result.current.isValidating).toBe(false)
-    expect(result.current.isCreatingFolders).toBe(false)
-    expect(result.current.isCopyingFiles).toBe(false)
-    expect(result.current.isError).toBe(false)
-    expect(result.current.isShowingSuccess).toBe(false)
-    expect(result.current.isLoading).toBe(false)
+    expect(result.current.isBuilding).toBe(false)
+    expect(result.current.isComplete).toBe(false)
+    expect(result.current.hasError).toBe(false)
   })
 
-  it('should expose state, send function, and derived state properties', () => {
-    const { result } = renderHook(() => useBuildProjectMachine())
+  it('should expose the workflow control surface', () => {
+    const { result } = renderHook(() => useBuildProject())
 
-    expect(typeof result.current.send).toBe('function')
-    expect(result.current.state).toBeDefined()
-    expect(result.current.copyProgress).toBe(0)
-    expect(result.current.error).toBeNull()
-    expect(result.current.projectFolder).toBeNull()
+    expect(typeof result.current.startBuild).toBe('function')
+    expect(typeof result.current.cancel).toBe('function')
+    expect(typeof result.current.reset).toBe('function')
+    expect(typeof result.current.retry).toBe('function')
+    expect(result.current.context).toBeDefined()
+    expect(result.current.progress).toBeDefined()
   })
 
-  it('should transition to validating when START_PROJECT is sent', () => {
-    const { result } = renderHook(() => useBuildProjectMachine())
+  it('should run the full pipeline to success via startBuild', async () => {
+    mockSuccessfulPipeline()
+
+    const { result } = renderHook(() => useBuildProject())
 
     act(() => {
-      result.current.send({ type: 'START_PROJECT' })
+      result.current.startBuild(createValidInput())
     })
 
-    expect(result.current.isValidating).toBe(true)
-    expect(result.current.isLoading).toBe(true)
-    expect(result.current.isIdle).toBe(false)
+    await waitFor(() => {
+      expect(result.current.isComplete).toBe(true)
+    })
+
+    expect(result.current.isBuilding).toBe(false)
+    expect(result.current.hasError).toBe(false)
+    expect(result.current.context.progress).toBe(100)
   })
 
-  it('should set up Tauri event listeners on mount', async () => {
-    const { listenCopyProgress, listenCopyComplete, listenCopyFileError, listenCopyCompleteWithErrors } =
-      await import('../../src/features/BuildProject/api')
+  it('should surface stage errors through isError and context', async () => {
+    vi.mocked(exists).mockRejectedValue(new Error('Validation exploded'))
 
-    const { unmount } = renderHook(() => useBuildProjectMachine())
+    const { result } = renderHook(() => useBuildProject())
 
-    // Give effect time to run
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10))
-    })
-
-    expect(listenCopyProgress).toHaveBeenCalled()
-    expect(listenCopyComplete).toHaveBeenCalled()
-    expect(listenCopyFileError).toHaveBeenCalled()
-    expect(listenCopyCompleteWithErrors).toHaveBeenCalled()
-
-    unmount()
-  })
-
-  it('should handle COPY_COMPLETE event and transition to creatingTemplate', async () => {
-    const { listenCopyComplete } = await import('../../src/features/BuildProject/api')
-
-    let completeCb: ((event: any) => void) | undefined
-
-    vi.mocked(listenCopyComplete).mockImplementation((cb: any) => {
-      completeCb = cb
-      return Promise.resolve(vi.fn())
-    })
-
-    const { result } = renderHook(() => useBuildProjectMachine())
-
-    // Progress machine to copyingFiles
     act(() => {
-      result.current.send({ type: 'VALIDATION_SUCCESS', projectFolder: '/projects/Proj' })
-      result.current.send({ type: 'FOLDERS_CREATED' })
-      result.current.send({ type: 'BREADCRUMBS_SAVED' })
+      result.current.startBuild(createValidInput())
     })
 
-    expect(result.current.isCopyingFiles).toBe(true)
-
-    // Simulate copy_complete Tauri event
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10))
-      if (completeCb) {
-        completeCb({ payload: [] })
-      }
+    await waitFor(() => {
+      expect(result.current.hasError).toBe(true)
     })
 
-    expect(result.current.isCreatingTemplate).toBe(true)
+    expect(result.current.context.error).toBeDefined()
+    expect(result.current.context.lastFailedStage).toBe('validating')
   })
 
-  it('should update copyProgress context when COPY_PROGRESS events arrive', async () => {
-    const { listenCopyProgress } = await import('../../src/features/BuildProject/api')
+  it('should reset back to idle after a completed build', async () => {
+    mockSuccessfulPipeline()
 
-    let progressCb: ((event: any) => void) | undefined
+    const { result } = renderHook(() => useBuildProject())
 
-    vi.mocked(listenCopyProgress).mockImplementation((cb: any) => {
-      progressCb = cb
-      return Promise.resolve(vi.fn())
-    })
-
-    const { result } = renderHook(() => useBuildProjectMachine())
-
-    // Progress machine to copyingFiles
     act(() => {
-      result.current.send({ type: 'VALIDATION_SUCCESS', projectFolder: '/projects/Proj' })
-      result.current.send({ type: 'FOLDERS_CREATED' })
-      result.current.send({ type: 'BREADCRUMBS_SAVED' })
+      result.current.startBuild(createValidInput())
     })
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10))
-      if (progressCb) {
-        progressCb({ payload: 65 })
-      }
+    await waitFor(() => {
+      expect(result.current.isComplete).toBe(true)
     })
 
-    expect(result.current.copyProgress).toBe(65)
-  })
-
-  it('should handle COPY_ERROR and transition to error state', async () => {
-    const { listenCopyCompleteWithErrors } = await import('../../src/features/BuildProject/api')
-
-    let errorCb: ((event: any) => void) | undefined
-
-    vi.mocked(listenCopyCompleteWithErrors).mockImplementation((cb: any) => {
-      errorCb = cb
-      return Promise.resolve(vi.fn())
-    })
-
-    const { result } = renderHook(() => useBuildProjectMachine())
-
-    // Progress machine to copyingFiles
     act(() => {
-      result.current.send({ type: 'VALIDATION_SUCCESS', projectFolder: '/projects/Proj' })
-      result.current.send({ type: 'FOLDERS_CREATED' })
-      result.current.send({ type: 'BREADCRUMBS_SAVED' })
+      result.current.reset()
     })
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10))
-      if (errorCb) {
-        errorCb({
-          payload: {
-            failure_count: 2,
-            success_count: 1,
-            total_files: 3,
-            failed_files: [{ file: '/source/video1.mp4' }, { file: '/source/video2.mp4' }]
-          }
-        })
-      }
-    })
-
-    expect(result.current.isError).toBe(true)
-    expect(result.current.error).toContain('2 of 3 files failed')
+    expect(result.current.state.value).toBe('idle')
+    expect(result.current.isComplete).toBe(false)
   })
 })

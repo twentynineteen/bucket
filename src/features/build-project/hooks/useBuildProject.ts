@@ -38,7 +38,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { useMachine } from '@xstate/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { logger } from '@/utils/logger'
+import { logger } from '@shared/utils'
 
 import {
   buildProjectMachine,
@@ -176,13 +176,14 @@ export function useBuildProject(): UseBuildProjectReturn {
   // Initialize the XState machine
   const [state, send] = useMachine(buildProjectMachine)
 
-  // Track event listeners for cleanup
+  // Track event listeners for cleanup. Only progress events are forwarded
+  // into the machine; transfer completion is awaited by the fileTransferActor
+  // itself (via the `file-transfer-complete` event), so no completion listener
+  // is needed at the hook level.
   const listenersRef = useRef<{
     progress: UnlistenFn | null
-    complete: UnlistenFn | null
   }>({
-    progress: null,
-    complete: null
+    progress: null
   })
 
   // Track if listeners are set up
@@ -201,45 +202,36 @@ export function useBuildProject(): UseBuildProjectReturn {
     isListenerSetup.current = true
 
     let isMounted = true
-    // Store listeners locally for cleanup access
     let progressUnlisten: UnlistenFn | null = null
-    let completeUnlisten: UnlistenFn | null = null
 
     const setupListeners = async () => {
       try {
-        // Listen for file transfer progress events from Tauri backend
-        progressUnlisten = await listen<number>('copy_progress', (event) => {
-          if (!isMounted) return
-          send({ type: 'PROGRESS_UPDATE', progress: event.payload })
-        })
+        // Forward throttled progress events from the new Rust transfer command
+        // (`transfer_files_with_progress`) into the state machine as
+        // PROGRESS_UPDATE so `context.progress` stays current during a transfer.
+        progressUnlisten = await listen<FileTransferProgress>(
+          'file-transfer-progress',
+          (event) => {
+            if (!isMounted) return
+            send({ type: 'PROGRESS_UPDATE', progress: event.payload.percentage })
+          }
+        )
         listenersRef.current.progress = progressUnlisten
-
-        // Listen for file transfer completion events
-        // Note: The machine handles completion via the promise resolution
-        // This listener is for additional side effects if needed
-        completeUnlisten = await listen<string[]>('copy_complete', () => {
-          if (!isMounted) return
-          // The transferFiles actor will complete and transition the machine
-        })
-        listenersRef.current.complete = completeUnlisten
       } catch (error) {
-        // Log but don't throw - listeners are optional enhancement
         logger.warn('[useBuildProject] Failed to setup Tauri listeners:', error)
       }
     }
 
     setupListeners()
 
-    // Cleanup listeners on unmount
     return () => {
       isMounted = false
       isListenerSetup.current = false
 
-      // Defer cleanup to avoid race conditions
+      // Defer cleanup to avoid race conditions with in-flight setupListeners().
       setTimeout(() => {
         try {
           progressUnlisten?.()
-          completeUnlisten?.()
         } catch {
           // Silently ignore cleanup errors
         }

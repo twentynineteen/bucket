@@ -12,6 +12,8 @@ import { confirm } from '@tauri-apps/plugin-dialog'
 import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 import { assign, fromPromise, setup } from 'xstate'
 
+import { createTransferItems, fileTransferActor } from '../stages/fileTransfer'
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -124,10 +126,8 @@ interface SaveBreadcrumbsParams {
   breadcrumbs: Breadcrumb
 }
 
-interface TransferFilesParams {
-  files: FootageFile[]
-  projectFolder: string
-}
+// File transfer uses fileTransferActor from ../stages/fileTransfer, which has
+// its own FileTransferActorInput type. No local params interface needed.
 
 // =============================================================================
 // Actor Implementations
@@ -224,46 +224,10 @@ const saveBreadcrumbs = fromPromise<void, SaveBreadcrumbsParams>(async ({ input 
   )
 })
 
-/**
- * Transfers files to camera folders
- * The move_files command returns immediately and spawns a background thread.
- * We must wait for the copy_complete event before resolving.
- */
-const transferFiles = fromPromise<void, TransferFilesParams>(async ({ input }) => {
-  const { files, projectFolder } = input
-
-  const filesToMove: [string, number][] = files.map(({ file, camera }) => [
-    file.path,
-    camera
-  ])
-
-  // Import listen function
-  const { listen } = await import('@tauri-apps/api/event')
-
-  // Set up listener FIRST and wait for it to be registered
-  let resolveCompletion: () => void
-  const copyComplete = new Promise<void>((resolve) => {
-    resolveCompletion = resolve
-  })
-
-  const unlisten = await listen<string[]>('copy_complete', () => {
-    resolveCompletion()
-  })
-
-  try {
-    // Start the file transfer (returns immediately)
-    await invoke('move_files', {
-      files: filesToMove,
-      baseDest: projectFolder
-    })
-
-    // Wait for the actual copy to complete
-    await copyComplete
-  } finally {
-    // Clean up the listener
-    unlisten()
-  }
-})
+// File transfer is handled by `fileTransferActor` (imported above).
+// It wraps the throttled `transfer_files_with_progress` Tauri command,
+// supports cancellation via the AbortSignal that XState passes to fromPromise
+// actors, and detects stalls after 30s of no progress.
 
 // =============================================================================
 // State Machine Definition
@@ -282,6 +246,13 @@ const transferFiles = fromPromise<void, TransferFilesParams>(async ({ input }) =
  * - success: Completed successfully
  * - error: Failed (with retry capability)
  * - cancelled: User cancelled the operation
+ *
+ * Stage order rationale: the .prproj template is created BEFORE the long file
+ * transfer. If a transfer fails or stalls partway through (slow drive, source
+ * disconnect), the user is still left with a working Premiere project they can
+ * use. The legacy machine ran files-before-template, which meant any transfer
+ * hang silently produced no .prproj at all — the original bug this rewrite
+ * addresses. Do not reorder these stages without a deliberate reason.
  */
 export const buildProjectMachine = setup({
   types: {} as {
@@ -293,7 +264,7 @@ export const buildProjectMachine = setup({
     createFolders,
     copyTemplate,
     saveBreadcrumbs,
-    transferFiles
+    transferFiles: fileTransferActor
   },
   actions: {
     // Initialize context with input parameters
@@ -555,8 +526,8 @@ export const buildProjectMachine = setup({
         id: 'transferFiles',
         src: 'transferFiles',
         input: ({ context }) => ({
-          files: context.files,
-          projectFolder: context.projectFolder!
+          files: createTransferItems(context.files, context.projectFolder!),
+          destinationFolder: context.projectFolder!
         }),
         onDone: {
           target: 'success',
