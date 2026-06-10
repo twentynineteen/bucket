@@ -9,7 +9,7 @@ import { useCallback } from 'react'
 
 import { logger } from '@shared/utils'
 
-import { readBreadcrumbsFile } from '../api'
+import { fetchTrelloCardById, readBreadcrumbsFile } from '../api'
 
 interface TrelloError {
   project: string
@@ -34,27 +34,62 @@ function extractCardIdFromUrl(trelloCardUrl: string): string | null {
 }
 
 /**
- * Update a single Trello card with breadcrumbs data
+ * Signature of the breadcrumbs-applying function imported from `@features/Baker`.
+ * Injected into `updateSingleTrelloCard` so the dynamic import happens once per
+ * project rather than once per card.
+ */
+type ApplyBreadcrumbsFn = (
+  card: { id: string; desc: string; name: string; idList: string },
+  breadcrumbsBlock: string,
+  apiKey: string,
+  token: string,
+  options: { autoReplace?: boolean; silentErrors?: boolean }
+) => Promise<void>
+
+/**
+ * Update a single Trello card with breadcrumbs data.
+ *
+ * Fetches the card's CURRENT description first so existing content is preserved
+ * (the breadcrumbs block is replaced/appended in place rather than overwriting
+ * the whole description). Errors are surfaced (not silenced) so the caller can
+ * report which cards failed instead of the update silently doing nothing.
  */
 async function updateSingleTrelloCard(
   cardId: string,
   breadcrumbsBlock: string,
   apiKey: string,
-  token: string
+  token: string,
+  applyBreadcrumbs: ApplyBreadcrumbsFn
 ): Promise<void> {
-  // Create a mock TrelloCard object for the API call
-  const mockCard = {
+  // Fetch the live card so we keep its existing description and metadata.
+  // If the fetch fails we still attempt the update with an empty description
+  // rather than aborting outright.
+  let card = {
     id: cardId,
     desc: '',
     name: 'Baker Update',
     idList: ''
   }
 
-  const { updateTrelloCardWithBreadcrumbs } = await import('@features/Baker')
+  try {
+    const current = (await fetchTrelloCardById(cardId, apiKey, token)) as {
+      desc?: string
+      name?: string
+      idList?: string
+    }
+    card = {
+      id: cardId,
+      desc: current.desc ?? '',
+      name: current.name ?? 'Baker Update',
+      idList: current.idList ?? ''
+    }
+  } catch (err) {
+    logger.warn(`Could not fetch current Trello card ${cardId}, proceeding:`, err)
+  }
 
-  await updateTrelloCardWithBreadcrumbs(mockCard, breadcrumbsBlock, apiKey, token, {
+  await applyBreadcrumbs(card, breadcrumbsBlock, apiKey, token, {
     autoReplace: true,
-    silentErrors: true
+    silentErrors: false
   })
 }
 
@@ -67,7 +102,11 @@ async function updateProjectTrelloCards(
   apiKey: string,
   token: string
 ): Promise<void> {
-  const { generateBreadcrumbsBlock } = await import('@features/Baker')
+  // Import the Baker helpers ONCE per project (not once per card). Doing N
+  // concurrent dynamic imports of the same module is wasteful and also defeats
+  // module mocking under concurrency.
+  const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } =
+    await import('@features/Baker')
 
   const block = generateBreadcrumbsBlock(breadcrumbsData)
   if (!block) return
@@ -78,23 +117,44 @@ async function updateProjectTrelloCards(
     | undefined
 
   if (trelloCards && trelloCards.length > 0) {
-    // Update all cards in the array asynchronously
-    const updatePromises = trelloCards.map((card) =>
-      updateSingleTrelloCard(card.cardId, block, apiKey, token).catch((err) => {
-        logger.warn(`Failed to update Trello card ${card.cardId}:`, err)
-        throw err
-      })
+    // Update ALL cards in the array. Use allSettled so every card is attempted
+    // even if some fail, then aggregate failures so the caller can surface them
+    // (previously failures were only logged, making updates silently no-op).
+    const results = await Promise.allSettled(
+      trelloCards.map((card) =>
+        updateSingleTrelloCard(
+          card.cardId,
+          block,
+          apiKey,
+          token,
+          updateTrelloCardWithBreadcrumbs
+        )
+      )
     )
 
-    // Use allSettled to ensure all cards are attempted even if some fail
-    const results = await Promise.allSettled(updatePromises)
+    const failures = results
+      .map((result, index) => ({ result, card: trelloCards[index] }))
+      .filter(({ result }) => result.status === 'rejected')
 
-    // Log any failures but don't throw
-    results.forEach((result, index) => {
-      if (result.status === 'rejected') {
-        logger.error(`Failed to update card ${trelloCards[index].cardId}:`, result.reason)
-      }
+    failures.forEach(({ result, card }) => {
+      logger.error(
+        `Failed to update card ${card.cardId}:`,
+        (result as PromiseRejectedResult).reason
+      )
     })
+
+    if (failures.length > 0) {
+      const reasons = failures
+        .map(({ result, card }) => {
+          const reason = (result as PromiseRejectedResult).reason
+          const message = reason instanceof Error ? reason.message : String(reason)
+          return `${card.cardId} (${message})`
+        })
+        .join(', ')
+      throw new Error(
+        `${failures.length} of ${trelloCards.length} Trello card(s) failed to update: ${reasons}`
+      )
+    }
 
     return
   }
@@ -106,7 +166,13 @@ async function updateProjectTrelloCards(
   const cardId = extractCardIdFromUrl(trelloCardUrl)
   if (!cardId) return
 
-  await updateSingleTrelloCard(cardId, block, apiKey, token)
+  await updateSingleTrelloCard(
+    cardId,
+    block,
+    apiKey,
+    token,
+    updateTrelloCardWithBreadcrumbs
+  )
 }
 
 export function useBakerTrelloIntegration({
