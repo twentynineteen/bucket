@@ -178,9 +178,7 @@ export function useTrelloCardsManager({
           'Some Trello cards failed to sync:',
           failed.map((r) => r.reason)
         )
-        toast.error(
-          `${failed.length} of ${cards.length} Trello card(s) failed to update`
-        )
+        toast.error(`${failed.length} of ${cards.length} Trello card(s) failed to update`)
       }
     } catch (err) {
       logger.error('Failed to sync breadcrumbs to Trello:', err)
