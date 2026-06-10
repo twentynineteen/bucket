@@ -1,4 +1,4 @@
-import opentype, { Font } from 'opentype.js'
+import { Font, parse } from 'opentype.js'
 
 import { fileExists, getFontDir, readFileAsBytes } from '../api'
 
@@ -35,7 +35,7 @@ export async function loadFont(): Promise<Font | null> {
   document.fonts.add(font)
 
   // Parse with OpenType.js for vector outlines
-  //    opentype.parse() expects an ArrayBuffer
-  parsedFont = opentype.parse(uint8.buffer)
+  //    parse() expects an ArrayBuffer
+  parsedFont = parse(uint8.buffer)
   return parsedFont
 }
