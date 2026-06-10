@@ -124,9 +124,8 @@ export function useTrelloCardsManager({
       const breadcrumbsContent = await readBreadcrumbsFile(breadcrumbsPath)
       const breadcrumbsData = JSON.parse(breadcrumbsContent)
 
-      const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } = await import(
-        '@features/Baker'
-      )
+      const { generateBreadcrumbsBlock, updateTrelloCardWithBreadcrumbs } =
+        await import('@features/Baker')
 
       const apiCard = {
         id: cardData.cardId,

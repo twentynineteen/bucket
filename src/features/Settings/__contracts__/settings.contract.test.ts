@@ -317,9 +317,8 @@ describe('Settings Sub-components - Render', () => {
   it('BackgroundsSection renders with correct section id', async () => {
     const React = await import('react')
     const { render } = await import('@testing-library/react')
-    const { default: BackgroundsSection } = await import(
-      '../components/BackgroundsSection'
-    )
+    const { default: BackgroundsSection } =
+      await import('../components/BackgroundsSection')
 
     const { container } = render(
       React.createElement(BackgroundsSection, { apiKeys: mockApiKeys })
@@ -333,9 +332,8 @@ describe('Settings Sub-components - Render', () => {
   it('SproutVideoSection renders with correct section id', async () => {
     const React = await import('react')
     const { render } = await import('@testing-library/react')
-    const { default: SproutVideoSection } = await import(
-      '../components/SproutVideoSection'
-    )
+    const { default: SproutVideoSection } =
+      await import('../components/SproutVideoSection')
 
     const { container } = render(
       React.createElement(SproutVideoSection, { apiKeys: mockApiKeys })

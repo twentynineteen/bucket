@@ -5,7 +5,7 @@
 
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { pipeline } from '@xenova/transformers'
+import { pipeline } from '@huggingface/transformers'
 import Database from 'better-sqlite3'
 
 const __filename = fileURLToPath(import.meta.url)
