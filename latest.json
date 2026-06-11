@@ -1,0 +1,15 @@
+{
+  "version": "0.15.0",
+  "notes": "## What's Changed\n\n- feat: Baker UI refresh — full-height layout, diff-row previews, rebuilt batch dialog (#117) (f2b2d2a)\n- Release v0.14.8 (#116) (7a52ca1)\n\n## Installation\n\nDownload the appropriate installer for your platform from the assets below.\n\n**Full Changelog**: https://github.com/twentynineteen/bucket/compare/app-v0.14.8...app-v0.15.0",
+  "pub_date": "2026-06-11T13:38:39Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "url": "https://github.com/twentynineteen/bucket/releases/download/app-v0.15.0/Bucket_aarch64-apple-darwin.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUdGxzdGplRllZblRjais3R2hUWUxJczBIZVpvMjRPU0dEWlNyQ2pnbXRFeWQyaVU5b1ZwNGgvU0NOTFp0Vm9QdDI0bS9paHVPNFZGdEh4cndBd3Azdy9EbXJZendPWkFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxMTg0OTg1CWZpbGU6QnVja2V0LmFwcC50YXIuZ3oKR0x4eEVUdHdEbk1rQmszcFBDanN3UHZZOTVpOG1obzFJL0J1YUFCa1NzTEJFcHVvcmZqRXlza1BNd2FvdGVwSklsQ01PQ1ZsTnNQbWdvT3d6dDBTQUE9PQo="
+    },
+    "darwin-x86_64": {
+      "url": "https://github.com/twentynineteen/bucket/releases/download/app-v0.15.0/Bucket_x86_64-apple-darwin.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUdGxzdGplRllZblkrQ0pVTmhqM0VGamdMelRhSllYbGpONTF0UnRBNHZnMFFTSWxqeG1EL3RCMjM3bFFlZzYzOVp5ME1MR3pLMUdWSHpJSHVFNWpsUEp1NWoxb2pDL3dRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxMTg1MDY5CWZpbGU6QnVja2V0LmFwcC50YXIuZ3oKMXZmL1lqKzBMV29uaDRubWVsN29McFpRWGpHdjN2aU43UXpLdmdTTk1SaENSZXFmQUNtRUlzMG5kSlVMbG1vbVl5dDlrdTR5VDV2RkFSTjNRWWpzREE9PQo="
+    }
+  }
+}
