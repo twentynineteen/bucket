@@ -94,13 +94,7 @@ describe('FolderSelector Component', () => {
         />
       )
 
-      // Assert
-      expect(screen.getByText('Select Folder to Scan')).toBeInTheDocument()
-      expect(
-        screen.getByText(
-          /Choose a root directory to scan for BuildProject-compatible folders/i
-        )
-      ).toBeInTheDocument()
+      // Assert - Compact toolbar: path input + Browse + Start Scan
       expect(screen.getByPlaceholderText('No folder selected')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /browse/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /start scan/i })).toBeInTheDocument()
@@ -266,7 +260,7 @@ describe('FolderSelector Component', () => {
       expect(mockOnCancelScan).toHaveBeenCalledTimes(1)
     })
 
-    test('shows Clear Results button and triggers onClearResults when hasResults', async () => {
+    test('shows Clear button and triggers onClearResults when hasResults', async () => {
       // Arrange
       const user = userEvent.setup()
       render(
@@ -281,9 +275,10 @@ describe('FolderSelector Component', () => {
         />
       )
 
-      // Assert - Clear Results button should be visible
-      const clearButton = screen.getByRole('button', { name: /clear results/i })
+      // Assert - Clear button should be visible, and the scan button reads Rescan
+      const clearButton = screen.getByRole('button', { name: /^clear$/i })
       expect(clearButton).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /rescan/i })).toBeInTheDocument()
 
       // Act
       await user.click(clearButton)

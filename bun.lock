@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "bucket",
@@ -120,17 +121,18 @@
     },
   },
   "overrides": {
-    "flatted": "^3.4.0",
-    "ws": "^8.21.0",
-    "underscore": "^1.13.8",
     "@babel/plugin-transform-modules-systemjs": "^7.29.7",
-    "brace-expansion": "^1.1.13",
-    "rollup": "^4.60.1",
-    "picomatch": "^4.0.4",
-    "minimatch": "^3.1.5",
-    "yaml": "^2.8.3",
-    "vite": "^7.3.2",
     "ajv": "^6.14.0",
+    "brace-expansion": "^1.1.13",
+    "flatted": "^3.4.0",
+    "minimatch": "^3.1.5",
+    "picomatch": "^4.0.4",
+    "rollup": "^4.60.1",
+    "tar": "^7.5.7",
+    "underscore": "^1.13.8",
+    "vite": "^7.3.2",
+    "ws": "^8.21.0",
+    "yaml": "^2.8.3",
   },
   "packages": {
     "@acemir/cssom": ["@acemir/cssom@0.9.31", "", {}, "sha512-ZnR3GSaH+/vJ0YlHau21FjfLYjMpYVIzTD8M8vIEQvIGxeOXyXdzCI140rrCY862p/C/BbzWsjc1dgnM9mkoTA=="],

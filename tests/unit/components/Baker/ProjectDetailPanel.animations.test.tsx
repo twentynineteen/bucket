@@ -70,12 +70,13 @@ describe('ProjectDetailPanel Animations', () => {
 
   const defaultProps = {
     selectedProject: '/path/to/project',
+    project: null,
     breadcrumbs: mockBreadcrumbs,
     isLoadingBreadcrumbs: false,
     breadcrumbsError: null,
-    previewMode: false,
     preview: null,
-    onTogglePreview: vi.fn(),
+    isGeneratingPreview: false,
+    onGeneratePreview: vi.fn(),
     trelloApiKey: 'test-key',
     trelloApiToken: 'test-token'
   }
@@ -157,14 +158,14 @@ describe('ProjectDetailPanel Animations', () => {
     })
   })
 
-  describe('Navigation Tab Animations', () => {
+  describe('Navigation Tabs', () => {
     it('should render all navigation tabs', () => {
       renderWithQueryClient(<ProjectDetailPanel {...defaultProps} />)
 
-      expect(screen.getAllByText(/Overview/)[0]).toBeInTheDocument()
-      expect(screen.getAllByText(/Files \(3\)/)[0]).toBeInTheDocument()
-      expect(screen.getAllByText(/Videos/)[0]).toBeInTheDocument()
-      expect(screen.getAllByText(/Trello/)[0]).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /overview/i })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /files/i })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /videos/i })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /trello/i })).toBeInTheDocument()
     })
 
     it('should use navTab animation constants', () => {
@@ -173,33 +174,33 @@ describe('ProjectDetailPanel Animations', () => {
       expect(BAKER_ANIMATIONS.navTab.hover.duration).toBe(DURATION.fast)
     })
 
-    it('should have hover animation on tabs', async () => {
-      const user = userEvent.setup()
+    it('should show the file count on the Files tab', () => {
       renderWithQueryClient(<ProjectDetailPanel {...defaultProps} />)
 
-      const overviewTab = screen.getAllByText(/Overview/)[0].closest('button')!
-      await user.hover(overviewTab)
-
-      // Button should be in the DOM and hoverable
-      expect(overviewTab).toBeInTheDocument()
+      const filesTab = screen.getByRole('tab', { name: /files/i })
+      expect(filesTab).toHaveTextContent('3')
     })
 
-    it('should trigger smooth scroll on tab click', async () => {
+    it('should switch content when a tab is clicked', async () => {
       const user = userEvent.setup()
       renderWithQueryClient(<ProjectDetailPanel {...defaultProps} />)
 
-      const filesTab = screen.getAllByText(/Files \(3\)/)[0].closest('button')!
-      await user.click(filesTab)
+      await user.click(screen.getByRole('tab', { name: /files/i }))
 
-      // Scroll should be triggered (smooth behavior)
-      // We can't easily test scrollTo in JSDOM, but we verify the click works
-      expect(filesTab).toBeInTheDocument()
+      expect(await screen.findByText('file1.mp4')).toBeInTheDocument()
     })
   })
 
   describe('File List Item Animations', () => {
-    it('should render all files', () => {
+    const openFilesTab = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('tab', { name: /files/i }))
+      await screen.findByText('file1.mp4')
+    }
+
+    it('should render all files', async () => {
+      const user = userEvent.setup()
       renderWithQueryClient(<ProjectDetailPanel {...defaultProps} />)
+      await openFilesTab(user)
 
       expect(screen.getByText('file1.mp4')).toBeInTheDocument()
       expect(screen.getByText('file2.mp4')).toBeInTheDocument()
@@ -212,8 +213,10 @@ describe('ProjectDetailPanel Animations', () => {
       expect(BAKER_ANIMATIONS.fileItem.hover.duration).toBe(DURATION.fast)
     })
 
-    it('should have hover transition on file items', () => {
+    it('should have hover transition on file items', async () => {
+      const user = userEvent.setup()
       renderWithQueryClient(<ProjectDetailPanel {...defaultProps} />)
+      await openFilesTab(user)
 
       // Find the parent container div (not the inner text div)
       const firstFileContainer = screen.getByText('file1.mp4').closest('.border')!
@@ -223,6 +226,7 @@ describe('ProjectDetailPanel Animations', () => {
     it('should show hover state on mouse enter', async () => {
       const user = userEvent.setup()
       renderWithQueryClient(<ProjectDetailPanel {...defaultProps} />)
+      await openFilesTab(user)
 
       // Find the parent container div (not the inner text div)
       const firstFileContainer = screen.getByText('file1.mp4').closest('.border')!
