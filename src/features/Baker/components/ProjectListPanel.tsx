@@ -1,22 +1,22 @@
 /**
  * Project List Panel Component
  *
- * Compact left panel showing list of projects for selection.
- * Part of master-detail layout pattern.
+ * Fixed-width left panel showing the scanned projects with a text filter and
+ * status filter chips. Part of the full-height master-detail layout.
  *
  * Animations:
  * - Staggered entrance animation when projects load
  * - Smooth hover effects on project rows
- * - Selection state transitions
- * - Pulse animation for warning badges
+ * - Pulse animation for stale breadcrumb badges
  */
 
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { motion } from 'framer-motion'
-import React from 'react'
+import React, { useMemo, useState } from 'react'
 
 import { BAKER_ANIMATIONS } from '@shared/constants'
 import { useReducedMotion } from '@shared/hooks'
+import { Input } from '@shared/ui/input'
 import type { ProjectFolder } from '../types'
 
 // Threshold for enabling virtual scrolling (performance optimization for large lists)
@@ -25,6 +25,107 @@ const VIRTUAL_SCROLLING_THRESHOLD = 50
 // Utility function for conditional class names
 const cn = (...classes: (string | undefined | null | boolean)[]) => {
   return classes.filter(Boolean).join(' ')
+}
+
+type StatusFilter = 'all' | 'stale' | 'nobc' | 'invalid'
+
+const isStale = (project: ProjectFolder) =>
+  project.hasBreadcrumbs && !project.invalidBreadcrumbs && project.staleBreadcrumbs
+const isMissingBreadcrumbs = (project: ProjectFolder) =>
+  !project.hasBreadcrumbs && !project.invalidBreadcrumbs
+const isInvalid = (project: ProjectFolder) =>
+  project.invalidBreadcrumbs || !project.isValid
+
+const matchesStatus = (project: ProjectFolder, filter: StatusFilter): boolean => {
+  switch (filter) {
+    case 'stale':
+      return isStale(project)
+    case 'nobc':
+      return isMissingBreadcrumbs(project)
+    case 'invalid':
+      return isInvalid(project)
+    default:
+      return true
+  }
+}
+
+interface StatusPillProps {
+  tone: 'success' | 'warning' | 'destructive' | 'muted'
+  dot?: boolean
+  children: React.ReactNode
+}
+
+const PILL_TONES: Record<StatusPillProps['tone'], string> = {
+  success: 'bg-success/20 text-success',
+  warning: 'bg-warning/20 text-warning',
+  destructive: 'bg-destructive/20 text-destructive',
+  muted: 'bg-muted text-muted-foreground'
+}
+
+const StatusPill: React.FC<StatusPillProps> = ({ tone, dot = true, children }) => (
+  <span
+    className={cn(
+      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+      PILL_TONES[tone]
+    )}
+  >
+    {dot && <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />}
+    {children}
+  </span>
+)
+
+interface ProjectStatusPillsProps {
+  project: ProjectFolder
+  shouldReduceMotion: boolean
+}
+
+const ProjectStatusPills: React.FC<ProjectStatusPillsProps> = ({
+  project,
+  shouldReduceMotion
+}) => {
+  const pulseStale = !shouldReduceMotion && project.staleBreadcrumbs
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      <StatusPill tone={project.isValid ? 'success' : 'destructive'}>
+        {project.isValid ? 'Valid' : 'Invalid'}
+      </StatusPill>
+
+      {project.invalidBreadcrumbs && (
+        <StatusPill tone="destructive">Invalid BC</StatusPill>
+      )}
+
+      {project.hasBreadcrumbs && !project.invalidBreadcrumbs && (
+        <motion.span
+          className={cn(
+            'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+            project.staleBreadcrumbs
+              ? 'bg-warning/20 text-warning'
+              : 'bg-success/20 text-success'
+          )}
+          animate={
+            pulseStale ? { scale: BAKER_ANIMATIONS.statusBadge.pulse.scale } : undefined
+          }
+          transition={
+            pulseStale ? BAKER_ANIMATIONS.statusBadge.pulse.transition : undefined
+          }
+        >
+          <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />
+          {project.staleBreadcrumbs ? 'Stale' : 'Current'}
+        </motion.span>
+      )}
+
+      {isMissingBreadcrumbs(project) && (
+        <StatusPill tone="muted" dot={false}>
+          No BC
+        </StatusPill>
+      )}
+
+      <StatusPill tone="muted" dot={false}>
+        {project.cameraCount} cam{project.cameraCount !== 1 ? 's' : ''}
+      </StatusPill>
+    </div>
+  )
 }
 
 interface ProjectListPanelProps {
@@ -44,21 +145,53 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
 }) => {
   const shouldReduceMotion = useReducedMotion()
   const parentRef = React.useRef<HTMLDivElement>(null)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [query, setQuery] = useState('')
+
+  const filterChips = useMemo(
+    () =>
+      [
+        { key: 'all' as const, label: 'All', count: projects.length },
+        { key: 'stale' as const, label: 'Stale', count: projects.filter(isStale).length },
+        {
+          key: 'nobc' as const,
+          label: 'No BC',
+          count: projects.filter(isMissingBreadcrumbs).length
+        },
+        {
+          key: 'invalid' as const,
+          label: 'Invalid',
+          count: projects.filter(isInvalid).length
+        }
+      ].filter((chip) => chip.key === 'all' || chip.count > 0),
+    [projects]
+  )
+
+  const filteredProjects = useMemo(() => {
+    const normalized = query.trim().toLowerCase()
+    return projects.filter(
+      (project) =>
+        matchesStatus(project, statusFilter) &&
+        (normalized === '' ||
+          project.name.toLowerCase().includes(normalized) ||
+          project.path.toLowerCase().includes(normalized))
+    )
+  }, [projects, statusFilter, query])
 
   // Determine if we should use virtual scrolling based on list size
-  const useVirtualScroll = projects.length >= VIRTUAL_SCROLLING_THRESHOLD
+  const useVirtualScroll = filteredProjects.length >= VIRTUAL_SCROLLING_THRESHOLD
 
   // Disable staggered entrance animations when using virtual scrolling for performance
   const shouldAnimate = !shouldReduceMotion && !useVirtualScroll
 
   // Initialize virtualizer for large lists
   const virtualizer = useVirtualizer({
-    count: projects.length,
+    count: filteredProjects.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 90, // Estimated height of each project item
+    estimateSize: () => 98, // Estimated height of each project item
     overscan: 5,
     enabled: useVirtualScroll,
-    initialRect: { width: 400, height: 600 }
+    initialRect: { width: 320, height: 600 }
   })
 
   if (projects.length === 0) {
@@ -91,61 +224,12 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
         />
 
         <div className="min-w-0 flex-1 space-y-1.5">
-          <p className="truncate text-sm font-medium">{project.name}</p>
+          <p className="line-clamp-2 text-sm leading-snug font-medium [overflow-wrap:anywhere]">
+            {project.name}
+          </p>
+          <p className="text-muted-foreground truncate text-xs">{project.path}</p>
 
-          <div className="flex flex-wrap gap-1.5">
-            <span
-              className={cn(
-                'inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium',
-                project.isValid
-                  ? 'bg-success/20 text-success'
-                  : 'bg-destructive/20 text-destructive'
-              )}
-            >
-              {project.isValid ? 'Valid' : 'Invalid'}
-            </span>
-
-            {project.invalidBreadcrumbs && (
-              <span className="bg-destructive/20 text-destructive inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium">
-                Invalid BC
-              </span>
-            )}
-
-            {project.hasBreadcrumbs && !project.invalidBreadcrumbs && (
-              <motion.span
-                className={cn(
-                  'inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium',
-                  project.staleBreadcrumbs
-                    ? 'bg-warning/20 text-warning'
-                    : 'bg-success/20 text-success'
-                )}
-                animate={
-                  shouldReduceMotion || !project.staleBreadcrumbs
-                    ? undefined
-                    : {
-                        scale: BAKER_ANIMATIONS.statusBadge.pulse.scale
-                      }
-                }
-                transition={
-                  shouldReduceMotion || !project.staleBreadcrumbs
-                    ? undefined
-                    : BAKER_ANIMATIONS.statusBadge.pulse.transition
-                }
-              >
-                {project.staleBreadcrumbs ? 'Stale' : 'Current'}
-              </motion.span>
-            )}
-
-            {!project.hasBreadcrumbs && !project.invalidBreadcrumbs && (
-              <span className="bg-muted text-muted-foreground inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium">
-                No BC
-              </span>
-            )}
-
-            <span className="bg-muted text-muted-foreground inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium">
-              {project.cameraCount} cam{project.cameraCount !== 1 ? 's' : ''}
-            </span>
-          </div>
+          <ProjectStatusPills project={project} shouldReduceMotion={shouldReduceMotion} />
         </div>
       </div>
     )
@@ -158,15 +242,9 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
           style={virtualStyle}
           className={cn(
             'border-border cursor-pointer border-b p-3',
-            // Transition properties (Phase 6: CSS-based animations - transform and colors)
-            'transition-[transform,background-color] duration-150 ease-out',
-            // Hover effects (Phase 6: CSS transforms instead of Framer Motion)
-            'hover:scale-[1.005] hover:bg-accent/50',
-            // Performance hint for transforms
-            'will-change-transform',
-            // Accessibility: Focus styles for keyboard navigation
+            'transition-[background-color] duration-150 ease-out',
+            'hover:bg-accent/50',
             'focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2',
-            // Selected state
             isSelected && 'bg-accent'
           )}
           onClick={() => onProjectClick(project.path)}
@@ -185,11 +263,8 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
         variants={shouldAnimate ? BAKER_ANIMATIONS.projectList.item : undefined}
         className={cn(
           'border-border cursor-pointer border-b p-3',
-          // Phase 6: Replace Framer Motion whileHover with CSS transforms
-          'transition-[transform,background-color] duration-150 ease-out',
-          'hover:scale-[1.005] hover:bg-accent/50',
-          'will-change-transform',
-          // Accessibility: Focus styles
+          'transition-[background-color] duration-150 ease-out',
+          'hover:bg-accent/50',
           'focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2',
           isSelected && 'bg-accent'
         )}
@@ -205,16 +280,54 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-border flex items-center gap-2 border-b p-4">
-        <div className="bg-primary/10 text-primary flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold">
-          3
+      <div className="border-border space-y-2 border-b p-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            Projects
+          </h2>
+          <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-semibold">
+            {projects.length}
+          </span>
         </div>
-        <h2 className="text-foreground text-sm font-semibold">
-          Found Projects ({projects.length})
-        </h2>
+
+        <Input
+          placeholder="Filter projects…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="h-8 text-xs"
+        />
+
+        <div className="flex flex-wrap gap-1.5">
+          {filterChips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={() => setStatusFilter(chip.key)}
+              className={cn(
+                'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
+                statusFilter === chip.key
+                  ? 'border-primary/30 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+              )}
+            >
+              {chip.label}{' '}
+              <span
+                className={
+                  statusFilter === chip.key ? 'text-primary' : 'text-muted-foreground'
+                }
+              >
+                {chip.count}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {useVirtualScroll ? (
+      {filteredProjects.length === 0 ? (
+        <div className="text-muted-foreground flex flex-1 items-center justify-center p-4 text-center text-sm">
+          No projects match the current filter
+        </div>
+      ) : useVirtualScroll ? (
         <div ref={parentRef} className="flex-1 overflow-y-auto" data-virtual-container>
           <div
             style={{
@@ -224,7 +337,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
             }}
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {
-              const project = projects[virtualItem.index]
+              const project = filteredProjects[virtualItem.index]
               return renderProjectItem(project, virtualItem.index, {
                 position: 'absolute',
                 top: 0,
@@ -242,7 +355,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
           initial={shouldAnimate ? 'hidden' : false}
           animate={shouldAnimate ? 'show' : false}
         >
-          {projects.map((project, index) => renderProjectItem(project, index))}
+          {filteredProjects.map((project, index) => renderProjectItem(project, index))}
         </motion.div>
       )}
     </div>

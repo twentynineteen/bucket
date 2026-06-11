@@ -44,3 +44,13 @@ Full details: .planning/milestones/v1.0-ROADMAP.md
 Plans:
 - [ ] 01-01-PLAN.md — Fix useBakerScan mount-once pattern, update types, add contract tests
 - [ ] 01-02-PLAN.md — Add elapsed timer to ScanResults and inline error display to BakerPage
+
+### Phase 2: baker-ui-refresh
+
+**Goal:** Redesign the Baker page so the project detail panel becomes the primary surface (full-height master-detail, real tabs, linked-resources hub, stale-breadcrumbs callout with lazy diff preview) and rebuild the batch confirmation dialog around a shared per-file diff-row language; demote legacy Trello cards with a Migrate action
+**Requirements**: [LAYOUT-01, TABS-01, RESOURCES-01, DIFF-01, CALLOUT-01, DIALOG-01, CHIPS-01, LEGACY-01]
+**Depends on:** None (visual spec approved: design-drafts/baker-redesign.html; full design context: .planning/phases/02-baker-ui-refresh/02-CONTEXT.md)
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 02-01 — Implemented full refresh (layout, tabs, diff components, dialog, legacy demotion) — see 02-01-SUMMARY.md — completed 2026-06-11

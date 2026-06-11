@@ -152,8 +152,8 @@ describe('ProjectListPanel Animations', () => {
       // Find the parent container div (with border-b class), not the inner text div
       const firstProject = screen.getByText('Project A').closest('.border-b')
 
-      // Phase 6: Now uses transition-[transform,background-color] for both transform and color transitions
-      expect(firstProject?.className).toContain('transition-[transform,background-color]')
+      // UI refresh: rows transition background-color only (no transform hover)
+      expect(firstProject?.className).toContain('transition-[background-color]')
     })
 
     it('should apply hover styles on mouse enter', async () => {
@@ -203,9 +203,9 @@ describe('ProjectListPanel Animations', () => {
       const projectA = screen.getByText('Project A').closest('.border-b')
       const projectB = screen.getByText('Project B').closest('.border-b')
 
-      // Both should have transition classes (Phase 6: updated to use transition-[transform,background-color])
-      expect(projectA?.className).toContain('transition-[transform,background-color]')
-      expect(projectB?.className).toContain('transition-[transform,background-color]')
+      // Both should have transition classes (UI refresh: background-color only)
+      expect(projectA?.className).toContain('transition-[background-color]')
+      expect(projectB?.className).toContain('transition-[background-color]')
     })
   })
 
@@ -248,10 +248,10 @@ describe('ProjectListPanel Animations', () => {
     it('should render status badges for each project', () => {
       render(<ProjectListPanel {...defaultProps} />)
 
-      // Check for various badge types (use getAllByText since multiple projects can be "Valid")
+      // Check for various badge types (badges also appear as filter chips, so use getAllByText)
       expect(screen.getAllByText('Valid').length).toBeGreaterThan(0)
-      expect(screen.getByText('Stale')).toBeInTheDocument()
-      expect(screen.getByText('Invalid')).toBeInTheDocument()
+      expect(screen.getAllByText('Stale').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Invalid').length).toBeGreaterThan(0)
     })
 
     it('should use badge pulse animation for warnings', () => {
@@ -265,9 +265,11 @@ describe('ProjectListPanel Animations', () => {
     it('should apply pulse animation to stale badges', () => {
       render(<ProjectListPanel {...defaultProps} />)
 
-      const staleBadge = screen.getByText('Stale')
+      // The row status pill carries the warning styling (the filter chip does not)
+      const staleBadge = screen
+        .getAllByText('Stale')
+        .find((el) => el.className.includes('bg-warning/20'))
       expect(staleBadge).toBeInTheDocument()
-      expect(staleBadge.className).toContain('bg-warning/20')
     })
   })
 
