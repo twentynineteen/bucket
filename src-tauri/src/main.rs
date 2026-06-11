@@ -47,7 +47,6 @@ fn main() {
             graceful_restart,
             check_auth,
             add_token,
-            move_files,
             copy_premiere_project,
             show_confirmation_dialog,
             open_resource_file,

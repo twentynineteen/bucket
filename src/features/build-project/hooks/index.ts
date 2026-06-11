@@ -5,10 +5,9 @@
  * Import from this file for convenient access to all hooks.
  *
  * @example
- * import { useBuildProject, useFileTransfer, useStageExecution } from '@/features/build-project/hooks'
+ * import { useBuildProject, useStageExecution } from '@/features/build-project/hooks'
  *
  * const { startBuild, cancel, reset, isBuilding } = useBuildProject()
- * const { progress, status, error, startTransfer, cancel } = useFileTransfer()
  * const { execute, reset } = useStageExecution()
  */
 
@@ -23,19 +22,6 @@ export type {
   StageResults,
   UseBuildProjectReturn
 } from './useBuildProject'
-
-// ============================================================================
-// File Transfer Hook
-// ============================================================================
-
-export { useFileTransfer } from './useFileTransfer'
-
-export type {
-  FileTransferError,
-  FileTransferStatus,
-  TransferFile,
-  UseFileTransferReturn
-} from './useFileTransfer'
 
 // ============================================================================
 // Stage Execution Hook

@@ -4,6 +4,8 @@ use std::time::Instant;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
+use app_lib::media::{TrelloCard, VideoLink};
+
 use super::scanning::*;
 use super::types::*;
 
@@ -261,7 +263,17 @@ pub async fn baker_update_breadcrumbs(
                         existing.folder_size_bytes = calculate_folder_size(path).ok();
                         existing
                     }
-                    Err(_) => new_breadcrumbs_file(path, camera_count, files),
+                    Err(_) => {
+                        // The existing file could not be strictly parsed (e.g. a
+                        // drifted field shape such as `createdBy` being an object).
+                        // Regenerate it, but salvage the user-managed link fields so
+                        // an update can NEVER silently destroy linked Trello cards or
+                        // video links.
+                        let mut regenerated =
+                            new_breadcrumbs_file(path, camera_count, files);
+                        salvage_links_from_raw(&content, &mut regenerated);
+                        regenerated
+                    }
                 },
                 Err(_) => {
                     result.failed.push(FailedUpdate {
@@ -301,6 +313,43 @@ pub async fn baker_update_breadcrumbs(
     }
 
     Ok(result)
+}
+
+/// Salvage the user-managed link fields (`trelloCards`, `videoLinks` and the
+/// legacy `trelloCardUrl`) from raw breadcrumbs JSON.
+///
+/// Used when the existing `breadcrumbs.json` cannot be strictly deserialized
+/// into [`BreadcrumbsFile`] (e.g. a drifted field shape). Without this,
+/// regenerating the file would silently destroy the cards/videos the user has
+/// linked. Each field is best-effort: anything that cannot be read is left
+/// untouched on `target` rather than causing a further failure.
+fn salvage_links_from_raw(content: &str, target: &mut BreadcrumbsFile) {
+    let value: serde_json::Value = match serde_json::from_str(content) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+
+    if let Some(cards) = value.get("trelloCards") {
+        if let Ok(parsed) = serde_json::from_value::<Vec<TrelloCard>>(cards.clone()) {
+            if !parsed.is_empty() {
+                target.trello_cards = Some(parsed);
+            }
+        }
+    }
+
+    if let Some(links) = value.get("videoLinks") {
+        if let Ok(parsed) = serde_json::from_value::<Vec<VideoLink>>(links.clone()) {
+            if !parsed.is_empty() {
+                target.video_links = Some(parsed);
+            }
+        }
+    }
+
+    if target.trello_card_url.is_none() {
+        if let Some(url) = value.get("trelloCardUrl").and_then(|v| v.as_str()) {
+            target.trello_card_url = Some(url.to_string());
+        }
+    }
 }
 
 fn new_breadcrumbs_file(path: &Path, camera_count: i32, files: Vec<FileInfo>) -> BreadcrumbsFile {
@@ -375,5 +424,108 @@ pub async fn baker_read_raw_breadcrumbs(project_path: String) -> Result<Option<S
     match fs::read_to_string(&breadcrumbs_path) {
         Ok(content) => Ok(Some(content)),
         Err(e) => Err(format!("Failed to read breadcrumbs file: {}", e)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    /// Build a directory that passes `validate_project_folder`.
+    fn make_valid_project(dir: &Path) {
+        for sub in ["Footage", "Graphics", "Renders", "Projects", "Scripts"] {
+            fs::create_dir_all(dir.join(sub)).unwrap();
+        }
+        // A Camera folder so camera_count > 0.
+        fs::create_dir_all(dir.join("Footage").join("Camera 1")).unwrap();
+    }
+
+    // A breadcrumbs.json whose `createdBy` is an object, which the strict
+    // BreadcrumbsFile deserialize cannot handle.
+    const DRIFTED_BREADCRUMBS: &str = r#"{
+        "projectTitle": "My Project",
+        "numberOfCameras": 1,
+        "files": [],
+        "parentFolder": "/somewhere",
+        "createdBy": { "data": "Alice" },
+        "creationDateTime": "2026-01-01T00:00:00Z",
+        "trelloCardUrl": "https://trello.com/c/legacy123",
+        "videoLinks": [
+            { "url": "https://v/1", "title": "Render 1" }
+        ],
+        "trelloCards": [
+            { "url": "https://trello.com/c/aaa", "cardId": "aaa", "title": "Card A" },
+            { "url": "https://trello.com/c/bbb", "cardId": "bbb", "title": "Card B" }
+        ]
+    }"#;
+
+    #[test]
+    fn salvage_preserves_links_when_typed_parse_fails() {
+        // Precondition: the drifted file really does fail strict deserialization.
+        assert!(serde_json::from_str::<BreadcrumbsFile>(DRIFTED_BREADCRUMBS).is_err());
+
+        let mut regenerated = new_breadcrumbs_file(Path::new("/tmp/Demo"), 1, Vec::new());
+        assert!(regenerated.trello_cards.is_none());
+        assert!(regenerated.video_links.is_none());
+
+        salvage_links_from_raw(DRIFTED_BREADCRUMBS, &mut regenerated);
+
+        let cards = regenerated.trello_cards.expect("trello cards salvaged");
+        assert_eq!(cards.len(), 2);
+        assert_eq!(cards[0].card_id, "aaa");
+        assert_eq!(cards[1].card_id, "bbb");
+
+        let videos = regenerated.video_links.expect("video links salvaged");
+        assert_eq!(videos.len(), 1);
+        assert_eq!(videos[0].title, "Render 1");
+
+        assert_eq!(
+            regenerated.trello_card_url.as_deref(),
+            Some("https://trello.com/c/legacy123")
+        );
+    }
+
+    #[test]
+    fn salvage_is_noop_on_unparseable_content() {
+        let mut regenerated = new_breadcrumbs_file(Path::new("/tmp/Demo"), 1, Vec::new());
+        salvage_links_from_raw("{ not valid json", &mut regenerated);
+        assert!(regenerated.trello_cards.is_none());
+        assert!(regenerated.video_links.is_none());
+    }
+
+    #[tokio::test]
+    async fn update_preserves_links_even_with_drifted_field() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("My Project");
+        make_valid_project(&project);
+
+        let breadcrumbs_path = project.join("breadcrumbs.json");
+        fs::write(&breadcrumbs_path, DRIFTED_BREADCRUMBS).unwrap();
+
+        let result = baker_update_breadcrumbs(
+            vec![project.to_string_lossy().to_string()],
+            false,
+            false,
+        )
+        .await
+        .expect("update should succeed");
+
+        assert_eq!(result.successful.len(), 1, "result was {:?}", result);
+        assert!(result.failed.is_empty(), "result was {:?}", result);
+
+        // Read back: the regenerated file must be valid AND retain the links.
+        let updated = fs::read_to_string(&breadcrumbs_path).unwrap();
+        let parsed: BreadcrumbsFile =
+            serde_json::from_str(&updated).expect("regenerated file is now valid");
+
+        let cards = parsed.trello_cards.expect("trello cards survived update");
+        assert_eq!(cards.len(), 2);
+        assert_eq!(cards[0].card_id, "aaa");
+        assert_eq!(cards[1].card_id, "bbb");
+
+        let videos = parsed.video_links.expect("video links survived update");
+        assert_eq!(videos.len(), 1);
+        assert_eq!(videos[0].title, "Render 1");
     }
 }
