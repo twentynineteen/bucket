@@ -69,7 +69,10 @@ describe('ProjectListPanel - Performance Optimizations', () => {
     it('should display correct project count', () => {
       render(<ProjectListPanel {...defaultProps} />)
 
-      expect(screen.getByText(`Found Projects (${mockProjects.length})`)).toBeInTheDocument()
+      expect(screen.getByText('Projects')).toBeInTheDocument()
+      expect(
+        screen.getAllByText(String(mockProjects.length)).length
+      ).toBeGreaterThan(0)
     })
   })
 
@@ -324,7 +327,8 @@ describe('ProjectListPanel - Performance Optimizations', () => {
     it('should render stale badge for stale breadcrumbs', () => {
       render(<ProjectListPanel {...defaultProps} />)
 
-      expect(screen.getByText('Stale')).toBeInTheDocument()
+      // Appears as both a status pill on the row and a filter chip
+      expect(screen.getAllByText('Stale').length).toBeGreaterThan(0)
     })
 
     it('should render camera count for each project', () => {
@@ -357,12 +361,12 @@ describe('ProjectListPanel - Performance Optimizations', () => {
         .getByText('Project A')
         .closest('.border-b') as HTMLElement
 
-      // Check that element has the appropriate CSS classes for hover (transform and background-color)
-      expect(projectElement.className).toContain('transition-[transform,background-color]')
-      expect(projectElement.className).toContain('hover:scale-[1.005]')
+      // Check that element has the appropriate CSS classes for hover (background-color only)
+      expect(projectElement.className).toContain('transition-[background-color]')
+      expect(projectElement.className).toContain('hover:bg-accent/50')
     })
 
-    it('should have will-change hint for performance', () => {
+    it('should not use transform-based hover effects', () => {
       render(<ProjectListPanel {...defaultProps} />)
 
       // Find the clickable project row
@@ -370,8 +374,9 @@ describe('ProjectListPanel - Performance Optimizations', () => {
         .getByText('Project A')
         .closest('.border-b') as HTMLElement
 
-      // Check for will-change optimization hint
-      expect(projectElement.className).toContain('will-change-transform')
+      // Transform hover (and its will-change hint) were removed with the layout refresh
+      expect(projectElement.className).not.toContain('will-change-transform')
+      expect(projectElement.className).not.toContain('hover:scale')
     })
 
     it('should maintain accessibility on hover states', () => {
@@ -420,7 +425,8 @@ describe('ProjectListPanel - Performance Optimizations', () => {
 
       render(<ProjectListPanel {...defaultProps} projects={invalidProject} />)
 
-      expect(screen.getByText('Invalid')).toBeInTheDocument()
+      // Appears as both a status pill and a filter chip
+      expect(screen.getAllByText('Invalid').length).toBeGreaterThan(0)
       expect(screen.getByText('Invalid BC')).toBeInTheDocument()
     })
 
@@ -441,7 +447,8 @@ describe('ProjectListPanel - Performance Optimizations', () => {
 
       render(<ProjectListPanel {...defaultProps} projects={noBreadcrumbsProject} />)
 
-      expect(screen.getByText('No BC')).toBeInTheDocument()
+      // Appears as both a status pill and a filter chip
+      expect(screen.getAllByText('No BC').length).toBeGreaterThan(0)
     })
 
     it('should handle very long project names', () => {
@@ -463,7 +470,8 @@ describe('ProjectListPanel - Performance Optimizations', () => {
 
       const projectNameElement = screen.getByText(longNameProject[0].name)
       expect(projectNameElement).toBeInTheDocument()
-      expect(projectNameElement.className).toContain('truncate')
+      // Long names wrap to two lines instead of single-line truncation
+      expect(projectNameElement.className).toContain('line-clamp-2')
     })
   })
 })

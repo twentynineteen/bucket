@@ -215,7 +215,9 @@ describe('BakerPage Component', () => {
       })
 
       renderWithProviders(<BakerPage />)
-      expect(screen.getByText(/2.*projects/i)).toBeInTheDocument()
+      // Project count appears as a pill next to the list panel heading
+      expect(screen.getByText('Projects')).toBeInTheDocument()
+      expect(screen.getAllByText('2').length).toBeGreaterThan(0)
     })
 
     test('should display project names in results', () => {

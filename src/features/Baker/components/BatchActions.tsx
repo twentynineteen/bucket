@@ -1,12 +1,15 @@
 /**
  * Batch Actions Component
  *
- * Handles project selection and batch update operations for Baker.
+ * Floating action bar for batch update operations. Appears centered at the
+ * bottom of the workspace only while at least one project is selected, so it
+ * never consumes layout space during inspection.
  */
 
-import { Button } from '@shared/ui/button'
 import { CheckCircle, RefreshCw } from 'lucide-react'
 import React from 'react'
+
+import { Button } from '@shared/ui/button'
 
 interface BatchActionsProps {
   selectedProjects: string[]
@@ -25,31 +28,24 @@ export const BatchActions: React.FC<BatchActionsProps> = ({
   onClearSelection,
   onApplyChanges
 }) => {
-  if (totalProjects === 0) return null
+  if (totalProjects === 0 || selectedProjects.length === 0) return null
 
   return (
-    <div className="bg-card border-border rounded-xl border p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <div className="bg-primary/10 text-primary flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold">
-          4
-        </div>
-        <h2 className="text-foreground text-sm font-semibold">Batch Actions</h2>
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <span className="text-sm">
-            {selectedProjects.length} of {totalProjects} projects selected
-          </span>
-          <Button variant="link" size="sm" onClick={onSelectAll}>
-            Select All
-          </Button>
-          <Button variant="link" size="sm" onClick={onClearSelection}>
-            Clear Selection
-          </Button>
-        </div>
+    <div className="absolute bottom-5 left-1/2 z-10 -translate-x-1/2">
+      <div className="bg-popover border-border flex items-center gap-2 rounded-2xl border py-2 pr-2 pl-4 shadow-lg">
+        <span className="text-sm whitespace-nowrap">
+          <span className="text-primary font-semibold">{selectedProjects.length}</span> of{' '}
+          {totalProjects} selected
+        </span>
+        <Button variant="link" size="sm" onClick={onSelectAll}>
+          Select All
+        </Button>
+        <Button variant="link" size="sm" onClick={onClearSelection}>
+          Clear
+        </Button>
         <Button
           onClick={onApplyChanges}
-          disabled={selectedProjects.length === 0 || isUpdating}
+          disabled={isUpdating}
           size="sm"
           className="gap-1.5 shadow-sm hover:shadow"
         >

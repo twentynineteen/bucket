@@ -1,16 +1,17 @@
 /**
  * Test Suite: BatchActions Component
  *
- * Tests for the Baker workflow batch operations component.
- * Following TDD methodology as per DEBT-009 Phase 2.
+ * Tests for the Baker floating batch action bar. The bar renders only while
+ * at least one project is selected, so the disabled-button states of the old
+ * static panel are replaced by visibility assertions.
  *
  * Test Categories:
- * 1. Rendering (3 tests)
- * 2. Apply Changes (4 tests)
- * 3. Selection Actions (3 tests)
- * 4. Accessibility (2 tests)
+ * 1. Visibility (3 tests)
+ * 2. Rendering (2 tests)
+ * 3. Actions (4 tests)
+ * 4. Accessibility (1 test)
  *
- * Total: 12 tests
+ * Total: 10 tests
  */
 
 import { BatchActions } from '../../../src/features/Baker/components/BatchActions'
@@ -50,90 +51,85 @@ describe('BatchActions Component', () => {
     mockOnApplyChanges = vi.fn()
   })
 
+  const renderBar = (selectedProjects: string[], totalProjects = 5, isUpdating = false) =>
+    render(
+      <BatchActions
+        selectedProjects={selectedProjects}
+        totalProjects={totalProjects}
+        isUpdating={isUpdating}
+        onSelectAll={mockOnSelectAll}
+        onClearSelection={mockOnClearSelection}
+        onApplyChanges={mockOnApplyChanges}
+      />
+    )
+
   // =================================================================
-  // Test Category 1: Rendering (3 tests)
+  // Test Category 1: Visibility (3 tests)
   // =================================================================
 
-  describe('Rendering', () => {
-    test('renders with no selected projects', () => {
+  describe('Visibility', () => {
+    test('returns null when no projects are selected', () => {
       // Arrange & Act
-      render(
-        <BatchActions
-          selectedProjects={[]}
-          totalProjects={5}
-          isUpdating={false}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
+      const { container } = renderBar([])
 
-      // Assert
-      expect(screen.getByText('0 of 5 projects selected')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select all/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /clear selection/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /apply changes/i })).toBeInTheDocument()
-    })
-
-    test('renders with selected projects', () => {
-      // Arrange & Act
-      render(
-        <BatchActions
-          selectedProjects={[
-            '/path/to/project1',
-            '/path/to/project2',
-            '/path/to/project3'
-          ]}
-          totalProjects={10}
-          isUpdating={false}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
-
-      // Assert
-      expect(screen.getByText('3 of 10 projects selected')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /apply changes/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /apply changes/i })).not.toBeDisabled()
+      // Assert - The floating bar only appears while a selection exists
+      expect(container.firstChild).toBeNull()
     })
 
     test('returns null when totalProjects is 0', () => {
       // Arrange & Act
-      const { container } = render(
-        <BatchActions
-          selectedProjects={[]}
-          totalProjects={0}
-          isUpdating={false}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
+      const { container } = renderBar([], 0)
 
       // Assert
       expect(container.firstChild).toBeNull()
     })
+
+    test('appears when at least one project is selected', () => {
+      // Arrange & Act
+      renderBar(['/path/to/project1'])
+
+      // Assert
+      expect(screen.getByRole('button', { name: /apply changes/i })).toBeInTheDocument()
+    })
   })
 
   // =================================================================
-  // Test Category 2: Apply Changes (4 tests)
+  // Test Category 2: Rendering (2 tests)
   // =================================================================
 
-  describe('Apply Changes', () => {
+  describe('Rendering', () => {
+    test('shows selection count and all actions', () => {
+      // Arrange & Act
+      renderBar(['/path/to/project1', '/path/to/project2', '/path/to/project3'], 10)
+
+      // Assert
+      expect(screen.getByText(/of 10 selected/)).toBeInTheDocument()
+      expect(screen.getByText('3')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /select all/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /apply changes/i })).not.toBeDisabled()
+    })
+
+    test('shows "Updating..." state with spinner when isUpdating is true', () => {
+      // Arrange & Act
+      renderBar(['/path/to/project1'], 5, true)
+
+      // Assert
+      const button = screen.getByRole('button', { name: /updating/i })
+      expect(button).toBeDisabled()
+      expect(screen.queryByText(/apply changes/i)).not.toBeInTheDocument()
+    })
+  })
+
+  // =================================================================
+  // Test Category 3: Actions (4 tests)
+  // =================================================================
+
+  describe('Actions', () => {
     test('triggers onApplyChanges callback when button clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      render(
-        <BatchActions
-          selectedProjects={['/path/to/project1']}
-          totalProjects={5}
-          isUpdating={false}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
+      renderBar(['/path/to/project1'])
 
       // Act
       await user.click(screen.getByRole('button', { name: /apply changes/i }))
@@ -142,79 +138,10 @@ describe('BatchActions Component', () => {
       expect(mockOnApplyChanges).toHaveBeenCalledTimes(1)
     })
 
-    test('Apply Changes button is disabled when no projects selected', () => {
-      // Arrange & Act
-      render(
-        <BatchActions
-          selectedProjects={[]}
-          totalProjects={5}
-          isUpdating={false}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
-
-      // Assert
-      const button = screen.getByRole('button', { name: /apply changes/i })
-      expect(button).toBeDisabled()
-    })
-
-    test('Apply Changes button is disabled when isUpdating is true', () => {
-      // Arrange & Act
-      render(
-        <BatchActions
-          selectedProjects={['/path/to/project1']}
-          totalProjects={5}
-          isUpdating={true}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
-
-      // Assert
-      const button = screen.getByRole('button', { name: /updating/i })
-      expect(button).toBeDisabled()
-    })
-
-    test('shows "Updating..." state with spinner when isUpdating is true', () => {
-      // Arrange & Act
-      render(
-        <BatchActions
-          selectedProjects={['/path/to/project1']}
-          totalProjects={5}
-          isUpdating={true}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
-
-      // Assert
-      expect(screen.getByText(/updating/i)).toBeInTheDocument()
-      expect(screen.queryByText(/apply changes/i)).not.toBeInTheDocument()
-    })
-  })
-
-  // =================================================================
-  // Test Category 3: Selection Actions (3 tests)
-  // =================================================================
-
-  describe('Selection Actions', () => {
     test('triggers onSelectAll callback when Select All clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      render(
-        <BatchActions
-          selectedProjects={[]}
-          totalProjects={5}
-          isUpdating={false}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
+      renderBar(['/path/to/project1'])
 
       // Act
       await user.click(screen.getByRole('button', { name: /select all/i }))
@@ -223,22 +150,13 @@ describe('BatchActions Component', () => {
       expect(mockOnSelectAll).toHaveBeenCalledTimes(1)
     })
 
-    test('triggers onClearSelection callback when Clear Selection clicked', async () => {
+    test('triggers onClearSelection callback when Clear clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      render(
-        <BatchActions
-          selectedProjects={['/path/to/project1']}
-          totalProjects={5}
-          isUpdating={false}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
+      renderBar(['/path/to/project1'])
 
       // Act
-      await user.click(screen.getByRole('button', { name: /clear selection/i }))
+      await user.click(screen.getByRole('button', { name: /^clear$/i }))
 
       // Assert
       expect(mockOnClearSelection).toHaveBeenCalledTimes(1)
@@ -247,18 +165,9 @@ describe('BatchActions Component', () => {
     test('selection buttons work independently of apply changes button', async () => {
       // Arrange
       const user = userEvent.setup()
-      render(
-        <BatchActions
-          selectedProjects={[]}
-          totalProjects={5}
-          isUpdating={false}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
+      renderBar(['/path/to/project1'])
 
-      // Act - Select All button should work even when Apply Changes is disabled
+      // Act
       await user.click(screen.getByRole('button', { name: /select all/i }))
 
       // Assert
@@ -268,23 +177,14 @@ describe('BatchActions Component', () => {
   })
 
   // =================================================================
-  // Test Category 4: Accessibility (2 tests)
+  // Test Category 4: Accessibility (1 test)
   // =================================================================
 
   describe('Accessibility', () => {
     test('all buttons are keyboard accessible', async () => {
       // Arrange
       const user = userEvent.setup()
-      render(
-        <BatchActions
-          selectedProjects={['/path/to/project1']}
-          totalProjects={5}
-          isUpdating={false}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
+      renderBar(['/path/to/project1'])
 
       // Act - Tab through buttons and press Enter
       await user.tab()
@@ -298,32 +198,6 @@ describe('BatchActions Component', () => {
       expect(mockOnSelectAll).toHaveBeenCalled()
       expect(mockOnClearSelection).toHaveBeenCalled()
       expect(mockOnApplyChanges).toHaveBeenCalled()
-    })
-
-    test('disabled button is not keyboard accessible', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      render(
-        <BatchActions
-          selectedProjects={[]}
-          totalProjects={5}
-          isUpdating={false}
-          onSelectAll={mockOnSelectAll}
-          onClearSelection={mockOnClearSelection}
-          onApplyChanges={mockOnApplyChanges}
-        />
-      )
-
-      // Act - Tab through all interactive elements
-      await user.tab() // Select All
-      await user.tab() // Clear Selection
-      await user.tab() // Apply Changes (disabled)
-      await user.keyboard('{Enter}')
-
-      // Assert - Apply Changes should not be called (it's disabled)
-      expect(mockOnSelectAll).not.toHaveBeenCalled()
-      expect(mockOnClearSelection).not.toHaveBeenCalled()
-      expect(mockOnApplyChanges).not.toHaveBeenCalled()
     })
   })
 })

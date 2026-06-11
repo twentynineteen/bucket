@@ -144,9 +144,10 @@ describe('ScanResults Component', () => {
       render(<ScanResults scanResult={mockScanResult} isScanning={true} />)
 
       // Assert
-      expect(screen.getByText('Scanning in progress...')).toBeInTheDocument()
-      expect(screen.getByText(/100 folders scanned/i)).toBeInTheDocument()
-      expect(screen.getByText(/3 projects found/i)).toBeInTheDocument()
+      expect(screen.getByText('Scanning…')).toBeInTheDocument()
+      expect(screen.getByText('100')).toBeInTheDocument()
+      expect(screen.getByText('folders')).toBeInTheDocument()
+      expect(screen.getByText('3')).toBeInTheDocument()
     })
 
     test('shows results summary when scan complete', () => {
@@ -154,7 +155,7 @@ describe('ScanResults Component', () => {
       render(<ScanResults scanResult={mockScanResult} isScanning={false} />)
 
       // Assert - Check for compact inline stats labels
-      expect(screen.queryByText('Scanning in progress...')).not.toBeInTheDocument()
+      expect(screen.queryByText('Scanning…')).not.toBeInTheDocument()
       expect(screen.getByText('Scanned:')).toBeInTheDocument()
       expect(screen.getByText('Projects:')).toBeInTheDocument()
       expect(screen.getByText('Breadcrumbs:')).toBeInTheDocument()
@@ -191,8 +192,8 @@ describe('ScanResults Component', () => {
       render(<ScanResults scanResult={inProgressResult} isScanning={true} />)
 
       // Assert
-      expect(screen.getByText(/50 folders scanned/i)).toBeInTheDocument()
-      expect(screen.getByText(/2 projects found/i)).toBeInTheDocument()
+      expect(screen.getByText('50')).toBeInTheDocument()
+      expect(screen.getByText('2')).toBeInTheDocument()
     })
   })
 

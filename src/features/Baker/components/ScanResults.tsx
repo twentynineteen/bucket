@@ -1,14 +1,15 @@
 /**
  * Scan Results Component
  *
- * Displays scan progress and results summary for Baker.
+ * Compact inline scan stats strip shown in the scan toolbar. Displays live
+ * progress with an elapsed timer during a scan and a results summary after.
  */
 
-import { formatFileSize } from '@shared/utils'
 import { RefreshCw } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 
 import type { ScanResult } from '../types'
+import { formatFileSize } from '@shared/utils'
 
 interface ScanResultsProps {
   scanResult: ScanResult | null
@@ -24,6 +25,18 @@ function formatElapsed(seconds: number): string {
   }
   return `${seconds}s`
 }
+
+const Stat: React.FC<{ label: string; children: React.ReactNode }> = ({
+  label,
+  children
+}) => (
+  <div className="flex items-center gap-1.5 whitespace-nowrap">
+    <span className="text-muted-foreground">{label}</span>
+    {children}
+  </div>
+)
+
+const Divider: React.FC = () => <div className="bg-border h-3 w-px flex-shrink-0" />
 
 export const ScanResults: React.FC<ScanResultsProps> = ({
   scanResult,
@@ -51,34 +64,30 @@ export const ScanResults: React.FC<ScanResultsProps> = ({
 
   if (!scanResult) return null
 
-  // Show progress during scan
+  // Live progress during scan
   if (isScanning) {
     return (
-      <div className="bg-card border-border rounded-xl border p-4 shadow-sm">
-        <div className="mb-3 flex items-center gap-2">
-          <div className="bg-primary/10 text-primary flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold">
-            2
-          </div>
-          <h2 className="text-foreground text-sm font-semibold">Scan Results</h2>
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-medium">Scanning in progress...</p>
-            <p className="text-muted-foreground text-sm">
-              {scanResult.totalFolders} folders scanned • {scanResult.validProjects}{' '}
-              projects found
-            </p>
-            <span className="text-muted-foreground text-sm">
-              Elapsed: {formatElapsed(elapsed)}
-            </span>
-          </div>
-          <RefreshCw className="h-5 w-5 animate-spin" />
-        </div>
+      <div className="flex items-center gap-3 text-xs">
+        <RefreshCw className="text-primary h-3.5 w-3.5 flex-shrink-0 animate-spin" />
+        <Stat label="Scanning…">
+          <span className="text-foreground font-semibold">{scanResult.totalFolders}</span>
+          <span className="text-muted-foreground">folders</span>
+        </Stat>
+        <Divider />
+        <Stat label="Projects:">
+          <span className="text-foreground font-semibold">
+            {scanResult.validProjects}
+          </span>
+        </Stat>
+        <Divider />
+        <Stat label="Elapsed:">
+          <span className="text-foreground font-semibold">{formatElapsed(elapsed)}</span>
+        </Stat>
       </div>
     )
   }
 
-  // Calculate stats
+  // Stats after scan completes
   const validBreadcrumbs = scanResult.projects.filter(
     (p) => p.hasBreadcrumbs && !p.invalidBreadcrumbs
   ).length
@@ -89,7 +98,6 @@ export const ScanResults: React.FC<ScanResultsProps> = ({
     (p) => !p.hasBreadcrumbs && !p.invalidBreadcrumbs
   ).length
 
-  // Compute elapsed from backend timestamps
   const elapsedSeconds = scanResult.endTime
     ? Math.round(
         (new Date(scanResult.endTime).getTime() -
@@ -98,82 +106,57 @@ export const ScanResults: React.FC<ScanResultsProps> = ({
       )
     : null
 
-  // Show results summary after scan
   return (
-    <div className="bg-card border-border rounded-xl border p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="bg-primary/10 text-primary flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold">
-            2
-          </div>
-          <h2 className="text-foreground text-sm font-semibold">
-            {scanResult.validProjects === 0 ? 'No Projects Found' : 'Scan Results'}
-          </h2>
-        </div>
-
-        {/* Compact stats inline */}
-        <div className="flex items-center gap-4 text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">Scanned:</span>
+    <div className="flex flex-wrap items-center gap-3 text-xs">
+      <Stat label="Scanned:">
+        <span className="text-foreground font-semibold">{scanResult.totalFolders}</span>
+      </Stat>
+      {elapsedSeconds !== null && (
+        <>
+          <Divider />
+          <Stat label="in">
             <span className="text-foreground font-semibold">
-              {scanResult.totalFolders}
+              {formatElapsed(elapsedSeconds)}
             </span>
-          </div>
-          {elapsedSeconds !== null && (
-            <>
-              <div className="bg-border h-3 w-px" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground">in</span>
-                <span className="text-foreground font-semibold">
-                  {formatElapsed(elapsedSeconds)}
-                </span>
-              </div>
-            </>
-          )}
-          <div className="bg-border h-3 w-px" />
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">Projects:</span>
-            <span className="text-success font-semibold">{scanResult.validProjects}</span>
-          </div>
-          <div className="bg-border h-3 w-px" />
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">Breadcrumbs:</span>
-            <span className="text-success font-semibold">{validBreadcrumbs}</span>
-            {invalidBreadcrumbs > 0 && (
-              <>
-                <span className="text-muted-foreground">/</span>
-                <span className="text-destructive font-semibold">
-                  {invalidBreadcrumbs}
-                </span>
-              </>
-            )}
-            {missingBreadcrumbs > 0 && (
-              <>
-                <span className="text-muted-foreground">/</span>
-                <span className="text-warning font-semibold">{missingBreadcrumbs}</span>
-              </>
-            )}
-          </div>
-          <div className="bg-border h-3 w-px" />
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">Size:</span>
-            <span className="text-foreground font-semibold">
-              {formatFileSize(scanResult.totalFolderSize)}
+          </Stat>
+        </>
+      )}
+      <Divider />
+      <Stat label="Projects:">
+        <span className="text-success font-semibold">{scanResult.validProjects}</span>
+      </Stat>
+      <Divider />
+      <Stat label="Breadcrumbs:">
+        <span className="text-success font-semibold">{validBreadcrumbs}</span>
+        {invalidBreadcrumbs > 0 && (
+          <>
+            <span className="text-muted-foreground">/</span>
+            <span className="text-destructive font-semibold">{invalidBreadcrumbs}</span>
+          </>
+        )}
+        {missingBreadcrumbs > 0 && (
+          <>
+            <span className="text-muted-foreground">/</span>
+            <span className="text-warning font-semibold">{missingBreadcrumbs}</span>
+          </>
+        )}
+      </Stat>
+      <Divider />
+      <Stat label="Size:">
+        <span className="text-foreground font-semibold">
+          {formatFileSize(scanResult.totalFolderSize)}
+        </span>
+      </Stat>
+      {scanResult.errors.length > 0 && (
+        <>
+          <Divider />
+          <Stat label="Errors:">
+            <span className="text-destructive font-semibold">
+              {scanResult.errors.length}
             </span>
-          </div>
-          {scanResult.errors.length > 0 && (
-            <>
-              <div className="bg-border h-3 w-px" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground">Errors:</span>
-                <span className="text-destructive font-semibold">
-                  {scanResult.errors.length}
-                </span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+          </Stat>
+        </>
+      )}
     </div>
   )
 }
