@@ -18,10 +18,28 @@ This project uses a **Trunk-Based Development with Release Branch** strategy:
 
 ### `release` (Production Branch)
 - **Purpose**: Production-ready, stable code
-- **Source**: Only fast-forward merges from `master`
+- **Source**: Merge commits from `master` release PRs — **never squash** (see Merge Methods)
 - **Target**: PRs only from `master` branch
 - **Deployment**: Production environment
 - **Protection**: Strict - CI must pass, version must be incremented, no direct commits
+
+## Merge Methods
+
+The merge method matters. Use the right one per PR type:
+
+| PR type | Method | Why |
+|---------|--------|-----|
+| feature → `master` | **Squash and merge** | One clean commit per change on master |
+| `master` → `release` | **Create a merge commit** | Preserves shared history between the branches |
+| hotfix → `release` | **Create a merge commit** | Same reason; merge back to master afterwards |
+
+> ⚠️ **Never squash-merge a release PR.** Squashing `master` → `release` writes a brand-new
+> commit onto `release` that `master` doesn't share, permanently forking the two histories.
+> Every subsequent release PR then conflicts on anything both branches touched — in practice
+> the four version files (`package.json`, `tauri.conf.json`, `Cargo.toml`, `Cargo.lock`) and
+> `bun.lock`, every single release. This is what caused the conflicts on PRs #116 and #118,
+> each requiring a manual back-merge of `release` into `master` to repair. A true merge
+> commit keeps the histories converged and release PRs conflict-free.
 
 ## Workflow
 
@@ -81,7 +99,8 @@ gh pr create --base release --head master \
 - List major features/fixes included in this release
 "
 
-# After PR is approved and CI passes, merge to release
+# After PR is approved and CI passes, merge to release using
+# "Create a merge commit" (NOT "Squash and merge" — see Merge Methods above).
 # GitHub Actions will automatically build and publish
 ```
 
@@ -128,7 +147,9 @@ After merging to `release`:
 - ✅ Restrict who can push to matching branches
   - Only allow PRs from `master` branch (or specific maintainers)
 - ✅ Do not allow bypassing the above settings
-- ✅ Require linear history (fast-forward merges only)
+- ❌ Do **not** enable "Require linear history" — it forces squash/rebase merges, which
+  fork `release` from `master` and cause recurring version-file conflicts. Release PRs
+  must be merged with a merge commit (see Merge Methods).
 
 ## Quick Reference
 
@@ -140,6 +161,7 @@ After merging to `release`:
 | Bump minor version | `bun run version:minor` |
 | Bump major version | `bun run version:major` |
 | Create release PR | `gh pr create --base release --head master` |
+| Merge release PR | "Create a merge commit" — never squash |
 | View current version | `node -p "require('./package.json').version"` |
 
 ## Version Numbering (Semantic Versioning)
@@ -201,6 +223,24 @@ git push origin master
 - Ensure all tests pass on master first
 - Check that version was incremented properly
 - Verify Cargo.lock is updated (run `cargo check` in src-tauri/)
+
+### "Release PR has conflicts (version files / bun.lock)"
+
+This means a previous release PR was squash-merged and the histories have forked.
+Repair by joining the histories from the master side:
+
+```bash
+git checkout master && git pull
+git merge origin/release
+# Resolve conflicts keeping master's (higher) version in package.json,
+# tauri.conf.json, Cargo.toml, Cargo.lock; then regenerate bun.lock:
+bun install
+git add -A && git commit   # merge commit
+git push origin master
+```
+
+The release PR will report mergeable again. Prevent recurrence by merging release
+PRs with a merge commit (see Merge Methods).
 
 ### "Want to hotfix production"
 ```bash
