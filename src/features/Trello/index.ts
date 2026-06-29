@@ -47,6 +47,8 @@ export { useBakerTrelloIntegration } from './hooks/useBakerTrelloIntegration'
 export { useVideoLinksManager } from './hooks/useVideoLinksManager'
 /** Hook for reading Trello card references from project breadcrumbs files */
 export { useBreadcrumbsTrelloCards } from './hooks/useBreadcrumbsTrelloCards'
+/** Hook for self-assigning the current Trello user to linked cards via a toggle */
+export { useTrelloSelfAssignment } from './hooks/useTrelloSelfAssignment'
 
 // Types (re-export for consumers)
 /** Trello card data with id, name, labels, and board membership */
