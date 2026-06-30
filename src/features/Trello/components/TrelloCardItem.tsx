@@ -4,7 +4,14 @@
  */
 
 import { openExternalUrl } from '../api'
-import { ExternalLink, RefreshCw, Trash2 } from 'lucide-react'
+import {
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  UserCheck,
+  UserPlus
+} from 'lucide-react'
 
 import { Button } from '@shared/ui/button'
 import type { TrelloCard } from '@features/Baker'
@@ -14,9 +21,62 @@ interface TrelloCardItemProps {
   trelloCard: TrelloCard
   onRemove: () => void
   onRefresh?: () => void
+  /** Whether self-assignment is available (credentials + current user known) */
+  canAssign?: boolean
+  /** Whether the current user is assigned to this card */
+  isAssigned?: boolean
+  /** Whether this card's membership is still loading */
+  isAssignmentLoading?: boolean
+  /** Whether an assignment toggle is in flight for this card */
+  isAssignmentToggling?: boolean
+  /** Toggle the current user's assignment to this card */
+  onToggleAssign?: () => void
 }
 
-export function TrelloCardItem({ trelloCard, onRemove, onRefresh }: TrelloCardItemProps) {
+interface CardAssignButtonProps {
+  isAssigned?: boolean
+  isAssignmentLoading?: boolean
+  isAssignmentToggling?: boolean
+  onToggleAssign: () => void
+}
+
+/** Toggle button for self-assigning to a Trello card. */
+function CardAssignButton({
+  isAssigned,
+  isAssignmentLoading,
+  isAssignmentToggling,
+  onToggleAssign
+}: CardAssignButtonProps) {
+  const busy = isAssignmentToggling || isAssignmentLoading
+  const Icon = busy ? Loader2 : isAssigned ? UserCheck : UserPlus
+
+  return (
+    <Button
+      variant={isAssigned ? 'secondary' : 'ghost'}
+      size="sm"
+      onClick={onToggleAssign}
+      disabled={busy}
+      className="h-7 text-xs"
+      title={
+        isAssigned ? 'Unassign yourself from this card' : 'Assign yourself to this card'
+      }
+    >
+      <Icon className={`mr-1 h-3 w-3 ${busy ? 'animate-spin' : ''}`} />
+      {isAssigned ? 'Assigned' : 'Assign me'}
+    </Button>
+  )
+}
+
+export function TrelloCardItem({
+  trelloCard,
+  onRemove,
+  onRefresh,
+  canAssign,
+  isAssigned,
+  isAssignmentLoading,
+  isAssignmentToggling,
+  onToggleAssign
+}: TrelloCardItemProps) {
   const getRelativeTime = (isoDate?: string) => {
     if (!isoDate) return null
 
@@ -98,6 +158,14 @@ export function TrelloCardItem({ trelloCard, onRemove, onRefresh }: TrelloCardIt
       {/* Actions */}
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-1">
+          {canAssign && onToggleAssign && (
+            <CardAssignButton
+              isAssigned={isAssigned}
+              isAssignmentLoading={isAssignmentLoading}
+              isAssignmentToggling={isAssignmentToggling}
+              onToggleAssign={onToggleAssign}
+            />
+          )}
           <Button
             variant="ghost"
             size="sm"

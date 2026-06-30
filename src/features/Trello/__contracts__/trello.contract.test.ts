@@ -19,6 +19,9 @@ vi.mock('../api', () => ({
   fetchBoardCards: vi.fn().mockResolvedValue([]),
   fetchBoardLists: vi.fn().mockResolvedValue([]),
   fetchCardMembers: vi.fn().mockResolvedValue([]),
+  fetchCurrentTrelloMember: vi.fn().mockResolvedValue({ id: 'me', fullName: 'Me' }),
+  addMemberToCard: vi.fn().mockResolvedValue(undefined),
+  removeMemberFromCard: vi.fn().mockResolvedValue(undefined),
   updateTrelloCard: vi.fn().mockResolvedValue(undefined),
   fetchTrelloCardById: vi.fn().mockResolvedValue({}),
   addCardComment: vi.fn().mockResolvedValue(undefined),
@@ -124,8 +127,11 @@ const mockUseMutation = vi.fn(() => ({
   data: null
 }))
 
+const mockUseQueries = vi.fn(() => [] as unknown[])
+
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
+  useQueries: (...args: unknown[]) => mockUseQueries(...args),
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
   useQueryClient: () => ({
     invalidateQueries: mockInvalidateQueries,
@@ -207,7 +213,8 @@ describe('Trello Barrel Exports - Shape', () => {
     'useParsedTrelloDescription',
     'useBakerTrelloIntegration',
     'useVideoLinksManager',
-    'useBreadcrumbsTrelloCards'
+    'useBreadcrumbsTrelloCards',
+    'useTrelloSelfAssignment'
   ].sort()
 
   it('exports exactly the expected named exports (no more, no fewer)', () => {
@@ -215,8 +222,8 @@ describe('Trello Barrel Exports - Shape', () => {
     expect(exportNames).toEqual(expectedExports)
   })
 
-  it('exports exactly 23 members', () => {
-    expect(Object.keys(trelloBarrel)).toHaveLength(23)
+  it('exports exactly 24 members', () => {
+    expect(Object.keys(trelloBarrel)).toHaveLength(24)
   })
 
   // Component shape checks
@@ -253,7 +260,8 @@ describe('Trello Barrel Exports - Shape', () => {
     'useParsedTrelloDescription',
     'useBakerTrelloIntegration',
     'useVideoLinksManager',
-    'useBreadcrumbsTrelloCards'
+    'useBreadcrumbsTrelloCards',
+    'useTrelloSelfAssignment'
   ] as const
 
   for (const name of hookNames) {

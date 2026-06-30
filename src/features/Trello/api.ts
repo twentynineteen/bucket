@@ -88,6 +88,52 @@ export async function fetchCardMembers(
   return response.json()
 }
 
+/**
+ * Fetch the Trello member that owns the current API token.
+ * Used to identify "me" so the user can self-assign to cards.
+ */
+export async function fetchCurrentTrelloMember(
+  apiKey: string,
+  token: string
+): Promise<TrelloMember> {
+  const url = `https://api.trello.com/1/members/me?key=${apiKey}&token=${token}`
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch current Trello member: ${response.status}`)
+  }
+  return response.json()
+}
+
+/** Add a member to a Trello card (assigns them to the card). */
+export async function addMemberToCard(
+  cardId: string,
+  memberId: string,
+  apiKey: string,
+  token: string
+): Promise<void> {
+  const url = `https://api.trello.com/1/cards/${cardId}/idMembers?key=${apiKey}&token=${token}&value=${memberId}`
+  const response = await fetch(url, { method: 'POST' })
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Failed to assign member to card: ${error}`)
+  }
+}
+
+/** Remove a member from a Trello card (unassigns them from the card). */
+export async function removeMemberFromCard(
+  cardId: string,
+  memberId: string,
+  apiKey: string,
+  token: string
+): Promise<void> {
+  const url = `https://api.trello.com/1/cards/${cardId}/idMembers/${memberId}?key=${apiKey}&token=${token}`
+  const response = await fetch(url, { method: 'DELETE' })
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Failed to remove member from card: ${error}`)
+  }
+}
+
 export async function updateTrelloCard(
   cardId: string,
   updates: Partial<{ name: string; desc: string }>,
