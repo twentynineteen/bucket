@@ -1,0 +1,15 @@
+{
+  "version": "0.16.0",
+  "notes": "## What's Changed\n\n- feat(baker): self-assign to Trello cards via toggle (v0.16.0) (#122) (#123) (30d4db8)\n- chore: bump version to 0.15.1 (ff2b4ac)\n- fix(sidebar): hide unused Transcription page from Upload content menu (e6eec72)\n\n## Installation\n\nDownload the appropriate installer for your platform from the assets below.\n\n**Full Changelog**: https://github.com/twentynineteen/bucket/compare/app-v0.15.0...app-v0.16.0",
+  "pub_date": "2026-06-30T10:08:08Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "url": "https://github.com/twentynineteen/bucket/releases/download/app-v0.16.0/Bucket_aarch64-apple-darwin.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUdGxzdGplRllZbmZnelpNZDRXRkVRUS9ZSUdkNC9RTU5ZSHQ5L0ErNjVyQ1ZvTFY4d0FUQlBFSTJXWjVhakJzQ2p2MWZ5eU5Ha21STVZ6NFJRNmJGaE8zMzlaQTI0TFE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyODE0MDM4CWZpbGU6QnVja2V0LmFwcC50YXIuZ3oKZFp1eE9xeTUwbU5aQ2l2ZDljUlV4UWhKeTIvWTdEaHhRR2s2OU5hOXcyS1cxNW9CY3FKR1JVK2NkVFVEZFptSEpZY0MycDNHYWNCSFJ4UngxanJjQVE9PQo="
+    },
+    "darwin-x86_64": {
+      "url": "https://github.com/twentynineteen/bucket/releases/download/app-v0.16.0/Bucket_x86_64-apple-darwin.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUdGxzdGplRllZbldZVjZZSENYZ2VFdS85cThkNUladnpVRlI1RjFxSWNwS0xOcitIRU9ua2Y1YXVOUUtadlV0bmtuS3NKdkk1VEZYN1hVTk4vcURGeUZlWCtldmdxS2dFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyODEzNzI2CWZpbGU6QnVja2V0LmFwcC50YXIuZ3oKMk9OMS9GS0h5T21PemwxRHl6Nyt3SEUvMGhsZVNFNHE0bkpRUzNzcUcwUmY4U3FwQTQxcWl2QVJYT2R3Njdab1VFMzU1QmN0ekZLMyszNHJ1RytlQWc9PQo="
+    }
+  }
+}
