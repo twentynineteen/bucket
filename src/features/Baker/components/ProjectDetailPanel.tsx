@@ -20,9 +20,12 @@ import {
   FileVideo,
   FolderOpen,
   HardDrive,
+  Loader2,
   RefreshCw,
   Search,
   User,
+  UserCheck,
+  UserPlus,
   Video
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -43,7 +46,11 @@ import type {
   VideoLink
 } from '../types'
 
-import { TrelloCardsManager, useTrelloCardsManager } from '@features/Trello'
+import {
+  TrelloCardsManager,
+  useTrelloCardsManager,
+  useTrelloSelfAssignment
+} from '@features/Trello'
 import { cn, formatBreadcrumbDateSimple } from '@shared/utils'
 import { ChangeDiffList } from './ChangeDiffList'
 import { VideoLinksManager } from './VideoLinksManager'
@@ -526,6 +533,12 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
   const linkedCards: TrelloCard[] = manager.trelloCards ?? []
   const videoLinks: VideoLink[] = breadcrumbs.videoLinks ?? []
 
+  const cardIds = useMemo(
+    () => (manager.trelloCards ?? []).map((card) => card.cardId),
+    [manager.trelloCards]
+  )
+  const assignment = useTrelloSelfAssignment({ cardIds, trelloApiKey, trelloApiToken })
+
   // Hide the legacy row once a linked card with the same id exists (migrated)
   const legacyMigrated =
     legacyCardId !== null && linkedCards.some((card) => card.cardId === legacyCardId)
@@ -573,6 +586,11 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
               title={card.title}
               subtitle={`Trello${card.boardName ? ` · ${card.boardName}` : ''}`}
               onOpen={() => openInShell(card.url)}
+              canAssign={assignment.canAssign}
+              isAssigned={assignment.isAssigned(card.cardId)}
+              isAssignmentLoading={assignment.isCardLoading(card.cardId)}
+              isAssignmentToggling={assignment.isToggling(card.cardId)}
+              onToggleAssign={() => assignment.toggleAssignment(card.cardId)}
             />
           ))}
 
@@ -646,6 +664,16 @@ interface ResourceRowProps {
   title: string
   subtitle: string
   onOpen: () => void
+  /** Whether self-assignment is available for this resource (Trello cards only) */
+  canAssign?: boolean
+  /** Whether the current user is assigned to this card */
+  isAssigned?: boolean
+  /** Whether this card's membership is still loading */
+  isAssignmentLoading?: boolean
+  /** Whether an assignment toggle is in flight for this card */
+  isAssignmentToggling?: boolean
+  /** Toggle the current user's assignment to this card */
+  onToggleAssign?: () => void
 }
 
 const ResourceRow: React.FC<ResourceRowProps> = ({
@@ -653,7 +681,12 @@ const ResourceRow: React.FC<ResourceRowProps> = ({
   iconClass,
   title,
   subtitle,
-  onOpen
+  onOpen,
+  canAssign,
+  isAssigned,
+  isAssignmentLoading,
+  isAssignmentToggling,
+  onToggleAssign
 }) => (
   <div className="border-border hover:bg-accent/30 flex items-center gap-3 rounded-lg border p-3 transition-colors">
     <div
@@ -670,6 +703,27 @@ const ResourceRow: React.FC<ResourceRowProps> = ({
       </p>
       <p className="text-muted-foreground text-xs">{subtitle}</p>
     </div>
+    {canAssign && onToggleAssign && (
+      <Button
+        variant={isAssigned ? 'secondary' : 'outline'}
+        size="sm"
+        onClick={onToggleAssign}
+        disabled={isAssignmentToggling || isAssignmentLoading}
+        className="flex-shrink-0 gap-1.5"
+        title={
+          isAssigned ? 'Unassign yourself from this card' : 'Assign yourself to this card'
+        }
+      >
+        {isAssignmentToggling || isAssignmentLoading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : isAssigned ? (
+          <UserCheck className="h-3.5 w-3.5" />
+        ) : (
+          <UserPlus className="h-3.5 w-3.5" />
+        )}
+        {isAssigned ? 'Assigned' : 'Assign me'}
+      </Button>
+    )}
     <Button
       variant="outline"
       size="sm"

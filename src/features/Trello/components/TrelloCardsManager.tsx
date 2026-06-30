@@ -4,7 +4,10 @@
  * Refactored: 2025-11-18 - Extracted state to useTrelloCardsManager, dialog to AddCardDialog
  */
 
+import { useMemo } from 'react'
+
 import { useTrelloCardsManager } from '../hooks/useTrelloCardsManager'
+import { useTrelloSelfAssignment } from '../hooks/useTrelloSelfAssignment'
 import { AlertCircle, Loader2 } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@shared/ui/alert'
@@ -81,6 +84,13 @@ export function TrelloCardsManager({
     trelloApiKey,
     trelloApiToken,
     autoSyncToTrello
+  })
+
+  const cardIds = useMemo(() => trelloCards.map((card) => card.cardId), [trelloCards])
+  const assignment = useTrelloSelfAssignment({
+    cardIds,
+    trelloApiKey,
+    trelloApiToken
   })
 
   // Loading state
@@ -189,6 +199,11 @@ export function TrelloCardsManager({
                   trelloCard={card}
                   onRemove={() => requestRemoveCard(index)}
                   onRefresh={hasApiCredentials ? () => handleRefresh(index) : undefined}
+                  canAssign={assignment.canAssign}
+                  isAssigned={assignment.isAssigned(card.cardId)}
+                  isAssignmentLoading={assignment.isCardLoading(card.cardId)}
+                  isAssignmentToggling={assignment.isToggling(card.cardId)}
+                  onToggleAssign={() => assignment.toggleAssignment(card.cardId)}
                 />
               ))}
             </tbody>
