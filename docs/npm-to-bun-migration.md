@@ -205,7 +205,7 @@ These files contain npm references that should NOT be changed:
 ### Correct NPX Usage
 - `CLAUDE.md` line 47-49: `npx npm-check-updates` (npm-specific tool)
 - `docs/react-query-patterns.md`: `npx ts-node` (correct usage)
-- `scripts/validate-migration.ts`: `npx tsc` (correct usage)
+- `scripts/validate-migration.ts`: `npx tsc` (correct usage; script since removed after migration completed)
 
 ### Package Names (Not Commands)
 - `package.json`: `"npm-check-updates": "^19.1.1"` (dependency name)

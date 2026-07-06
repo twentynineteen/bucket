@@ -2,9 +2,10 @@
 
 > *Historical snapshot (v0.8.1, circa December 2024). The TypeScript service classes
 > referenced below (`SecurityAuditor`, `SecurityVulnerability`, `PackageUpdateWorkflow`)
-> were never merged into the codebase. The shell script `scripts/security-audit.sh` and
-> `scripts/validate-lock-sync.sh` do exist and remain usable. Treat the service-layer
-> sections as aspirational design notes, not as documentation of shipped code.*
+> were never merged into the codebase, and the companion shell scripts
+> (`scripts/security-audit.sh`, `scripts/validate-lock-sync.sh`) have since been removed.
+> Use `bun audit` for dependency scanning. Treat the sections below as aspirational
+> design notes, not as documentation of shipped code.*
 
 ## Overview
 

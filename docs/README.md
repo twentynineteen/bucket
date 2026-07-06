@@ -531,12 +531,6 @@ ProjectFolder/
 - **[theme-architecture.md](./theme-architecture.md)** - Theme system architecture (13 themes)
 - **[theme-customization.md](./theme-customization.md)** - Guide to customizing and extending themes
 
-### Subdirectories
-
-- **[readme/](./readme/)** - Sectioned README content (overview, features, installation, Ollama setup, workflow, tech stack, Premiere plugins)
-- **[ui/](./ui/)** - UI audit reports (BuildProject comprehensive audit, Tailwind audit)
-- **[ux/](./ux/)** - UX animation planning and implementation status
-
 ### Project-root references
 
 - **[CLAUDE.md](../CLAUDE.md)** - Instructions for Claude Code when working with this codebase
