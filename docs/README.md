@@ -528,7 +528,7 @@ ProjectFolder/
 - **[npm-to-bun-migration.md](./npm-to-bun-migration.md)** - Migration notes from npm to Bun
 - **[react-query-patterns.md](./react-query-patterns.md)** - TanStack React Query usage patterns
 - **[security-audit.md](./security-audit.md)** - Security audit notes and findings
-- **[theme-architecture.md](./theme-architecture.md)** - Theme system architecture (8 themes)
+- **[theme-architecture.md](./theme-architecture.md)** - Theme system architecture (13 themes)
 - **[theme-customization.md](./theme-customization.md)** - Guide to customizing and extending themes
 
 ### Subdirectories

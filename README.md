@@ -17,7 +17,7 @@ Bucket is a single desktop app that ties together the repetitive steps of a vide
 - **Premiere** -- Install and update Premiere Pro CEP extension plugins (BreadcrumbsPremiere, Boring) with one click.
 - **AI Tools** -- AI-powered script formatting for autocue/teleprompter use, powered by local Ollama models via the Vercel AI SDK.
 - **Auth** -- Login, registration, and token management with argon2 hashing and Tauri Stronghold secure storage.
-- **Settings** -- Per-domain configuration tabs covering Trello boards, Ollama connection, and app preferences. Eight themes available (System, Light, Dark, Dracula, Catppuccin variants).
+- **Settings** -- Per-domain configuration tabs covering Trello boards, Ollama connection, and app preferences. Thirteen themes available (System, Light, Dark, Dracula, Tokyo Night, Catppuccin variants, Solarized Light, GitHub Light, Nord Light, One Light).
 
 ## Getting Bucket
 
@@ -96,7 +96,7 @@ GitHub Actions workflows run on every push and PR to `master` and `release`:
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 19 + TypeScript 5.9 + Vite 7 |
+| Frontend | React 19.2 + TypeScript 5.9 + Vite 7.3 |
 | Backend | Tauri 2.0 (Rust 2021 edition) |
 | UI | TailwindCSS 4 + Radix UI + Lucide icons |
 | State | Zustand + TanStack React Query |
