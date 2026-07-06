@@ -189,6 +189,9 @@ camera-count-fixes.md
 /test-results/
 playwright-report/
 
+# Local build artifacts (DMGs etc.)
+/artifacts/
+
 # Claude Code
 .claude/
 
