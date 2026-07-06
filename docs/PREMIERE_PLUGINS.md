@@ -248,7 +248,7 @@ PluginInfo {
 #### 4. Rebuild Bucket
 
 ```bash
-npm run build:tauri
+bun run build:tauri
 ```
 
 ---

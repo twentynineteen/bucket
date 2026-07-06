@@ -1,6 +1,6 @@
 ## Tech Stack
 
-- **Frontend**: React 18 + TypeScript + TailwindCSS
+- **Frontend**: React 19 + TypeScript + TailwindCSS
 - **Backend**: Tauri 2.0 (Rust)
 - **UI Components**: Radix UI + Lucide icons
 - **State Management**: Zustand + TanStack React Query

@@ -6,7 +6,7 @@ This document explains the high-level architecture of Bucket, including how diff
 
 **Target audience:** Developers who need to understand the system design before making significant changes or adding new features.
 
-**Last updated:** January 2025 (v0.9.3)
+**Last updated:** July 2026 (v0.16.0)
 
 ## System Design
 
@@ -49,7 +49,7 @@ This document explains the high-level architecture of Bucket, including how diff
 
 **Components:**
 
-1. **React Frontend** - User interface built with React 19, TypeScript 5.9, and TailwindCSS. Handles all UI rendering, user interactions, and client-side state management.
+1. **React Frontend** - User interface built with React 19, TypeScript 5.9, and TailwindCSS 4. Handles all UI rendering, user interactions, and client-side state management. Organized into feature modules (`src/features/`) with shared code in `src/shared/`.
 
 2. **Rust Backend (Tauri)** - Native application layer that provides secure file system access, API integrations, and performance-critical operations. Exposes commands to the frontend via Tauri's IPC bridge.
 
@@ -62,7 +62,7 @@ This document explains the high-level architecture of Bucket, including how diff
 | Layer                  | Technology                     | Why We Chose It                                                                          |
 | ---------------------- | ------------------------------ | ---------------------------------------------------------------------------------------- |
 | **Frontend Framework** | React 19 + TypeScript 5.9      | Type safety, large ecosystem, excellent tooling, team expertise                          |
-| **Build Tool**         | Vite 7.1                       | Fast HMR, modern ESM support, optimized production builds                                |
+| **Build Tool**         | Vite 7.3                       | Fast HMR, modern ESM support, optimized production builds                                |
 | **Desktop Runtime**    | Tauri 2.0                      | Smaller app size than Electron, better security, Rust performance, native OS integration |
 | **UI Components**      | Radix UI + TailwindCSS         | Accessible primitives, utility-first styling, consistent design system                   |
 | **State Management**   | Zustand + TanStack React Query | Simple API, minimal boilerplate, excellent async state handling                          |
@@ -73,119 +73,124 @@ This document explains the high-level architecture of Bucket, including how diff
 
 ## Directory Structure
 
+> **Note:** The frontend was reorganized in March 2026 from a flat layout
+> (`src/pages/`, `src/hooks/`, `src/components/`, etc.) into a feature-module
+> architecture. See CLAUDE.md for the canonical module map and conventions.
+
 ```
 bucket/
 ├── src/                            # React frontend source
-│   ├── pages/                      # Page-level components (routes)
-│   │   ├── BuildProject/           # Multi-camera project creation
-│   │   │   ├── BuildProject.tsx    # Main orchestrator component
-│   │   │   ├── ProjectInputs.tsx   # Title, date, camera count inputs
-│   │   │   ├── ProjectFileList.tsx # File selection and camera assignment
-│   │   │   ├── ProjectActions.tsx  # Create project button + logic
-│   │   │   └── ProgressBar.tsx     # File copy progress tracking
+│   ├── features/                   # Feature modules (domain-driven)
+│   │   ├── AITools/                # ScriptFormatter + ExampleEmbeddings
+│   │   │   ├── api.ts              # I/O boundary (Tauri invoke wrappers)
+│   │   │   ├── types.ts            # Shared type definitions
+│   │   │   ├── index.ts            # Barrel file (named re-exports + JSDoc)
+│   │   │   ├── __contracts__/      # Contract tests (shape, behavioral, no-bypass)
+│   │   │   ├── internal/           # Internal utilities (not exported)
+│   │   │   ├── ScriptFormatter/    # RAG-based script formatting UI
+│   │   │   └── ExampleEmbeddings/  # Manage RAG examples UI
 │   │   │
-│   │   ├── Baker/                  # Batch breadcrumbs management
-│   │   │   └── Baker.tsx           # Main Baker workflow component
+│   │   ├── Auth/                   # Login, registration, token management
+│   │   │   ├── api.ts
+│   │   │   ├── AuthContext.ts
+│   │   │   ├── AuthProvider.tsx
+│   │   │   ├── index.ts
+│   │   │   ├── __contracts__/
+│   │   │   ├── components/         # Login.tsx, Register.tsx
+│   │   │   └── hooks/
 │   │   │
-│   │   ├── AI/                     # AI-powered features
-│   │   │   ├── ScriptFormatter/    # RAG-based script formatting
-│   │   │   │   ├── ScriptFormatter.tsx # Main formatter UI
-│   │   │   │   ├── DiffEditor.tsx      # Monaco diff viewer
-│   │   │   │   ├── FileUploader.tsx    # .docx upload
-│   │   │   │   ├── ModelSelector.tsx   # AI model selection
-│   │   │   │   └── ExampleToggleList.tsx # Example selection
-│   │   │   │
-│   │   │   └── ExampleEmbeddings/  # Manage RAG examples
-│   │   │       ├── ExampleEmbeddings.tsx # Main management UI
-│   │   │       ├── ExampleCard.tsx       # Display example
-│   │   │       ├── UploadDialog.tsx      # Upload new example
-│   │   │       └── ViewExampleDialog.tsx # View example details
+│   │   ├── Baker/                  # Drive scanning, breadcrumbs management
+│   │   │   ├── api.ts
+│   │   │   ├── types.ts
+│   │   │   ├── BakerPage.tsx       # Main Baker page component
+│   │   │   ├── index.ts
+│   │   │   ├── __contracts__/
+│   │   │   ├── components/         # ProjectList, VideoLinksManager, BatchActions, etc.
+│   │   │   ├── hooks/              # useBakerScan, useBreadcrumbsManager, etc.
+│   │   │   ├── internal/
+│   │   │   └── utils/
 │   │   │
-│   │   ├── auth/                   # Authentication pages
-│   │   │   ├── Login.tsx           # Login form
-│   │   │   └── Register.tsx        # Registration form
+│   │   ├── BuildProject/           # File ingest, camera assignment, XState
+│   │   │   ├── api.ts
+│   │   │   ├── types.ts
+│   │   │   ├── BuildProjectPage.tsx
+│   │   │   ├── index.ts
+│   │   │   ├── __contracts__/
+│   │   │   ├── components/
+│   │   │   └── hooks/
 │   │   │
-│   │   ├── UploadSprout.tsx        # Sprout Video integration
-│   │   ├── UploadTrello.tsx        # Trello integration
-│   │   ├── Posterframe.tsx         # Custom posterframe generator
-│   │   ├── Settings.tsx            # App settings and API keys
-│   │   └── ...                     # Other pages
-│   │
-│   ├── components/                 # Reusable UI components
-│   │   ├── ui/                     # Radix UI primitives
-│   │   │   ├── button.tsx          # Button component
-│   │   │   ├── dialog.tsx          # Modal dialogs
-│   │   │   ├── select.tsx          # Dropdown selects
-│   │   │   ├── progress.tsx        # Progress bars
-│   │   │   └── ...                 # 25+ UI primitives
+│   │   ├── Premiere/               # Adobe Premiere plugin management
+│   │   │   ├── api.ts
+│   │   │   ├── types.ts
+│   │   │   ├── index.ts
+│   │   │   ├── __contracts__/
+│   │   │   └── components/
 │   │   │
-│   │   ├── Baker/                  # Baker-specific components
-│   │   │   ├── ProjectList.tsx     # Scanned projects list
-│   │   │   ├── VideoLinksManager.tsx # Manage video links
-│   │   │   ├── TrelloCardsManager.tsx # Manage Trello cards
-│   │   │   └── BatchActions.tsx    # Batch update controls
+│   │   ├── Settings/               # App configuration with per-domain tabs
+│   │   │   ├── api.ts
+│   │   │   ├── types.ts
+│   │   │   ├── index.ts
+│   │   │   ├── __contracts__/
+│   │   │   ├── components/
+│   │   │   └── hooks/
 │   │   │
-│   │   ├── trello/                 # Trello components
-│   │   │   ├── TrelloIntegrationButton.tsx
-│   │   │   └── TrelloIntegrationModal.tsx
+│   │   ├── Trello/                 # Trello card management, video links
+│   │   │   ├── api.ts
+│   │   │   ├── types.ts
+│   │   │   ├── index.ts
+│   │   │   ├── __contracts__/
+│   │   │   ├── components/         # TrelloCardsManager, UploadTrello, etc.
+│   │   │   ├── hooks/
+│   │   │   └── internal/
 │   │   │
-│   │   ├── BreadcrumbsViewer.tsx   # Display breadcrumbs data
-│   │   └── ErrorBoundary.tsx       # Global error handling
+│   │   └── Upload/                 # Sprout Video, Posterframe, Otter
+│   │       ├── api.ts
+│   │       ├── types.ts
+│   │       ├── index.ts
+│   │       ├── __contracts__/
+│   │       ├── components/         # UploadSprout, Posterframe, UploadOtter
+│   │       ├── hooks/
+│   │       └── internal/
 │   │
-│   ├── hooks/                      # Custom React hooks (40+)
-│   │   ├── useCreateProject.ts     # Project creation orchestration
-│   │   ├── useBreadcrumb.ts        # Read/write breadcrumbs files
-│   │   ├── useBakerScan.ts         # Scan folders for projects
-│   │   ├── useCameraAutoRemap.ts   # Auto-assign camera numbers
-│   │   ├── useScriptProcessor.ts   # AI script formatting logic
-│   │   ├── useExampleManagement.ts # Manage RAG examples
-│   │   ├── useTrelloCardDetails.ts # Fetch Trello card data
-│   │   ├── useSproutVideoApi.ts    # Sprout Video operations
-│   │   ├── useAuth.ts              # Authentication state
-│   │   └── ...                     # Domain-specific hooks
+│   ├── shared/                     # Cross-feature shared code
+│   │   ├── constants/              # Timing, animation, project constants
+│   │   ├── hooks/                  # Cross-feature hooks (breadcrumb, search, API keys, mobile)
+│   │   ├── lib/                    # Query infrastructure: keys, client, utils, prefetch, perf
+│   │   ├── services/               # ProgressTracker, feedback, cache services
+│   │   ├── store/                  # Zustand stores: useAppStore, useBreadcrumbStore
+│   │   ├── types/                  # Shared domain types: media, script, breadcrumbs
+│   │   ├── ui/                     # Radix primitives, sidebar, theme, layout (NO barrel)
+│   │   └── utils/                  # Logger, storage, validation, cn(), breadcrumbs utils
 │   │
-│   ├── store/                      # Zustand global state
-│   │   ├── useBreadcrumbStore.ts   # Breadcrumbs UI state
-│   │   └── useAppStore.ts          # App-wide settings
+│   ├── app/                        # Layout shell
+│   │   └── dashboard/
+│   │       └── page.tsx            # Root layout (sidebar + outlet)
 │   │
-│   ├── services/                   # Business logic services
-│   │   ├── ai/                     # AI provider abstraction
-│   │   │   ├── modelFactory.ts     # Create AI provider instances
-│   │   │   ├── providerConfig.ts   # Provider configurations
-│   │   │   └── types.ts            # AI service types
-│   │   ├── ProgressTracker.ts      # Progress tracking utility
-│   │   └── cache-invalidation.ts   # React Query cache logic
-│   │
-│   ├── utils/                      # Utility functions
-│   │   ├── validation.ts           # Input validation helpers
-│   │   ├── breadcrumbsValidation.ts # Breadcrumbs schema validation
-│   │   ├── parseSproutVideoUrl.ts  # Extract Sprout video IDs
-│   │   ├── extractVideoInfoBlock.ts # Parse video info from text
-│   │   ├── debounce.ts             # Debounce utility
-│   │   └── ...                     # Domain utilities
-│   │
-│   ├── types/                      # TypeScript type definitions
-│   │   ├── baker.ts                # Baker workflow types
-│   │   ├── scriptFormatter.ts      # Script formatter types
-│   │   ├── exampleEmbeddings.ts    # RAG example types
-│   │   └── media.ts                # Media file types
-│   │
-│   ├── lib/                        # Shared library code
-│   │   ├── query-client-config.ts  # React Query configuration
-│   │   ├── query-keys.ts           # Centralized query key factory
-│   │   └── query-utils.ts          # Query helper functions
-│   │
-│   ├── App.tsx                     # Root React component
-│   ├── AppRouter.tsx               # React Router configuration
+│   ├── App.tsx                     # Root React component (providers, QueryClient)
+│   ├── AppRouter.tsx               # React Router configuration (lazy-loaded routes)
 │   └── index.tsx                   # App entry point
 │
 ├── src-tauri/                      # Rust backend
 │   ├── src/
-│   │   ├── commands/               # Tauri command modules
+│   │   ├── baker/                  # Baker-specific Tauri commands
+│   │   │   ├── mod.rs
+│   │   │   ├── breadcrumbs.rs      # Scan, read, update breadcrumbs
+│   │   │   ├── scanning.rs         # Folder scanning logic
+│   │   │   ├── types.rs            # Baker Rust types
+│   │   │   └── video_links.rs      # Video link + Trello card commands
+│   │   │
+│   │   ├── build_project/          # BuildProject file-transfer commands
+│   │   │   ├── mod.rs
+│   │   │   ├── commands.rs         # transfer_files_with_progress, cancel_file_transfer
+│   │   │   ├── error.rs            # Error types
+│   │   │   ├── registry.rs         # Operation registry (Arc<DashMap>)
+│   │   │   └── transfer.rs         # File copy logic
+│   │   │
+│   │   ├── commands/               # General Tauri command modules
 │   │   │   ├── mod.rs              # Command exports
 │   │   │   ├── auth.rs             # Authentication (argon2, JWT)
-│   │   │   ├── file_ops.rs         # File system operations
-│   │   │   ├── premiere.rs         # Premiere Pro integration
+│   │   │   ├── plugins.rs          # Premiere CEP plugin management
+│   │   │   ├── premiere.rs         # Premiere Pro template operations
 │   │   │   ├── sprout_upload.rs    # Sprout Video API client
 │   │   │   ├── docx.rs             # Word document processing
 │   │   │   ├── rag.rs              # RAG embeddings + vector search
@@ -199,32 +204,25 @@ bucket/
 │   │   │
 │   │   ├── utils/                  # Rust utilities
 │   │   │   ├── mod.rs
-│   │   │   └── file_copy.rs        # Optimized file copying
+│   │   │   └── macos_copyfile.rs   # macOS-optimized file copying
 │   │   │
-│   │   ├── baker.rs                # Baker workflow types
-│   │   ├── media.rs                # Media file handling
+│   │   ├── media.rs                # Media file handling (VideoLink, TrelloCard types)
 │   │   ├── lib.rs                  # Library root
-│   │   └── main.rs                 # App entry point
+│   │   └── main.rs                 # App entry point + command registration
 │   │
 │   ├── resources/                  # Bundled app resources
 │   │   ├── embeddings/
 │   │   │   └── examples.db         # SQLite vector embeddings DB
 │   │   └── examples/               # Bundled script examples
-│   │       ├── educational-lecture-1/
-│   │       └── business-presentation-1/
 │   │
 │   ├── assets/                     # Static assets
+│   │   ├── plugins/                # Premiere CEP plugin files
 │   │   ├── Premiere 4K Template 2025.prproj
 │   │   └── Premiere 4K Template 2023.prproj
 │   │
 │   ├── Cargo.toml                  # Rust dependencies
 │   ├── tauri.conf.json             # Tauri app configuration
 │   └── build.rs                    # Build script
-│
-├── specs/                          # Feature specifications (PRDs)
-│   ├── 004-embed-multiple-video/   # Multiple video links design
-│   ├── 007-frontend-script-example/ # Script examples management
-│   └── ...
 │
 ├── tests/                          # Frontend tests
 │   └── ...
@@ -234,12 +232,11 @@ bucket/
 │   └── ...
 │
 ├── docs/                           # Documentation
-│   ├── README.md                   # This file
-│   ├── ARCHITECTURE.md             # Architecture overview
+│   ├── README.md                   # Project overview
+│   ├── ARCHITECTURE.md             # Architecture overview (this file)
 │   └── API_COMMANDS.md             # Tauri commands reference
 │
-├── package.json                    # npm dependencies + scripts
-├── Cargo.toml                      # Workspace root (if applicable)
+├── package.json                    # Bun dependencies + scripts
 ├── tsconfig.json                   # TypeScript configuration
 ├── vite.config.ts                  # Vite build configuration
 └── CLAUDE.md                       # Claude Code instructions
@@ -247,62 +244,50 @@ bucket/
 
 ### Directory Purpose and Rules
 
-#### src/pages/
+#### src/features/\<Name\>/
 
-**Purpose:** Page-level components that represent routes in the application.
-
-**What goes here:**
-
-- Top-level feature pages (BuildProject, Baker, Settings, etc.)
-- Route-specific orchestrator components
-- Sub-components specific to one page (in subdirectories)
-
-**What doesn't go here:**
-
-- Reusable components (put in `components/`)
-- Business logic (put in `hooks/` or `services/`)
-- Utilities (put in `utils/`)
-
-**When to add a file:** When creating a new route/page in the application.
-
-#### src/hooks/
-
-**Purpose:** Custom React hooks that encapsulate reusable logic.
+**Purpose:** Self-contained feature modules, each with its own components, hooks, types, and I/O boundary.
 
 **What goes here:**
 
-- Tauri command wrappers (e.g., `useBreadcrumb`)
-- TanStack React Query hooks for data fetching
-- Complex state management logic
-- Reusable UI behavior (e.g., `useZoomPan`)
+- `api.ts` -- wraps ALL Tauri invoke/plugin calls (single I/O boundary)
+- `types.ts` -- shared type definitions for the module
+- `index.ts` -- barrel file with named re-exports and JSDoc
+- `__contracts__/` -- contract tests (shape, behavioral, no-bypass)
+- `components/` -- React components specific to this feature
+- `hooks/` -- React hooks specific to this feature
+- `internal/` -- internal utilities (NOT exported from barrel)
 
-**What doesn't go here:**
+**Import rules:**
 
-- Pure utility functions (put in `utils/`)
-- UI components (put in `components/`)
-- Global state stores (put in `store/`)
+- Features import shared via `@shared/*` barrel imports
+- Features import other features via `@features/*` barrel only
+- Shared NEVER imports from features
+- No direct `@tauri-apps` plugin imports in components/hooks -- all I/O goes through `api.ts`
 
-**When to add a file:** When logic is reused across 2+ components or when abstracting Tauri commands.
+**When to add a module:** When creating a new feature area in the application. See CLAUDE.md for the full checklist.
 
-#### src-tauri/src/commands/
+#### src/shared/
 
-**Purpose:** Rust functions exposed to the frontend via Tauri's IPC.
+**Purpose:** Cross-feature shared code. Dependency flows one direction: features depend on shared, never the reverse.
+
+**Subdirectories:** `constants/`, `hooks/`, `lib/`, `services/`, `store/`, `types/`, `ui/`, `utils/`
+
+**Note:** `shared/ui/` has NO barrel file -- use direct imports (e.g., `@shared/ui/button`, `@shared/ui/sidebar/Sidebar`).
+
+#### src-tauri/src/ (Rust backend)
+
+**Purpose:** Rust functions exposed to the frontend via Tauri's IPC, organized by domain.
 
 **What goes here:**
 
-- File system operations
-- API integrations (Trello, Sprout Video, Ollama)
-- Database operations (SQLite)
-- CPU-intensive operations (embeddings, file hashing)
+- `baker/` -- Baker scanning and breadcrumbs commands
+- `build_project/` -- File transfer with progress and cancellation
+- `commands/` -- General commands (auth, premiere, docx, rag, sprout, AI provider, plugins, system)
+- `state/` -- Shared state (Arc<Mutex<T>>)
+- `utils/` -- Rust utilities (macOS-optimized file copying)
 
-**What doesn't go here:**
-
-- UI logic (stays in React)
-- Simple data transformations (do in TypeScript unless performance-critical)
-
-**When to add a file:** When adding new Rust functionality that the frontend needs to call.
-
-**Naming convention:** Functions are annotated with `#[tauri::command]` and use snake_case (e.g., `create_project_folder`).
+**Naming convention:** Functions are annotated with `#[tauri::command]` and use snake_case (e.g., `transfer_files_with_progress`, `baker_start_scan`).
 
 ## Data Flow
 
@@ -322,42 +307,40 @@ User Interaction → React Component → Tauri Command → File System
 
 **Step-by-step:**
 
-1. **User selects files** in `ProjectFileList.tsx`
+1. **User selects files** in `BuildProjectPage.tsx`
    - User clicks "Select Files" button
-   - Calls `useFileSelector` hook
+   - File selection goes through the feature's `api.ts` I/O boundary
    - Hook invokes `open()` from `@tauri-apps/plugin-dialog`
    - Returns file paths array
 
 2. **User assigns cameras**
    - Files displayed in list with camera number inputs
-   - Auto-assign button triggers `useCameraAutoRemap` hook
-   - Validates that cameras 1 to N are all assigned
+   - Auto-assign logic validates that cameras 1 to N are all assigned
 
 3. **User creates project**
-   - Clicks "Create Project" in `ProjectActions.tsx`
-   - Calls `useCreateProject` hook
+   - Clicks "Create Project" in `BuildProjectPage.tsx`
    - Hook validates inputs (title, folder, camera assignments)
 
 4. **Frontend invokes Tauri command**
-   - `useCreateProject` calls `invoke('create_project_folder', { ... })`
+   - Calls `invoke('transfer_files_with_progress', { ... })` via `api.ts`
    - Tauri IPC serializes arguments to JSON
    - Rust backend receives command
 
-5. **Backend creates project**
-   - `create_project_folder()` in `file_ops.rs`
+5. **Backend transfers files**
+   - `transfer_files_with_progress()` in `build_project/commands.rs`
    - Creates folder structure: `Footage/Camera 1/`, `Footage/Camera 2/`, etc.
    - Copies files to appropriate camera folders with progress callbacks
-   - Emits progress events via `window.emit('copy_progress', ...)`
+   - Supports cancellation via `cancel_file_transfer()` and an `OperationRegistry`
    - Generates breadcrumbs.json
 
 6. **Backend copies Premiere template**
-   - `copy_premiere_template()` in `premiere.rs`
+   - `copy_premiere_project()` in `commands/premiere.rs`
    - Reads template from `assets/Premiere 4K Template 2025.prproj`
    - Copies to `Projects/[title].prproj`
    - Uses `file.sync_all()` to prevent corruption (v0.9.1 fix)
 
 7. **Frontend updates progress**
-   - `useCopyProgress` hook listens to `copy_progress` events
+   - Progress events streamed from backend
    - Updates progress bar in real-time
    - Shows file-by-file status
 
@@ -374,33 +357,28 @@ User Interaction → React Component → Tauri Command → File System
 
 **Step-by-step:**
 
-1. **User uploads .docx** in `FileUploader.tsx`
+1. **User uploads .docx** in ScriptFormatter
    - File selected via `<input type="file" accept=".docx" />`
-   - `useScriptFileUpload` hook reads file as ArrayBuffer
-   - Calls `invoke('parse_docx', { fileData: Array.from(buffer) })`
+   - Upload hook reads file as ArrayBuffer
+   - Calls `invoke('parse_docx_file', { filePath })` via `api.ts`
 
 2. **Backend parses Word document**
-   - `parse_docx()` in `docx.rs`
-   - Uses `mammoth` crate to extract text
-   - Returns plain text string
+   - `parse_docx_file()` in `commands/docx.rs`
+   - Extracts text content and formatting metadata
+   - Returns `ParseResult` with text, HTML, and formatting info
 
 3. **Frontend chunks text**
    - `useScriptProcessor` splits text into semantic chunks
    - Each chunk ~500 tokens for context window efficiency
 
-4. **Backend generates embeddings**
-   - Frontend calls `invoke('embed_text_ollama', { text, model })`
-   - `embed_text_ollama()` in `rag.rs`
-   - Sends text to Ollama embedding endpoint
-   - Returns vector embedding (e.g., 768 dimensions for nomic-embed-text)
-
-5. **Backend retrieves similar examples**
-   - `find_similar_examples()` in `rag.rs`
-   - Performs cosine similarity search in SQLite
+4. **Backend searches for similar examples**
+   - Frontend calls `invoke('search_similar_scripts', { ... })` via `api.ts`
+   - `search_similar_scripts()` in `commands/rag.rs`
+   - Generates embedding, then performs cosine similarity search in SQLite
    - Uses `SELECT ... ORDER BY similarity DESC LIMIT 3`
    - Returns top 3 most relevant examples
 
-6. **Frontend calls LLM**
+5. **Frontend calls LLM**
    - `useScriptProcessor` constructs prompt:
      - System prompt: "Format this autocue script..."
      - Examples: Retrieved before/after pairs
@@ -408,13 +386,13 @@ User Interaction → React Component → Tauri Command → File System
    - Calls Ollama API via Vercel AI SDK
    - Streams response chunks
 
-7. **Frontend displays diff**
+6. **Frontend displays diff**
    - `DiffEditor.tsx` uses Monaco Editor
    - Original text (left pane)
    - Formatted text (right pane)
    - User can edit right pane
 
-8. **User exports**
+7. **User exports**
    - Clicks "Download Formatted Script"
    - `useDocxGenerator` creates .docx from formatted text
    - Uses `docx` library to generate Word document
@@ -453,7 +431,7 @@ Application State
    - Automatically caches responses
    - Handles loading/error states
    - Supports optimistic updates
-   - Example: `useQuery(['breadcrumbs', filePath], () => invoke('read_breadcrumbs', { filePath }))`
+   - Example: `useQuery({ queryKey: queryKeys.breadcrumbs(filePath), queryFn: () => api.readBreadcrumbs(filePath) })`
 
 3. **Local state (useState):** Use for component-specific UI state
    - Form inputs before submission
@@ -540,14 +518,14 @@ useEffect(() => {
     })
 }, [filePath])
 
-// NEW: React Query (current)
+// NEW: React Query (current) -- invoked via feature api.ts
 const {
   data: breadcrumbs,
   isLoading,
   error
 } = useQuery({
-  queryKey: ['breadcrumbs', filePath],
-  queryFn: () => invoke('read_breadcrumbs', { filePath })
+  queryKey: queryKeys.breadcrumbs(filePath),
+  queryFn: () => api.readBreadcrumbs(filePath)
 })
 ```
 
@@ -648,49 +626,48 @@ LIMIT 3;
 ### Dependency Graph (Frontend)
 
 ```
-pages/
-  └─→ components/
-        └─→ hooks/
-              └─→ lib/ (React Query config)
-                    └─→ services/
-                          └─→ utils/
+features/<Name>/
+  └─→ @shared/* (constants, hooks, lib, services, store, types, utils, ui)
+  └─→ @features/<Other>/ (via barrel only, cross-feature imports)
 
-store/
-  └─→ (no dependencies, stores are independent)
-
-hooks/
-  └─→ services/ (AI provider abstraction)
-  └─→ lib/ (query utilities)
+shared/
+  └─→ (never imports from features -- dependency flows one direction)
 ```
 
 **Dependency rules:**
 
 1. **No circular dependencies**
-   - Enforced by TypeScript and Rust module system
+   - Enforced by TypeScript module system and ESLint boundaries plugin
    - Use dependency injection or events if needed
 
-2. **Lower layers can't depend on higher layers**
-   - ❌ `hooks/` can't import from `pages/`
-   - ✅ `pages/` can import from `hooks/`
+2. **Features import shared, never the reverse**
+   - ❌ `@shared/hooks/` can't import from `@features/Baker/`
+   - ✅ `@features/Baker/` can import from `@shared/hooks/`
 
-3. **Services are UI-agnostic**
-   - Don't import React components in `services/`
-   - Keep business logic separate from UI
+3. **Cross-feature imports go through barrels only**
+   - ❌ `import { X } from '@features/Trello/components/TrelloCardsManager'`
+   - ✅ `import { TrelloCardsManager } from '@features/Trello'`
+
+4. **All Tauri I/O goes through `api.ts`**
+   - No direct `@tauri-apps` plugin imports in components/hooks
+   - Enforced by no-bypass contract tests in each feature's `__contracts__/`
 
 ### External Dependencies (Key Packages)
 
-| Package                   | Version | Used For                 | Notes                                            |
-| ------------------------- | ------- | ------------------------ | ------------------------------------------------ |
-| **@tauri-apps/api**       | 2.9.0   | Tauri IPC bridge         | Invoke Rust commands from React                  |
-| **@tanstack/react-query** | 5.90.3  | Async state management   | Replaces useEffect for data fetching             |
-| **zustand**               | 5.0.8   | Global state             | Lightweight alternative to Redux                 |
-| **@radix-ui/react-\***    | 1.x     | Accessible UI primitives | Headless components for dialogs, dropdowns, etc. |
-| **ai** (Vercel AI SDK)    | 5.0.72  | AI provider abstraction  | Unified interface for Ollama, OpenAI, etc.       |
-| **@monaco-editor/react**  | 4.7.0   | Code/diff editor         | Script formatting diff view                      |
-| **docx**                  | 9.5.1   | Word document generation | Export formatted scripts                         |
-| **mammoth**               | 1.11.0  | Word document parsing    | Import .docx scripts                             |
-| **fuse.js**               | 7.1.0   | Fuzzy search             | Search projects in Baker                         |
-| **vite**                  | 7.1.10  | Build tool               | Fast dev server, production builds               |
+| Package                   | Version  | Used For                 | Notes                                            |
+| ------------------------- | -------- | ------------------------ | ------------------------------------------------ |
+| **@tauri-apps/api**       | ~2.10.1  | Tauri IPC bridge         | Invoke Rust commands from React                  |
+| **@tanstack/react-query** | ^5.90.3  | Async state management   | Replaces useEffect for data fetching             |
+| **zustand**               | ^5.0.8   | Global state             | Lightweight alternative to Redux                 |
+| **@radix-ui/react-\***    | 1.x--2.x | Accessible UI primitives | Headless components for dialogs, dropdowns, etc. |
+| **ai** (Vercel AI SDK)    | ^6.0.199 | AI provider abstraction  | Unified interface for Ollama, OpenAI, etc.       |
+| **@monaco-editor/react**  | ^4.7.0   | Code/diff editor         | Script formatting diff view                      |
+| **docx**                  | ^9.5.1   | Word document generation | Export formatted scripts                         |
+| **mammoth**               | ^1.12.0  | Word document parsing    | Import .docx scripts                             |
+| **fuse.js**               | ^7.1.0   | Fuzzy search             | Search projects in Baker                         |
+| **vite**                  | ^7.3.2   | Build tool               | Fast dev server, production builds               |
+| **xstate**                | ^5.24.0  | State machines           | BuildProject workflow orchestration              |
+| **react-router-dom**      | ^7.17.0  | Client-side routing      | Lazy-loaded routes via React.lazy()              |
 
 **Rust dependencies:** See `src-tauri/Cargo.toml` for full list.
 
@@ -708,44 +685,46 @@ Key Rust crates:
 
 ### Adding a New Feature Page
 
-To add a new feature page (e.g., "Timeline" page):
+To add a new feature page (e.g., "Timeline" page), follow the feature-module pattern:
 
-1. **Create page component:**
+1. **Create feature module:**
 
    ```
-   src/pages/Timeline/
-   ├── Timeline.tsx           # Main page component
-   ├── TimelineView.tsx       # Sub-component
-   └── TimelineControls.tsx   # Sub-component
+   src/features/Timeline/
+   ├── api.ts              # I/O boundary -- wraps ALL Tauri invoke/plugin calls
+   ├── types.ts            # Shared type definitions
+   ├── index.ts            # Barrel file -- named re-exports with JSDoc
+   ├── __contracts__/      # Contract tests (shape, behavioral, no-bypass)
+   ├── TimelinePage.tsx    # Main page component
+   ├── components/         # Sub-components
+   └── hooks/              # Feature-specific hooks
    ```
 
-2. **Add route:**
+2. **Add lazy-loaded route:**
    - Open `src/AppRouter.tsx`
-   - Add route: `<Route path="/timeline" element={<Timeline />} />`
-
-3. **Add sidebar navigation:**
-   - Open `src/components/nav-main.tsx`
-   - Add menu item:
+   - Add lazy import and route:
      ```tsx
-     {
-       title: "Timeline",
-       url: "/timeline",
-       icon: Calendar,
-     }
+     const TimelinePage = React.lazy(() =>
+       import('@features/Timeline').then((m) => ({ default: m.TimelinePage }))
+     )
+     // Inside <Routes>:
+     <Route path="timeline" element={<TimelinePage />} />
      ```
 
-4. **Create hooks (if needed):**
-   - `src/hooks/useTimelineData.ts` - Fetch timeline data
-   - Use React Query for data fetching
+3. **Add sidebar navigation:**
+   - Open `src/shared/ui/layout/app-sidebar.tsx`
+   - Add menu item to the appropriate section
 
-5. **Add Tauri commands (if needed):**
-   - Create `src-tauri/src/commands/timeline.rs`
-   - Implement Rust functions
-   - Export in `src-tauri/src/commands/mod.rs`
-   - Add to Tauri builder in `src-tauri/src/main.rs`
+4. **Add Tauri commands (if needed):**
+   - Create `src-tauri/src/commands/timeline.rs` (or a `src-tauri/src/timeline/` module)
+   - Implement Rust functions with `#[tauri::command]`
+   - Export in the appropriate `mod.rs`
+   - Register in `src-tauri/src/main.rs` invoke_handler
 
-6. **Add types:**
-   - `src/types/timeline.ts` - TypeScript types for timeline feature
+5. **Run linting to verify boundary compliance:**
+   ```bash
+   bun run eslint:fix
+   ```
 
 ### Adding a New Tauri Command
 
@@ -776,27 +755,31 @@ pub use my_feature::*;
 
 ```rust
 // src-tauri/src/main.rs
-fn main() {
-    tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![
-            // ... existing commands
-            my_command,
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
-}
+// Add to the invoke_handler list:
+.invoke_handler(tauri::generate_handler![
+    // ... existing commands
+    my_command,
+])
 ```
 
-4. **Call from React:**
+4. **Call from React (via feature api.ts):**
 
 ```typescript
-// src/hooks/useMyFeature.ts
+// src/features/MyFeature/api.ts
 import { invoke } from '@tauri-apps/api/core'
+
+export async function myCommand(arg1: string, arg2: number): Promise<string> {
+  return invoke<string>('my_command', { arg1, arg2 })
+}
+
+// src/features/MyFeature/hooks/useMyFeature.ts
+import { useMutation } from '@tanstack/react-query'
+import { myCommand } from '../api'
 
 export function useMyFeature() {
   return useMutation({
     mutationFn: async (args: { arg1: string; arg2: number }) => {
-      return await invoke<string>('my_command', args)
+      return await myCommand(args.arg1, args.arg2)
     }
   })
 }
@@ -818,7 +801,7 @@ To add a new bundled script example for RAG:
 2. **Generate embeddings:**
 
    ```bash
-   npm run embed:examples:ollama
+   bun run embed:examples:ollama
    ```
 
    This script:
@@ -828,7 +811,7 @@ To add a new bundled script example for RAG:
 
 3. **Rebuild app:**
    ```bash
-   npm run build:tauri
+   bun run build:tauri
    ```
 
 Examples are bundled with the app in the resources directory.
@@ -923,8 +906,8 @@ Examples are bundled with the app in the resources directory.
 
 | Environment          | Purpose                           | How to Run            |
 | -------------------- | --------------------------------- | --------------------- |
-| **Development**      | Local development with hot reload | `npm run dev:tauri`   |
-| **Production Build** | Release builds for distribution   | `npm run build:tauri` |
+| **Development**      | Local development with hot reload | `bun run dev:tauri`   |
+| **Production Build** | Release builds for distribution   | `bun run build:tauri` |
 
 No staging/preview environments (desktop app, not web app).
 
@@ -932,15 +915,15 @@ No staging/preview environments (desktop app, not web app).
 
 ```bash
 # Development build (debug, fast compilation)
-npm run dev:tauri
+bun run dev:tauri
 
 # Production build (optimized, stripped)
-npm run build:tauri
+bun run build:tauri
 ```
 
 **Production build steps:**
 
-1. **Pre-build:** Embed script examples (`npm run embed:examples:ollama`)
+1. **Pre-build:** Embed script examples (`bun run embed:examples:ollama`)
 2. **Frontend build:** Vite builds React app → `dist/`
 3. **Rust build:** Cargo compiles Rust → `target/release/`
 4. **Tauri bundle:** Packages app + webview → Platform-specific installer
@@ -950,9 +933,9 @@ npm run build:tauri
 
 **Build artifacts:**
 
-- macOS: `src-tauri/target/release/bundle/dmg/Bucket_0.9.3_universal.dmg`
-- Windows: `src-tauri/target/release/bundle/msi/Bucket_0.9.3_x64_en-US.msi`
-- Linux: `src-tauri/target/release/bundle/appimage/bucket_0.9.3_amd64.AppImage`
+- macOS: `src-tauri/target/release/bundle/dmg/Bucket_<version>_universal.dmg`
+- Windows: `src-tauri/target/release/bundle/msi/Bucket_<version>_x64_en-US.msi`
+- Linux: `src-tauri/target/release/bundle/appimage/bucket_<version>_amd64.AppImage`
 
 ### Auto-Updates (Tauri Updater)
 
@@ -978,7 +961,7 @@ Bucket supports automatic updates via Tauri's updater plugin:
 
 **Log destinations:**
 
-- **Development:** Terminal output (`RUST_LOG=debug npm run dev:tauri`)
+- **Development:** Terminal output (`RUST_LOG=debug bun run dev:tauri`)
 - **Production:** Tauri logs to app data directory (macOS: `~/Library/Logs/com.bucket.app/`)
 
 **TypeScript logging:**
@@ -1004,9 +987,10 @@ Currently no telemetry/metrics collection (privacy-focused desktop app).
 - **Symptoms:** `Error: Command 'my_command' not found` in browser console
 - **Cause:** Command not registered in `main.rs` or wrong function name
 - **Solution:**
-  1. Check `src-tauri/src/main.rs` → `invoke_handler!([..., my_command])`
+  1. Check `src-tauri/src/main.rs` → `generate_handler![..., my_command]`
   2. Verify function has `#[tauri::command]` attribute
-  3. Rebuild Rust: `cd src-tauri && cargo build`
+  3. Verify the module is imported in `main.rs` (via `use` or `mod`)
+  4. Rebuild Rust: `cd src-tauri && cargo build`
 
 **Issue: React Query not refetching**
 
@@ -1029,10 +1013,10 @@ Currently no telemetry/metrics collection (privacy-focused desktop app).
 
 - **Symptoms:** Files not copied, no error message
 - **Cause:** Tauri command threw error but wasn't caught
-- **Solution:** Wrap Tauri calls in try-catch:
+- **Solution:** Wrap Tauri calls in try-catch (via the feature's api.ts):
   ```typescript
   try {
-    await invoke('copy_files', args)
+    await api.transferFiles(args)
   } catch (error) {
     console.error('Copy failed:', error)
     toast.error(`Failed to copy files: ${error}`)
@@ -1059,6 +1043,6 @@ Currently no telemetry/metrics collection (privacy-focused desktop app).
 
 ---
 
-**Document Version:** 1.0.0
-**Last Updated:** January 2025
-**Applies to:** Bucket v0.9.3
+**Document Version:** 2.0.0
+**Last Updated:** July 2026
+**Applies to:** Bucket v0.16.0

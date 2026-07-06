@@ -73,10 +73,10 @@ Bucket uses native macOS window styling features to provide a seamless, OS-integ
 
 #### Apply Vibrancy to Sidebar
 
-**File:** `src/components/app-sidebar.tsx`
+**File:** `src/shared/ui/layout/app-sidebar.tsx`
 
 ```typescript
-import { useMacOSEffects } from '@/hooks/useMacOSEffects'
+import { useMacOSEffects } from '@shared/hooks/useMacOSEffects'
 
 export function AppSidebar() {
   // Apply macOS sidebar vibrancy effect
@@ -95,8 +95,8 @@ export function AppSidebar() {
 **File:** `src/App.tsx`
 
 ```typescript
-import { TitleBar } from './components/TitleBar'
-import { useWindowState } from './hooks/useWindowState'
+import { TitleBar } from '@shared/ui/layout/TitleBar'
+import { useWindowState } from '@shared/hooks/useWindowState'
 
 const App: React.FC = () => {
   // Persist window position and size
@@ -117,11 +117,11 @@ const App: React.FC = () => {
 
 Apply native macOS vibrancy effects to windows.
 
-**Location:** `src/hooks/useMacOSEffects.ts`
+**Location:** `src/shared/hooks/useMacOSEffects.ts`
 
 **Usage:**
 ```typescript
-import { useMacOSEffects } from '@/hooks/useMacOSEffects'
+import { useMacOSEffects } from '@shared/hooks/useMacOSEffects'
 
 function MyComponent() {
   useMacOSEffects({
@@ -151,11 +151,11 @@ function MyComponent() {
 
 Detect and respond to macOS system theme changes.
 
-**Location:** `src/hooks/useSystemTheme.ts`
+**Location:** `src/shared/hooks/useSystemTheme.ts`
 
 **Usage:**
 ```typescript
-import { useSystemTheme } from '@/hooks/useSystemTheme'
+import { useSystemTheme } from '@shared/hooks/useSystemTheme'
 
 function MyComponent() {
   const theme = useSystemTheme()  // 'light' | 'dark' | null
@@ -174,11 +174,11 @@ function MyComponent() {
 
 Persist window position and size across sessions.
 
-**Location:** `src/hooks/useWindowState.ts`
+**Location:** `src/shared/hooks/useWindowState.ts`
 
 **Usage:**
 ```typescript
-import { useWindowState } from '@/hooks/useWindowState'
+import { useWindowState } from '@shared/hooks/useWindowState'
 
 function App() {
   useWindowState()  // Automatically saves and restores window state
@@ -193,7 +193,7 @@ function App() {
 
 Custom title bar component for macOS overlay mode.
 
-**Location:** `src/components/TitleBar.tsx`
+**Location:** `src/shared/ui/layout/TitleBar.tsx`
 
 **Features:**
 - Only renders on macOS
@@ -204,7 +204,7 @@ Custom title bar component for macOS overlay mode.
 
 **Customization:**
 ```typescript
-// Edit src/components/TitleBar.tsx to add custom elements
+// Edit src/shared/ui/layout/TitleBar.tsx to add custom elements
 <div style={{ WebkitAppRegion: 'no-drag' }}>
   {/* Add custom controls, search, etc. */}
 </div>
@@ -387,13 +387,13 @@ This provides a standard macOS window without custom styling but is App Store co
 - `src-tauri/tauri.conf.json` - Window configuration
 
 ### Components
-- `src/components/TitleBar.tsx` - Custom title bar
-- `src/components/app-sidebar.tsx` - Sidebar with vibrancy
+- `src/shared/ui/layout/TitleBar.tsx` - Custom title bar
+- `src/shared/ui/layout/app-sidebar.tsx` - Sidebar with vibrancy
 
 ### Hooks
-- `src/hooks/useMacOSEffects.ts` - Vibrancy effects
-- `src/hooks/useSystemTheme.ts` - Theme detection
-- `src/hooks/useWindowState.ts` - Window persistence
+- `src/shared/hooks/useMacOSEffects.ts` - Vibrancy effects
+- `src/shared/hooks/useSystemTheme.ts` - Theme detection
+- `src/shared/hooks/useWindowState.ts` - Window persistence
 
 ### Styles
 - `src/index.css` - Drag regions and transitions
@@ -473,7 +473,6 @@ This provides a standard macOS window without custom styling but is App Store co
 
 ### Project Documentation
 - [CLAUDE.md](../CLAUDE.md) - Project overview and conventions
-- [macos-window-styling-plan.md](../macos-window-styling-plan.md) - Implementation plan
 
 ## Maintenance
 
@@ -494,7 +493,6 @@ This provides a standard macOS window without custom styling but is App Store co
 
 ### Getting Help
 - Check this documentation first
-- Review the implementation plan: [macos-window-styling-plan.md](../macos-window-styling-plan.md)
 - Search Tauri GitHub issues
 - Ask in Tauri Discord #help channel
 - Review browser console for error messages

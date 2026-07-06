@@ -20,7 +20,7 @@ This document outlines the React Query patterns and best practices implemented d
 The React Query implementation follows a layered architecture:
 
 ```
-src/
+src/shared/
 ├── lib/
 │   ├── query-utils.ts          # Core query utilities and helpers
 │   ├── query-keys.ts           # Centralized query key factory
@@ -29,13 +29,9 @@ src/
 │   └── performance-monitor.ts  # Performance monitoring
 ├── services/
 │   └── cache-invalidation.ts   # Cache management service
-├── hooks/
-│   ├── useBreadcrumb.ts       # Navigation state management
-│   ├── useTrelloBoard.ts      # Trello API integration
-│   ├── useImageRefresh.ts     # Auto-refreshing image data
-│   └── [other hooks...]       # Various domain-specific hooks
-└── components/
-    └── ErrorBoundary.tsx       # Global error handling
+└── hooks/
+    ├── useBreadcrumb.ts       # Navigation state management
+    └── [other hooks...]       # Various domain-specific hooks
 ```
 
 ### Key Principles
@@ -51,8 +47,8 @@ src/
 ### Basic Query Pattern
 
 ```typescript
-import { queryKeys } from '@lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '@lib/query-utils'
+import { queryKeys } from '@shared/lib/query-keys'
+import { createQueryError, createQueryOptions, shouldRetry } from '@shared/lib/query-utils'
 import { useQuery } from '@tanstack/react-query'
 
 function useUserData(userId: string) {
