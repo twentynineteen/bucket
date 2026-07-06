@@ -1,284 +1,155 @@
-<!-- ⚠️ This README has been generated from the file(s) "blueprint.md" ⚠️--><h1 align="center">bucket</h1>
+# Bucket
 
-<p align="center">
-  <b>A desktop video editing workflow application that streamlines video ingest, project creation, and integrates with professional video production tools.</b></br>
-  <sub><sub>
-</p>
+A desktop video-production workflow app built with Tauri 2 (Rust + React/TypeScript). Bucket streamlines footage ingest, project creation, and integration with Adobe Premiere, Trello, and Sprout Video.
 
-<br />
+**Version:** 0.16.0  
+**Platform:** macOS (primary)  
+**License:** UNLICENSED (proprietary)
 
+## What Bucket Does
 
+Bucket is a single desktop app that ties together the repetitive steps of a video-production pipeline:
 
-[![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/cloudy.png)](#table-of-contents)
+- **BuildProject** -- Select footage files, assign camera numbers, and generate an organised folder structure with an Adobe Premiere project in one step. File operations run in the Rust backend with real-time progress tracking.
+- **Baker** -- Scan a drive for project folders, validate their structure (Footage, Graphics, Renders, Projects, Scripts), and create or update `breadcrumbs.json` metadata files in batch. Recent updates added a full-height layout, diff-row previews, and a rebuilt batch dialog.
+- **Upload** -- Publish videos to Sprout Video, generate custom posterframes, and manage hosting metadata.
+- **Trello** -- Link projects to Trello cards, sync breadcrumbs metadata, and self-assign to cards via a toggle (added in v0.16.0).
+- **Premiere** -- Install and update Premiere Pro CEP extension plugins (BreadcrumbsPremiere, Boring) with one click.
+- **AI Tools** -- AI-powered script formatting for autocue/teleprompter use, powered by local Ollama models via the Vercel AI SDK.
+- **Auth** -- Login, registration, and token management with argon2 hashing and Tauri Stronghold secure storage.
+- **Settings** -- Per-domain configuration tabs covering Trello boards, Ollama connection, and app preferences. Eight themes available (System, Light, Dark, Dracula, Catppuccin variants).
 
-## ➤ Table of Contents
+## Getting Bucket
 
-* [➤ Overview](#-overview)
-* [➤ Key Features](#-key-features)
-* [➤ Installation](#-installation)
-	* [Prerequisites](#prerequisites)
-	* [Quick Start](#quick-start)
-	* [Development Setup](#development-setup)
-* [➤ Ollama Setup](#-ollama-setup)
-	* [Installing Ollama](#installing-ollama)
-	* [Running Ollama](#running-ollama)
-	* [Installing AI Models](#installing-ai-models)
-	* [Configuring in Bucket](#configuring-in-bucket)
-	* [Troubleshooting Ollama](#troubleshooting-ollama)
-* [➤ How It Works](#-how-it-works)
-	* [AI Script Formatter Workflow](#ai-script-formatter-workflow)
-	* [Video Project Workflow](#video-project-workflow)
-* [➤ Tech Stack](#-tech-stack)
-* [➤ Premiere Pro Plugin Management](#-premiere-pro-plugin-management)
-	* [Bundled Plugins](#bundled-plugins)
-		* [BreadcrumbsPremiere](#breadcrumbspremiere)
-		* [Boring](#boring)
-	* [One-Click Installation](#one-click-installation)
-	* [Platform Support](#platform-support)
-* [➤ License](#-license)
+Releases are published to GitHub via the `publish` workflow. The latest macOS build is available on the [Releases page](https://github.com/twentynineteen/bucket/releases). The app includes a built-in auto-updater.
 
-[![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/cloudy.png)](#overview)
-
-## ➤ Overview
-
-Bucket is a powerful desktop application built with Tauri (Rust + React/TypeScript) designed to streamline video editing workflows for professionals. It simplifies video file ingest, automates project creation, and seamlessly integrates with industry-standard tools like Adobe Premiere, Trello, and Sprout Video.
-
-
-[![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/cloudy.png)](#key-features)
-
-## ➤ Key Features
-
-- **AI Script Formatter**: AI-powered autocue script formatting using locally hosted LLM models
-  - Upload Word documents (.docx) and format them for teleprompter use
-  - Text editor to review and update AI changes
-  - Edit and refine AI suggestions before exporting
-  - Powered by local Ollama models (no cloud required)
-- **Multi-Camera Project Setup**: Organize footage by camera assignment for multi-camera shoots
-- **Adobe Premiere Integration**: Automatically generate project templates and folder structures
-- **Progress Tracking**: Real-time progress bars for file operations and project creation
-- **External Tool Integration**:
-  - **Trello**: Project management and card updates
-  - **Sprout Video**: Video hosting with custom posterframe generation
-- **Secure User Management**: Login/registration with encrypted data storage
-- **Cross-Platform**: Available for Windows, macOS, and Linux
-
-
-[![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/cloudy.png)](#installation)
-
-## ➤ Installation
+## Development
 
 ### Prerequisites
 
-- Bun (package manager)
-- Rust (for development)
-- **Ollama** (for AI Script Formatter feature) - see [Ollama Setup](#ollama-setup) below
+- [Bun](https://bun.sh) -- package manager and script runner (replaces npm entirely)
+- [Rust toolchain](https://rustup.rs) -- required by the Tauri 2 backend
+- Xcode Command Line Tools (macOS) -- needed for native compilation
 
-### Quick Start
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/twentynineteen/bucket.git
-   cd bucket
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   bun install
-   ```
-
-3. Build the application:
-
-   ```bash
-   bun run build:tauri
-   ```
-
-4. On macOS, open the DMG file in `/target/build/dmg` and copy the app to your Applications folder.
-
-### Development Setup
-
-To run in development mode:
+### Setup
 
 ```bash
-bun run dev:tauri
+git clone https://github.com/twentynineteen/bucket.git
+cd bucket
+bun install
 ```
 
-
-[![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/cloudy.png)](#ollama-setup)
-
-## ➤ Ollama Setup
-
-The AI Script Formatter feature requires Ollama to be installed and running locally.
-
-### Installing Ollama
-
-1. Download and install Ollama from [ollama.com](https://ollama.com)
-   - **macOS**: Download the `.dmg` installer
-   - **Linux**: Run `curl -fsSL https://ollama.com/install.sh | sh`
-   - **Windows**: Download from the Ollama website
-
-2. Verify installation:
-   ```bash
-   ollama --version
-   ```
-
-### Running Ollama
-
-Ollama runs as a background service. To start it:
+### Running
 
 ```bash
-ollama serve
+bun run dev:tauri       # Start the full Tauri app in dev mode (primary dev command)
+bun run dev             # Start the Vite frontend dev server only
+bun run preview         # Preview the production frontend build
 ```
 
-The service runs on `http://localhost:11434` by default.
-
-### Installing AI Models
-
-Before using the Script Formatter, download the following language models:
+### Building
 
 ```bash
-
-ollama pull llama3.1:latest
-ollama pull nomic-embed-text:latest
-ollama list
+bun run build:tauri     # Build the complete desktop app (produces a DMG in target/build/dmg)
+bun run build           # Build the frontend only
 ```
 
-**Model Selection Tips:**
-
-- **llama3.2**: Best for quick formatting on limited hardware
-
-### Configuring in Bucket
-
-1. Launch Bucket and navigate to **Settings**
-2. Find the **Ollama URL** field (default: `http://localhost:11434`)
-3. Update the URL if needed and click **Save**
-4. Click **Test Connection** to verify Ollama is running and see how many models are available
-5. Navigate to **AI Tools > Script Formatter** to start formatting scripts
-
-### Troubleshooting Ollama
-
-**Connection Failed:**
-Check if Ollama is running:
+### Tests
 
 ```bash
-curl http://localhost:11434/api/tags
+bun run test            # Run Vitest in watch mode
+bun run test:run        # Run Vitest once (CI mode)
+bun run test:coverage   # Run with coverage report
+bun run test:ui         # Open the Vitest browser UI
 ```
 
-If not running, start it:
+End-to-end tests use Playwright:
 
 ```bash
-ollama serve
+bun run test:e2e                    # Run all e2e tests
+bun run test:e2e:headed             # Run with a visible browser
+bun run test:e2e:buildproject       # Run only BuildProject e2e tests
+bun run test:e2e:report             # View the HTML test report
 ```
 
-**No Models Available:**
-List installed models:
+### Code Quality
+
+Run these before committing:
 
 ```bash
-ollama list
+bun run eslint:fix      # Fix lint issues (includes module-boundary rules)
+bun run prettier:fix    # Auto-format (90 char width, single quotes, no semicolons)
+bun run knip            # Detect unused exports and dependencies
 ```
 
-Install a model:
+## CI
+
+GitHub Actions workflows run on every push and PR to `master` and `release`:
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| **CI** (`ci.yml`) | Push/PR to `master`, `release` | Lint, unit tests, frontend build |
+| **E2E Tests** (`e2e-tests.yml`) | PRs touching BuildProject or e2e paths | Playwright end-to-end tests |
+| **Publish** (`publish.yml`) | Push to `release` | Build app, create GitHub release, upload artifacts |
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19 + TypeScript 5.9 + Vite 7 |
+| Backend | Tauri 2.0 (Rust 2021 edition) |
+| UI | TailwindCSS 4 + Radix UI + Lucide icons |
+| State | Zustand + TanStack React Query |
+| State machines | XState (BuildProject workflow) |
+| Testing | Vitest + Testing Library + Playwright |
+| AI | Vercel AI SDK + Ollama (local LLM) |
+| Formatting | Prettier + ESLint (auto-configured) |
+
+## Project Structure
+
+```
+src/
+  features/
+    AITools/        Script formatting + embeddings
+    Auth/           Login, registration, token management
+    Baker/          Drive scanning, breadcrumbs management
+    BuildProject/   File ingest, camera assignment, project creation
+    Premiere/       Premiere Pro plugin management
+    Settings/       App configuration
+    Trello/         Trello card management, video links
+    Upload/         Sprout Video, posterframe generation
+  shared/
+    constants/      Timing, animation, project constants
+    hooks/          Cross-feature hooks
+    lib/            React Query infrastructure
+    services/       Progress tracking, feedback, caching
+    store/          Zustand stores (appStore, breadcrumbStore)
+    types/          Shared domain types
+    ui/             Radix primitives, sidebar, theme, layout
+    utils/          Logger, storage, validation utilities
+
+src-tauri/
+  src/              Rust backend (file operations, API integrations)
+  Cargo.toml        Rust dependencies
+  tauri.conf.json   Tauri app configuration
+```
+
+Each feature module follows a strict convention: an `api.ts` I/O boundary wrapping all Tauri calls, a barrel `index.ts` with JSDoc exports, and `__contracts__/` tests enforcing shape, behaviour, and no-bypass rules. Shared modules never import from features.
+
+## Further Reading
+
+- **[CLAUDE.md](./CLAUDE.md)** -- Architecture conventions, import rules, and how to add a new feature module
+- **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** -- System design, data flow, and component interactions
+- **[docs/ONBOARDING.md](./docs/ONBOARDING.md)** -- Developer onboarding guide
+- **[docs/PREMIERE_PLUGINS.md](./docs/PREMIERE_PLUGINS.md)** -- Premiere Pro plugin documentation
+- **[docs/BRANCHING_STRATEGY.md](./docs/BRANCHING_STRATEGY.md)** -- Git branching and release conventions
+
+## Version Bumping
 
 ```bash
-ollama pull llama3:latest
+bun run version:patch   # 0.16.0 -> 0.16.1
+bun run version:minor   # 0.16.0 -> 0.17.0
+bun run version:major   # 0.16.0 -> 1.0.0
 ```
 
-**Port Conflicts:**
-If port 11434 is in use, you can run Ollama on a different port:
-
-```bash
-OLLAMA_HOST=0.0.0.0:11435 ollama serve
-```
-
-Then update the URL in Bucket Settings to `http://localhost:11435`
-
-
-[![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/cloudy.png)](#how-it-works)
-
-## ➤ How It Works
-
-### AI Script Formatter Workflow
-
-1. **Upload Script**: Select a `.docx` file from your computer (up to 1GB)
-2. **Select AI Model**: Choose from available Ollama models running on your machine
-3. **AI Processing**: The script is automatically formatted for autocue/teleprompter readability
-4. **Review Changes**: View side-by-side diff showing original vs. AI-formatted text
-5. **Edit & Refine**: Make manual adjustments to the AI's suggestions if needed
-6. **Export**: Download the formatted script as a `.docx` file ready for teleprompter use
-
-### Video Project Workflow
-
-1. **Select Video Files**: Choose footage files from your file system
-2. **Assign Cameras**: Organize files by camera number for multi-camera projects
-3. **Configure Project**: Set project title and output folder location
-4. **Create Project**: Generate organized folder structure with Adobe Premiere integration
-5. **Track Progress**: Monitor file operations with real-time progress updates
-6. **Integrate & Upload**: Connect with Trello for project management or Sprout Video for hosting
-
-
-[![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/cloudy.png)](#tech-stack)
-
-## ➤ Tech Stack
-
-- **Frontend**: React 18 + TypeScript + TailwindCSS
-- **Backend**: Tauri 2.0 (Rust)
-- **UI Components**: Radix UI + Lucide icons
-- **State Management**: Zustand + TanStack React Query
-- **Build Tool**: Vite
-- **AI Integration**:
-  - Vercel AI SDK v5 for unified provider interface
-  - Ollama (local LLM runtime)
-  - Monaco Editor for diff visualization and editing
-  - mammoth.js for Word document parsing
-  - docx for document generation
-
-
-[![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/cloudy.png)](#premiere-pro-plugin-management)
-
-## ➤ Premiere Pro Plugin Management
-
-Bucket includes an **integrated plugin manager** for Premiere Pro CEP extensions. Install and update plugins with one click - no manual file operations required.
-
-### Bundled Plugins
-
-#### BreadcrumbsPremiere
-
-Metadata management panel that syncs with Bucket's project system. View and edit breadcrumbs directly in your Premiere timeline.
-
-**Features**:
-
-- View and edit project metadata in Premiere Pro
-- Sync with Trello cards and Sprout Video
-- Quick access to project resources
-- Seamless integration with Bucket workflows
-
-#### Boring
-
-Premiere Pro extension for streamlined workflows.
-
-**Features**:
-
-- _(User to specify features)_
-
-### One-Click Installation
-
-1. Navigate to **Upload Content > Premiere Plugin Manager**
-2. Click **Install** on any plugin
-3. Restart Premiere Pro
-4. Access via **Window > Extensions**
-
-### Platform Support
-
-- **macOS**: Automatic debug mode configuration
-- **Windows**: Silent installation
-- **Cross-platform**: Works identically on both platforms
-
-[Read full documentation →](../PREMIERE_PLUGINS.md)
-
-
-[![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/cloudy.png)](#license)
-
-## ➤ License
-	
-Licensed under [UNLICENSED](https://opensource.org/licenses/UNLICENSED).
+These scripts update `package.json`, `Cargo.toml`, and `tauri.conf.json` in one step.
