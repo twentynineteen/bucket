@@ -18,7 +18,7 @@ Welcome to Bucket! This guide will help you get started contributing to the code
 Before starting, ensure you have:
 
 - **macOS, Windows, or Linux** (primary development on macOS)
-- **Node.js** 18+ or **Bun** (recommended for faster installs)
+- **Bun** (required -- the project's standard package manager)
 - **Rust** 1.70+ ([install from rustup.rs](https://rustup.rs))
 - **Git** for version control
 - **Code editor** (VS Code recommended with Rust Analyzer extension)
@@ -41,16 +41,8 @@ cd bucket
 
 ### Install Dependencies
 
-Using **Bun** (recommended - faster):
-
 ```bash
 bun install
-```
-
-Or using **npm**:
-
-```bash
-npm install
 ```
 
 This installs:
@@ -80,7 +72,7 @@ source $HOME/.cargo/env
 ### Start Development Mode
 
 ```bash
-npm run dev:tauri
+bun run dev:tauri
 ```
 
 This will:
@@ -111,25 +103,31 @@ This will:
 
 ```
 bucket/
-├── src/                    # React frontend (TypeScript)
-│   ├── pages/              # Page components (routes)
-│   ├── components/         # Reusable UI components
-│   ├── hooks/              # Custom React hooks
-│   ├── store/              # Global state (Zustand)
-│   └── lib/                # Shared utilities
+├── src/                        # React frontend (TypeScript)
+│   ├── features/               # Feature modules (AITools, Auth, Baker,
+│   │                           #   BuildProject, Premiere, Settings, Trello, Upload)
+│   ├── shared/                 # Cross-feature code
+│   │   ├── constants/          # Timing, animation, project constants
+│   │   ├── hooks/              # Cross-feature hooks
+│   │   ├── lib/                # Query infrastructure
+│   │   ├── services/           # ProgressTracker, feedback, cache
+│   │   ├── store/              # Zustand stores (appStore, breadcrumbStore)
+│   │   ├── types/              # Shared domain types
+│   │   ├── ui/                 # Radix primitives, sidebar, theme, layout
+│   │   └── utils/              # Logger, storage, validation, cn()
+│   ├── App.tsx                 # Root React component
+│   └── AppRouter.tsx           # Route definitions (lazy-loaded)
 │
-├── src-tauri/              # Rust backend
-│   ├── src/commands/       # Tauri commands (API for frontend)
-│   ├── src/state/          # Shared Rust state
-│   └── Cargo.toml          # Rust dependencies
+├── src-tauri/                  # Rust backend
+│   ├── src/commands/           # Tauri commands (API for frontend)
+│   ├── src/state/              # Shared Rust state
+│   └── Cargo.toml              # Rust dependencies
 │
-├── docs/                   # Documentation
-│   ├── README.md           # User-facing documentation
-│   ├── ARCHITECTURE.md     # System architecture
-│   ├── API_COMMANDS.md     # Tauri commands reference
-│   └── ONBOARDING.md       # This file
-│
-└── specs/                  # Feature specifications
+└── docs/                       # Documentation
+    ├── README.md               # User-facing documentation
+    ├── ARCHITECTURE.md         # System architecture
+    ├── API_COMMANDS.md         # Tauri commands reference
+    └── ONBOARDING.md           # This file
 ```
 
 ### Key Files to Know
@@ -150,6 +148,7 @@ Before making changes, skim these docs:
 1. **[README.md](./README.md)** - Get familiar with features
 2. **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Understand system design
 3. **[API_COMMANDS.md](./API_COMMANDS.md)** - Learn Tauri command API
+4. **[CLAUDE.md](../CLAUDE.md)** - Module conventions and import rules
 
 **Time investment:** 15-20 minutes of reading will save hours later.
 
@@ -166,7 +165,7 @@ Let's make a simple change to see the development workflow.
 1. **Open the file:**
 
    ```bash
-   code src/pages/Settings.tsx
+   code src/features/Settings/components/SettingsPage.tsx
    ```
 
 2. **Find the return statement** (around line 50)
@@ -239,27 +238,31 @@ Let's make a simple change to see the development workflow.
 
 5. **Call from frontend:**
 
-   Create `src/hooks/useTimestamp.ts`:
+   Create a hook in your feature's `hooks/` directory (e.g., `src/features/Settings/hooks/useTimestamp.ts`):
 
    ```typescript
    import { useQuery } from '@tanstack/react-query'
-   import { invoke } from '@tauri-apps/api/core'
+
+   import { getTimestamp } from '../api'
 
    export function useTimestamp() {
      return useQuery({
        queryKey: ['timestamp'],
-       queryFn: () => invoke<string>('get_timestamp'),
+       queryFn: getTimestamp,
        refetchInterval: 1000 // Update every second
      })
    }
    ```
 
+   > **Convention:** Never import `@tauri-apps` directly in hooks or components.
+   > All Tauri calls go through the feature's `api.ts` file (see CLAUDE.md).
+
 6. **Use in a component:**
 
-   Edit `src/pages/Settings.tsx`:
+   Edit `src/features/Settings/components/SettingsPage.tsx`:
 
    ```tsx
-   import { useTimestamp } from '@/hooks/useTimestamp'
+   import { useTimestamp } from '../hooks/useTimestamp'
 
    export function Settings() {
      const { data: timestamp } = useTimestamp()
@@ -273,7 +276,7 @@ Let's make a simple change to see the development workflow.
    }
    ```
 
-7. **Restart the app** (Ctrl+C, then `npm run dev:tauri`)
+7. **Restart the app** (Ctrl+C, then `bun run dev:tauri`)
 
 8. **Verify:** You should see a live-updating timestamp!
 
@@ -287,10 +290,10 @@ Before committing code, always run these checks:
 
 ```bash
 # Fix formatting issues
-npm run prettier:fix
+bun run prettier:fix
 
 # Fix linting issues
-npm run eslint:fix
+bun run eslint:fix
 ```
 
 **Formatting rules:**
@@ -304,16 +307,16 @@ npm run eslint:fix
 
 ```bash
 # Run all tests
-npm run test
+bun run test
 
 # Run tests in watch mode (useful during development)
-npm run test:ui
+bun run test:ui
 ```
 
 **Coverage check:**
 
 ```bash
-npm run test:coverage
+bun run test:coverage
 ```
 
 ### Rust Code Quality
@@ -335,9 +338,9 @@ cargo test
 
 Before every commit:
 
-- [ ] Code formatted: `npm run prettier:fix`
-- [ ] Linting passes: `npm run eslint:fix`
-- [ ] Tests pass: `npm run test`
+- [ ] Code formatted: `bun run prettier:fix`
+- [ ] Linting passes: `bun run eslint:fix`
+- [ ] Tests pass: `bun run test`
 - [ ] Rust formatted: `cargo fmt`
 - [ ] No compiler warnings
 
@@ -392,7 +395,7 @@ git commit -m "docs: update architecture documentation"
 # Push to GitHub
 git push origin feature/my-new-feature
 
-# Open GitHub and create a Pull Request to the 'release' branch
+# Open GitHub and create a Pull Request to the 'master' branch
 ```
 
 **PR Description Template:**
@@ -409,9 +412,9 @@ Explain the motivation
 ## Testing
 
 - [ ] Tested locally in dev mode
-- [ ] Tests pass (`npm run test`)
-- [ ] Linting passes (`npm run eslint`)
-- [ ] Formatted code (`npm run prettier:fix`)
+- [ ] Tests pass (`bun run test`)
+- [ ] Linting passes (`bun run eslint:fix`)
+- [ ] Formatted code (`bun run prettier:fix`)
 
 ## Screenshots (if UI changes)
 
@@ -422,31 +425,25 @@ Explain the motivation
 
 ## Common Development Tasks
 
-### Adding a New Page
+### Adding a New Feature Module
 
-1. **Create page component:**
+See CLAUDE.md section "How to Add a New Feature Module" for the full checklist. In short:
+
+1. **Create feature directory** with `api.ts`, `types.ts`, `index.ts`, `components/`, `hooks/`, `__contracts__/`
 
    ```bash
-   mkdir src/pages/MyFeature
-   code src/pages/MyFeature/MyFeature.tsx
+   mkdir -p src/features/MyFeature/{components,hooks,__contracts__}
    ```
 
-2. **Add route:**
-   Edit `src/AppRouter.tsx`:
+2. **Add lazy route** in `src/AppRouter.tsx`:
 
    ```tsx
-   <Route path="/my-feature" element={<MyFeature />} />
+   const MyFeaturePage = React.lazy(() =>
+     import('@features/MyFeature').then(m => ({ default: m.MyFeaturePage }))
+   )
    ```
 
-3. **Add to sidebar:**
-   Edit `src/components/nav-main.tsx`:
-   ```tsx
-   {
-     title: "My Feature",
-     url: "/my-feature",
-     icon: Sparkles,
-   }
-   ```
+3. **Add to sidebar** in `src/shared/ui/sidebar/SidebarMenu.tsx`
 
 ### Adding a New Tauri Command
 
@@ -457,8 +454,9 @@ See [Step 4: Backend Change Example](#backend-change-example) above.
 1. Create command in `src-tauri/src/commands/`
 2. Export in `mod.rs`
 3. Register in `main.rs`
-4. Create hook in `src/hooks/`
-5. Use in component
+4. Wrap the invoke call in the feature's `api.ts`
+5. Create hook in the feature's `hooks/` directory
+6. Use in component
 
 ### Adding a New Dependency
 
@@ -466,8 +464,6 @@ See [Step 4: Backend Change Example](#backend-change-example) above.
 
 ```bash
 bun add package-name
-# or
-npm install package-name
 ```
 
 **Backend:**
@@ -489,10 +485,10 @@ cargo add crate-name
 
 ```bash
 # Enable detailed Rust logs
-RUST_LOG=debug npm run dev:tauri
+RUST_LOG=debug bun run dev:tauri
 
 # View logs for specific module
-RUST_LOG=app_lib::commands=debug npm run dev:tauri
+RUST_LOG=app_lib::commands=debug bun run dev:tauri
 ```
 
 **Common issues:**
@@ -534,7 +530,7 @@ const { data } = useQuery({
 **Example:**
 
 ```typescript
-// src/store/useMyStore.ts
+// src/shared/store/useMyStore.ts
 import { create } from 'zustand'
 
 interface MyStore {
@@ -584,7 +580,7 @@ Write tests for:
 **Example test:**
 
 ```typescript
-import { myFunction } from '@/utils/myFunction'
+import { myFunction } from '@shared/utils/myFunction'
 import { describe, expect, it } from 'vitest'
 
 describe('myFunction', () => {
@@ -603,6 +599,7 @@ describe('myFunction', () => {
 - **[README.md](./README.md)** - Features and setup guide
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System design and patterns
 - **[API_COMMANDS.md](./API_COMMANDS.md)** - Tauri commands reference
+- **[BRANCHING_STRATEGY.md](./BRANCHING_STRATEGY.md)** - Git branching workflow
 - **[CLAUDE.md](../CLAUDE.md)** - Project conventions and patterns
 
 ### External Resources
@@ -615,8 +612,8 @@ describe('myFunction', () => {
 
 **Tauri:**
 
-- [Tauri Documentation](https://tauri.app/v2/guides/)
-- [Tauri Commands Guide](https://tauri.app/v2/guides/features/commands/)
+- [Tauri Documentation](https://tauri.app/start/)
+- [Tauri Commands Guide](https://tauri.app/develop/calling-rust/)
 
 **Rust:**
 
@@ -627,9 +624,9 @@ describe('myFunction', () => {
 
 **Study these well-implemented features:**
 
-1. **BuildProject workflow** (`src/pages/BuildProject/`) - Complex multi-step flow
-2. **Baker** (`src/pages/Baker/`) - Folder scanning and batch operations
-3. **ScriptFormatter** (`src/pages/AI/ScriptFormatter/`) - AI integration pattern
+1. **BuildProject workflow** (`src/features/BuildProject/`) - Complex multi-step flow with XState
+2. **Baker** (`src/features/Baker/`) - Folder scanning and batch operations
+3. **AITools** (`src/features/AITools/`) - AI integration pattern (ScriptFormatter + ExampleEmbeddings)
 4. **RAG commands** (`src-tauri/src/commands/rag.rs`) - Database + embedding pattern
 
 ---
@@ -638,9 +635,9 @@ describe('myFunction', () => {
 
 ### Within the Codebase
 
-1. **Check existing code** - Search for similar patterns
-2. **Read specs/** - Feature specifications and PRDs
-3. **Read CLAUDE.md** - Project conventions and decisions
+1. **Check existing code** - Search for similar patterns in `src/features/`
+2. **Read CLAUDE.md** - Project conventions and decisions
+3. **Read ARCHITECTURE.md** - System design and patterns
 
 ### Community
 
@@ -654,7 +651,7 @@ describe('myFunction', () => {
 1. Check the error message carefully
 2. Search existing GitHub issues
 3. Try `cargo clean && cargo build` (Rust issues)
-4. Try deleting `node_modules` and reinstalling (frontend issues)
+4. Try deleting `node_modules` and reinstalling with `bun install` (frontend issues)
 
 **When asking for help, include:**
 
@@ -698,6 +695,6 @@ Happy coding! 🚀
 
 ---
 
-**Document Version:** 1.0.0
-**Last Updated:** January 2025
+**Document Version:** 1.1.0
+**Last Updated:** July 2026
 **Maintainer:** Check GitHub for current maintainers

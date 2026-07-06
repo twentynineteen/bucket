@@ -10,7 +10,7 @@ Get up and running in under 5 minutes:
 
 ### Prerequisites
 
-- **Node.js** 18+ or **Bun** (recommended)
+- **Bun** (required -- the project's standard package manager)
 - **Rust** 1.70+ (for building from source)
 - **Ollama** (optional - for AI Script Formatter feature)
   - Download from [ollama.com](https://ollama.com)
@@ -31,11 +31,11 @@ Get up and running in under 5 minutes:
 git clone https://github.com/twentynineteen/bucket.git
 cd bucket
 
-# Install dependencies (using Bun - recommended)
+# Install dependencies
 bun install
 
 # Build the desktop app
-npm run build:tauri
+bun run build:tauri
 
 # On macOS, the app will be in /target/build/dmg
 # Open the DMG and copy Bucket.app to Applications
@@ -58,10 +58,10 @@ For active development with hot reload:
 bun install
 
 # Run in development mode (starts Tauri with devtools)
-npm run dev:tauri
+bun run dev:tauri
 
 # In a separate terminal, run tests
-npm run test
+bun run test
 ```
 
 ## Project Structure
@@ -69,58 +69,46 @@ npm run test
 ```
 bucket/
 ├── src/                           # Frontend React/TypeScript code
-│   ├── pages/                     # Page-level components (routes)
-│   │   ├── BuildProject/          # Main project creation workflow
-│   │   ├── Baker/                 # Batch breadcrumbs management
-│   │   ├── AI/                    # AI-powered features
-│   │   │   ├── ScriptFormatter/   # Script formatting with LLMs
-│   │   │   └── ExampleEmbeddings/ # RAG example management
-│   │   ├── auth/                  # Login and registration
-│   │   ├── UploadSprout.tsx       # Sprout Video integration
-│   │   ├── UploadTrello.tsx       # Trello integration
-│   │   ├── Posterframe.tsx        # Custom posterframe generation
-│   │   └── Settings.tsx           # App configuration
-│   ├── components/                # Reusable UI components
-│   │   ├── ui/                    # Radix UI components (buttons, dialogs, etc.)
-│   │   ├── Baker/                 # Baker-specific components
-│   │   └── trello/                # Trello integration components
-│   ├── hooks/                     # Custom React hooks
-│   │   ├── useBreadcrumb.ts       # Breadcrumbs file operations
-│   │   ├── useCreateProject.ts    # Project creation logic
-│   │   ├── useBakerScan.ts        # Folder scanning for Baker
-│   │   ├── useScriptProcessor.ts  # AI script formatting
-│   │   └── ...                    # 40+ specialized hooks
-│   ├── store/                     # Zustand state management
-│   │   ├── useBreadcrumbStore.ts  # Breadcrumbs state
-│   │   └── useAppStore.ts         # Global app state
-│   ├── services/                  # Business logic services
-│   ├── utils/                     # Utility functions
-│   ├── types/                     # TypeScript type definitions
-│   └── lib/                       # Shared libraries and configs
+│   ├── features/                  # Feature modules (each with api.ts, index.ts, types.ts)
+│   │   ├── AITools/               # ScriptFormatter + ExampleEmbeddings
+│   │   ├── Auth/                  # Login, registration, token management
+│   │   ├── Baker/                 # Drive scanning, breadcrumbs management
+│   │   ├── BuildProject/          # File ingest, camera assignment, XState
+│   │   ├── Premiere/              # Adobe Premiere plugin management
+│   │   ├── Settings/              # App configuration with per-domain tabs
+│   │   ├── Trello/                # Trello card management, video links
+│   │   └── Upload/                # Sprout Video, Posterframe, Otter
+│   ├── shared/                    # Cross-feature code
+│   │   ├── constants/             # Timing, animation, project constants
+│   │   ├── hooks/                 # Cross-feature hooks
+│   │   ├── lib/                   # Query infrastructure
+│   │   ├── services/              # ProgressTracker, feedback, cache
+│   │   ├── store/                 # Zustand stores (appStore, breadcrumbStore)
+│   │   ├── types/                 # Shared domain types
+│   │   ├── ui/                    # Radix primitives, sidebar, theme, layout
+│   │   └── utils/                 # Logger, storage, validation, cn()
+│   ├── App.tsx                    # Root React component
+│   └── AppRouter.tsx              # Route definitions (lazy-loaded)
 │
 ├── src-tauri/                     # Rust backend (Tauri)
 │   ├── src/
 │   │   ├── commands/              # Tauri command handlers
 │   │   │   ├── auth.rs            # User authentication (argon2 + JWT)
-│   │   │   ├── file_ops.rs        # File operations with progress tracking
 │   │   │   ├── premiere.rs        # Adobe Premiere integration
 │   │   │   ├── sprout_upload.rs   # Sprout Video API
 │   │   │   ├── docx.rs            # Word document processing
 │   │   │   ├── rag.rs             # RAG embeddings for script formatting
 │   │   │   └── ai_provider.rs     # AI provider management
+│   │   ├── baker/                 # Baker workflow logic
+│   │   ├── build_project/         # Build project file operations
 │   │   ├── state/                 # Shared state management
 │   │   ├── utils/                 # Rust utility functions
-│   │   ├── baker.rs               # Baker workflow logic
 │   │   └── media.rs               # Media file handling
 │   ├── Cargo.toml                 # Rust dependencies
 │   ├── tauri.conf.json            # Tauri app configuration
 │   └── resources/                 # Bundled resources
 │       └── embeddings/            # Pre-computed script examples database
 │
-├── specs/                         # Feature specifications (PRDs)
-│   ├── 004-embed-multiple-video/  # Multiple video links feature
-│   ├── 007-frontend-script-example/ # Script example management
-│   └── ...
 ├── tests/                         # Vitest test suite
 ├── .claude/                       # Claude Code configuration
 │   └── skills/                    # Custom Claude skills
@@ -129,15 +117,13 @@ bucket/
 
 ### Key Directories Explained
 
-**src/pages/** - Top-level page components that map to routes. Each page represents a major feature (BuildProject, Baker, AI tools, etc.). Add new pages here when creating new top-level features.
+**src/features/** - Feature modules, each self-contained with `api.ts` (I/O boundary), `index.ts` (barrel), `types.ts`, `components/`, `hooks/`, and `__contracts__/` (contract tests). All Tauri invoke calls go through `api.ts`. See CLAUDE.md for conventions.
 
-**src/components/** - Reusable UI components. Organized by feature (Baker/, trello/) or as general UI primitives (ui/). Components here should be presentational and reusable across multiple pages.
+**src/shared/** - Cross-feature code. Shared modules never import from features. Contains constants, hooks, lib (query infrastructure), services, store, types, ui (Radix primitives), and utils.
 
-**src/hooks/** - Custom React hooks that encapsulate business logic, API calls, and complex state management. Use TanStack React Query for data fetching (preferred over useEffect). Add hooks here when logic is reused across 2+ components.
+**src-tauri/src/commands/** - Rust functions exposed to the frontend via Tauri's IPC bridge. Each module represents a functional domain (authentication, AI, Premiere, etc.). Add new commands here for any Rust-side functionality.
 
-**src-tauri/src/commands/** - Rust functions exposed to the frontend via Tauri's IPC bridge. Each module represents a functional domain (file operations, authentication, AI, etc.). Add new commands here for any Rust-side functionality.
-
-**src/store/** - Zustand stores for global state management. Currently contains breadcrumbs state and app-wide settings. Prefer local state or React Query for component-specific data.
+**src/shared/store/** - Zustand stores for global state management. Currently contains breadcrumbs state and app-wide settings. Prefer local state or React Query for component-specific data.
 
 ## Key Concepts
 
@@ -323,16 +309,16 @@ Not currently used. Configuration is stored in Tauri's app data directory and ma
 
 ```bash
 # Run all tests (Vitest)
-npm run test
+bun run test
 
 # Run tests in watch mode
-npm run test:ui
+bun run test:ui
 
 # Run tests with coverage
-npm run test:coverage
+bun run test:coverage
 
 # Run tests once (CI mode)
-npm run test:run
+bun run test:run
 
 # Run Rust tests
 cd src-tauri
@@ -353,16 +339,16 @@ cargo test
 
 ```bash
 # Check formatting
-npm run prettier
+bun run prettier
 
 # Fix formatting issues
-npm run prettier:fix
+bun run prettier:fix
 
 # Check linting
-npm run eslint
+bun run eslint
 
 # Fix linting issues
-npm run eslint:fix
+bun run eslint:fix
 ```
 
 **Backend (Rust):**
@@ -389,7 +375,7 @@ Development mode includes React DevTools and TanStack Query DevTools:
 
 ```bash
 # Start with devtools open
-npm run dev:tauri
+bun run dev:tauri
 ```
 
 Open the devtools in the app window (right-click → Inspect Element)
@@ -400,10 +386,10 @@ Rust logs are output to the terminal when running in dev mode:
 
 ```bash
 # Enable detailed Rust logs
-RUST_LOG=debug npm run dev:tauri
+RUST_LOG=debug bun run dev:tauri
 
 # Enable logs for specific modules
-RUST_LOG=app_lib::commands=debug npm run dev:tauri
+RUST_LOG=app_lib::commands=debug bun run dev:tauri
 ```
 
 **Common debugging commands:**
@@ -450,7 +436,7 @@ ollama pull llama3.1:latest
 
 ### Build Errors (Missing Dependencies)
 
-**Problem:** `npm run build:tauri` fails with missing dependency errors
+**Problem:** `bun run build:tauri` fails with missing dependency errors
 
 **Solution:**
 
@@ -465,7 +451,7 @@ cargo clean
 
 # 3. Rebuild
 cd ..
-npm run build:tauri
+bun run build:tauri
 
 # 4. If still failing, check Rust version
 rustc --version  # Should be 1.70+
@@ -529,14 +515,32 @@ ProjectFolder/
 
 ## Additional Documentation
 
-- **[PREMIERE_PLUGINS.md](./PREMIERE_PLUGINS.md)** - Install and manage Premiere Pro CEP extensions
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Detailed system architecture and design decisions
+### Root-level docs
+
 - **[API_COMMANDS.md](./API_COMMANDS.md)** - Complete Tauri command reference
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Detailed system architecture and design decisions
+- **[BRANCHING_STRATEGY.md](./BRANCHING_STRATEGY.md)** - Git branching workflow (master + release branches)
+- **[ONBOARDING.md](./ONBOARDING.md)** - Developer onboarding guide (first-day setup)
+- **[PREMIERE_PLUGINS.md](./PREMIERE_PLUGINS.md)** - Install and manage Premiere Pro CEP extensions
 - **[apple-code-signing.md](./apple-code-signing.md)** - Apple Developer code signing and notarization setup
-- **[apple-code-signing-checklist.md](./apple-code-signing-checklist.md)** - Quick reference for code signing setup
+- **[apple-code-signing-checklist.md](./apple-code-signing-checklist.md)** - Quick reference checklist for code signing
+- **[macos-window-styling.md](./macos-window-styling.md)** - macOS native window styling and vibrancy
+- **[npm-to-bun-migration.md](./npm-to-bun-migration.md)** - Migration notes from npm to Bun
+- **[react-query-patterns.md](./react-query-patterns.md)** - TanStack React Query usage patterns
+- **[security-audit.md](./security-audit.md)** - Security audit notes and findings
+- **[theme-architecture.md](./theme-architecture.md)** - Theme system architecture (8 themes)
+- **[theme-customization.md](./theme-customization.md)** - Guide to customizing and extending themes
+
+### Subdirectories
+
+- **[readme/](./readme/)** - Sectioned README content (overview, features, installation, Ollama setup, workflow, tech stack, Premiere plugins)
+- **[ui/](./ui/)** - UI audit reports (BuildProject comprehensive audit, Tailwind audit)
+- **[ux/](./ux/)** - UX animation planning and implementation status
+
+### Project-root references
+
 - **[CLAUDE.md](../CLAUDE.md)** - Instructions for Claude Code when working with this codebase
 - **[CHANGELOG.md](../CHANGELOG.md)** - Version history and release notes
-- **[specs/](../specs/)** - Feature specifications and PRDs for each major feature
 
 ## Getting Help
 
@@ -550,6 +554,6 @@ This project is proprietary software. All rights reserved. Unauthorized copying,
 
 ---
 
-**Version:** 0.9.3
-**Last Updated:** January 2025
+**Version:** 0.16.0
+**Last Updated:** July 2026
 **Platform Support:** macOS, Windows, Linux
