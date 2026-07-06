@@ -192,8 +192,8 @@ pub async fn baker_associate_trello_card(
 
     let cards = breadcrumbs.trello_cards.as_mut().unwrap();
 
-    if cards.len() >= 10 {
-        return Err("Maximum of 10 Trello cards per project reached".to_string());
+    if cards.len() >= 50 {
+        return Err("Maximum of 50 Trello cards per project reached".to_string());
     }
 
     if cards.iter().any(|c| c.card_id == trello_card.card_id) {

@@ -128,9 +128,9 @@ export function setupTauriMocks() {
         const existing =
           mockBreadcrumbsStore.get(projectPath) || createEmptyBreadcrumbs(projectPath)
 
-        // Validate max 10 cards
-        if ((existing.trelloCards?.length ?? 0) >= 10) {
-          return Promise.reject('Maximum of 10 Trello cards per project reached')
+        // Validate max 50 cards
+        if ((existing.trelloCards?.length ?? 0) >= 50) {
+          return Promise.reject('Maximum of 50 Trello cards per project reached')
         }
 
         // Check for duplicate cardId

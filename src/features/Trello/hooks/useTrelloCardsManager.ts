@@ -29,8 +29,8 @@ function validateCardCanBeAdded(
   trelloCards: TrelloCard[],
   cardId: string
 ): string | null {
-  if (trelloCards.length >= 10) {
-    return 'Maximum of 10 Trello cards per project reached'
+  if (trelloCards.length >= 50) {
+    return 'Maximum of 50 Trello cards per project reached'
   }
   if (trelloCards.some((card) => card.cardId === cardId)) {
     return 'This Trello card is already associated with the project'
@@ -374,7 +374,7 @@ export function useTrelloCardsManager({
 
     // Computed
     hasApiCredentials: !!(trelloApiKey && trelloApiToken),
-    canAddCard: trelloCards.length < 10 && !isUpdating,
+    canAddCard: trelloCards.length < 50 && !isUpdating,
 
     // Handlers
     handleSelectCard,

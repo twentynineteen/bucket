@@ -1,5 +1,9 @@
 # Project Requirements Document
 
+*This is the original PRD written at the start of the Bucket project and is kept for
+historical context. For current project documentation, see [README.md](README.md) and
+the [docs/](docs/) directory.*
+
 ## 1. Project Overview
 
 - **Project Name:** Bucket
