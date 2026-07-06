@@ -51,7 +51,7 @@ npx npm-check-updates -u             # Update all dependencies to latest
 
 ### Tech Stack
 
-- **Frontend**: React 18.3 + TypeScript 5.7 + Vite 6.1
+- **Frontend**: React 19.2 + TypeScript 5.9 + Vite 7.3
 - **Backend**: Tauri 2.0 (Rust) with extensive plugin ecosystem
 - **UI**: TailwindCSS + Radix UI components + Lucide icons
 - **State**: Zustand stores + TanStack React Query (preferred over useEffect)
@@ -63,24 +63,24 @@ npx npm-check-updates -u             # Update all dependencies to latest
 ```
 src/
 +-- features/
-|   +-- AITools/       # ScriptFormatter + ExampleEmbeddings (api.ts, 6 barrel exports)
+|   +-- AITools/       # ScriptFormatter + ExampleEmbeddings (api.ts, 2 barrel exports)
 |   +-- Auth/          # Login, registration, token management (api.ts, 6 barrel exports)
-|   +-- Baker/         # Drive scanning, breadcrumbs management (api.ts, 21 barrel exports)
-|   +-- BuildProject/  # File ingest, camera assignment, XState (api.ts, 3 barrel exports)
-|   +-- Premiere/      # Adobe Premiere plugin management (api.ts, 3 barrel exports)
+|   +-- Baker/         # Drive scanning, breadcrumbs management (api.ts, 24 barrel exports)
+|   +-- BuildProject/  # File ingest, camera assignment, XState (api.ts, 4 barrel exports)
+|   +-- Premiere/      # Adobe Premiere plugin management (api.ts, 1 barrel export)
 |   +-- Settings/      # App configuration with per-domain tabs (api.ts, 3 barrel exports)
-|   +-- Trello/        # Trello card management, video links (api.ts, 32 barrel exports)
-|   +-- Upload/        # Sprout Video, Posterframe, Otter (api.ts, 19 barrel exports)
+|   +-- Trello/        # Trello card management, video links (api.ts, 29 barrel exports)
+|   +-- Upload/        # Sprout Video, Posterframe, Otter (api.ts, 17 barrel exports)
 |
 +-- shared/
-|   +-- constants/     # Timing, animation, project constants (27 exports)
-|   +-- hooks/         # Cross-feature hooks: breadcrumb, search, API keys, mobile (7 exports)
-|   +-- lib/           # Query infrastructure: keys, client, utils, prefetch, perf (50 exports)
-|   +-- services/      # ProgressTracker, feedback, cache services (16 exports)
-|   +-- store/         # Zustand stores: appStore, breadcrumbStore (2 exports)
-|   +-- types/         # Shared domain types: media, script, breadcrumbs (34 exports)
+|   +-- constants/     # Timing, animation, project constants (26 exports)
+|   +-- hooks/         # Cross-feature hooks: breadcrumb, search, API keys, mobile (8 exports)
+|   +-- lib/           # Query infrastructure: keys, client, utils, prefetch, perf (49 exports)
+|   +-- services/      # ProgressTracker, feedback, cache services (5 exports)
+|   +-- store/         # Zustand stores: appStore, breadcrumbStore (3 exports)
+|   +-- types/         # Shared domain types: media, script, breadcrumbs (41 exports)
 |   +-- ui/            # Radix primitives, sidebar, theme, layout (direct imports, NO barrel)
-|   +-- utils/         # Logger, storage, validation, cn(), breadcrumbs utils (30 exports)
+|   +-- utils/         # Logger, storage, validation, cn(), breadcrumbs utils (29 exports)
 
 src-tauri/
 +-- src/               # Rust backend with file operations, API integrations
@@ -222,9 +222,9 @@ Each feature has `__contracts__/` with three test types:
 
 ## Development Notes
 
-- **Main Branch**: `main` (use for PRs)
+- **Main Branch**: `master` (use for PRs)
 - **Package Manager**: Bun (used for all development and CI, replaces npm entirely)
 - **Platform**: Cross-platform desktop app, primary development on macOS
 - **Security**: Uses argon2 for password hashing, JWT for auth, Tauri stronghold for secure storage
-- **Themes**: 8 themes available (System, Light, Dark, Dracula, Catppuccin variants) via `@shared/ui/theme/`
+- **Themes**: 13 themes available (System, Light, Dark, Dracula, Tokyo Night, Catppuccin variants, Solarized Light, GitHub Light, Nord Light, One Light) via `@shared/ui/theme/`
 - **Window**: Native macOS title bar with traffic lights, vibrancy effects, window state persistence
