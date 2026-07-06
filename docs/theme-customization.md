@@ -1,6 +1,6 @@
 # Theme Customization Guide
 
-Bucket supports multiple color themes to personalize your workspace. Choose from 8 beautiful themes including light, dark, and specialty themes like Dracula and Catppuccin variants.
+Bucket supports multiple color themes to personalize your workspace. Choose from 13 built-in themes including light, dark, and specialty themes like Dracula, Tokyo Night, Catppuccin variants, Solarized Light, GitHub Light, Nord Light, and One Light.
 
 ## Available Themes
 
@@ -21,6 +21,30 @@ Bucket supports multiple color themes to personalize your workspace. Choose from
 - **Best For**: Reduced eye strain in bright environments
 - **Author**: Catppuccin
 
+#### Solarized Light
+- **Description**: Classic warm theme with cream tones and blue accents
+- **Colors**: Cream background, dark teal text, blue and cyan accents
+- **Best For**: Extended reading and editing sessions
+- **Author**: Ethan Schoonover
+
+#### GitHub Light
+- **Description**: Clean minimal theme inspired by GitHub
+- **Colors**: White background, dark gray text, blue and green accents
+- **Best For**: Familiar GitHub-style coding environment
+- **Author**: GitHub
+
+#### Nord Light
+- **Description**: Cool arctic-inspired theme with muted tones
+- **Colors**: Light gray background, dark text, muted blue accents
+- **Best For**: Calm, distraction-free working
+- **Author**: Arctic Ice Studio
+
+#### One Light
+- **Description**: Atom editor's popular warm light theme
+- **Colors**: Off-white background, dark gray text, blue and purple accents
+- **Best For**: Atom editor fans
+- **Author**: Atom
+
 ### Dark Themes
 
 #### Dark
@@ -33,6 +57,12 @@ Bucket supports multiple color themes to personalize your workspace. Choose from
 - **Colors**: Dark gray background, purple primary, pink accents, cyan highlights
 - **Best For**: High contrast lovers, vibrant color enthusiasts
 - **Author**: Zeno Rocha
+
+#### Tokyo Night
+- **Description**: Deep blue dark theme inspired by Tokyo at night
+- **Colors**: Deep blue background, soft blue-gray text, cyan and blue accents
+- **Best For**: Fans of deep blue-toned dark themes
+- **Author**: enkia
 
 #### Catppuccin Frappé
 - **Description**: Medium-dark theme with cool blue-gray tones
@@ -172,7 +202,7 @@ The architecture is already in place. Stay tuned for this feature!
 ### Theme Storage
 - Location: `localStorage` key `"theme"`
 - Format: String (theme ID)
-- Values: `"system"`, `"light"`, `"dark"`, `"dracula"`, `"catppuccin-latte"`, `"catppuccin-frappe"`, `"catppuccin-macchiato"`, `"catppuccin-mocha"`
+- Values: `"system"`, `"light"`, `"dark"`, `"dracula"`, `"tokyo-night"`, `"catppuccin-latte"`, `"catppuccin-frappe"`, `"catppuccin-macchiato"`, `"catppuccin-mocha"`, `"solarized-light"`, `"github-light"`, `"nord-light"`, `"one-light"`
 
 ### CSS Variables
 All themes use CSS custom properties (variables) defined in `src/index.css`:
@@ -184,15 +214,21 @@ All themes use CSS custom properties (variables) defined in `src/index.css`:
 
 ### Theme Classes
 Themes are applied via class names on the `<html>` element:
-- `.light`, `.dark`, `.dracula`
+- `.light`, `.dark`, `.dracula`, `.tokyo-night`
 - `.catppuccin-latte`, `.catppuccin-frappe`, `.catppuccin-macchiato`, `.catppuccin-mocha`
+- `.solarized-light`, `.github-light`, `.nord-light`, `.one-light`
 
 ---
 
 ## Credits
 
 - **Dracula**: Created by [Zeno Rocha](https://github.com/dracula/dracula-theme)
+- **Tokyo Night**: Created by [enkia](https://github.com/enkia/tokyo-night-vscode-theme)
 - **Catppuccin**: Created by the [Catppuccin team](https://github.com/catppuccin/catppuccin)
+- **Solarized**: Created by [Ethan Schoonover](https://ethanschoonover.com/solarized/)
+- **Nord**: Created by [Arctic Ice Studio](https://www.nordtheme.com/)
+- **One Light**: Inspired by [Atom](https://github.com/atom/one-light-syntax)
+- **GitHub Light**: Inspired by [GitHub](https://github.com)
 - **Light/Dark**: Custom themes by the Bucket team
 
 ---

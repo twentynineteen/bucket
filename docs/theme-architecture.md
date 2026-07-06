@@ -24,49 +24,40 @@ This document explains the multi-theme system architecture in Bucket, designed f
 ## File Structure
 
 ```
+src/shared/ui/theme/
+├── themes.ts                          # Theme metadata registry
+├── ThemeSelector.tsx                   # Main theme selector UI
+├── ThemeColorSwatch.tsx               # Color preview component
+├── theme-toggle.tsx                   # Quick theme toggle
+├── useThemePreview.ts                 # Live preview functionality
+├── themeMapper.ts                     # Legacy migration utilities
+├── themeLoader.ts                     # Custom theme loader (future)
+└── customTheme.ts                     # Custom theme type definitions
+
 src/
-├── constants/
-│   └── themes.ts                      # Theme metadata registry
-├── components/
-│   └── Settings/
-│       ├── ThemeSelector.tsx          # Main theme selector UI
-│       ├── ThemeColorSwatch.tsx       # Color preview component
-│       └── ThemeImport.tsx            # Custom theme import (stub)
-├── hooks/
-│   └── useThemePreview.ts             # Live preview functionality
-├── utils/
-│   ├── themeMapper.ts                 # Legacy migration utilities
-│   └── themeLoader.ts                 # Custom theme loader (future)
-├── types/
-│   └── customTheme.ts                 # Custom theme type definitions
 ├── index.css                           # Theme CSS variables
 └── App.tsx                            # ThemeProvider configuration
 
 docs/
 ├── theme-customization.md             # User documentation
 └── theme-architecture.md              # This file
-
-tests/
-└── unit/
-    ├── constants/themes.test.ts       # Theme registry tests
-    ├── utils/themeMapper.test.ts      # Migration utility tests
-    └── components/Settings/
-        ├── ThemeSelector.test.tsx     # Component tests
-        └── ThemeColorSwatch.test.tsx  # Swatch tests
 ```
 
 ---
 
 ## Core Components
 
-### 1. Theme Registry ([themes.ts](../src/constants/themes.ts))
+### 1. Theme Registry ([themes.ts](../src/shared/ui/theme/themes.ts))
 
 Central source of truth for all theme metadata.
 
 **Key Exports:**
 ```typescript
-export type ThemeId = 'system' | 'light' | 'dark' | 'dracula' | ...
-export interface ThemeMetadata { id, name, description, category, colorSwatch, author, isDark }
+export type ThemeId =
+  | 'system' | 'light' | 'dark' | 'dracula' | 'tokyo-night'
+  | 'catppuccin-latte' | 'catppuccin-frappe' | 'catppuccin-macchiato' | 'catppuccin-mocha'
+  | 'solarized-light' | 'github-light' | 'nord-light' | 'one-light'
+export interface ThemeMetadata { id, name, description, category, colorSwatch, author?, isDark }
 export const THEMES: Record<ThemeId, ThemeMetadata>
 export function getAllThemeIds(): ThemeId[]
 export function getThemeById(id: string): ThemeMetadata | undefined
@@ -76,7 +67,7 @@ export function getGroupedThemes(): ThemeGroup[]
 
 **Usage:**
 ```typescript
-import { THEMES, getGroupedThemes } from '@/constants/themes'
+import { THEMES, getGroupedThemes } from '@shared/ui/theme/themes'
 
 // Get theme info
 const dracula = THEMES.dracula
@@ -93,11 +84,13 @@ const groups = getGroupedThemes()
 <ThemeProvider
   attribute="class"              // Apply theme via class name
   defaultTheme="system"          // Default to system preference
-  themes={[                      // Explicitly list all themes
+  themes={[                      // Explicitly list all 13 themes
     'system', 'light', 'dark',
-    'dracula',
+    'dracula', 'tokyo-night',
     'catppuccin-latte', 'catppuccin-frappe',
-    'catppuccin-macchiato', 'catppuccin-mocha'
+    'catppuccin-macchiato', 'catppuccin-mocha',
+    'solarized-light', 'github-light',
+    'nord-light', 'one-light'
   ]}
   enableSystem                   // Allow system theme detection
   storageKey="theme"             // LocalStorage key
@@ -125,7 +118,7 @@ const groups = getGroupedThemes()
   .dark { /* Dark theme overrides */ }
   .dracula { /* Dracula theme overrides */ }
   .catppuccin-latte { /* Latte theme overrides */ }
-  /* ...5 more themes */
+  /* ...9 more themes */
 }
 ```
 
@@ -146,7 +139,7 @@ const groups = getGroupedThemes()
 </div>
 ```
 
-### 4. ThemeSelector Component ([ThemeSelector.tsx](../src/components/Settings/ThemeSelector.tsx))
+### 4. ThemeSelector Component ([ThemeSelector.tsx](../src/shared/ui/theme/ThemeSelector.tsx))
 
 **Features:**
 - Radix UI Select dropdown
@@ -166,12 +159,12 @@ interface ThemeSelectorProps {
 
 **Integration:**
 ```tsx
-import { ThemeSelector } from '@/components/Settings/ThemeSelector'
+import { ThemeSelector } from '@shared/ui/theme/ThemeSelector'
 
 <ThemeSelector label="Theme" />
 ```
 
-### 5. Live Preview Hook ([useThemePreview.ts](../src/hooks/useThemePreview.ts))
+### 5. Live Preview Hook ([useThemePreview.ts](../src/shared/ui/theme/useThemePreview.ts))
 
 **Purpose:** Temporarily apply a theme on hover without persisting it.
 
@@ -196,7 +189,7 @@ stopPreview() // Restores 'dark' theme
 4. Adds preview theme class (e.g., `.dracula`)
 5. On mouse leave, restores original theme class
 
-### 6. Theme Color Swatch ([ThemeColorSwatch.tsx](../src/components/Settings/ThemeColorSwatch.tsx))
+### 6. Theme Color Swatch ([ThemeColorSwatch.tsx](../src/shared/ui/theme/ThemeColorSwatch.tsx))
 
 **Purpose:** Visual preview of theme colors (4-color bar).
 
@@ -273,7 +266,7 @@ In `src/index.css`, add a new class selector:
 
 ### Step 2: Add to Theme Registry
 
-In `src/constants/themes.ts`:
+In `src/shared/ui/theme/themes.ts`:
 
 ```typescript
 export type ThemeId =
@@ -281,10 +274,15 @@ export type ThemeId =
   | 'light'
   | 'dark'
   | 'dracula'
+  | 'tokyo-night'
   | 'catppuccin-latte'
   | 'catppuccin-frappe'
   | 'catppuccin-macchiato'
   | 'catppuccin-mocha'
+  | 'solarized-light'
+  | 'github-light'
+  | 'nord-light'
+  | 'one-light'
   | 'my-new-theme' // Add here
 
 export const THEMES: Record<ThemeId, ThemeMetadata> = {
@@ -313,9 +311,10 @@ In `src/App.tsx`:
 ```tsx
 <ThemeProvider
   themes={[
-    'system', 'light', 'dark', 'dracula',
+    'system', 'light', 'dark', 'dracula', 'tokyo-night',
     'catppuccin-latte', 'catppuccin-frappe',
     'catppuccin-macchiato', 'catppuccin-mocha',
+    'solarized-light', 'github-light', 'nord-light', 'one-light',
     'my-new-theme' // Add here
   ]}
   ...
@@ -327,9 +326,9 @@ In `src/App.tsx`:
 In `tests/unit/constants/themes.test.ts`:
 
 ```typescript
-it('contains all 9 themes', () => { // Update count
+it('contains all 14 themes', () => { // Update count
   const themeIds = Object.keys(THEMES)
-  expect(themeIds).toHaveLength(9)
+  expect(themeIds).toHaveLength(14)
   expect(themeIds).toContain('my-new-theme')
 })
 ```
@@ -344,7 +343,7 @@ Update `docs/theme-customization.md` with theme details.
 
 ### Architecture (Already in Place)
 
-**Type Definition** (`src/types/customTheme.ts`):
+**Type Definition** (`src/shared/ui/theme/customTheme.ts`):
 ```typescript
 export interface CustomThemeDefinition {
   id: string
@@ -356,7 +355,7 @@ export interface CustomThemeDefinition {
 }
 ```
 
-**Theme Loader** (`src/utils/themeLoader.ts`):
+**Theme Loader** (`src/shared/ui/theme/themeLoader.ts`):
 ```typescript
 export function loadCustomTheme(theme: CustomThemeDefinition): { success: boolean, error?: string }
 export function saveCustomThemesToStorage(themes: CustomThemeDefinition[]): void
@@ -375,7 +374,7 @@ export const CustomThemeSchema = z.object({
 
 ### Implementation Plan (When Ready)
 
-1. **UI Component**: Complete `ThemeImport.tsx` with file picker
+1. **UI Component**: Create a `ThemeImport.tsx` component with file picker
 2. **Validation**: Use Zod schema to validate JSON imports
 3. **Dynamic CSS Injection**: Use `themeLoader.loadCustomTheme()`
 4. **Persistence**: Save to localStorage under `bucket-custom-themes`
@@ -389,7 +388,7 @@ export const CustomThemeSchema = z.object({
 
 Users upgrading from old versions have their themes automatically migrated:
 
-**themeMapper.ts:**
+**src/shared/ui/theme/themeMapper.ts:**
 ```typescript
 export function migrateLegacyTheme(legacyThemeId: string): ThemeId {
   const migrations: Record<string, ThemeId> = {
@@ -443,7 +442,7 @@ bun test ThemeColorSwatch
 ### Manual Testing Checklist
 
 - [ ] Theme selector appears in Settings → Appearance
-- [ ] All 8 themes listed with correct names
+- [ ] All 13 themes listed with correct names
 - [ ] Color swatches display for each theme
 - [ ] Live preview works on hover
 - [ ] Theme persists after page refresh
@@ -514,7 +513,6 @@ bun test ThemeColorSwatch
 6. **Font Size Themes**: Accessibility presets
 
 ### Extension Points
-- `ThemeImport.tsx`: Stubbed for future implementation
 - `themeLoader.ts`: Fully functional custom theme loader
 - `customTheme.ts`: Type definitions ready
 - localStorage: Architecture supports unlimited custom themes
@@ -580,8 +578,9 @@ function initializeCustomThemes(): void
 
 ## Changelog
 
-### v0.11.0 (Current)
+### v0.11.0
 - ✨ Added 8-theme system (System, Light, Dark, Dracula, 4x Catppuccin)
+- ✨ Later expanded to 13 themes (added Tokyo Night, Solarized Light, GitHub Light, Nord Light, One Light)
 - ✨ Live preview on hover
 - ✨ Color swatches in theme selector
 - ✨ Settings → Appearance section

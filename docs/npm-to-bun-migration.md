@@ -1,8 +1,11 @@
 # NPM to Bun Migration Task Tracker
 
+> *Migration completed December 2025 (PR #66). Bun is now the sole package manager.
+> This document is retained as a historical record of the migration process.*
+
 **Branch:** `chore/complete-bun-migration`
 **Date Started:** 2025-12-10
-**Status:** In Progress
+**Status:** Complete
 
 ---
 

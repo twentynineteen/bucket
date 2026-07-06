@@ -1,5 +1,11 @@
 # Security Audit Process
 
+> *Historical snapshot (v0.8.1, circa December 2024). The TypeScript service classes
+> referenced below (`SecurityAuditor`, `SecurityVulnerability`, `PackageUpdateWorkflow`)
+> were never merged into the codebase. The shell script `scripts/security-audit.sh` and
+> `scripts/validate-lock-sync.sh` do exist and remain usable. Treat the service-layer
+> sections as aspirational design notes, not as documentation of shipped code.*
+
 ## Overview
 
 Bucket implements a comprehensive security audit process to identify, assess, and resolve security vulnerabilities in dependencies. This process is integrated into the package update workflow and follows security-first principles.
