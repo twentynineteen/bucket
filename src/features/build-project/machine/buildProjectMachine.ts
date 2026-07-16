@@ -364,7 +364,11 @@ export const buildProjectMachine = setup({
   },
   guards: {
     hasRetryableError: ({ context }) =>
-      context.error !== null && context.error !== 'Project creation cancelled by user.'
+      context.error !== null && context.error !== 'Project creation cancelled by user.',
+    // Zero-footage projects are valid (validateInput confirms with the user),
+    // but the transfer stage treats an empty file list as an error — so it
+    // must be skipped entirely when there is nothing to transfer.
+    hasNoFiles: ({ context }) => context.files.length === 0
   }
 }).createMachine({
   id: 'buildProject',
@@ -499,10 +503,19 @@ export const buildProjectMachine = setup({
           projectFolder: context.projectFolder!,
           breadcrumbs: context.breadcrumbs!
         }),
-        onDone: {
-          target: 'transferringFiles',
-          actions: assign({ currentStage: 'transferringFiles' as const })
-        },
+        onDone: [
+          {
+            // No footage to transfer — the project is already complete on disk
+            // (folders, template, breadcrumbs), so go straight to success.
+            guard: 'hasNoFiles',
+            target: 'success',
+            actions: 'markSuccess'
+          },
+          {
+            target: 'transferringFiles',
+            actions: assign({ currentStage: 'transferringFiles' as const })
+          }
+        ],
         onError: {
           target: 'error',
           actions: assign({

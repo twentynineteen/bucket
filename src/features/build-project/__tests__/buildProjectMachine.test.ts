@@ -301,6 +301,70 @@ describe('BuildProject State Machine', () => {
   })
 
   // ============================================================================
+  // Zero-Footage Workflow (skip file transfer)
+  // ============================================================================
+
+  describe('zero-footage workflow', () => {
+    it('should reach success without entering transferringFiles when no files are added', async () => {
+      vi.mocked(exists).mockResolvedValue(false)
+      vi.mocked(mkdir).mockResolvedValue(undefined)
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      vi.mocked(writeTextFile).mockResolvedValue(undefined)
+      // User confirms the "no files added" dialog during validation
+      vi.mocked(confirm).mockResolvedValue(true)
+
+      const actor = createActor(buildProjectMachine)
+      actor.start()
+
+      const visitedStates: string[] = []
+      actor.subscribe((snapshot) => {
+        visitedStates.push(String(snapshot.value))
+      })
+
+      actor.send({ type: 'START', input: createValidInput({ files: [] }) })
+
+      await waitForState(actor, 'success')
+
+      const finalState = actor.getSnapshot()
+      expect(finalState.value).toBe('success')
+      expect(finalState.context.currentStage).toBe('success')
+      expect(finalState.context.progress).toBe(100)
+      expect(finalState.context.error).toBeNull()
+
+      // The transfer stage must be skipped entirely
+      expect(visitedStates).not.toContain('transferringFiles')
+      expect(vi.mocked(invoke)).not.toHaveBeenCalledWith(
+        'transfer_files_with_progress',
+        expect.anything()
+      )
+
+      actor.stop()
+    })
+
+    it('should still write breadcrumbs with an empty files array', async () => {
+      vi.mocked(exists).mockResolvedValue(false)
+      vi.mocked(mkdir).mockResolvedValue(undefined)
+      vi.mocked(invoke).mockResolvedValue(undefined)
+      vi.mocked(writeTextFile).mockResolvedValue(undefined)
+      vi.mocked(confirm).mockResolvedValue(true)
+
+      const actor = createActor(buildProjectMachine)
+      actor.start()
+
+      actor.send({ type: 'START', input: createValidInput({ files: [] }) })
+
+      await waitForState(actor, 'success')
+
+      const breadcrumbs = actor.getSnapshot().context.breadcrumbs
+      expect(breadcrumbs).not.toBeNull()
+      expect(breadcrumbs?.files).toEqual([])
+      expect(vi.mocked(writeTextFile)).toHaveBeenCalled()
+
+      actor.stop()
+    })
+  })
+
+  // ============================================================================
   // Error Handling and Transitions
   // ============================================================================
 
