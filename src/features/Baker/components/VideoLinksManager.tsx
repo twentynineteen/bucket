@@ -55,6 +55,9 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
     setIsTrelloDialogOpen,
     addMode,
 
+    // Trello card rename proposal
+    renameProposal,
+
     // Loading states
     isUpdating,
     isFetchingVideo,
@@ -192,6 +195,7 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
         trelloCards={trelloCards}
         onUpdate={handleTrelloCardUpdate}
         onAddTrelloCard={handleAddTrelloCard}
+        proposedCardName={renameProposal}
       />
 
       {/* Remove video link confirmation dialog */}
