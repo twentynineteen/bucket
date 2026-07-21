@@ -5,6 +5,41 @@ All notable changes to the Bucket project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.2] - 2026-07-16
+
+### Fixed
+
+- BuildProject: creating a project with no footage files now completes properly — the
+  workflow skips the file-transfer stage, the progress bar reaches 100%, and the
+  success section appears (previously the UI stalled at 80% with an error toast
+  despite the project being fully created on disk) (#131, #132)
+
+---
+
+## [0.16.1] - 2026-07-06
+
+### Fixed
+
+- Mount Sonner Toaster so toast notifications render app-wide
+
+### Removed
+
+- Dead code and unused dependencies identified by knip (legacy build-project stages,
+  unused Baker/Trello/AITools components and hooks)
+- Leftover AI tooling artifacts and legacy planning templates
+
+### Changed
+
+- Documentation overhaul: rewritten README, corrected ARCHITECTURE and API_COMMANDS,
+  reconstructed CHANGELOG for 0.8.2–0.16.0, refreshed onboarding docs
+- Regenerated Tauri ACL schemas for Tauri 2.11
+
+### Security
+
+- Dependabot security bumps for vulnerable dependencies
+
+---
+
 ## [0.16.0] - 2026-06-30
 
 ### Added

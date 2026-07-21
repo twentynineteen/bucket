@@ -9,6 +9,7 @@ import { ChunkErrorBoundary } from './shared/ui/layout/ChunkErrorBoundary'
 import { QueryErrorBoundary } from './shared/ui/layout/ErrorBoundary'
 import { RouteLoadingSpinner } from './shared/ui/layout/RouteLoadingSpinner'
 import { TitleBar } from './shared/ui/layout/TitleBar'
+import { Toaster } from './shared/ui/sonner'
 import { CACHE, getBackoffDelay, RETRY } from '@shared/constants'
 import { AuthProvider } from '@features/Auth'
 import { useWindowState } from '@shared/hooks/useWindowState'
@@ -109,6 +110,7 @@ const App: React.FC = () => {
             </Router>
           </AuthProvider>
         </QueryErrorBoundary>
+        <Toaster />
         {/* React Query DevTools - only shows in development */}
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
