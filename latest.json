@@ -1,0 +1,15 @@
+{
+  "version": "0.17.1",
+  "notes": "## What's Changed\n\n- chore: bump version to 0.17.0 and update changelog (ad2398f)\n- feat(baker): storage map view with size sorting and size-only breadcrumb refresh (686ee60)\n- feat(baker/upload): custom Sprout video title at upload + optional Trello card rename (7c26fcd)\n\n## Installation\n\nDownload the appropriate installer for your platform from the assets below.\n\n**Full Changelog**: https://github.com/twentynineteen/bucket/compare/app-v0.16.2...app-v0.17.1",
+  "pub_date": "2026-07-22T12:10:45Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "url": "https://github.com/twentynineteen/bucket/releases/download/app-v0.17.1/Bucket_aarch64-apple-darwin.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUdGxzdGplRllZblI4R05zNlAwUGJiOXk3R09pL0YxZVJSYStlV0RNeXdiKzZ4dFIxR29LYXhCVFQ4WENyekdER3R2R05xQzZMVWN6aExYZEFRVzRXV1hYdHVEUnpNdkFNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NzIyMTg3CWZpbGU6QnVja2V0LmFwcC50YXIuZ3oKNEdUWkx1TnVhaE1mQTh5YzMxaVpyanZZTWFpaU1tblJad1JQSlA1QUF1V2FlbGlCV0NXY1N6bkorQXdvRzBwdmQvOUhWdlVDb2dYQjB2Zng2WGtBQVE9PQo="
+    },
+    "darwin-x86_64": {
+      "url": "https://github.com/twentynineteen/bucket/releases/download/app-v0.17.1/Bucket_x86_64-apple-darwin.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUdGxzdGplRllZblM4RUwyOUNZd2ZvbmtkMlg3eU9Na1RlRGZmYW0xYTdCU2FWUjlZbEVWK0VtMjhDeTBnd2x1RlRwMjVOZFRJeGNVdXZVcGNiUGY2L1lSN2I3Sk0vS0FrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NzIyMjEyCWZpbGU6QnVja2V0LmFwcC50YXIuZ3oKWWJxMS9mS3VQMVJ4UEpXQTA0U3NBWHJlOEt3cjJudHh1R1kxOFJvSnZtT3c2Z0xIclJON2VwZTRTMFVYYjNzeXQ5aG1JK0h5bmx5STZpTjR1Yy80Q2c9PQo="
+    }
+  }
+}
