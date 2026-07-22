@@ -162,6 +162,7 @@ pub async fn baker_validate_folder(folder_path: String) -> Result<ProjectFolder,
         camera_count,
         validation_errors,
         invalid_breadcrumbs,
+        folder_size_bytes: calculate_folder_size(path).ok(),
     })
 }
 
@@ -301,6 +302,122 @@ pub async fn baker_update_breadcrumbs(
                     } else {
                         result.created.push(project_path);
                     }
+                }
+            }
+            Err(e) => {
+                result.failed.push(FailedUpdate {
+                    path: project_path.clone(),
+                    error: format!("Failed to serialize breadcrumbs: {}", e),
+                });
+            }
+        }
+    }
+
+    Ok(result)
+}
+
+/// Rewrite ONLY the `folderSizeBytes` and `lastModified` fields of each
+/// project's `breadcrumbs.json`, recalculating the folder size live.
+///
+/// This is deliberately narrower than `baker_update_breadcrumbs`: the file is
+/// edited as raw JSON so every other field — including unknown or drifted ones —
+/// is preserved untouched. Projects whose size cannot be calculated are reported
+/// as failures rather than written with a false size.
+#[tauri::command]
+pub async fn baker_update_breadcrumbs_sizes(
+    project_paths: Vec<String>,
+) -> Result<BatchUpdateResult, String> {
+    if project_paths.is_empty() {
+        return Err("Project paths cannot be empty".to_string());
+    }
+
+    let mut result = BatchUpdateResult {
+        successful: Vec::new(),
+        failed: Vec::new(),
+        created: Vec::new(),
+        updated: Vec::new(),
+    };
+
+    for project_path in project_paths {
+        let path = Path::new(&project_path);
+
+        if !path.exists() {
+            result.failed.push(FailedUpdate {
+                path: project_path.clone(),
+                error: "Path does not exist".to_string(),
+            });
+            continue;
+        }
+
+        let breadcrumbs_path = path.join("breadcrumbs.json");
+        if !breadcrumbs_path.exists() {
+            result.failed.push(FailedUpdate {
+                path: project_path.clone(),
+                error: "No breadcrumbs file to update".to_string(),
+            });
+            continue;
+        }
+
+        let folder_size = match calculate_folder_size(path) {
+            Ok(size) => size,
+            Err(e) => {
+                result.failed.push(FailedUpdate {
+                    path: project_path.clone(),
+                    error: format!("Failed to calculate folder size: {}", e),
+                });
+                continue;
+            }
+        };
+
+        let content = match fs::read_to_string(&breadcrumbs_path) {
+            Ok(content) => content,
+            Err(e) => {
+                result.failed.push(FailedUpdate {
+                    path: project_path.clone(),
+                    error: format!("Failed to read breadcrumbs file: {}", e),
+                });
+                continue;
+            }
+        };
+
+        let mut value: serde_json::Value = match serde_json::from_str(&content) {
+            Ok(serde_json::Value::Object(map)) => serde_json::Value::Object(map),
+            Ok(_) => {
+                result.failed.push(FailedUpdate {
+                    path: project_path.clone(),
+                    error: "Breadcrumbs file is not a JSON object".to_string(),
+                });
+                continue;
+            }
+            Err(e) => {
+                result.failed.push(FailedUpdate {
+                    path: project_path.clone(),
+                    error: format!("Failed to parse breadcrumbs file: {}", e),
+                });
+                continue;
+            }
+        };
+
+        let map = value.as_object_mut().expect("checked object above");
+        map.insert(
+            "folderSizeBytes".to_string(),
+            serde_json::Value::from(folder_size),
+        );
+        map.insert(
+            "lastModified".to_string(),
+            serde_json::Value::from(get_current_timestamp()),
+        );
+
+        match serde_json::to_string_pretty(&value) {
+            Ok(json_content) => {
+                if let Err(e) = fs::write(&breadcrumbs_path, json_content) {
+                    result.failed.push(FailedUpdate {
+                        path: project_path.clone(),
+                        error: format!("Failed to write breadcrumbs file: {}", e),
+                    });
+                } else {
+                    result.successful.push(project_path.clone());
+                    result.updated.push(project_path);
                 }
             }
             Err(e) => {
@@ -492,6 +609,63 @@ mod tests {
         salvage_links_from_raw("{ not valid json", &mut regenerated);
         assert!(regenerated.trello_cards.is_none());
         assert!(regenerated.video_links.is_none());
+    }
+
+    #[tokio::test]
+    async fn size_only_update_touches_only_size_and_last_modified() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Sized Project");
+        make_valid_project(&project);
+
+        // Put a real file in the project so the size is non-zero.
+        fs::write(
+            project.join("Footage").join("Camera 1").join("clip.mp4"),
+            vec![0u8; 4096],
+        )
+        .unwrap();
+
+        // Drifted breadcrumbs (createdBy is an object) — the size-only update
+        // must still succeed and must NOT normalize or destroy other fields.
+        let breadcrumbs_path = project.join("breadcrumbs.json");
+        fs::write(&breadcrumbs_path, DRIFTED_BREADCRUMBS).unwrap();
+
+        let result =
+            baker_update_breadcrumbs_sizes(vec![project.to_string_lossy().to_string()])
+                .await
+                .expect("size update should succeed");
+
+        assert_eq!(result.successful.len(), 1, "result was {:?}", result);
+        assert!(result.failed.is_empty(), "result was {:?}", result);
+        assert!(result.created.is_empty());
+
+        let updated: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&breadcrumbs_path).unwrap()).unwrap();
+
+        // Size was written and is at least the file we created.
+        assert!(updated["folderSizeBytes"].as_u64().unwrap() >= 4096);
+        assert!(updated["lastModified"].is_string());
+
+        // Every other field survived byte-for-byte, including the drifted one.
+        assert_eq!(updated["createdBy"]["data"], "Alice");
+        assert_eq!(updated["trelloCardUrl"], "https://trello.com/c/legacy123");
+        assert_eq!(updated["trelloCards"].as_array().unwrap().len(), 2);
+        assert_eq!(updated["videoLinks"].as_array().unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn size_only_update_fails_cleanly_without_breadcrumbs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("No Breadcrumbs");
+        make_valid_project(&project);
+
+        let result =
+            baker_update_breadcrumbs_sizes(vec![project.to_string_lossy().to_string()])
+                .await
+                .expect("command itself should not error");
+
+        assert!(result.successful.is_empty());
+        assert_eq!(result.failed.len(), 1);
+        assert!(result.failed[0].error.contains("No breadcrumbs file"));
     }
 
     #[tokio::test]
