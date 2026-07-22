@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
 import { Checkbox } from '@shared/ui/checkbox'
+import { Label } from '@shared/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -23,8 +24,13 @@ interface TrelloCardUpdateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   trelloCards: TrelloCard[]
-  onUpdate: (selectedCardIndexes: number[]) => Promise<void>
+  onUpdate: (
+    selectedCardIndexes: number[],
+    options?: { renameToVideoTitle?: boolean }
+  ) => Promise<void>
   onAddTrelloCard: () => void
+  /** Proposed new card name (video title + duration suffix); null hides the rename option */
+  proposedCardName?: string | null
 }
 
 export function TrelloCardUpdateDialog({
@@ -32,9 +38,11 @@ export function TrelloCardUpdateDialog({
   onOpenChange,
   trelloCards,
   onUpdate,
-  onAddTrelloCard
+  onAddTrelloCard,
+  proposedCardName = null
 }: TrelloCardUpdateDialogProps) {
   const [selectedIndexes, setSelectedIndexes] = useState<number[]>([])
+  const [renameCards, setRenameCards] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -51,7 +59,7 @@ export function TrelloCardUpdateDialog({
     setError(null)
 
     try {
-      await onUpdate(selectedIndexes)
+      await onUpdate(selectedIndexes, { renameToVideoTitle: renameCards })
       onOpenChange(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update Trello cards')
@@ -63,6 +71,7 @@ export function TrelloCardUpdateDialog({
   const handleDialogChange = (open: boolean) => {
     if (!open) {
       setSelectedIndexes([])
+      setRenameCards(false)
       setError(null)
     }
     onOpenChange(open)
@@ -133,6 +142,26 @@ export function TrelloCardUpdateDialog({
             </div>
           ))}
         </div>
+
+        {/* Optional rename, separate from the card update itself */}
+        {proposedCardName && (
+          <div className="border-border flex items-start space-x-3 rounded-lg border border-dashed p-3">
+            <Checkbox
+              id="rename-trello-cards"
+              checked={renameCards}
+              onCheckedChange={(checked) => setRenameCards(checked === true)}
+              disabled={updating}
+            />
+            <div className="flex-1">
+              <Label htmlFor="rename-trello-cards" className="cursor-pointer">
+                Rename card(s) to match the video title
+              </Label>
+              <p className="text-muted-foreground mt-1 text-sm">
+                New name: <span className="font-medium">{proposedCardName}</span>
+              </p>
+            </div>
+          </div>
+        )}
 
         {error && (
           <Alert variant="destructive">

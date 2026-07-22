@@ -201,6 +201,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       selectedFile: null,
       uploading: false,
       response: null,
+      localDuration: null,
       selectFile: mockSelectFile,
       uploadFile: mockUploadFile,
       resetUploadState: mockResetUploadState
@@ -336,6 +337,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState
@@ -438,6 +440,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState
@@ -486,6 +489,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState
@@ -581,6 +585,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState
@@ -1107,6 +1112,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState
@@ -1139,6 +1145,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState
@@ -1168,6 +1175,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState
@@ -1198,6 +1206,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState
@@ -1231,6 +1240,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState
@@ -1258,6 +1268,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState
@@ -1371,6 +1382,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         selectedFile: '/test/video.mp4',
         uploading: false,
         response: null,
+        localDuration: null,
         selectFile: mockSelectFile,
         uploadFile: mockUploadFile,
         resetUploadState: mockResetUploadState

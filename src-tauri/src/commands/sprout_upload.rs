@@ -45,9 +45,10 @@ pub fn upload_video(
     file_path: String,
     api_key: String,
     folder_id: Option<String>,
+    title: Option<String>,
 ) {
     tauri::async_runtime::spawn(async move {
-        match upload_video_task(app_handle, file_path, api_key, folder_id).await {
+        match upload_video_task(app_handle, file_path, api_key, folder_id, title).await {
             Ok(_) => println!("Upload successful"),
             Err(err) => println!("Upload failed: {}", err),
         }
@@ -107,6 +108,7 @@ async fn upload_video_task(
     file_path: String,
     api_key: String,
     folder_id: Option<String>,
+    title: Option<String>,
 ) -> Result<(), String> {
     // Open the file
     let file = File::open(&file_path).map_err(|e| e.to_string())?;
@@ -168,6 +170,13 @@ async fn upload_video_task(
     // If a folder_id was provided, add it as a text field.
     if let Some(fid) = folder_id {
         form = form.text("folder_id", fid);
+    }
+    // If a title was provided, send it so Sprout doesn't derive one from the filename.
+    if let Some(t) = title {
+        let trimmed = t.trim().to_string();
+        if !trimmed.is_empty() {
+            form = form.text("title", trimmed);
+        }
     }
 
     println!("Starting upload to SproutVideo...");

@@ -6,10 +6,13 @@
  */
 
 import { Button } from '@shared/ui/button'
+import { Input } from '@shared/ui/input'
+import { Label } from '@shared/ui/label'
 import { Progress } from '@shared/ui/progress'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import { useSproutVideoApiKey } from '@shared/hooks'
 import { useBreadcrumb } from '@shared/hooks'
+import { fileNameToTitle } from '@shared/utils'
 import { useFileUpload } from '../hooks/useFileUpload'
 import { useImageRefresh } from '../hooks/useImageRefresh'
 import { useUploadEvents } from '../hooks/useUploadEvents'
@@ -17,7 +20,7 @@ import EmbedCodeInput from '@shared/ui/EmbedCodeInput'
 import ExternalLink from '@shared/ui/ExternalLink'
 import FormattedDate from '@shared/ui/FormattedDate'
 import { AlertTriangle, RefreshCw, Sprout } from 'lucide-react'
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 
 const UploadSproutContent: React.FC = () => {
   // Custom hooks
@@ -27,6 +30,7 @@ const UploadSproutContent: React.FC = () => {
   const { selectedFile, response, selectFile, uploadFile } = useFileUpload()
   const { thumbnailLoaded, refreshTimestamp, setThumbnailLoaded } =
     useImageRefresh(response)
+  const [title, setTitle] = useState('')
 
   // Page label - shadcn breadcrumb component (memoized to prevent infinite re-renders)
   const breadcrumbItems = useMemo(
@@ -38,13 +42,21 @@ const UploadSproutContent: React.FC = () => {
   )
   useBreadcrumb(breadcrumbItems)
 
+  // Prefill the title from the chosen filename; the user can edit it freely
+  const handleSelectFile = async () => {
+    const file = await selectFile()
+    if (file) {
+      setTitle(fileNameToTitle(file))
+    }
+  }
+
   // Handle upload with API key
   const handleUpload = () => {
     // Reset progress and message before starting upload
     setProgress(0)
     setMessage(null)
     setUploading(true)
-    uploadFile(apiKey)
+    uploadFile(apiKey, title)
   }
 
   return (
@@ -75,7 +87,7 @@ const UploadSproutContent: React.FC = () => {
               <h2 className="text-foreground text-sm font-semibold">Select Video</h2>
             </div>
             <div className="p-4">
-              <Button onClick={selectFile} className="w-full">
+              <Button onClick={handleSelectFile} className="w-full">
                 Select Video File
               </Button>
               {selectedFile && (
@@ -85,6 +97,22 @@ const UploadSproutContent: React.FC = () => {
                     {selectedFile.split('/').pop()}
                   </span>
                 </p>
+              )}
+              {selectedFile && (
+                <div className="mt-3 space-y-2">
+                  <Label htmlFor="sprout-video-title">Video Title</Label>
+                  <Input
+                    id="sprout-video-title"
+                    placeholder="Video title on Sprout Video"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    maxLength={200}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Used as the video title on Sprout Video. Leave blank to use the
+                    filename.
+                  </p>
+                </div>
               )}
             </div>
           </div>

@@ -115,7 +115,7 @@ export function AddVideoDialog({
 
           {/* Upload File Tab */}
           <TabsContent value="upload" className="space-y-4 py-4">
-            <UploadContent uploadMode={uploadMode} urlMode={urlMode} />
+            <UploadContent uploadMode={uploadMode} urlMode={urlMode} form={form} />
           </TabsContent>
         </Tabs>
 
@@ -269,10 +269,12 @@ function UrlEntryContent({
 // Sub-component for upload content
 function UploadContent({
   uploadMode,
-  urlMode
+  urlMode,
+  form
 }: {
   uploadMode: UploadModeState
   urlMode: UrlModeState
+  form: FormState
 }) {
   return (
     <div className="space-y-4">
@@ -299,6 +301,23 @@ function UploadContent({
           </p>
         )}
       </div>
+
+      {uploadMode.selectedFile && (
+        <div className="space-y-2">
+          <Label htmlFor="upload-video-title">Video Title</Label>
+          <Input
+            id="upload-video-title"
+            placeholder="Video title on Sprout Video"
+            value={form.formData.title}
+            onChange={(e) => form.onFormFieldChange('title', e.target.value)}
+            maxLength={200}
+            disabled={uploadMode.uploading || uploadMode.uploadSuccess}
+          />
+          <p className="text-muted-foreground text-xs">
+            Used as the video title on Sprout Video. Leave blank to use the filename.
+          </p>
+        </div>
+      )}
 
       {!urlMode.hasApiKey && (
         <Alert>

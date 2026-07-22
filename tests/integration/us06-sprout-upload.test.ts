@@ -21,6 +21,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../../src/features/Upload/api', () => ({
   openFileDialog: vi.fn().mockResolvedValue('/videos/test-video.mp4'),
   uploadVideo: vi.fn().mockResolvedValue(undefined),
+  getVideoDuration: vi.fn().mockResolvedValue(90),
   listenUploadComplete: vi.fn().mockResolvedValue(vi.fn()),
   listenUploadError: vi.fn().mockResolvedValue(vi.fn()),
   listenUploadProgress: vi.fn().mockResolvedValue(vi.fn()),
@@ -90,6 +91,7 @@ describe('US-06 — Sprout Video: File Upload (useFileUpload)', () => {
 
     vi.mocked(api.openFileDialog).mockResolvedValue('/videos/test-video.mp4')
     vi.mocked(api.uploadVideo).mockResolvedValue(undefined)
+    vi.mocked(api.getVideoDuration).mockResolvedValue(90)
     vi.mocked(api.listenUploadComplete).mockResolvedValue(vi.fn())
     vi.mocked(api.listenUploadError).mockResolvedValue(vi.fn())
     vi.mocked(appStore.getState).mockReturnValue({
@@ -209,7 +211,8 @@ describe('US-06 — Sprout Video: File Upload (useFileUpload)', () => {
       expect(api.uploadVideo).toHaveBeenCalledWith(
         '/videos/test-video.mp4',
         'my-api-key',
-        null // selectedFolder is always null in this hook
+        null, // selectedFolder is always null in this hook
+        null // no custom title supplied
       )
     })
 
