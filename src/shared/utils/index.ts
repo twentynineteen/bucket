@@ -51,6 +51,12 @@ export { isUpdateAvailable } from './versionUtils'
 /** Merge Tailwind CSS classes with conflict resolution via clsx + twMerge */
 export { cn } from './cn'
 
+// Video utilities
+/** Format a duration in seconds as a name suffix -- "1:30mins" or "1:02:05hrs" */
+export { formatDurationSuffix } from './video'
+/** Derive a default video title from a file path -- basename without extension */
+export { fileNameToTitle } from './video'
+
 // Breadcrumbs utilities
 /** Format a date for breadcrumbs display with full month and year */
 export { formatBreadcrumbDate } from './breadcrumbs'

@@ -15,6 +15,7 @@ import { describe, expect, it, vi } from 'vitest'
 // Mock the api layer (single mock point for all Upload I/O)
 vi.mock('../api', () => ({
   uploadVideo: vi.fn().mockResolvedValue(undefined),
+  getVideoDuration: vi.fn().mockResolvedValue(90),
   getFolders: vi.fn().mockResolvedValue({ folders: [] }),
   fetchSproutVideoDetails: vi.fn().mockResolvedValue({}),
   openFolder: vi.fn().mockResolvedValue(undefined),

@@ -5,6 +5,23 @@ All notable changes to the Bucket project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-07-21
+
+### Added
+
+- Sprout Video uploads now accept a custom video title, prefilled from the filename
+  and editable before upload, in both Baker's Add Video dialog (Upload File tab) and
+  the standalone Upload → Sprout page — filenames often don't match the final video
+  name
+- When updating Trello cards after an upload, an optional checkbox renames the
+  card(s) to match the Sprout video title with a duration suffix, e.g.
+  "My Video (1:30mins)" (or "(1:02:05hrs)" for videos over an hour); shown only when
+  the name would actually change and only applied if the card update succeeds
+- Local MP4/MOV duration probe (new `get_video_duration` Tauri command) used as a
+  fallback for the duration suffix while Sprout is still processing the upload
+
+---
+
 ## [0.16.2] - 2026-07-16
 
 ### Fixed

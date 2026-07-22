@@ -288,7 +288,7 @@ describe('UploadSprout Page', () => {
       const uploadButton = screen.getByRole('button', { name: /Upload Video/i })
       fireEvent.click(uploadButton)
 
-      expect(mockUploadFile).toHaveBeenCalledWith('test-api-key')
+      expect(mockUploadFile).toHaveBeenCalledWith('test-api-key', '')
     })
   })
 
