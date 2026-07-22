@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { logger } from '@shared/utils'
 
 import {
+  getVideoDuration,
   listenUploadComplete,
   listenUploadError,
   openFileDialog,
@@ -16,8 +17,9 @@ interface UseFileUploadReturn {
   selectedFile: string | null
   uploading: boolean
   response: SproutUploadResponse | null
-  selectFile: () => Promise<void>
-  uploadFile: (apiKey: string | null) => Promise<void>
+  localDuration: number | null
+  selectFile: () => Promise<string | null>
+  uploadFile: (apiKey: string | null, title?: string) => Promise<void>
   resetUploadState: () => void
 }
 
@@ -25,16 +27,28 @@ export const useFileUpload = (): UseFileUploadReturn => {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [response, setResponse] = useState<SproutUploadResponse | null>(null)
+  const [localDuration, setLocalDuration] = useState<number | null>(null)
   const [selectedFolder] = useState<string | null>(null)
 
-  const selectFile = async () => {
+  const selectFile = async (): Promise<string | null> => {
     const file = await openFileDialog({
       multiple: false,
       filters: [{ name: 'Videos', extensions: ['mp4', 'mov', 'avi'] }]
     })
     if (typeof file === 'string') {
       setSelectedFile(file)
+      // Probe the local file for duration as a fallback for when Sprout
+      // hasn't finished processing at Trello-update time. Non-fatal.
+      setLocalDuration(null)
+      getVideoDuration(file)
+        .then((duration) => setLocalDuration(duration))
+        .catch((error) => {
+          logger.warn('Could not read local video duration:', error)
+          setLocalDuration(null)
+        })
+      return file
     }
+    return null
   }
 
   const resetUploadState = () => {
@@ -42,7 +56,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
     setResponse(null)
   }
 
-  const uploadFile = async (apiKey: string | null) => {
+  const uploadFile = async (apiKey: string | null, title?: string) => {
     // Validate file selection and API key
     if (!selectedFile) {
       toast.error('Please select a video file.')
@@ -108,10 +122,12 @@ export const useFileUpload = (): UseFileUploadReturn => {
         })
 
         // Invoke the Rust backend command to start the upload
-        uploadVideo(selectedFile, apiKey, selectedFolder).catch(async (error) => {
-          await cleanup()
-          reject(error)
-        })
+        uploadVideo(selectedFile, apiKey, selectedFolder, title?.trim() || null).catch(
+          async (error) => {
+            await cleanup()
+            reject(error)
+          }
+        )
       })
 
       // Update the state with the final response from the backend upload
@@ -149,6 +165,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
     selectedFile,
     uploading,
     response,
+    localDuration,
     selectFile,
     uploadFile,
     resetUploadState

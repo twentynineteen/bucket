@@ -58,6 +58,7 @@ fn main() {
             baker_validate_folder,
             baker_read_breadcrumbs,
             baker_update_breadcrumbs,
+            baker_update_breadcrumbs_sizes,
             baker_scan_current_files,
             get_folder_size,
             baker_read_raw_breadcrumbs,
@@ -74,6 +75,8 @@ fn main() {
             fetch_trello_boards,
             // Feature 004 Phase 2: Sprout Video URL auto-fetch
             fetch_sprout_video_details,
+            // Sprout title + Trello rename: local duration fallback probe
+            get_video_duration,
             // Feature 006: AI-Powered Autocue Script Formatter
             parse_docx_file,
             generate_docx_file,

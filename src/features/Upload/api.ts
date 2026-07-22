@@ -22,9 +22,15 @@ import type {
 export async function uploadVideo(
   filePath: string,
   apiKey: string,
-  folderId: string | null
+  folderId: string | null,
+  title?: string | null
 ): Promise<void> {
-  return invoke('upload_video', { filePath, apiKey, folderId })
+  return invoke('upload_video', { filePath, apiKey, folderId, title: title ?? null })
+}
+
+/** Probe a local MP4/MOV file for its duration in seconds (mvhd metadata) */
+export async function getVideoDuration(filePath: string): Promise<number> {
+  return invoke<number>('get_video_duration', { filePath })
 }
 
 export async function getFolders(

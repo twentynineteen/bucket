@@ -19,6 +19,7 @@ import { PreviewProgress } from './components/PreviewProgress'
 import { ProjectDetailPanel } from './components/ProjectDetailPanel'
 import { ProjectListPanel } from './components/ProjectListPanel'
 import { ScanResults } from './components/ScanResults'
+import { StorageView } from './components/StorageView'
 import { useBakerPreferences } from './hooks/useBakerPreferences'
 import { useBakerScan } from './hooks/useBakerScan'
 import { useBreadcrumbsManager } from './hooks/useBreadcrumbsManager'
@@ -41,6 +42,7 @@ const BakerPageContent: React.FC = () => {
   const [showPreferences, setShowPreferences] = useState(false)
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [showBatchConfirmation, setShowBatchConfirmation] = useState(false)
+  const [viewMode, setViewMode] = useState<'projects' | 'storage'>('projects')
 
   // Custom hooks - all business logic moved to hooks
   const {
@@ -204,6 +206,15 @@ const BakerPageContent: React.FC = () => {
     }
   }, [selectedProject, selectedProjectData, generatePreview])
 
+  // Clicking a project in the storage map jumps to it in the projects view
+  const handleStorageProjectClick = useCallback(
+    (projectPath: string) => {
+      setViewMode('projects')
+      void handleProjectClick(projectPath)
+    },
+    [handleProjectClick]
+  )
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Header */}
@@ -288,41 +299,74 @@ const BakerPageContent: React.FC = () => {
 
       {/* Workspace: project list + detail panel fill the remaining height */}
       {scanResult?.projects ? (
-        <div className="relative flex min-h-0 flex-1">
-          <div className="border-border w-80 flex-shrink-0 border-r">
-            <ProjectListPanel
-              projects={scanResult.projects}
-              selectedProjects={selectedProjects}
-              selectedProject={selectedProject}
-              onProjectSelection={handleProjectSelection}
-              onProjectClick={handleProjectClick}
-            />
+        <>
+          <div className="border-border bg-card/20 flex flex-shrink-0 gap-1 border-b px-6 py-1.5">
+            {(
+              [
+                { key: 'projects', label: 'Projects' },
+                { key: 'storage', label: 'Storage' }
+              ] as const
+            ).map((mode) => (
+              <button
+                key={mode.key}
+                type="button"
+                onClick={() => setViewMode(mode.key)}
+                className={
+                  viewMode === mode.key
+                    ? 'bg-primary/10 text-primary rounded-md px-3 py-1 text-xs font-semibold'
+                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground rounded-md px-3 py-1 text-xs font-medium transition-colors'
+                }
+              >
+                {mode.label}
+              </button>
+            ))}
           </div>
 
-          <div className="min-w-0 flex-1">
-            <ProjectDetailPanel
-              selectedProject={selectedProject}
-              project={selectedProjectData}
-              breadcrumbs={breadcrumbs}
-              isLoadingBreadcrumbs={isLoadingBreadcrumbs}
-              breadcrumbsError={breadcrumbsError}
-              preview={selectedProject ? getPreview(selectedProject) : null}
-              isGeneratingPreview={isGenerating}
-              onGeneratePreview={handleGeneratePreview}
-              trelloApiKey={apiKey}
-              trelloApiToken={token}
-            />
-          </div>
+          {viewMode === 'storage' ? (
+            <div className="min-h-0 flex-1">
+              <StorageView
+                projects={scanResult.projects}
+                onProjectClick={handleStorageProjectClick}
+              />
+            </div>
+          ) : (
+            <div className="relative flex min-h-0 flex-1">
+              <div className="border-border w-80 flex-shrink-0 border-r">
+                <ProjectListPanel
+                  projects={scanResult.projects}
+                  selectedProjects={selectedProjects}
+                  selectedProject={selectedProject}
+                  onProjectSelection={handleProjectSelection}
+                  onProjectClick={handleProjectClick}
+                />
+              </div>
 
-          <BatchActions
-            selectedProjects={selectedProjects}
-            totalProjects={scanResult.projects.length}
-            isUpdating={isUpdating}
-            onSelectAll={handleSelectAll}
-            onClearSelection={handleClearSelection}
-            onApplyChanges={handleApplyChanges}
-          />
-        </div>
+              <div className="min-w-0 flex-1">
+                <ProjectDetailPanel
+                  selectedProject={selectedProject}
+                  project={selectedProjectData}
+                  breadcrumbs={breadcrumbs}
+                  isLoadingBreadcrumbs={isLoadingBreadcrumbs}
+                  breadcrumbsError={breadcrumbsError}
+                  preview={selectedProject ? getPreview(selectedProject) : null}
+                  isGeneratingPreview={isGenerating}
+                  onGeneratePreview={handleGeneratePreview}
+                  trelloApiKey={apiKey}
+                  trelloApiToken={token}
+                />
+              </div>
+
+              <BatchActions
+                selectedProjects={selectedProjects}
+                totalProjects={scanResult.projects.length}
+                isUpdating={isUpdating}
+                onSelectAll={handleSelectAll}
+                onClearSelection={handleClearSelection}
+                onApplyChanges={handleApplyChanges}
+              />
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-muted-foreground flex flex-1 items-center justify-center">
           <div className="text-center">

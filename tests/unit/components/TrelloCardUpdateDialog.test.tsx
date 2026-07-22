@@ -260,7 +260,7 @@ describe('TrelloCardUpdateDialog Component', () => {
       await user.click(screen.getByRole('button', { name: /update 2 cards/i }))
 
       // Assert
-      expect(mockOnUpdate).toHaveBeenCalledWith([0, 2])
+      expect(mockOnUpdate).toHaveBeenCalledWith([0, 2], { renameToVideoTitle: false })
     })
 
     test('closes dialog after successful update', async () => {

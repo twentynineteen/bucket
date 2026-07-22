@@ -45,6 +45,15 @@ pub struct ProjectFolder {
     pub validation_errors: Vec<String>,
     #[serde(rename = "invalidBreadcrumbs")]
     pub invalid_breadcrumbs: bool,
+    /// None when the size could not be determined (e.g. permission error on a
+    /// network share) — never coerced to 0, which would misrepresent the project
+    /// as empty in size-sorted views.
+    #[serde(
+        rename = "folderSizeBytes",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub folder_size_bytes: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,6 +1,6 @@
 [package]
 name = "Bucket"
-version = "0.16.2"
+version = "0.17.1"
 description = "An app to streamline ingesting and uploading video content"
 authors = ["Daniel Mills"]
 license = "UNLICENSED"

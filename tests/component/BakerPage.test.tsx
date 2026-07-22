@@ -215,8 +215,8 @@ describe('BakerPage Component', () => {
       })
 
       renderWithProviders(<BakerPage />)
-      // Project count appears as a pill next to the list panel heading
-      expect(screen.getByText('Projects')).toBeInTheDocument()
+      // 'Projects' appears both as the view-mode toggle and the list panel heading
+      expect(screen.getAllByText('Projects').length).toBeGreaterThan(0)
       expect(screen.getAllByText('2').length).toBeGreaterThan(0)
     })
 
