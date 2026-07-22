@@ -21,6 +21,9 @@ vi.mock('../api', () => ({
   bakerReadRawBreadcrumbs: vi.fn().mockResolvedValue(null),
   bakerScanCurrentFiles: vi.fn().mockResolvedValue([]),
   bakerUpdateBreadcrumbs: vi.fn().mockResolvedValue({}),
+  bakerUpdateBreadcrumbsSizes: vi
+    .fn()
+    .mockResolvedValue({ successful: [], failed: [], created: [], updated: [] }),
   bakerGetVideoLinks: vi.fn().mockResolvedValue([]),
   bakerAssociateVideoLink: vi.fn().mockResolvedValue({}),
   bakerRemoveVideoLink: vi.fn().mockResolvedValue({}),
@@ -204,7 +207,7 @@ describe('Baker Barrel Exports - Shape', () => {
 
 describe('Baker api.ts Exports - Shape', () => {
   const expectedApiExports = [
-    // Tauri Commands (13)
+    // Tauri Commands (14)
     'bakerStartScan',
     'bakerCancelScan',
     'bakerGetScanStatus',
@@ -212,6 +215,7 @@ describe('Baker api.ts Exports - Shape', () => {
     'bakerReadRawBreadcrumbs',
     'bakerScanCurrentFiles',
     'bakerUpdateBreadcrumbs',
+    'bakerUpdateBreadcrumbsSizes',
     'bakerGetVideoLinks',
     'bakerAssociateVideoLink',
     'bakerRemoveVideoLink',
@@ -238,13 +242,13 @@ describe('Baker api.ts Exports - Shape', () => {
     'addTrelloCardComment'
   ].sort()
 
-  it('exports exactly 26 I/O wrapper functions', () => {
+  it('exports exactly 27 I/O wrapper functions', () => {
     const exportNames = Object.keys(bakerApi).sort()
     expect(exportNames).toEqual(expectedApiExports)
   })
 
-  it('exports exactly 26 members', () => {
-    expect(Object.keys(bakerApi)).toHaveLength(26)
+  it('exports exactly 27 members', () => {
+    expect(Object.keys(bakerApi)).toHaveLength(27)
   })
 
   for (const name of expectedApiExports) {
@@ -372,6 +376,82 @@ describe('Baker Module - No Direct Plugin Imports', () => {
       )
       expect(alertCalls, `Found alert() call in ${file}`).toEqual([])
     }
+  })
+})
+
+// --- useRefreshBreadcrumbSizes Behavioral Tests ---
+
+import { useRefreshBreadcrumbSizes } from '../hooks/useRefreshBreadcrumbSizes'
+
+describe('useRefreshBreadcrumbSizes - Behavior', () => {
+  it('returns expected interface shape', () => {
+    const { result } = renderHook(() => useRefreshBreadcrumbSizes())
+
+    expect(result.current).toHaveProperty('refreshSizes')
+    expect(result.current).toHaveProperty('isRefreshing')
+    expect(result.current).toHaveProperty('lastRefreshResult')
+    expect(result.current).toHaveProperty('error')
+    expect(result.current).toHaveProperty('clearResults')
+    expect(typeof result.current.refreshSizes).toBe('function')
+    expect(typeof result.current.clearResults).toBe('function')
+    expect(result.current.isRefreshing).toBe(false)
+    expect(result.current.lastRefreshResult).toBeNull()
+    expect(result.current.error).toBeNull()
+  })
+
+  it('calls the api wrapper and stores the result', async () => {
+    const mockResult = {
+      successful: ['/drive/Project A'],
+      failed: [],
+      created: [],
+      updated: ['/drive/Project A']
+    }
+    vi.mocked(bakerApi.bakerUpdateBreadcrumbsSizes).mockResolvedValue(mockResult)
+
+    const { result } = renderHook(() => useRefreshBreadcrumbSizes())
+
+    await act(async () => {
+      await result.current.refreshSizes(['/drive/Project A'])
+    })
+
+    expect(bakerApi.bakerUpdateBreadcrumbsSizes).toHaveBeenCalledWith([
+      '/drive/Project A'
+    ])
+    expect(result.current.lastRefreshResult).toEqual(mockResult)
+    expect(result.current.isRefreshing).toBe(false)
+    expect(result.current.error).toBeNull()
+  })
+
+  it('rejects an empty paths array without calling the api', async () => {
+    vi.mocked(bakerApi.bakerUpdateBreadcrumbsSizes).mockClear()
+
+    const { result } = renderHook(() => useRefreshBreadcrumbSizes())
+
+    await act(async () => {
+      await expect(result.current.refreshSizes([])).rejects.toThrow(
+        'Project paths array cannot be empty'
+      )
+    })
+
+    expect(bakerApi.bakerUpdateBreadcrumbsSizes).not.toHaveBeenCalled()
+    expect(result.current.error).toBe('Project paths array cannot be empty')
+  })
+
+  it('surfaces api errors and resets isRefreshing', async () => {
+    vi.mocked(bakerApi.bakerUpdateBreadcrumbsSizes).mockRejectedValue(
+      new Error('disk unreachable')
+    )
+
+    const { result } = renderHook(() => useRefreshBreadcrumbSizes())
+
+    await act(async () => {
+      await expect(result.current.refreshSizes(['/drive/X'])).rejects.toThrow(
+        'disk unreachable'
+      )
+    })
+
+    expect(result.current.error).toBe('disk unreachable')
+    expect(result.current.isRefreshing).toBe(false)
   })
 })
 

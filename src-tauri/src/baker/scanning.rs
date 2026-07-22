@@ -127,9 +127,13 @@ pub fn check_breadcrumbs_stale(path: &Path) -> Result<bool, std::io::Error> {
         }
     }
 
-    // Compare folder size to detect file content changes (with 1KB threshold)
-    let current_folder_size = calculate_folder_size(path).unwrap_or(0);
-    if let Some(existing_size) = existing_breadcrumbs.folder_size_bytes {
+    // Compare folder size to detect file content changes (with 1KB threshold).
+    // If the current size cannot be determined, skip the comparison rather than
+    // treating the folder as 0 bytes (which would falsely flag it as stale).
+    if let (Ok(current_folder_size), Some(existing_size)) = (
+        calculate_folder_size(path),
+        existing_breadcrumbs.folder_size_bytes,
+    ) {
         let size_diff = current_folder_size.abs_diff(existing_size);
 
         if size_diff >= STALE_SIZE_THRESHOLD_BYTES {
@@ -339,6 +343,22 @@ pub fn scan_directory_recursive(
                         false
                     };
 
+                    let folder_size = match calculate_folder_size(&path) {
+                        Ok(size) => {
+                            result.total_folder_size += size;
+                            Some(size)
+                        }
+                        Err(e) => {
+                            result.errors.push(ScanError {
+                                path: path.to_string_lossy().to_string(),
+                                r#type: "filesystem".to_string(),
+                                message: format!("Failed to calculate folder size: {}", e),
+                                timestamp: get_current_timestamp(),
+                            });
+                            None
+                        }
+                    };
+
                     let project_folder = ProjectFolder {
                         path: path.to_string_lossy().to_string(),
                         name: file_name.to_string_lossy().to_string(),
@@ -349,10 +369,8 @@ pub fn scan_directory_recursive(
                         camera_count,
                         validation_errors: validation_errors.clone(),
                         invalid_breadcrumbs,
+                        folder_size_bytes: folder_size,
                     };
-
-                    let folder_size = calculate_folder_size(&path).unwrap_or(0);
-                    result.total_folder_size += folder_size;
 
                     result.projects.push(project_folder);
                 } else if !validation_errors.is_empty() {
@@ -416,6 +434,22 @@ pub fn scan_directory_recursive(
             false
         };
 
+        let root_folder_size = match calculate_folder_size(root_path) {
+            Ok(size) => {
+                result.total_folder_size += size;
+                Some(size)
+            }
+            Err(e) => {
+                result.errors.push(ScanError {
+                    path: root_path.to_string_lossy().to_string(),
+                    r#type: "filesystem".to_string(),
+                    message: format!("Failed to calculate folder size: {}", e),
+                    timestamp: get_current_timestamp(),
+                });
+                None
+            }
+        };
+
         let project_folder = ProjectFolder {
             path: root_path.to_string_lossy().to_string(),
             name: root_path
@@ -430,10 +464,8 @@ pub fn scan_directory_recursive(
             camera_count,
             validation_errors: validation_errors.clone(),
             invalid_breadcrumbs,
+            folder_size_bytes: root_folder_size,
         };
-
-        let root_folder_size = calculate_folder_size(root_path).unwrap_or(0);
-        result.total_folder_size += root_folder_size;
 
         result.projects.push(project_folder);
 

@@ -39,6 +39,7 @@ export interface ProjectFolder {
   lastScanned: string // ISO timestamp
   cameraCount: number
   validationErrors: string[]
+  folderSizeBytes?: number // absent when the size could not be determined (never 0-coerced)
 }
 
 export interface ScanResult {

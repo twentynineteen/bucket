@@ -19,6 +19,8 @@ import { useReducedMotion } from '@shared/hooks'
 import { Input } from '@shared/ui/input'
 import type { ProjectFolder } from '../types'
 
+import { formatFileSize } from '@shared/utils'
+
 // Threshold for enabling virtual scrolling (performance optimization for large lists)
 const VIRTUAL_SCROLLING_THRESHOLD = 50
 
@@ -28,6 +30,7 @@ const cn = (...classes: (string | undefined | null | boolean)[]) => {
 }
 
 type StatusFilter = 'all' | 'stale' | 'nobc' | 'invalid'
+type SortOrder = 'scan' | 'size'
 
 const isStale = (project: ProjectFolder) =>
   project.hasBreadcrumbs && !project.invalidBreadcrumbs && project.staleBreadcrumbs
@@ -124,6 +127,16 @@ const ProjectStatusPills: React.FC<ProjectStatusPillsProps> = ({
       <StatusPill tone="muted" dot={false}>
         {project.cameraCount} cam{project.cameraCount !== 1 ? 's' : ''}
       </StatusPill>
+
+      {typeof project.folderSizeBytes === 'number' ? (
+        <StatusPill tone="muted" dot={false}>
+          {formatFileSize(project.folderSizeBytes)}
+        </StatusPill>
+      ) : (
+        <StatusPill tone="warning" dot={false}>
+          size n/a
+        </StatusPill>
+      )}
     </div>
   )
 }
@@ -146,6 +159,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
   const shouldReduceMotion = useReducedMotion()
   const parentRef = React.useRef<HTMLDivElement>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('scan')
   const [query, setQuery] = useState('')
 
   const filterChips = useMemo(
@@ -169,14 +183,29 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
 
   const filteredProjects = useMemo(() => {
     const normalized = query.trim().toLowerCase()
-    return projects.filter(
+    const filtered = projects.filter(
       (project) =>
         matchesStatus(project, statusFilter) &&
         (normalized === '' ||
           project.name.toLowerCase().includes(normalized) ||
           project.path.toLowerCase().includes(normalized))
     )
-  }, [projects, statusFilter, query])
+
+    if (sortOrder === 'size') {
+      // Largest first; projects with unknown size sink to the bottom rather
+      // than masquerading as 0 bytes.
+      return [...filtered].sort((a, b) => {
+        const aSize = a.folderSizeBytes
+        const bSize = b.folderSizeBytes
+        if (aSize === undefined && bSize === undefined) return 0
+        if (aSize === undefined) return 1
+        if (bSize === undefined) return -1
+        return bSize - aSize
+      })
+    }
+
+    return filtered
+  }, [projects, statusFilter, sortOrder, query])
 
   // Determine if we should use virtual scrolling based on list size
   const useVirtualScroll = filteredProjects.length >= VIRTUAL_SCROLLING_THRESHOLD
@@ -296,6 +325,30 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
           onChange={(e) => setQuery(e.target.value)}
           className="h-8 text-xs"
         />
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-muted-foreground text-xs">Sort:</span>
+          {(
+            [
+              { key: 'scan', label: 'Scan order' },
+              { key: 'size', label: 'Size' }
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => setSortOrder(option.key)}
+              className={cn(
+                'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
+                sortOrder === option.key
+                  ? 'border-primary/30 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
 
         <div className="flex flex-wrap gap-1.5">
           {filterChips.map((chip) => (

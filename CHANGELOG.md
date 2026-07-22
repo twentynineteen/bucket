@@ -5,6 +5,26 @@ All notable changes to the Bucket project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1] - 2026-07-22
+
+### Added
+
+- Baker: new Storage view — a squarified treemap "storage map" of the scanned drive
+  showing which projects take up the most space, with a sorted per-project size
+  breakdown and drive totals (#135)
+- Baker: sort-by-size control and folder size pills in the project list panel
+- Baker: "Refresh sizes" action that recalculates folder sizes on disk and updates
+  only the `folderSizeBytes` field in each breadcrumbs.json, leaving all other
+  fields untouched (#135)
+
+### Fixed
+
+- Baker: projects whose folder size cannot be determined (e.g. permission errors on
+  network shares) are now reported as scan errors and shown as "size unavailable"
+  instead of being silently treated as 0 bytes
+
+---
+
 ## [0.17.0] - 2026-07-21
 
 ### Added

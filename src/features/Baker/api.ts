@@ -120,6 +120,14 @@ export async function bakerReorderVideoLinks(
   })
 }
 
+export async function bakerUpdateBreadcrumbsSizes(
+  projectPaths: string[]
+): Promise<BatchUpdateResult> {
+  return invoke<BatchUpdateResult>('baker_update_breadcrumbs_sizes', {
+    projectPaths
+  })
+}
+
 export async function getFolderSize(folderPath: string): Promise<number> {
   return invoke<number>('get_folder_size', { folderPath })
 }
