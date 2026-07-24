@@ -59,6 +59,7 @@ fn main() {
             baker_read_breadcrumbs,
             baker_update_breadcrumbs,
             baker_update_breadcrumbs_sizes,
+            baker_repair_breadcrumbs,
             baker_scan_current_files,
             get_folder_size,
             baker_read_raw_breadcrumbs,

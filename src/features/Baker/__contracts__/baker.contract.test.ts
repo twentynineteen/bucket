@@ -24,6 +24,8 @@ vi.mock('../api', () => ({
   bakerUpdateBreadcrumbsSizes: vi
     .fn()
     .mockResolvedValue({ successful: [], failed: [], created: [], updated: [] }),
+  bakerRepairBreadcrumbs: vi.fn().mockResolvedValue({}),
+  bakerValidateFolder: vi.fn().mockResolvedValue({}),
   bakerGetVideoLinks: vi.fn().mockResolvedValue([]),
   bakerAssociateVideoLink: vi.fn().mockResolvedValue({}),
   bakerRemoveVideoLink: vi.fn().mockResolvedValue({}),
@@ -207,7 +209,7 @@ describe('Baker Barrel Exports - Shape', () => {
 
 describe('Baker api.ts Exports - Shape', () => {
   const expectedApiExports = [
-    // Tauri Commands (14)
+    // Tauri Commands (16)
     'bakerStartScan',
     'bakerCancelScan',
     'bakerGetScanStatus',
@@ -216,6 +218,8 @@ describe('Baker api.ts Exports - Shape', () => {
     'bakerScanCurrentFiles',
     'bakerUpdateBreadcrumbs',
     'bakerUpdateBreadcrumbsSizes',
+    'bakerRepairBreadcrumbs',
+    'bakerValidateFolder',
     'bakerGetVideoLinks',
     'bakerAssociateVideoLink',
     'bakerRemoveVideoLink',
@@ -242,13 +246,13 @@ describe('Baker api.ts Exports - Shape', () => {
     'addTrelloCardComment'
   ].sort()
 
-  it('exports exactly 27 I/O wrapper functions', () => {
+  it('exports exactly 29 I/O wrapper functions', () => {
     const exportNames = Object.keys(bakerApi).sort()
     expect(exportNames).toEqual(expectedApiExports)
   })
 
-  it('exports exactly 27 members', () => {
-    expect(Object.keys(bakerApi)).toHaveLength(27)
+  it('exports exactly 29 members', () => {
+    expect(Object.keys(bakerApi)).toHaveLength(29)
   })
 
   for (const name of expectedApiExports) {
@@ -667,5 +671,58 @@ describe('useBakerScan - Behavior', () => {
     // Should still only have called bakerStartScan once
     expect(mockStartScan).toHaveBeenCalledTimes(1)
     expect(result.current.isScanning).toBe(true)
+  })
+
+  it('refreshProject: re-validates one project and patches it into scanResult', async () => {
+    let capturedCompleteCallback: ((event: Event<unknown>) => void) | null = null
+    const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
+    mockListenComplete.mockImplementation(async (cb) => {
+      capturedCompleteCallback = cb as unknown as (event: Event<unknown>) => void
+      return () => {}
+    })
+
+    const staleProject = {
+      path: '/v/Broken',
+      name: 'Broken',
+      isValid: false,
+      hasBreadcrumbs: false,
+      staleBreadcrumbs: false,
+      invalidBreadcrumbs: true,
+      lastScanned: '2026-07-01T00:00:00Z',
+      cameraCount: 0,
+      validationErrors: []
+    }
+    const repairedProject = {
+      ...staleProject,
+      isValid: true,
+      hasBreadcrumbs: true,
+      invalidBreadcrumbs: false
+    }
+
+    vi.mocked(bakerApi.bakerStartScan).mockResolvedValue('scan-refresh')
+    vi.mocked(bakerApi.bakerValidateFolder).mockResolvedValue(repairedProject)
+
+    const { result } = renderHook(() => useBakerScan())
+
+    await act(async () => {
+      await result.current.startScan('/v', defaultOptions)
+    })
+    await act(async () => {
+      capturedCompleteCallback!({
+        event: 'baker_scan_complete',
+        id: 5,
+        payload: {
+          scanId: 'scan-refresh',
+          result: { ...mockScanResult, projects: [staleProject] }
+        }
+      })
+    })
+
+    await act(async () => {
+      await result.current.refreshProject('/v/Broken')
+    })
+
+    expect(bakerApi.bakerValidateFolder).toHaveBeenCalledWith('/v/Broken')
+    expect(result.current.scanResult?.projects[0]).toEqual(repairedProject)
   })
 })

@@ -18,6 +18,14 @@ import { logger } from '@shared/utils'
 // Constants
 const RAW_CONTENT_PREVIEW_LIMIT = 200
 
+/**
+ * Camera count as observed on disk. 0 is a legitimate value (podcast/audio-only
+ * projects) and must never be clamped up — when no files exist the fallback
+ * (usually the recorded numberOfCameras) is used instead.
+ */
+const liveCameraCount = (files: FileInfo[], fallback: number): number =>
+  files.length > 0 ? Math.max(...files.map((f) => f.camera)) : fallback
+
 interface UseLiveBreadcrumbsReaderResult {
   breadcrumbs: BreadcrumbsFile | null
   isLoading: boolean
@@ -68,7 +76,10 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
         const liveBreadcrumbs: BreadcrumbsFile = {
           ...existingBreadcrumbs,
           files: actualFiles,
-          numberOfCameras: Math.max(1, Math.max(...actualFiles.map((f) => f.camera), 0))
+          numberOfCameras: liveCameraCount(
+            actualFiles,
+            existingBreadcrumbs.numberOfCameras
+          )
         }
         setBreadcrumbs(liveBreadcrumbs)
       } else if (actualFiles.length > 0) {
@@ -76,7 +87,7 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
         const projectName = projectPath.split('/').pop() || 'Unknown Project'
         const liveBreadcrumbs: BreadcrumbsFile = {
           projectTitle: projectName,
-          numberOfCameras: Math.max(1, Math.max(...actualFiles.map((f) => f.camera), 0)),
+          numberOfCameras: liveCameraCount(actualFiles, 0),
           files: actualFiles,
           parentFolder: projectPath.split('/').slice(0, -1).join('/'),
           createdBy: 'Unknown',
@@ -104,10 +115,7 @@ export function useLiveBreadcrumbsReader(): UseLiveBreadcrumbsReaderResult {
           const projectName = projectPath.split('/').pop() || 'Unknown Project'
           const fallbackBreadcrumbs: BreadcrumbsFile = {
             projectTitle: projectName,
-            numberOfCameras: Math.max(
-              1,
-              Math.max(...actualFiles.map((f) => f.camera), 0)
-            ),
+            numberOfCameras: liveCameraCount(actualFiles, 0),
             files: actualFiles,
             parentFolder: projectPath.split('/').slice(0, -1).join('/'),
             createdBy: 'Baker (recovered from file system)',
