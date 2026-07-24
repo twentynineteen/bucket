@@ -11,6 +11,7 @@ import {
   bakerCancelScan,
   bakerGetScanStatus,
   bakerStartScan,
+  bakerValidateFolder,
   listenScanComplete,
   listenScanError,
   listenScanProgress
@@ -188,6 +189,20 @@ export function useBakerScan(): UseBakerScanResult {
     setScanStartTime(null)
   }, [isScanning])
 
+  // Re-validate a single project (e.g. after a breadcrumbs repair) and patch
+  // it into the current results without requiring a full rescan.
+  const refreshProject = useCallback(async (projectPath: string) => {
+    const updated = await bakerValidateFolder(projectPath)
+    setScanResult((prev) =>
+      prev
+        ? {
+            ...prev,
+            projects: prev.projects.map((p) => (p.path === projectPath ? updated : p))
+          }
+        : prev
+    )
+  }, [])
+
   // Clean up polling on unmount
   useEffect(() => {
     return () => stopPolling()
@@ -200,6 +215,7 @@ export function useBakerScan(): UseBakerScanResult {
     scanStartTime,
     startScan,
     cancelScan,
-    clearResults
+    clearResults,
+    refreshProject
   }
 }

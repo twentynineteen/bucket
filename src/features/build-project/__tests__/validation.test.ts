@@ -332,6 +332,62 @@ describe('Validation Stage', () => {
       })
     })
 
+    describe('zero-camera (podcast) projects — issue #138 B5.2', () => {
+      it('should pass with 0 cameras and no files', async () => {
+        vi.mocked(exists).mockResolvedValueOnce(true)
+
+        const input: ValidationInput = {
+          files: [],
+          projectName: 'Podcast Ep 1',
+          outputPath: '/valid/path',
+          numCameras: 0
+        }
+
+        const result = await validateInputs(input)
+
+        expect(result.ok).toBe(true)
+        if (result.ok) {
+          expect(result.data.isValid).toBe(true)
+        }
+      })
+
+      it('should fail with 0 cameras and footage files present', async () => {
+        vi.mocked(exists).mockResolvedValueOnce(true)
+
+        const input: ValidationInput = {
+          files: [{ file: { path: '/path/to/video.mp4', name: 'video.mp4' }, camera: 1 }],
+          projectName: 'Podcast Ep 1',
+          outputPath: '/valid/path',
+          numCameras: 0
+        }
+
+        const result = await validateInputs(input)
+
+        expect(result.ok).toBe(false)
+        if (!result.ok) {
+          expect(result.error.message.toLowerCase()).toContain('camera')
+        }
+      })
+
+      it('should still fail with 1+ cameras and no files', async () => {
+        vi.mocked(exists).mockResolvedValueOnce(true)
+
+        const input: ValidationInput = {
+          files: [],
+          projectName: 'Video Project',
+          outputPath: '/valid/path',
+          numCameras: 2
+        }
+
+        const result = await validateInputs(input)
+
+        expect(result.ok).toBe(false)
+        if (!result.ok) {
+          expect(result.error.message).toContain('At least one file')
+        }
+      })
+    })
+
     describe('output path validation', () => {
       it('should fail when output path is empty', async () => {
         const input: ValidationInput = {

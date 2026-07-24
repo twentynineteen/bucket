@@ -189,11 +189,10 @@ describe('@shared/constants barrel contract', () => {
 
   describe('behavior: project constants have correct values', () => {
     test('PROJECT_LIMITS has camera constraints', () => {
-      expect(PROJECT_LIMITS.MIN_CAMERAS).toBe(1)
+      // 0 cameras is a legitimate project (podcast/audio-only) — see issue #138
+      expect(PROJECT_LIMITS.MIN_CAMERAS).toBe(0)
       expect(PROJECT_LIMITS.MAX_CAMERAS).toBeGreaterThan(PROJECT_LIMITS.MIN_CAMERAS)
-      expect(PROJECT_LIMITS.DEFAULT_CAMERAS).toBeGreaterThanOrEqual(
-        PROJECT_LIMITS.MIN_CAMERAS
-      )
+      expect(PROJECT_LIMITS.DEFAULT_CAMERAS).toBeGreaterThanOrEqual(1)
       expect(PROJECT_LIMITS.DEFAULT_CAMERAS).toBeLessThanOrEqual(
         PROJECT_LIMITS.MAX_CAMERAS
       )

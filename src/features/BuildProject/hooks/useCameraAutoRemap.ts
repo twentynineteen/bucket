@@ -21,7 +21,10 @@ export function useCameraAutoRemap(
     ...createQueryOptions(
       queryKeys.camera.autoRemap(`${filesHash}-${numCameras}`),
       async () => {
-        if (files.length === 0) return files
+        // With 0 cameras (podcast/audio-only project) there is no valid
+        // camera to remap to — leave assignments alone and let validation
+        // report the conflict instead.
+        if (files.length === 0 || numCameras === 0) return files
 
         const hasInvalidCameras = files.some(
           (file) => file.camera > numCameras || file.camera < 1
