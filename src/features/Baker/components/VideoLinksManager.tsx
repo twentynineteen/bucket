@@ -58,6 +58,9 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
     // Trello card rename proposal
     renameProposal,
 
+    // Branded poster frame (Issue #140)
+    posterFrame,
+
     // Loading states
     isUpdating,
     isFetchingVideo,
@@ -153,6 +156,24 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
             validationErrors: validationErrors,
             addError: addError
           }}
+          posterFrame={{
+            available: posterFrame.available,
+            unavailableReason: posterFrame.unavailableReason,
+            enabled: posterFrame.enabled,
+            onEnabledChange: posterFrame.setEnabled,
+            backgrounds: posterFrame.backgrounds,
+            selectedBackground: posterFrame.selectedBackground,
+            onBackgroundChange: posterFrame.setSelectedBackground,
+            text: posterFrame.text,
+            onTextChange: posterFrame.setText,
+            previewImageUrl: posterFrame.previewImageUrl,
+            saveCopy: posterFrame.saveCopy,
+            onSaveCopyChange: posterFrame.setSaveCopy,
+            status: posterFrame.status,
+            error: posterFrame.error,
+            onRetry: () => void posterFrame.retry()
+          }}
+          posterFrameCanvasRef={posterFrame.canvasRef}
         />
       </div>
 

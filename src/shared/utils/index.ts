@@ -56,6 +56,8 @@ export { cn } from './cn'
 export { formatDurationSuffix } from './video'
 /** Derive a default video title from a file path -- basename without extension */
 export { fileNameToTitle } from './video'
+/** Derive branded poster frame text from a video title (last ' - ' segment) */
+export { titleToPosterFrameText } from './video'
 
 // Breadcrumbs utilities
 /** Format a date for breadcrumbs display with full month and year */

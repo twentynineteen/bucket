@@ -16,6 +16,8 @@ import * as useFileUploadModule from '@features/Upload'
 import * as useSproutVideoApiModule from '@features/Upload'
 import * as useSproutVideoProcessorModule from '@features/Upload'
 import * as useUploadEventsModule from '@features/Upload'
+import * as usePosterFrameForUploadModule from '@features/Upload'
+import type { usePosterFrameForUpload } from '@features/Upload'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { SproutUploadResponse } from '@shared/types'
@@ -109,6 +111,36 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
   const mockUploadFile = vi.fn()
   const mockResetUploadState = vi.fn()
   const mockVideoProcessorReset = vi.fn()
+  const mockPosterFrameRun = vi.fn()
+  const mockPosterFrameRetry = vi.fn()
+  const mockPosterFrameReset = vi.fn()
+
+  // Issue #140: default poster frame state — available but left unticked, so
+  // every pre-existing test keeps its original (poster-frame-free) behaviour.
+  const posterFrameHookReturn = (
+    overrides: Record<string, unknown> = {}
+  ): ReturnType<typeof usePosterFrameForUpload> =>
+    ({
+      available: true,
+      unavailableReason: null,
+      enabled: false,
+      setEnabled: vi.fn(),
+      backgrounds: ['/backgrounds/wbs-blue.jpg'],
+      selectedBackground: '/backgrounds/wbs-blue.jpg',
+      setSelectedBackground: vi.fn(),
+      text: 'Managing Change',
+      setText: vi.fn(),
+      previewImageUrl: 'blob:preview',
+      canvasRef: { current: null },
+      saveCopy: false,
+      setSaveCopy: vi.fn(),
+      status: 'idle',
+      error: null,
+      run: mockPosterFrameRun,
+      retry: mockPosterFrameRetry,
+      reset: mockPosterFrameReset,
+      ...overrides
+    }) as ReturnType<typeof usePosterFrameForUpload>
 
   // Helper to wrap component with QueryClientProvider
   const renderWithQueryClient = (ui: React.ReactElement) => {
@@ -216,6 +248,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       setProgress: vi.fn(),
       setMessage: vi.fn()
     })
+
+    // Mock usePosterFrameForUpload (Issue #140)
+    mockPosterFrameRun.mockResolvedValue({ ok: true, posterFrameUrl: null, error: null })
+    mockPosterFrameRetry.mockResolvedValue({
+      ok: true,
+      posterFrameUrl: null,
+      error: null
+    })
+    vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+      posterFrameHookReturn()
+    )
 
     // Mock useSproutVideoProcessor - implement callback behavior
     vi.mocked(useSproutVideoProcessorModule.useSproutVideoProcessor).mockImplementation(
@@ -1420,6 +1463,107 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       // useEffect cleanup handlers will reset all state (form data, addMode, upload state),
       // which is tested by the component's implementation and verified by the
       // resetUploadState mock call above.
+    })
+  })
+
+  // ==========================================
+  // Issue #140: branded poster frame on upload
+  // ==========================================
+  describe('Issue #140: poster frame during upload', () => {
+    const uploadResponse = createMockSproutUploadResponse({
+      id: 'sprout-abc',
+      title: 'WBS - MSc - Managing Change',
+      embedded_url: 'https://sproutvideo.com/videos/sprout-abc'
+    })
+
+    const renderUploadTab = async () => {
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
+        selectedFile: '/renders/test-video.mp4',
+        uploading: false,
+        response: uploadResponse,
+        localDuration: 120,
+        selectFile: mockSelectFile,
+        uploadFile: mockUploadFile,
+        resetUploadState: mockResetUploadState
+      })
+
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+      await userEvent.click(screen.getByRole('button', { name: /add video/i }))
+      await userEvent.click(screen.getByRole('tab', { name: /upload file/i }))
+    }
+
+    it('b5_1_runs_the_poster_frame_for_the_uploaded_video', async () => {
+      vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+        posterFrameHookReturn({ enabled: true })
+      )
+
+      await renderUploadTab()
+
+      await waitFor(() =>
+        expect(mockPosterFrameRun).toHaveBeenCalledWith('sprout-abc', 'test-api-key')
+      )
+    })
+
+    it('b6_1_stores_the_custom_poster_frame_url_on_the_video_link', async () => {
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: 'https://sproutvideo.com/custom-poster.jpg',
+        error: null
+      })
+      vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+        posterFrameHookReturn({ enabled: true })
+      )
+
+      await renderUploadTab()
+
+      await waitFor(() =>
+        expect(mockAddVideoLink).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sproutVideoId: 'sprout-abc',
+            thumbnailUrl: 'https://sproutvideo.com/custom-poster.jpg'
+          })
+        )
+      )
+    })
+
+    it('b5_7_adds_the_video_link_even_when_the_poster_frame_fails', async () => {
+      mockPosterFrameRun.mockResolvedValue({
+        ok: false,
+        posterFrameUrl: null,
+        error: 'Poster frame is 793 KB — Sprout Video allows up to 500 KB.'
+      })
+      vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+        posterFrameHookReturn({ enabled: true })
+      )
+
+      await renderUploadTab()
+
+      await waitFor(() =>
+        expect(mockAddVideoLink).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sproutVideoId: 'sprout-abc',
+            // B6.3: unchanged from what today's code would store
+            thumbnailUrl: uploadResponse.assets.poster_frames[0]
+          })
+        )
+      )
+    })
+
+    it('b1_6_leaves_the_upload_untouched_when_the_option_is_unticked', async () => {
+      vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+        posterFrameHookReturn({ enabled: false })
+      )
+
+      await renderUploadTab()
+
+      await waitFor(() =>
+        expect(mockAddVideoLink).toHaveBeenCalledWith(
+          expect.objectContaining({
+            thumbnailUrl: uploadResponse.assets.poster_frames[0]
+          })
+        )
+      )
+      expect(mockPosterFrameRun).not.toHaveBeenCalled()
     })
   })
 })

@@ -180,6 +180,27 @@ vi.mock('@features/Upload', () => ({
   useUploadEvents: () => ({
     progress: 0,
     message: ''
+  }),
+  // Issue #140: branded poster frame options surfaced by useVideoLinksManager
+  usePosterFrameForUpload: () => ({
+    available: false,
+    unavailableReason: 'No default background folder configured. Set one in Settings.',
+    enabled: false,
+    setEnabled: vi.fn(),
+    backgrounds: [],
+    selectedBackground: null,
+    setSelectedBackground: vi.fn(),
+    text: '',
+    setText: vi.fn(),
+    previewImageUrl: null,
+    canvasRef: { current: null },
+    saveCopy: false,
+    setSaveCopy: vi.fn(),
+    status: 'idle',
+    error: null,
+    run: vi.fn(),
+    retry: vi.fn(),
+    reset: vi.fn()
   })
 }))
 

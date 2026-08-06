@@ -28,7 +28,10 @@ vi.mock('../api', () => ({
   readFileAsBytes: vi.fn().mockResolvedValue(new Uint8Array()),
   listDirectory: vi.fn().mockResolvedValue([]),
   getFontDir: vi.fn().mockResolvedValue('/fonts'),
-  fileExists: vi.fn().mockResolvedValue(false)
+  fileExists: vi.fn().mockResolvedValue(false),
+  posterFrameFontAvailable: vi.fn().mockResolvedValue(false),
+  setSproutPosterFrame: vi.fn().mockResolvedValue(undefined),
+  savePosterFrameCopy: vi.fn().mockResolvedValue('/projects/demo/Graphics/x.jpg')
 }))
 
 // Mock shared dependencies
@@ -174,7 +177,8 @@ describe('Upload Barrel Exports - Shape', () => {
     'usePosterframeCanvas',
     'usePosterframeAutoRedraw',
     'useFileSelection',
-    'useZoomPan'
+    'useZoomPan',
+    'usePosterFrameForUpload'
   ].sort()
 
   it('exports exactly the expected named exports (no more, no fewer)', () => {
@@ -182,8 +186,8 @@ describe('Upload Barrel Exports - Shape', () => {
     expect(exportNames).toEqual(expectedExports)
   })
 
-  it('exports exactly 13 members (4 components + 9 hooks)', () => {
-    expect(Object.keys(uploadBarrel)).toHaveLength(13)
+  it('exports exactly 14 members (4 components + 10 hooks)', () => {
+    expect(Object.keys(uploadBarrel)).toHaveLength(14)
   })
 
   // Component shape checks
@@ -210,7 +214,8 @@ describe('Upload Barrel Exports - Shape', () => {
     'usePosterframeCanvas',
     'usePosterframeAutoRedraw',
     'useFileSelection',
-    'useZoomPan'
+    'useZoomPan',
+    'usePosterFrameForUpload'
   ] as const
 
   for (const name of hookNames) {
@@ -230,12 +235,21 @@ describe('Upload Barrel Exports - Shape', () => {
     expect(exportNames).not.toContain('loadFont')
   })
 
+  it('does NOT export poster frame internals (Issue #140)', () => {
+    const exportNames = Object.keys(uploadBarrel)
+    expect(exportNames).not.toContain('posterFrameFileStem')
+    expect(exportNames).not.toContain('isTransientPosterFrameError')
+    expect(exportNames).not.toContain('exportCanvasJpeg')
+  })
+
   it('does NOT export api layer functions directly', () => {
     const exportNames = Object.keys(uploadBarrel)
     expect(exportNames).not.toContain('uploadVideo')
     expect(exportNames).not.toContain('getFolders')
     expect(exportNames).not.toContain('openFileDialog')
     expect(exportNames).not.toContain('listenUploadProgress')
+    expect(exportNames).not.toContain('setSproutPosterFrame')
+    expect(exportNames).not.toContain('savePosterFrameCopy')
   })
 })
 
@@ -318,6 +332,56 @@ describe('usePosterframeCanvas - Behavior', () => {
     expect(result.current).toHaveProperty('canvasRef')
     expect(result.current).toHaveProperty('draw')
     expect(typeof result.current.draw).toBe('function')
+  })
+})
+
+describe('usePosterFrameForUpload - Behavior', () => {
+  it('returns the poster frame preparation and upload interface (Issue #140)', () => {
+    const { result } = renderHook(() =>
+      uploadBarrel.usePosterFrameForUpload({
+        projectPath: '/projects/demo',
+        videoTitle: 'WBS - MSc - Managing Change'
+      })
+    )
+
+    for (const key of [
+      'available',
+      'unavailableReason',
+      'enabled',
+      'setEnabled',
+      'backgrounds',
+      'selectedBackground',
+      'setSelectedBackground',
+      'text',
+      'setText',
+      'previewImageUrl',
+      'canvasRef',
+      'saveCopy',
+      'setSaveCopy',
+      'status',
+      'error',
+      'run',
+      'retry',
+      'reset'
+    ]) {
+      expect(result.current).toHaveProperty(key)
+    }
+    expect(typeof result.current.run).toBe('function')
+    expect(typeof result.current.retry).toBe('function')
+    expect(typeof result.current.reset).toBe('function')
+  })
+
+  it('starts idle with the option unticked', () => {
+    const { result } = renderHook(() =>
+      uploadBarrel.usePosterFrameForUpload({
+        projectPath: '/projects/demo',
+        videoTitle: 'Managing Change'
+      })
+    )
+
+    expect(result.current.enabled).toBe(false)
+    expect(result.current.status).toBe('idle')
+    expect(result.current.error).toBeNull()
   })
 })
 

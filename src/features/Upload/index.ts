@@ -27,6 +27,8 @@ export { usePosterframeAutoRedraw } from './hooks/usePosterframeAutoRedraw'
 export { useFileSelection } from './hooks/useFileSelection'
 /** Hook for canvas zoom and pan controls with mouse and keyboard support */
 export { useZoomPan } from './hooks/useZoomPan'
+/** Hook for preparing a branded poster frame and setting it on Sprout after upload */
+export { usePosterFrameForUpload } from './hooks/usePosterFrameForUpload'
 
 // Types (re-export for consumers)
 /** Sprout Video upload response with video ID, embed code, and status */
@@ -37,3 +39,7 @@ export type { GetFoldersResponse } from './types'
 export type { SproutFolder } from './types'
 /** Detailed Sprout Video metadata including duration, dimensions, and assets */
 export type { SproutVideoDetails } from './types'
+/** Outcome of setting a branded poster frame on an uploaded Sprout video */
+export type { PosterFrameRunResult } from './types'
+/** Progress of the poster frame step within an upload */
+export type { PosterFrameStatus } from './types'

@@ -4,10 +4,19 @@
  * Reduced from 21 individual parameters to 6 logical parameter groups
  */
 
-import { AlertCircle, Loader2, Plus, Upload as UploadIcon } from 'lucide-react'
+import {
+  AlertCircle,
+  CheckCircle2,
+  Image as ImageIcon,
+  Loader2,
+  Plus,
+  Upload as UploadIcon
+} from 'lucide-react'
+import type { RefObject } from 'react'
 
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
+import { Checkbox } from '@shared/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -19,6 +28,13 @@ import {
 } from '@shared/ui/dialog'
 import { Input } from '@shared/ui/input'
 import { Label } from '@shared/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@shared/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
 
 // Type definitions for grouped parameters
@@ -68,6 +84,30 @@ export interface ErrorState {
   addError: Error | null
 }
 
+/**
+ * Branded poster frame options for the upload flow (Issue #140). Everything
+ * here is owned by usePosterFrameForUpload; the dialog only renders it.
+ */
+export interface PosterFrameDialogState {
+  /** False when the font or background folder isn't usable */
+  available: boolean
+  /** Why the option is unavailable, shown next to the disabled checkbox */
+  unavailableReason: string | null
+  enabled: boolean
+  onEnabledChange: (enabled: boolean) => void
+  backgrounds: string[]
+  selectedBackground: string | null
+  onBackgroundChange: (path: string) => void
+  text: string
+  onTextChange: (text: string) => void
+  previewImageUrl: string | null
+  saveCopy: boolean
+  onSaveCopyChange: (saveCopy: boolean) => void
+  status: 'idle' | 'working' | 'success' | 'error'
+  error: string | null
+  onRetry: () => void
+}
+
 // Refactored props interface - 6 grouped parameters instead of 21 individual ones
 export interface AddVideoDialogProps {
   dialog: DialogState
@@ -76,6 +116,12 @@ export interface AddVideoDialogProps {
   urlMode: UrlModeState
   uploadMode: UploadModeState
   errors: ErrorState
+  posterFrame: PosterFrameDialogState
+  /**
+   * Ref for the preview canvas. Kept out of the posterFrame group because a
+   * member expression used as `ref=` reads as a render-time ref access.
+   */
+  posterFrameCanvasRef: RefObject<HTMLCanvasElement | null>
 }
 
 export function AddVideoDialog({
@@ -84,8 +130,15 @@ export function AddVideoDialog({
   form,
   urlMode,
   uploadMode,
-  errors
+  errors,
+  posterFrame,
+  posterFrameCanvasRef
 }: AddVideoDialogProps) {
+  // The poster frame step must finish before the dialog can be closed, so the
+  // work can't be torn down halfway through (B5.2).
+  const posterFrameWorking = posterFrame.enabled && posterFrame.status === 'working'
+  const posterFrameSettled = !posterFrame.enabled || posterFrame.status !== 'working'
+
   return (
     <Dialog open={dialog.isOpen} onOpenChange={dialog.onOpenChange}>
       <DialogTrigger asChild>
@@ -115,7 +168,13 @@ export function AddVideoDialog({
 
           {/* Upload File Tab */}
           <TabsContent value="upload" className="space-y-4 py-4">
-            <UploadContent uploadMode={uploadMode} urlMode={urlMode} form={form} />
+            <UploadContent
+              uploadMode={uploadMode}
+              urlMode={urlMode}
+              form={form}
+              posterFrame={posterFrame}
+              posterFrameCanvasRef={posterFrameCanvasRef}
+            />
           </TabsContent>
         </Tabs>
 
@@ -128,12 +187,23 @@ export function AddVideoDialog({
               <Button onClick={urlMode.onAddVideo}>Add Video</Button>
             </>
           ) : uploadMode.uploadSuccess ? (
-            <Button onClick={() => dialog.onOpenChange(false)} className="w-full">
-              Finish
-            </Button>
+            posterFrameSettled ? (
+              <Button onClick={() => dialog.onOpenChange(false)} className="w-full">
+                Finish
+              </Button>
+            ) : (
+              <Button disabled className="w-full">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Please wait...
+              </Button>
+            )
           ) : (
             <>
-              <Button variant="outline" onClick={() => dialog.onOpenChange(false)}>
+              <Button
+                variant="outline"
+                onClick={() => dialog.onOpenChange(false)}
+                disabled={posterFrameWorking}
+              >
                 Cancel
               </Button>
               <Button
@@ -266,15 +336,147 @@ function UrlEntryContent({
   )
 }
 
+// Sub-component for the branded poster frame options (Issue #140)
+function PosterFrameContent({
+  posterFrame,
+  canvasRef
+}: {
+  posterFrame: PosterFrameDialogState
+  canvasRef: RefObject<HTMLCanvasElement | null>
+}) {
+  const selectedName = posterFrame.selectedBackground?.split('/').pop() ?? ''
+
+  return (
+    <div className="border-border space-y-3 rounded-lg border p-3">
+      <div className="flex items-start gap-2">
+        <Checkbox
+          id="create-poster-frame"
+          checked={posterFrame.enabled}
+          onCheckedChange={(checked) => posterFrame.onEnabledChange(checked === true)}
+          disabled={!posterFrame.available}
+        />
+        <div className="flex-1">
+          <Label htmlFor="create-poster-frame" className="cursor-pointer">
+            Create branded poster frame
+          </Label>
+          {posterFrame.unavailableReason ? (
+            <p className="text-warning mt-1 text-xs">{posterFrame.unavailableReason}</p>
+          ) : (
+            <p className="text-muted-foreground mt-1 text-xs">
+              Sets a branded thumbnail on Sprout Video instead of an auto-generated still.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {posterFrame.enabled && (
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="poster-frame-background">Background</Label>
+            <Select
+              value={posterFrame.selectedBackground ?? ''}
+              onValueChange={posterFrame.onBackgroundChange}
+            >
+              <SelectTrigger id="poster-frame-background" className="w-full">
+                <SelectValue placeholder="Select a background">
+                  {selectedName}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="max-h-[240px]">
+                {posterFrame.backgrounds.map((file) => (
+                  <SelectItem key={file} value={file}>
+                    {file.split('/').pop()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="poster-frame-text">Poster frame text</Label>
+            <Input
+              id="poster-frame-text"
+              value={posterFrame.text}
+              onChange={(event) => posterFrame.onTextChange(event.target.value)}
+              maxLength={200}
+              disabled={posterFrame.status === 'working'}
+            />
+            <p className="text-muted-foreground text-xs">
+              Taken from the last part of the video title. Edit it to change the thumbnail
+              only.
+            </p>
+          </div>
+
+          {posterFrame.previewImageUrl && (
+            <div className="border-border overflow-hidden rounded border">
+              <canvas
+                ref={canvasRef}
+                role="img"
+                aria-label="Poster frame preview"
+                className="aspect-video w-full"
+              />
+            </div>
+          )}
+
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="poster-frame-save-copy"
+              checked={posterFrame.saveCopy}
+              onCheckedChange={(checked) =>
+                posterFrame.onSaveCopyChange(checked === true)
+              }
+              disabled={posterFrame.status === 'working'}
+            />
+            <Label htmlFor="poster-frame-save-copy" className="cursor-pointer">
+              Save a copy to the project&apos;s Graphics folder
+            </Label>
+          </div>
+
+          {posterFrame.status === 'working' && (
+            <p className="text-muted-foreground flex items-center gap-2 text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Setting poster frame...
+            </p>
+          )}
+
+          {posterFrame.status === 'success' && (
+            <p className="text-success flex items-center gap-2 text-sm">
+              <CheckCircle2 className="h-4 w-4" />
+              Poster frame set on Sprout Video
+            </p>
+          )}
+
+          {posterFrame.status === 'error' && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="space-y-2">
+                <p>{posterFrame.error}</p>
+                <Button size="sm" variant="secondary" onClick={posterFrame.onRetry}>
+                  <ImageIcon className="mr-2 h-3.5 w-3.5" />
+                  Retry poster frame
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Sub-component for upload content
 function UploadContent({
   uploadMode,
   urlMode,
-  form
+  form,
+  posterFrame,
+  posterFrameCanvasRef
 }: {
   uploadMode: UploadModeState
   urlMode: UrlModeState
   form: FormState
+  posterFrame: PosterFrameDialogState
+  posterFrameCanvasRef: RefObject<HTMLCanvasElement | null>
 }) {
   return (
     <div className="space-y-4">
@@ -317,6 +519,10 @@ function UploadContent({
             Used as the video title on Sprout Video. Leave blank to use the filename.
           </p>
         </div>
+      )}
+
+      {uploadMode.selectedFile && (
+        <PosterFrameContent posterFrame={posterFrame} canvasRef={posterFrameCanvasRef} />
       )}
 
       {!urlMode.hasApiKey && (

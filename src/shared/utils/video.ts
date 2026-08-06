@@ -34,3 +34,23 @@ export function fileNameToTitle(filePath: string): string {
   const dotIndex = base.lastIndexOf('.')
   return (dotIndex > 0 ? base.slice(0, dotIndex) : base).trim()
 }
+
+/**
+ * Derives the text for a branded poster frame from a video title. Titles
+ * follow a "prefix - prefix - subject" convention, and only the subject
+ * belongs on the thumbnail:
+ * "WBS - MSc - Module 3 - Managing Change" -> "Managing Change".
+ *
+ * Only spaced hyphens separate segments, so hyphenated words survive
+ * ("Decision-Making in Practice" stays whole). A title ending in a separator
+ * falls back to its last non-empty segment, and a title without any
+ * separator is used as-is.
+ */
+export function titleToPosterFrameText(title: string): string {
+  const segments = title
+    .split(' - ')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0)
+
+  return segments.length > 0 ? segments[segments.length - 1] : ''
+}
