@@ -18,6 +18,7 @@ import { FolderSelector } from './components/FolderSelector'
 import { PreviewProgress } from './components/PreviewProgress'
 import { ProjectDetailPanel } from './components/ProjectDetailPanel'
 import { ProjectListPanel } from './components/ProjectListPanel'
+import { RepairBreadcrumbsDialog } from './components/RepairBreadcrumbsDialog'
 import { ScanResults } from './components/ScanResults'
 import { StorageView } from './components/StorageView'
 import { useBakerPreferences } from './hooks/useBakerPreferences'
@@ -25,6 +26,7 @@ import { useBakerScan } from './hooks/useBakerScan'
 import { useBreadcrumbsManager } from './hooks/useBreadcrumbsManager'
 import { useBreadcrumbsPreview } from './hooks/useBreadcrumbsPreview'
 import { useLiveBreadcrumbsReader } from './hooks/useLiveBreadcrumbsReader'
+import { useRepairBreadcrumbs } from './hooks/useRepairBreadcrumbs'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 
@@ -43,6 +45,7 @@ const BakerPageContent: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [showBatchConfirmation, setShowBatchConfirmation] = useState(false)
   const [viewMode, setViewMode] = useState<'projects' | 'storage'>('projects')
+  const [repairTarget, setRepairTarget] = useState<string | null>(null)
 
   // Custom hooks - all business logic moved to hooks
   const {
@@ -52,7 +55,8 @@ const BakerPageContent: React.FC = () => {
     scanStartTime,
     startScan,
     cancelScan,
-    clearResults
+    clearResults,
+    refreshProject
   } = useBakerScan()
   const {
     updateBreadcrumbs,
@@ -61,6 +65,7 @@ const BakerPageContent: React.FC = () => {
     clearResults: clearUpdateResults
   } = useBreadcrumbsManager()
   const { preferences, updatePreferences, resetToDefaults } = useBakerPreferences()
+  const { repairBreadcrumbs, isRepairing } = useRepairBreadcrumbs()
   const {
     breadcrumbs,
     isLoading: isLoadingBreadcrumbs,
@@ -200,6 +205,34 @@ const BakerPageContent: React.FC = () => {
     [readLiveBreadcrumbs]
   )
 
+  const handleRepairRequest = useCallback((projectPath: string) => {
+    setRepairTarget(projectPath)
+  }, [])
+
+  const handleConfirmRepair = useCallback(async () => {
+    if (!repairTarget) return
+
+    try {
+      await repairBreadcrumbs(repairTarget)
+      toast.success('Breadcrumbs repaired — backup saved as breadcrumbs.json.bak')
+      await refreshProject(repairTarget)
+      if (selectedProject === repairTarget) {
+        await readLiveBreadcrumbs(repairTarget)
+      }
+    } catch (repairError) {
+      logger.error('Failed to repair breadcrumbs:', repairError)
+      toast.error(`Failed to repair breadcrumbs: ${repairError}`)
+    } finally {
+      setRepairTarget(null)
+    }
+  }, [
+    repairTarget,
+    repairBreadcrumbs,
+    refreshProject,
+    selectedProject,
+    readLiveBreadcrumbs
+  ])
+
   const handleGeneratePreview = useCallback(async () => {
     if (selectedProject && selectedProjectData) {
       await generatePreview(selectedProject, selectedProjectData)
@@ -338,6 +371,7 @@ const BakerPageContent: React.FC = () => {
                   selectedProject={selectedProject}
                   onProjectSelection={handleProjectSelection}
                   onProjectClick={handleProjectClick}
+                  onRepairProject={handleRepairRequest}
                 />
               </div>
 
@@ -351,6 +385,7 @@ const BakerPageContent: React.FC = () => {
                   preview={selectedProject ? getPreview(selectedProject) : null}
                   isGeneratingPreview={isGenerating}
                   onGeneratePreview={handleGeneratePreview}
+                  onRepairProject={handleRepairRequest}
                   trelloApiKey={apiKey}
                   trelloApiToken={token}
                 />
@@ -391,6 +426,19 @@ const BakerPageContent: React.FC = () => {
           .filter((preview): preview is NonNullable<typeof preview> => preview !== null)}
         isLoading={isUpdating}
         invalidBreadcrumbsPaths={invalidBreadcrumbsPaths}
+      />
+
+      {/* Repair Breadcrumbs Confirmation Dialog */}
+      <RepairBreadcrumbsDialog
+        open={repairTarget !== null}
+        projectName={
+          scanResult?.projects.find((p) => p.path === repairTarget)?.name ?? null
+        }
+        isRepairing={isRepairing}
+        onOpenChange={(open) => {
+          if (!open) setRepairTarget(null)
+        }}
+        onConfirm={handleConfirmRepair}
       />
     </div>
   )

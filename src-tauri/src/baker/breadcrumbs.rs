@@ -226,6 +226,19 @@ pub async fn baker_update_breadcrumbs(
             continue;
         }
 
+        // A breadcrumbs file can be written for any folder with a Footage/
+        // directory or an existing breadcrumbs.json — full structural
+        // validity is NOT required, so 0-camera (podcast) and structurally
+        // imperfect projects stay repairable.
+        if !path.join("Footage").is_dir() && !exists {
+            result.failed.push(FailedUpdate {
+                path: project_path.clone(),
+                error: "No Footage folder or breadcrumbs file — nothing to describe"
+                    .to_string(),
+            });
+            continue;
+        }
+
         // Create backup if requested and file exists
         if backup_originals && exists {
             let backup_path = path.join("breadcrumbs.json.bak");
@@ -238,15 +251,7 @@ pub async fn baker_update_breadcrumbs(
             }
         }
 
-        let (is_valid, _, camera_count) = validate_project_folder(path);
-
-        if !is_valid {
-            result.failed.push(FailedUpdate {
-                path: project_path.clone(),
-                error: "Invalid project structure".to_string(),
-            });
-            continue;
-        }
+        let (_, _, camera_count) = validate_project_folder(path);
 
         let files = scan_camera_files(path);
 
@@ -430,6 +435,59 @@ pub async fn baker_update_breadcrumbs_sizes(
     }
 
     Ok(result)
+}
+
+/// Regenerate a single project's `breadcrumbs.json` from the folder contents,
+/// salvaging the user-managed link fields from the old file.
+///
+/// Unlike the batch update, repair ALWAYS backs the existing file up to
+/// `breadcrumbs.json.bak` first — a corrupt original is exactly the file the
+/// user may want to inspect later. Allowed for any folder with a `Footage/`
+/// directory or an existing breadcrumbs file.
+#[tauri::command]
+pub async fn baker_repair_breadcrumbs(
+    project_path: String,
+) -> Result<BreadcrumbsFile, String> {
+    let path = Path::new(&project_path);
+
+    if !path.exists() {
+        return Err("Project path does not exist".to_string());
+    }
+
+    let breadcrumbs_path = path.join("breadcrumbs.json");
+    let exists = breadcrumbs_path.exists();
+
+    if !path.join("Footage").is_dir() && !exists {
+        return Err(
+            "Folder has no Footage directory or breadcrumbs file to repair".to_string()
+        );
+    }
+
+    let raw_content = if exists {
+        let content = fs::read_to_string(&breadcrumbs_path)
+            .map_err(|e| format!("Failed to read existing breadcrumbs: {}", e))?;
+        fs::copy(&breadcrumbs_path, path.join("breadcrumbs.json.bak"))
+            .map_err(|e| format!("Failed to create backup: {}", e))?;
+        Some(content)
+    } else {
+        None
+    };
+
+    let (_, _, camera_count) = validate_project_folder(path);
+    let files = scan_camera_files(path);
+    let mut breadcrumbs = new_breadcrumbs_file(path, camera_count, files);
+    if let Some(content) = &raw_content {
+        salvage_links_from_raw(content, &mut breadcrumbs);
+    }
+
+    let json_content = serde_json::to_string_pretty(&breadcrumbs)
+        .map_err(|e| format!("Failed to serialize breadcrumbs: {}", e))?;
+    fs::write(&breadcrumbs_path, json_content)
+        .map_err(|e| format!("Failed to write breadcrumbs file: {}", e))?;
+
+    println!("[Baker] Repaired breadcrumbs for {}", path.display());
+
+    Ok(breadcrumbs)
 }
 
 /// Salvage the user-managed link fields (`trelloCards`, `videoLinks` and the
@@ -666,6 +724,163 @@ mod tests {
         assert!(result.successful.is_empty());
         assert_eq!(result.failed.len(), 1);
         assert!(result.failed[0].error.contains("No breadcrumbs file"));
+    }
+
+    /// Podcast project: full structure, no camera folders, one script file.
+    fn make_podcast_project(dir: &Path) {
+        for sub in ["Footage", "Graphics", "Renders", "Projects", "Scripts"] {
+            fs::create_dir_all(dir.join(sub)).unwrap();
+        }
+        fs::write(dir.join("Scripts").join("episode-01.docx"), b"script").unwrap();
+    }
+
+    // --- B3.3: batch update works for 0-camera projects ---
+
+    #[tokio::test]
+    async fn update_succeeds_for_zero_camera_project() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Podcast Ep 1");
+        make_podcast_project(&project);
+
+        let result = baker_update_breadcrumbs(
+            vec![project.to_string_lossy().to_string()],
+            true,
+            false,
+        )
+        .await
+        .expect("update should succeed");
+
+        assert_eq!(result.successful.len(), 1, "result was {:?}", result);
+        assert_eq!(result.created.len(), 1);
+        assert!(result.failed.is_empty(), "result was {:?}", result);
+
+        let written: BreadcrumbsFile = serde_json::from_str(
+            &fs::read_to_string(project.join("breadcrumbs.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(written.number_of_cameras, 0);
+    }
+
+    // --- B3.4: relaxed gate ---
+
+    #[tokio::test]
+    async fn update_allowed_with_only_footage_folder() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Partial");
+        fs::create_dir_all(project.join("Footage").join("Camera 1")).unwrap();
+        fs::write(
+            project.join("Footage").join("Camera 1").join("clip.mp4"),
+            b"vid",
+        )
+        .unwrap();
+
+        let result = baker_update_breadcrumbs(
+            vec![project.to_string_lossy().to_string()],
+            true,
+            false,
+        )
+        .await
+        .expect("update should succeed");
+
+        assert_eq!(result.successful.len(), 1, "result was {:?}", result);
+        assert!(project.join("breadcrumbs.json").exists());
+    }
+
+    #[tokio::test]
+    async fn update_fails_without_footage_or_breadcrumbs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Random Folder");
+        fs::create_dir_all(&project).unwrap();
+
+        let result = baker_update_breadcrumbs(
+            vec![project.to_string_lossy().to_string()],
+            true,
+            false,
+        )
+        .await
+        .expect("command itself should not error");
+
+        assert!(result.successful.is_empty());
+        assert_eq!(result.failed.len(), 1);
+        assert!(!project.join("breadcrumbs.json").exists());
+    }
+
+    // --- B3.2: repair command ---
+
+    #[tokio::test]
+    async fn repair_regenerates_drifted_file_and_backs_up() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("My Project");
+        make_valid_project(&project);
+
+        let breadcrumbs_path = project.join("breadcrumbs.json");
+        fs::write(&breadcrumbs_path, DRIFTED_BREADCRUMBS).unwrap();
+
+        let repaired = baker_repair_breadcrumbs(project.to_string_lossy().to_string())
+            .await
+            .expect("repair should succeed");
+
+        // Backup contains the original bytes.
+        let backup = fs::read_to_string(project.join("breadcrumbs.json.bak")).unwrap();
+        assert_eq!(backup, DRIFTED_BREADCRUMBS);
+
+        // The written file is now strictly parseable and retains the links.
+        let written: BreadcrumbsFile =
+            serde_json::from_str(&fs::read_to_string(&breadcrumbs_path).unwrap())
+                .expect("repaired file is valid");
+        let cards = written.trello_cards.expect("trello cards salvaged");
+        assert_eq!(cards.len(), 2);
+        let videos = written.video_links.expect("video links salvaged");
+        assert_eq!(videos.len(), 1);
+
+        assert_eq!(repaired.number_of_cameras, written.number_of_cameras);
+    }
+
+    #[tokio::test]
+    async fn repair_writes_zero_cameras_for_podcast_project() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Podcast Ep 2");
+        make_podcast_project(&project);
+        fs::write(project.join("breadcrumbs.json"), "{ not valid json").unwrap();
+
+        let repaired = baker_repair_breadcrumbs(project.to_string_lossy().to_string())
+            .await
+            .expect("repair should succeed");
+
+        assert_eq!(repaired.number_of_cameras, 0);
+        assert!(project.join("breadcrumbs.json.bak").exists());
+
+        let written: BreadcrumbsFile = serde_json::from_str(
+            &fs::read_to_string(project.join("breadcrumbs.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(written.number_of_cameras, 0);
+    }
+
+    #[tokio::test]
+    async fn repair_creates_breadcrumbs_when_footage_present() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Fresh Project");
+        make_valid_project(&project);
+
+        let repaired = baker_repair_breadcrumbs(project.to_string_lossy().to_string())
+            .await
+            .expect("repair should succeed");
+
+        assert_eq!(repaired.number_of_cameras, 1);
+        assert!(project.join("breadcrumbs.json").exists());
+        // Nothing to back up when there was no original file.
+        assert!(!project.join("breadcrumbs.json.bak").exists());
+    }
+
+    #[tokio::test]
+    async fn repair_fails_without_footage_or_breadcrumbs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Random Folder");
+        fs::create_dir_all(&project).unwrap();
+
+        let result = baker_repair_breadcrumbs(project.to_string_lossy().to_string()).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]

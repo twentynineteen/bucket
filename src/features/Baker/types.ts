@@ -154,6 +154,7 @@ export interface UseBakerScanResult {
   // Actions
   startScan: (rootPath: string, options: ScanOptions) => Promise<void>
   cancelScan: () => void
+  refreshProject: (projectPath: string) => Promise<void>
 
   // Cleanup
   clearResults: () => void

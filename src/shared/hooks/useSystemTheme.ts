@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 
+import { isTauriRuntime } from '@shared/utils'
+
 export type SystemTheme = 'light' | 'dark' | null
 
 /**
@@ -26,6 +28,10 @@ export function useSystemTheme() {
   const [theme, setTheme] = useState<SystemTheme>(null)
 
   useEffect(() => {
+    // Outside the desktop app there is no native theme to read, and
+    // getCurrentWindow() would throw and unmount the subtree (Issue #144)
+    if (!isTauriRuntime()) return
+
     const window = getCurrentWindow()
 
     // Get initial theme

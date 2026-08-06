@@ -26,6 +26,38 @@ export function formatDurationSuffix(seconds: number): string {
 }
 
 /**
+ * Extracts a Sprout Video id from either URL form the app stores:
+ * the public page (`sproutvideo.com/videos/{id}`) or the embed
+ * (`videos.sproutvideo.com/embed/{id}/...`). The protocol is optional.
+ *
+ * Lives here rather than inside a feature because both Upload (resolving a
+ * pasted URL) and Baker (setting a poster frame on a link that never stored
+ * its id) need it.
+ *
+ * @returns the id, or null when the URL is empty or not a Sprout URL
+ */
+export function sproutVideoIdFromUrl(url: string): string | null {
+  const trimmedUrl = url.trim()
+  if (!trimmedUrl) return null
+
+  const publicMatch = trimmedUrl.match(
+    /(?:https?:\/\/)?sproutvideo\.com\/videos\/([a-zA-Z0-9]+)/
+  )
+  if (publicMatch && publicMatch[1]) {
+    return publicMatch[1]
+  }
+
+  const embedMatch = trimmedUrl.match(
+    /(?:https?:\/\/)?videos\.sproutvideo\.com\/embed\/([a-zA-Z0-9]+)/
+  )
+  if (embedMatch && embedMatch[1]) {
+    return embedMatch[1]
+  }
+
+  return null
+}
+
+/**
  * Derives a default video title from a file path: the basename without
  * its extension (e.g. "/renders/WM101_final_v3.mp4" -> "WM101_final_v3").
  */
@@ -33,4 +65,24 @@ export function fileNameToTitle(filePath: string): string {
   const base = filePath.split(/[\\/]/).pop() ?? filePath
   const dotIndex = base.lastIndexOf('.')
   return (dotIndex > 0 ? base.slice(0, dotIndex) : base).trim()
+}
+
+/**
+ * Derives the text for a branded poster frame from a video title. Titles
+ * follow a "prefix - prefix - subject" convention, and only the subject
+ * belongs on the thumbnail:
+ * "WBS - MSc - Module 3 - Managing Change" -> "Managing Change".
+ *
+ * Only spaced hyphens separate segments, so hyphenated words survive
+ * ("Decision-Making in Practice" stays whole). A title ending in a separator
+ * falls back to its last non-empty segment, and a title without any
+ * separator is used as-is.
+ */
+export function titleToPosterFrameText(title: string): string {
+  const segments = title
+    .split(' - ')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0)
+
+  return segments.length > 0 ? segments[segments.length - 1] : ''
 }

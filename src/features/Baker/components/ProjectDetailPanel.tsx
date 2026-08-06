@@ -26,7 +26,8 @@ import {
   User,
   UserCheck,
   UserPlus,
-  Video
+  Video,
+  Wrench
 } from 'lucide-react'
 import { toast } from 'sonner'
 import React, { useEffect, useMemo, useState } from 'react'
@@ -64,6 +65,7 @@ interface ProjectDetailPanelProps {
   preview: BreadcrumbsPreview | null
   isGeneratingPreview: boolean
   onGeneratePreview: () => void | Promise<void>
+  onRepairProject?: (projectPath: string) => void
   trelloApiKey?: string
   trelloApiToken?: string
 }
@@ -77,6 +79,7 @@ export const ProjectDetailPanel: React.FC<ProjectDetailPanelProps> = ({
   preview,
   isGeneratingPreview,
   onGeneratePreview,
+  onRepairProject,
   trelloApiKey,
   trelloApiToken
 }) => {
@@ -111,6 +114,7 @@ export const ProjectDetailPanel: React.FC<ProjectDetailPanelProps> = ({
       preview={preview}
       isGeneratingPreview={isGeneratingPreview}
       onGeneratePreview={onGeneratePreview}
+      onRepairProject={onRepairProject}
       trelloApiKey={trelloApiKey}
       trelloApiToken={trelloApiToken}
     />
@@ -125,6 +129,7 @@ interface ProjectDetailContentProps {
   preview: BreadcrumbsPreview | null
   isGeneratingPreview: boolean
   onGeneratePreview: () => void | Promise<void>
+  onRepairProject?: (projectPath: string) => void
   trelloApiKey?: string
   trelloApiToken?: string
 }
@@ -137,6 +142,7 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
   preview,
   isGeneratingPreview,
   onGeneratePreview,
+  onRepairProject,
   trelloApiKey,
   trelloApiToken
 }) => {
@@ -175,6 +181,7 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
                 preview={preview}
                 isGeneratingPreview={isGeneratingPreview}
                 onGeneratePreview={onGeneratePreview}
+                onRepairProject={onRepairProject}
               />
               <OverviewStats breadcrumbs={breadcrumbs} />
               <LinkedResources
@@ -209,6 +216,7 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
             preview={preview}
             isGeneratingPreview={isGeneratingPreview}
             onGeneratePreview={onGeneratePreview}
+            onRepairProject={onRepairProject}
           />
           {breadcrumbsError ? (
             <div className="text-destructive flex items-center gap-2 text-sm">
@@ -275,7 +283,9 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({
           <BreadcrumbsStatusPill project={project} />
           {cameraCount !== undefined && (
             <HeaderPill tone="muted">
-              {cameraCount} camera{cameraCount !== 1 ? 's' : ''}
+              {cameraCount === 0
+                ? 'No cameras'
+                : `${cameraCount} camera${cameraCount !== 1 ? 's' : ''}`}
             </HeaderPill>
           )}
         </div>
@@ -331,6 +341,7 @@ interface BreadcrumbsCalloutProps {
   preview: BreadcrumbsPreview | null
   isGeneratingPreview: boolean
   onGeneratePreview: () => void | Promise<void>
+  onRepairProject?: (projectPath: string) => void
 }
 
 function calloutHeadline(project: ProjectFolder): string {
@@ -369,7 +380,8 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
   project,
   preview,
   isGeneratingPreview,
-  onGeneratePreview
+  onGeneratePreview,
+  onRepairProject
 }) => {
   if (!project) return null
 
@@ -411,6 +423,17 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
           </p>
           <p className="text-muted-foreground text-xs">{subline}</p>
         </div>
+        {project.invalidBreadcrumbs && onRepairProject && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onRepairProject(project.path)}
+            className="border-destructive/30 text-destructive hover:bg-destructive/10 flex-shrink-0 gap-1.5"
+          >
+            <Wrench className="h-3.5 w-3.5" />
+            Repair breadcrumbs
+          </Button>
+        )}
         {!preview && (
           <Button
             variant="outline"

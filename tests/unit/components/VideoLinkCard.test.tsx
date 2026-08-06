@@ -66,6 +66,7 @@ describe('VideoLinkCard Component', () => {
   let mockOnRemove: ReturnType<typeof vi.fn>
   let mockOnMoveUp: ReturnType<typeof vi.fn>
   let mockOnMoveDown: ReturnType<typeof vi.fn>
+  let mockOnSetPosterFrame: ReturnType<typeof vi.fn>
 
   // Mock data
   const baseVideoLink: VideoLink = {
@@ -82,6 +83,7 @@ describe('VideoLinkCard Component', () => {
     mockOnRemove = vi.fn()
     mockOnMoveUp = vi.fn()
     mockOnMoveDown = vi.fn()
+    mockOnSetPosterFrame = vi.fn()
   })
 
   // =================================================================
@@ -341,6 +343,139 @@ describe('VideoLinkCard Component', () => {
 
       // Assert: Component should render without errors
       expect(screen.getByText('Project Alpha - Final Edit')).toBeInTheDocument()
+    })
+  })
+
+  // =================================================================
+  // Issue #141: Set poster frame action (B1.1-B1.4, B2.3)
+  // =================================================================
+
+  describe('Poster frame action (#141)', () => {
+    test('b1_1_offers_a_set_poster_frame_action_alongside_the_other_overlay_actions', () => {
+      render(
+        <VideoLinkCard
+          videoLink={baseVideoLink}
+          onRemove={mockOnRemove}
+          onMoveUp={mockOnMoveUp}
+          onMoveDown={mockOnMoveDown}
+          onSetPosterFrame={mockOnSetPosterFrame}
+          canMoveUp={true}
+          canMoveDown={true}
+        />
+      )
+
+      const action = screen.getByRole('button', { name: /set poster frame/i })
+      expect(action).toBeInTheDocument()
+      expect(action).toBeEnabled()
+      // Sits with move up/down/remove rather than in the card body
+      expect(screen.getByRole('button', { name: /move up/i }).parentElement).toBe(
+        action.parentElement
+      )
+    })
+
+    test('b1_2_invokes_the_callback_and_renders_no_dialog_of_its_own', async () => {
+      const user = userEvent.setup()
+      render(
+        <VideoLinkCard
+          videoLink={baseVideoLink}
+          onRemove={mockOnRemove}
+          onMoveUp={mockOnMoveUp}
+          onMoveDown={mockOnMoveDown}
+          onSetPosterFrame={mockOnSetPosterFrame}
+          canMoveUp={true}
+          canMoveDown={true}
+        />
+      )
+
+      await user.click(screen.getByRole('button', { name: /set poster frame/i }))
+
+      expect(mockOnSetPosterFrame).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    test('b2_3_disables_the_action_and_explains_when_no_sprout_id_can_be_resolved', () => {
+      render(
+        <VideoLinkCard
+          videoLink={{
+            ...baseVideoLink,
+            sproutVideoId: null,
+            url: 'https://example.com/x'
+          }}
+          onRemove={mockOnRemove}
+          onMoveUp={mockOnMoveUp}
+          onMoveDown={mockOnMoveDown}
+          onSetPosterFrame={mockOnSetPosterFrame}
+          posterFrameDisabledReason="No Sprout video ID could be determined from this link."
+          canMoveUp={true}
+          canMoveDown={true}
+        />
+      )
+
+      const action = screen.getByRole('button', { name: /set poster frame/i })
+      expect(action).toBeDisabled()
+      expect(action.getAttribute('title')).toContain('No Sprout video ID')
+    })
+
+    test('b1_4_renders_the_stored_thumbnail_verbatim_when_nothing_was_refreshed', () => {
+      render(
+        <VideoLinkCard
+          videoLink={baseVideoLink}
+          onRemove={mockOnRemove}
+          onMoveUp={mockOnMoveUp}
+          onMoveDown={mockOnMoveDown}
+          onSetPosterFrame={mockOnSetPosterFrame}
+          canMoveUp={true}
+          canMoveDown={true}
+        />
+      )
+
+      expect(screen.getByAltText('Project Alpha - Final Edit')).toHaveAttribute(
+        'src',
+        'https://sproutvideo.com/thumbnails/abc123.jpg'
+      )
+    })
+
+    test('b1_3_cache_busts_a_refreshed_thumbnail_with_a_question_mark', () => {
+      render(
+        <VideoLinkCard
+          videoLink={baseVideoLink}
+          onRemove={mockOnRemove}
+          onMoveUp={mockOnMoveUp}
+          onMoveDown={mockOnMoveDown}
+          onSetPosterFrame={mockOnSetPosterFrame}
+          thumbnailCacheKey={1717171717}
+          canMoveUp={true}
+          canMoveDown={true}
+        />
+      )
+
+      expect(screen.getByAltText('Project Alpha - Final Edit')).toHaveAttribute(
+        'src',
+        'https://sproutvideo.com/thumbnails/abc123.jpg?v=1717171717'
+      )
+    })
+
+    test('b1_3_cache_busts_a_url_that_already_has_a_query_string_with_an_ampersand', () => {
+      render(
+        <VideoLinkCard
+          videoLink={{
+            ...baseVideoLink,
+            thumbnailUrl: 'https://sproutvideo.com/thumbnails/abc123.jpg?size=large'
+          }}
+          onRemove={mockOnRemove}
+          onMoveUp={mockOnMoveUp}
+          onMoveDown={mockOnMoveDown}
+          onSetPosterFrame={mockOnSetPosterFrame}
+          thumbnailCacheKey={1717171717}
+          canMoveUp={true}
+          canMoveDown={true}
+        />
+      )
+
+      expect(screen.getByAltText('Project Alpha - Final Edit')).toHaveAttribute(
+        'src',
+        'https://sproutvideo.com/thumbnails/abc123.jpg?size=large&v=1717171717'
+      )
     })
   })
 

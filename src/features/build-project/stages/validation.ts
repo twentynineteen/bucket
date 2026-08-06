@@ -126,9 +126,18 @@ const MAX_PROJECT_NAME_LENGTH = 200
 // =============================================================================
 
 /**
- * Validates that the files array is not empty
+ * Validates that the files array is not empty.
+ *
+ * A 0-camera (podcast/audio-only) project is scaffolded without footage, so
+ * an empty file list is only an error when the project has cameras.
  */
-function validateFilesNotEmpty(files: FileWithCamera[]): ValidationError | null {
+function validateFilesNotEmpty(
+  files: FileWithCamera[],
+  numCameras: number
+): ValidationError | null {
+  if (numCameras === 0) {
+    return null
+  }
   if (!files || files.length === 0) {
     return {
       field: 'files',
@@ -242,8 +251,18 @@ function validateCameraAssignments(
   files: FileWithCamera[],
   numCameras: number
 ): ValidationError | null {
-  if (!files || files.length === 0 || numCameras < 1) {
-    return null // Skip if no files or invalid numCameras
+  if (!files || files.length === 0) {
+    return null // Skip if no files
+  }
+
+  // A 0-camera (podcast/audio-only) project has nowhere to put footage.
+  if (numCameras === 0) {
+    return {
+      field: 'cameraAssignments',
+      message:
+        'Footage files are assigned but the project has no cameras. Remove the footage files or set at least 1 camera.',
+      context: { numCameras, fileCount: files.length }
+    }
   }
 
   const invalidAssignments: Array<{ fileName: string; camera: number }> = []
@@ -295,7 +314,7 @@ export async function validateInputs(
 
   try {
     // Run synchronous validations first
-    const filesError = validateFilesNotEmpty(input.files)
+    const filesError = validateFilesNotEmpty(input.files, input.numCameras)
     if (filesError) {
       errors.push(filesError)
     }
@@ -328,11 +347,10 @@ export async function validateInputs(
     // Compute the project folder path
     const projectFolder = `${input.outputPath}/${input.projectName.trim()}`
 
-    // Check for potential warnings (non-blocking)
+    // Check for potential warnings (non-blocking). Only reachable for
+    // 0-camera projects — with cameras, an empty file list fails validation.
     if (input.files.length === 0) {
-      warnings.push(
-        'No files selected. Project will be created with empty camera folders.'
-      )
+      warnings.push('No files selected. Project will be created without camera folders.')
     }
 
     // Return success with validation data

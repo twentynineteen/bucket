@@ -18,6 +18,7 @@ import type {
   BatchUpdateResult,
   BreadcrumbsFile,
   FileInfo,
+  ProjectFolder,
   ScanCompleteEvent,
   ScanErrorEvent,
   ScanOptions,
@@ -126,6 +127,16 @@ export async function bakerUpdateBreadcrumbsSizes(
   return invoke<BatchUpdateResult>('baker_update_breadcrumbs_sizes', {
     projectPaths
   })
+}
+
+export async function bakerRepairBreadcrumbs(
+  projectPath: string
+): Promise<BreadcrumbsFile> {
+  return invoke<BreadcrumbsFile>('baker_repair_breadcrumbs', { projectPath })
+}
+
+export async function bakerValidateFolder(folderPath: string): Promise<ProjectFolder> {
+  return invoke<ProjectFolder>('baker_validate_folder', { folderPath })
 }
 
 export async function getFolderSize(folderPath: string): Promise<number> {

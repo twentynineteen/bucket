@@ -59,6 +59,7 @@ fn main() {
             baker_read_breadcrumbs,
             baker_update_breadcrumbs,
             baker_update_breadcrumbs_sizes,
+            baker_repair_breadcrumbs,
             baker_scan_current_files,
             get_folder_size,
             baker_read_raw_breadcrumbs,
@@ -77,6 +78,9 @@ fn main() {
             fetch_sprout_video_details,
             // Sprout title + Trello rename: local duration fallback probe
             get_video_duration,
+            // Issue #140: branded poster frames during a Baker upload
+            set_sprout_poster_frame,
+            save_poster_frame_copy,
             // Feature 006: AI-Powered Autocue Script Formatter
             parse_docx_file,
             generate_docx_file,

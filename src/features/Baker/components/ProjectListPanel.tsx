@@ -80,11 +80,13 @@ const StatusPill: React.FC<StatusPillProps> = ({ tone, dot = true, children }) =
 interface ProjectStatusPillsProps {
   project: ProjectFolder
   shouldReduceMotion: boolean
+  onRepairProject?: (projectPath: string) => void
 }
 
 const ProjectStatusPills: React.FC<ProjectStatusPillsProps> = ({
   project,
-  shouldReduceMotion
+  shouldReduceMotion,
+  onRepairProject
 }) => {
   const pulseStale = !shouldReduceMotion && project.staleBreadcrumbs
 
@@ -96,6 +98,19 @@ const ProjectStatusPills: React.FC<ProjectStatusPillsProps> = ({
 
       {project.invalidBreadcrumbs && (
         <StatusPill tone="destructive">Invalid BC</StatusPill>
+      )}
+
+      {project.invalidBreadcrumbs && onRepairProject && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRepairProject(project.path)
+          }}
+          className="border-destructive/30 text-destructive hover:bg-destructive/10 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors"
+        >
+          Repair
+        </button>
       )}
 
       {project.hasBreadcrumbs && !project.invalidBreadcrumbs && (
@@ -125,7 +140,9 @@ const ProjectStatusPills: React.FC<ProjectStatusPillsProps> = ({
       )}
 
       <StatusPill tone="muted" dot={false}>
-        {project.cameraCount} cam{project.cameraCount !== 1 ? 's' : ''}
+        {project.cameraCount === 0
+          ? 'No cameras'
+          : `${project.cameraCount} cam${project.cameraCount !== 1 ? 's' : ''}`}
       </StatusPill>
 
       {typeof project.folderSizeBytes === 'number' ? (
@@ -147,6 +164,7 @@ interface ProjectListPanelProps {
   selectedProject: string | null
   onProjectSelection: (projectPath: string, isSelected: boolean) => void
   onProjectClick: (projectPath: string) => void
+  onRepairProject?: (projectPath: string) => void
 }
 
 const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
@@ -154,7 +172,8 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
   selectedProjects,
   selectedProject,
   onProjectSelection,
-  onProjectClick
+  onProjectClick,
+  onRepairProject
 }) => {
   const shouldReduceMotion = useReducedMotion()
   const parentRef = React.useRef<HTMLDivElement>(null)
@@ -258,7 +277,11 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
           </p>
           <p className="text-muted-foreground truncate text-xs">{project.path}</p>
 
-          <ProjectStatusPills project={project} shouldReduceMotion={shouldReduceMotion} />
+          <ProjectStatusPills
+            project={project}
+            shouldReduceMotion={shouldReduceMotion}
+            onRepairProject={onRepairProject}
+          />
         </div>
       </div>
     )

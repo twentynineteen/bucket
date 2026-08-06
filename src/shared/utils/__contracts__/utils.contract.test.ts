@@ -37,7 +37,9 @@ import {
   createDetailedFieldChange,
   generateProjectChangeDetail,
   generateBreadcrumbsPreview,
-  debugComparison
+  debugComparison,
+  // Runtime environment (Issue #144)
+  isTauriRuntime
 } from '@shared/utils'
 
 // Storage exports require Tauri runtime, test shape only via dynamic import
@@ -52,6 +54,12 @@ describe('@shared/utils barrel contract', () => {
 
     test('debounce export', () => {
       expect(debounce).toBeTypeOf('function')
+    })
+
+    // B1.3: hooks ask the barrel whether the Tauri bridge exists, rather than
+    // importing @tauri-apps themselves just to run the check.
+    test('runtime environment export', () => {
+      expect(isTauriRuntime).toBeTypeOf('function')
     })
 
     test('validation exports', () => {

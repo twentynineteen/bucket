@@ -16,11 +16,15 @@ import * as useFileUploadModule from '@features/Upload'
 import * as useSproutVideoApiModule from '@features/Upload'
 import * as useSproutVideoProcessorModule from '@features/Upload'
 import * as useUploadEventsModule from '@features/Upload'
+import * as usePosterFrameForUploadModule from '@features/Upload'
+import type { usePosterFrameForUpload } from '@features/Upload'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { SproutUploadResponse } from '@shared/types'
+import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { VideoLink } from '../types'
 import { VideoLinksManager } from './VideoLinksManager'
 
 // Mock hooks
@@ -38,6 +42,14 @@ vi.mock('../../Trello/hooks/useBreadcrumbsTrelloCards')
 vi.mock('../../Trello/api')
 vi.mock('@features/Upload')
 vi.mock('@shared/hooks/useApiKeys')
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    warning: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn()
+  }
+}))
 
 // Helper function to create a complete mock SproutUploadResponse
 const createMockSproutUploadResponse = (
@@ -109,6 +121,37 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
   const mockUploadFile = vi.fn()
   const mockResetUploadState = vi.fn()
   const mockVideoProcessorReset = vi.fn()
+  const mockUpdateVideoLinkAsync = vi.fn()
+  const mockPosterFrameRun = vi.fn()
+  const mockPosterFrameRetry = vi.fn()
+  const mockPosterFrameReset = vi.fn()
+
+  // Issue #140: default poster frame state — available but left unticked, so
+  // every pre-existing test keeps its original (poster-frame-free) behaviour.
+  const posterFrameHookReturn = (
+    overrides: Record<string, unknown> = {}
+  ): ReturnType<typeof usePosterFrameForUpload> =>
+    ({
+      available: true,
+      unavailableReason: null,
+      enabled: false,
+      setEnabled: vi.fn(),
+      backgrounds: ['/backgrounds/wbs-blue.jpg'],
+      selectedBackground: '/backgrounds/wbs-blue.jpg',
+      setSelectedBackground: vi.fn(),
+      text: 'Managing Change',
+      setText: vi.fn(),
+      previewImageUrl: 'blob:preview',
+      canvasRef: { current: null },
+      saveCopy: false,
+      setSaveCopy: vi.fn(),
+      status: 'idle',
+      error: null,
+      run: mockPosterFrameRun,
+      retry: mockPosterFrameRetry,
+      reset: mockPosterFrameReset,
+      ...overrides
+    }) as ReturnType<typeof usePosterFrameForUpload>
 
   // Helper to wrap component with QueryClientProvider
   const renderWithQueryClient = (ui: React.ReactElement) => {
@@ -135,7 +178,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       removeVideoLink: mockRemoveVideoLink,
       removeVideoLinkAsync: vi.fn(),
       updateVideoLink: vi.fn(),
-      updateVideoLinkAsync: vi.fn(),
+      updateVideoLinkAsync: mockUpdateVideoLinkAsync,
       reorderVideoLinks: mockReorderVideoLinks,
       reorderVideoLinksAsync: vi.fn(),
       isUpdating: false,
@@ -216,6 +259,18 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       setProgress: vi.fn(),
       setMessage: vi.fn()
     })
+
+    // Mock usePosterFrameForUpload (Issue #140)
+    mockUpdateVideoLinkAsync.mockResolvedValue(undefined)
+    mockPosterFrameRun.mockResolvedValue({ ok: true, posterFrameUrl: null, error: null })
+    mockPosterFrameRetry.mockResolvedValue({
+      ok: true,
+      posterFrameUrl: null,
+      error: null
+    })
+    vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+      posterFrameHookReturn()
+    )
 
     // Mock useSproutVideoProcessor - implement callback behavior
     vi.mocked(useSproutVideoProcessorModule.useSproutVideoProcessor).mockImplementation(
@@ -1420,6 +1475,423 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       // useEffect cleanup handlers will reset all state (form data, addMode, upload state),
       // which is tested by the component's implementation and verified by the
       // resetUploadState mock call above.
+    })
+  })
+
+  // ==========================================
+  // Issue #140: branded poster frame on upload
+  // ==========================================
+  describe('Issue #140: poster frame during upload', () => {
+    const uploadResponse = createMockSproutUploadResponse({
+      id: 'sprout-abc',
+      title: 'WBS - MSc - Managing Change',
+      embedded_url: 'https://sproutvideo.com/videos/sprout-abc'
+    })
+
+    const renderUploadTab = async () => {
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
+        selectedFile: '/renders/test-video.mp4',
+        uploading: false,
+        response: uploadResponse,
+        localDuration: 120,
+        selectFile: mockSelectFile,
+        uploadFile: mockUploadFile,
+        resetUploadState: mockResetUploadState
+      })
+
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+      await userEvent.click(screen.getByRole('button', { name: /add video/i }))
+      await userEvent.click(screen.getByRole('tab', { name: /upload file/i }))
+    }
+
+    it('b5_1_runs_the_poster_frame_for_the_uploaded_video', async () => {
+      vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+        posterFrameHookReturn({ enabled: true })
+      )
+
+      await renderUploadTab()
+
+      await waitFor(() =>
+        expect(mockPosterFrameRun).toHaveBeenCalledWith('sprout-abc', 'test-api-key')
+      )
+    })
+
+    it('b6_1_stores_the_custom_poster_frame_url_on_the_video_link', async () => {
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: 'https://sproutvideo.com/custom-poster.jpg',
+        error: null
+      })
+      vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+        posterFrameHookReturn({ enabled: true })
+      )
+
+      await renderUploadTab()
+
+      await waitFor(() =>
+        expect(mockAddVideoLink).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sproutVideoId: 'sprout-abc',
+            thumbnailUrl: 'https://sproutvideo.com/custom-poster.jpg'
+          })
+        )
+      )
+    })
+
+    it('b5_7_adds_the_video_link_even_when_the_poster_frame_fails', async () => {
+      mockPosterFrameRun.mockResolvedValue({
+        ok: false,
+        posterFrameUrl: null,
+        error: 'Poster frame is 793 KB — Sprout Video allows up to 500 KB.'
+      })
+      vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+        posterFrameHookReturn({ enabled: true })
+      )
+
+      await renderUploadTab()
+
+      await waitFor(() =>
+        expect(mockAddVideoLink).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sproutVideoId: 'sprout-abc',
+            // B6.3: unchanged from what today's code would store
+            thumbnailUrl: uploadResponse.assets.poster_frames[0]
+          })
+        )
+      )
+    })
+
+    it('b1_6_leaves_the_upload_untouched_when_the_option_is_unticked', async () => {
+      vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+        posterFrameHookReturn({ enabled: false })
+      )
+
+      await renderUploadTab()
+
+      await waitFor(() =>
+        expect(mockAddVideoLink).toHaveBeenCalledWith(
+          expect.objectContaining({
+            thumbnailUrl: uploadResponse.assets.poster_frames[0]
+          })
+        )
+      )
+      expect(mockPosterFrameRun).not.toHaveBeenCalled()
+    })
+  })
+
+  // ==========================================
+  // Issue #141: set a poster frame on an already-linked video
+  // ==========================================
+  describe('#141: Set poster frame card action', () => {
+    const linkWithId: VideoLink = {
+      url: 'https://sproutvideo.com/videos/abc123',
+      title: 'WBS - MSc - Managing Change',
+      sproutVideoId: 'abc123',
+      thumbnailUrl: 'https://cdn.sproutvideo.com/poster/abc123.jpg',
+      uploadDate: '2026-01-05T10:00:00Z',
+      sourceRenderFile: 'managing_change.mp4'
+    }
+
+    const linkWithoutId: VideoLink = {
+      url: 'https://videos.sproutvideo.com/embed/def456/tok',
+      title: 'WBS - MSc - Leading Teams',
+      sproutVideoId: null,
+      thumbnailUrl: 'https://cdn.sproutvideo.com/poster/def456.jpg',
+      uploadDate: null,
+      sourceRenderFile: null
+    }
+
+    const unlinkableLink: VideoLink = {
+      url: 'https://example.com/not-a-sprout-video',
+      title: 'Somewhere else entirely',
+      sproutVideoId: null,
+      thumbnailUrl: null,
+      uploadDate: null,
+      sourceRenderFile: null
+    }
+
+    const withVideoLinks = (links: VideoLink[]) => {
+      vi.mocked(useBreadcrumbsVideoLinksModule.useBreadcrumbsVideoLinks).mockReturnValue({
+        videoLinks: links,
+        isLoading: false,
+        error: null,
+        addVideoLink: mockAddVideoLink,
+        addVideoLinkAsync: vi.fn(),
+        removeVideoLink: mockRemoveVideoLink,
+        removeVideoLinkAsync: vi.fn(),
+        updateVideoLink: vi.fn(),
+        updateVideoLinkAsync: mockUpdateVideoLinkAsync,
+        reorderVideoLinks: mockReorderVideoLinks,
+        reorderVideoLinksAsync: vi.fn(),
+        isUpdating: false,
+        addError: null,
+        removeError: null,
+        updateError: null,
+        reorderError: null
+      })
+    }
+
+    /** Opens the card action dialog for the card at `index` */
+    const openPosterFrameDialog = async (index = 0) => {
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+      const actions = screen.getAllByRole('button', { name: /set poster frame/i })
+      await userEvent.click(actions[index])
+      return within(await screen.findByRole('dialog'))
+    }
+
+    it('b2_1_sends_the_frame_for_the_stored_sprout_id', async () => {
+      withVideoLinks([linkWithId])
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: 'https://cdn.sproutvideo.com/poster/abc123-branded.jpg',
+        error: null
+      })
+
+      const dialog = await openPosterFrameDialog()
+      await userEvent.click(dialog.getByRole('button', { name: /^set poster frame$/i }))
+
+      await waitFor(() =>
+        expect(mockPosterFrameRun).toHaveBeenCalledWith('abc123', 'test-api-key')
+      )
+    })
+
+    it('b2_2_derives_the_id_from_the_url_when_none_is_stored', async () => {
+      withVideoLinks([linkWithoutId])
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: 'https://cdn.sproutvideo.com/poster/def456-branded.jpg',
+        error: null
+      })
+
+      const dialog = await openPosterFrameDialog()
+      await userEvent.click(dialog.getByRole('button', { name: /^set poster frame$/i }))
+
+      await waitFor(() =>
+        expect(mockPosterFrameRun).toHaveBeenCalledWith('def456', 'test-api-key')
+      )
+    })
+
+    it('b2_3_disables_the_action_when_no_id_can_be_resolved', async () => {
+      withVideoLinks([unlinkableLink])
+
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      const action = screen.getByRole('button', { name: /set poster frame/i })
+      expect(action).toBeDisabled()
+      expect(action.getAttribute('title')).toMatch(/no sprout video id/i)
+    })
+
+    it('b4_4_explains_a_missing_sprout_api_key_in_the_dialog', async () => {
+      withVideoLinks([linkWithId])
+      vi.mocked(useApiKeysModule.useSproutVideoApiKey).mockReturnValue({
+        apiKey: '',
+        isLoading: false,
+        error: null
+      })
+
+      const dialog = await openPosterFrameDialog()
+
+      expect(dialog.getByText(/API key not configured/i)).toBeInTheDocument()
+      expect(dialog.getByRole('button', { name: /^set poster frame$/i })).toBeDisabled()
+    })
+
+    it('b6_1_writes_the_refreshed_thumbnail_back_to_the_right_link', async () => {
+      withVideoLinks([linkWithoutId, linkWithId])
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: 'https://cdn.sproutvideo.com/poster/abc123-branded.jpg',
+        error: null
+      })
+
+      const dialog = await openPosterFrameDialog(1)
+      await userEvent.click(dialog.getByRole('button', { name: /^set poster frame$/i }))
+
+      await waitFor(() =>
+        expect(mockUpdateVideoLinkAsync).toHaveBeenCalledWith({
+          videoIndex: 1,
+          updatedLink: expect.objectContaining({
+            url: linkWithId.url,
+            thumbnailUrl: 'https://cdn.sproutvideo.com/poster/abc123-branded.jpg'
+          })
+        })
+      )
+    })
+
+    it('b6_2_persists_a_derived_sprout_id_in_the_same_write', async () => {
+      withVideoLinks([linkWithoutId])
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: 'https://cdn.sproutvideo.com/poster/def456-branded.jpg',
+        error: null
+      })
+
+      const dialog = await openPosterFrameDialog()
+      await userEvent.click(dialog.getByRole('button', { name: /^set poster frame$/i }))
+
+      await waitFor(() =>
+        expect(mockUpdateVideoLinkAsync).toHaveBeenCalledWith({
+          videoIndex: 0,
+          updatedLink: expect.objectContaining({ sproutVideoId: 'def456' })
+        })
+      )
+    })
+
+    it('b6_3_cache_busts_the_card_thumbnail_after_a_successful_set', async () => {
+      withVideoLinks([linkWithId])
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: linkWithId.thumbnailUrl,
+        error: null
+      })
+
+      const dialog = await openPosterFrameDialog()
+      await userEvent.click(dialog.getByRole('button', { name: /^set poster frame$/i }))
+
+      await waitFor(() =>
+        expect(screen.getByAltText(linkWithId.title).getAttribute('src')).toMatch(
+          /[?&]v=\d+/
+        )
+      )
+    })
+
+    it('b6_7_closes_the_dialog_and_reports_success', async () => {
+      withVideoLinks([linkWithId])
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: 'https://cdn.sproutvideo.com/poster/abc123-branded.jpg',
+        error: null
+      })
+
+      const dialog = await openPosterFrameDialog()
+      await userEvent.click(dialog.getByRole('button', { name: /^set poster frame$/i }))
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalled())
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
+
+    it('b6_4_still_reports_success_when_the_breadcrumbs_write_back_fails', async () => {
+      withVideoLinks([linkWithId])
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: 'https://cdn.sproutvideo.com/poster/abc123-branded.jpg',
+        error: null
+      })
+      mockUpdateVideoLinkAsync.mockRejectedValue(
+        new Error('breadcrumbs.json is read-only')
+      )
+
+      const dialog = await openPosterFrameDialog()
+      await userEvent.click(dialog.getByRole('button', { name: /^set poster frame$/i }))
+
+      await waitFor(() => expect(toast.warning).toHaveBeenCalled())
+      expect(toast.error).not.toHaveBeenCalled()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
+
+    it('b6_4_still_reports_success_when_sprout_details_could_not_be_re_read', async () => {
+      withVideoLinks([linkWithId])
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: null,
+        error: null
+      })
+
+      const dialog = await openPosterFrameDialog()
+      await userEvent.click(dialog.getByRole('button', { name: /^set poster frame$/i }))
+
+      await waitFor(() => expect(toast.warning).toHaveBeenCalled())
+      expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it('b6_6_opens_no_trello_dialog_after_a_successful_set', async () => {
+      const trelloCards = [
+        { cardId: 'card-1', title: 'Managing Change', url: 'https://trello.com/c/card-1' }
+      ]
+      vi.mocked(
+        useBreadcrumbsTrelloCardsHookModule.useBreadcrumbsTrelloCards
+      ).mockReturnValue({
+        trelloCards,
+        isLoading: false,
+        error: null,
+        addTrelloCard: vi.fn(),
+        addTrelloCardAsync: vi.fn(),
+        removeTrelloCard: vi.fn(),
+        removeTrelloCardAsync: vi.fn(),
+        fetchCardDetails: vi.fn(),
+        fetchCardDetailsAsync: vi.fn(),
+        isUpdating: false,
+        isFetchingDetails: false,
+        addError: null,
+        removeError: null,
+        fetchError: null,
+        fetchedCardData: undefined
+      } as unknown as ReturnType<
+        typeof useBreadcrumbsTrelloCardsHookModule.useBreadcrumbsTrelloCards
+      >)
+      withVideoLinks([linkWithId])
+      mockPosterFrameRun.mockResolvedValue({
+        ok: true,
+        posterFrameUrl: 'https://cdn.sproutvideo.com/poster/abc123-branded.jpg',
+        error: null
+      })
+
+      const dialog = await openPosterFrameDialog()
+      await userEvent.click(dialog.getByRole('button', { name: /^set poster frame$/i }))
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalled())
+      expect(screen.queryByText(/update trello card/i)).not.toBeInTheDocument()
+    })
+
+    it('b5_4_keeps_the_dialog_open_with_the_error_on_a_terminal_failure', async () => {
+      withVideoLinks([linkWithId])
+      mockPosterFrameRun.mockResolvedValue({
+        ok: false,
+        posterFrameUrl: null,
+        error: 'Poster frame is 793 KB — Sprout Video allows up to 500 KB.'
+      })
+      vi.mocked(usePosterFrameForUploadModule.usePosterFrameForUpload).mockReturnValue(
+        posterFrameHookReturn({
+          status: 'error',
+          error: 'Poster frame is 793 KB — Sprout Video allows up to 500 KB.'
+        })
+      )
+
+      const dialog = await openPosterFrameDialog()
+      await userEvent.click(dialog.getByRole('button', { name: /^set poster frame$/i }))
+
+      await waitFor(() => expect(mockPosterFrameRun).toHaveBeenCalled())
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(dialog.getByText(/793 KB/)).toBeInTheDocument()
+      expect(mockUpdateVideoLinkAsync).not.toHaveBeenCalled()
+    })
+
+    it('b3_4_re_derives_the_text_when_the_dialog_is_reopened_for_another_link', async () => {
+      withVideoLinks([linkWithId, linkWithoutId])
+
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      await userEvent.click(
+        screen.getAllByRole('button', { name: /set poster frame/i })[0]
+      )
+      await screen.findByRole('dialog')
+      await userEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: /cancel/i })
+      )
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+      await userEvent.click(
+        screen.getAllByRole('button', { name: /^set poster frame$/i })[1]
+      )
+      await screen.findByRole('dialog')
+
+      // The hook derives text from the title it is given, so switching links must
+      // re-seed it (reset clears any text the user typed for the previous link).
+      expect(mockPosterFrameReset).toHaveBeenCalled()
+      expect(
+        vi
+          .mocked(usePosterFrameForUploadModule.usePosterFrameForUpload)
+          .mock.calls.some(([options]) => options?.videoTitle === linkWithoutId.title)
+      ).toBe(true)
     })
   })
 })

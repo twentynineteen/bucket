@@ -5,6 +5,39 @@ All notable changes to the Bucket project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-08-06
+
+### Added
+
+- Baker: branded poster frames at upload time — ticking "Create branded poster frame" in
+  the Upload File tab builds the thumbnail from a background image plus the video title
+  and sets it on Sprout Video as the custom poster frame, instead of leaving Sprout's
+  auto-generated still in place. Includes a live 16:9 preview, an optional copy into the
+  project's Graphics folder, and a retry ladder for transient Sprout failures (#140)
+- Baker: "Set poster frame" action on each video card, so videos added by URL or uploaded
+  before the feature existed can be given a branded thumbnail without opening Sprout's
+  web UI. Targets the stored Sprout id, or one derived from the link's own URL, and
+  refreshes the stored `thumbnailUrl` in breadcrumbs afterwards (#141)
+- Baker: support for 0-camera (podcast/audio-only) projects — validation accepts zero
+  Camera folders when the five standard folders exist and hold at least one file, and the
+  list and detail panels show a "No cameras" pill (#138)
+- Baker: Repair action that regenerates an unparseable `breadcrumbs.json`, backing the
+  original up to `breadcrumbs.json.bak` and salvaging linked Trello cards and video
+  links (#138)
+- Baker: nested project discovery — scans now recurse into container folders and into
+  projects themselves to find projects nested inside others (#138)
+
+### Fixed
+
+- The UI no longer renders a blank page when opened in a plain browser (e.g. `bun run
+  dev` without Tauri): Tauri window calls are guarded so an unavailable native API
+  degrades instead of crashing the app at startup (#144)
+- Baker: a blank poster frame can no longer be sent to Sprout — with the poster frame
+  option ticked, an empty text field holds the action back rather than uploading a
+  background-only image (#141)
+
+---
+
 ## [0.17.1] - 2026-07-22
 
 ### Added

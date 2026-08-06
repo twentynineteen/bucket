@@ -22,6 +22,7 @@ import {
 import { TrelloCardUpdateDialog } from '@features/Trello'
 import { VideoLinkCard } from './VideoLinkCard'
 import { AddVideoDialog } from './AddVideoDialog'
+import { SetPosterFrameDialog } from './SetPosterFrameDialog'
 
 interface VideoLinksManagerProps {
   projectPath: string
@@ -57,6 +58,21 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
 
     // Trello card rename proposal
     renameProposal,
+
+    // Branded poster frame (Issue #140)
+    posterFrame,
+
+    // Poster frame for an already-linked video (Issue #141)
+    cardPosterFrame,
+    posterFrameTarget,
+    posterFrameTargetIndex,
+    cardPosterFrameUnavailableReason,
+    thumbnailCacheKeys,
+    posterFrameDisabledReason,
+    requestSetPosterFrame,
+    confirmSetPosterFrame,
+    retrySetPosterFrame,
+    handlePosterFrameDialogOpenChange,
 
     // Loading states
     isUpdating,
@@ -153,6 +169,24 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
             validationErrors: validationErrors,
             addError: addError
           }}
+          posterFrame={{
+            available: posterFrame.available,
+            unavailableReason: posterFrame.unavailableReason,
+            enabled: posterFrame.enabled,
+            onEnabledChange: posterFrame.setEnabled,
+            backgrounds: posterFrame.backgrounds,
+            selectedBackground: posterFrame.selectedBackground,
+            onBackgroundChange: posterFrame.setSelectedBackground,
+            text: posterFrame.text,
+            onTextChange: posterFrame.setText,
+            previewImageUrl: posterFrame.previewImageUrl,
+            saveCopy: posterFrame.saveCopy,
+            onSaveCopyChange: posterFrame.setSaveCopy,
+            status: posterFrame.status,
+            error: posterFrame.error,
+            onRetry: () => void posterFrame.retry()
+          }}
+          posterFrameCanvasRef={posterFrame.canvasRef}
         />
       </div>
 
@@ -175,6 +209,9 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
               onMoveDown={() => handleMoveDown(index)}
               canMoveUp={index > 0}
               canMoveDown={index < videoLinks.length - 1}
+              onSetPosterFrame={() => requestSetPosterFrame(index)}
+              posterFrameDisabledReason={posterFrameDisabledReason(link)}
+              thumbnailCacheKey={thumbnailCacheKeys[link.url] ?? null}
             />
           ))}
         </div>
@@ -187,6 +224,29 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
           <span className="text-muted-foreground ml-2 text-sm">Updating...</span>
         </div>
       )}
+
+      {/* Set poster frame on an already-linked video (Issue #141) */}
+      <SetPosterFrameDialog
+        open={posterFrameTargetIndex !== null}
+        onOpenChange={handlePosterFrameDialogOpenChange}
+        videoTitle={posterFrameTarget?.title ?? ''}
+        posterFrame={{
+          unavailableReason: cardPosterFrameUnavailableReason,
+          backgrounds: cardPosterFrame.backgrounds,
+          selectedBackground: cardPosterFrame.selectedBackground,
+          onBackgroundChange: cardPosterFrame.setSelectedBackground,
+          text: cardPosterFrame.text,
+          onTextChange: cardPosterFrame.setText,
+          previewImageUrl: cardPosterFrame.previewImageUrl,
+          saveCopy: cardPosterFrame.saveCopy,
+          onSaveCopyChange: cardPosterFrame.setSaveCopy,
+          status: cardPosterFrame.status,
+          error: cardPosterFrame.error
+        }}
+        canvasRef={cardPosterFrame.canvasRef}
+        onConfirm={() => void confirmSetPosterFrame()}
+        onRetry={retrySetPosterFrame}
+      />
 
       {/* Trello Card Update Dialog */}
       <TrelloCardUpdateDialog

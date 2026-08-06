@@ -56,6 +56,14 @@ export { cn } from './cn'
 export { formatDurationSuffix } from './video'
 /** Derive a default video title from a file path -- basename without extension */
 export { fileNameToTitle } from './video'
+/** Derive branded poster frame text from a video title (last ' - ' segment) */
+export { titleToPosterFrameText } from './video'
+/** Extract a Sprout Video id from a public or embed Sprout URL */
+export { sproutVideoIdFromUrl } from './video'
+
+// Runtime environment
+/** Whether the app is running inside the Tauri webview, where native APIs work */
+export { isTauriRuntime } from './environment'
 
 // Breadcrumbs utilities
 /** Format a date for breadcrumbs display with full month and year */

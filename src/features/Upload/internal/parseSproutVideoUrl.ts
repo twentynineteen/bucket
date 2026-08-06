@@ -1,3 +1,5 @@
+import { sproutVideoIdFromUrl } from '@shared/utils'
+
 /**
  * Parses Sprout Video URLs to extract video ID
  * Feature: 004-embed-multiple-video
@@ -20,34 +22,8 @@
  * // Returns: null
  */
 export function parseSproutVideoUrl(url: string): string | null {
-  // Trim whitespace
-  const trimmedUrl = url.trim()
-
-  // Return null for empty strings
-  if (!trimmedUrl) {
-    return null
-  }
-
-  // Pattern 1: Public video page URL
-  // Matches: https://sproutvideo.com/videos/{VIDEO_ID}
-  // Also matches http:// (non-secure)
-  const publicMatch = trimmedUrl.match(
-    /(?:https?:\/\/)?sproutvideo\.com\/videos\/([a-zA-Z0-9]+)/
-  )
-  if (publicMatch && publicMatch[1]) {
-    return publicMatch[1]
-  }
-
-  // Pattern 2: Embed URL
-  // Matches: https://videos.sproutvideo.com/embed/{VIDEO_ID}/...
-  // Video ID may be followed by token, query params, or nothing
-  const embedMatch = trimmedUrl.match(
-    /(?:https?:\/\/)?videos\.sproutvideo\.com\/embed\/([a-zA-Z0-9]+)/
-  )
-  if (embedMatch && embedMatch[1]) {
-    return embedMatch[1]
-  }
-
-  // No valid pattern matched
-  return null
+  // The parsing itself lives in @shared/utils because Baker needs it too
+  // (issue #141), and this module is deliberately not exported from the
+  // Upload barrel. Kept as a wrapper so existing callers stay put.
+  return sproutVideoIdFromUrl(url)
 }

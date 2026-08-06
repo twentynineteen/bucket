@@ -26,6 +26,12 @@ pub const SKIP_PATTERNS: &[&str] = &[
 // Stale breadcrumbs detection constants
 pub const STALE_SIZE_THRESHOLD_BYTES: u64 = 1024;
 
+/// The five sub-folders every BuildProject-compatible project must have.
+/// Also the folders the scanner never descends into when looking for
+/// nested projects inside a project.
+pub const STANDARD_PROJECT_FOLDERS: [&str; 5] =
+    ["Footage", "Graphics", "Renders", "Projects", "Scripts"];
+
 // Data structures matching TypeScript interfaces
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectFolder {
