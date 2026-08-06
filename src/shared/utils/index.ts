@@ -59,6 +59,10 @@ export { fileNameToTitle } from './video'
 /** Derive branded poster frame text from a video title (last ' - ' segment) */
 export { titleToPosterFrameText } from './video'
 
+// Runtime environment
+/** Whether the app is running inside the Tauri webview, where native APIs work */
+export { isTauriRuntime } from './environment'
+
 // Breadcrumbs utilities
 /** Format a date for breadcrumbs display with full month and year */
 export { formatBreadcrumbDate } from './breadcrumbs'

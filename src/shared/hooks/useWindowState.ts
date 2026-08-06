@@ -2,6 +2,8 @@
 import { useEffect } from 'react'
 import { getCurrentWindow, LogicalPosition, LogicalSize } from '@tauri-apps/api/window'
 
+import { isTauriRuntime } from '@shared/utils'
+
 interface WindowState {
   x: number
   y: number
@@ -58,6 +60,10 @@ function throttle<T extends (...args: unknown[]) => void>(
  */
 export function useWindowState() {
   useEffect(() => {
+    // Nothing to persist outside the desktop app, and getCurrentWindow()
+    // would throw here and unmount the whole tree (Issue #144)
+    if (!isTauriRuntime()) return
+
     const window = getCurrentWindow()
 
     // Restore saved position/size

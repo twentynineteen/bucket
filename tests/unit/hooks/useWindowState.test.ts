@@ -8,6 +8,12 @@ import { LogicalPosition, LogicalSize } from '@tauri-apps/api/window'
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Issue #144: the hook now no-ops outside the Tauri webview, so these
+// in-Tauri behaviours need the bridge reported as present.
+vi.mock('@tauri-apps/api/core', () => ({
+  isTauri: () => true
+}))
+
 // Mock Tauri window API
 const mockSetPosition = vi.fn()
 const mockSetSize = vi.fn()
