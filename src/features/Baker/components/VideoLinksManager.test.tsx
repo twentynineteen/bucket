@@ -1869,14 +1869,19 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       withVideoLinks([linkWithId, linkWithoutId])
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
-      const actions = screen.getAllByRole('button', { name: /set poster frame/i })
 
-      await userEvent.click(actions[0])
+      await userEvent.click(
+        screen.getAllByRole('button', { name: /set poster frame/i })[0]
+      )
       await screen.findByRole('dialog')
       await userEvent.click(
         within(screen.getByRole('dialog')).getByRole('button', { name: /cancel/i })
       )
-      await userEvent.click(actions[1])
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+      await userEvent.click(
+        screen.getAllByRole('button', { name: /^set poster frame$/i })[1]
+      )
       await screen.findByRole('dialog')
 
       // The hook derives text from the title it is given, so switching links must

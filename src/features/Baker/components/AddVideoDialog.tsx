@@ -138,6 +138,10 @@ export function AddVideoDialog({
   // work can't be torn down halfway through (B5.2).
   const posterFrameWorking = posterFrame.enabled && posterFrame.status === 'working'
   const posterFrameSettled = !posterFrame.enabled || posterFrame.status !== 'working'
+  // A background-only frame is never sent to Sprout, so a ticked option with no
+  // text holds the upload back (#141 amendment, B7.1-B7.3).
+  const posterFrameTextMissing =
+    posterFrame.enabled && posterFrame.text.trim().length === 0
 
   return (
     <Dialog open={dialog.isOpen} onOpenChange={dialog.onOpenChange}>
@@ -209,7 +213,10 @@ export function AddVideoDialog({
               <Button
                 onClick={uploadMode.onUploadAndAdd}
                 disabled={
-                  !uploadMode.selectedFile || !urlMode.hasApiKey || uploadMode.uploading
+                  !uploadMode.selectedFile ||
+                  !urlMode.hasApiKey ||
+                  uploadMode.uploading ||
+                  posterFrameTextMissing
                 }
               >
                 {uploadMode.uploading ? (
@@ -401,10 +408,14 @@ function PosterFrameContent({
               maxLength={200}
               disabled={posterFrame.status === 'working'}
             />
-            <p className="text-muted-foreground text-xs">
-              Taken from the last part of the video title. Edit it to change the thumbnail
-              only.
-            </p>
+            {posterFrame.text.trim().length === 0 ? (
+              <p className="text-warning text-xs">Poster frame text is required.</p>
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                Taken from the last part of the video title. Edit it to change the
+                thumbnail only.
+              </p>
+            )}
           </div>
 
           {posterFrame.previewImageUrl && (
