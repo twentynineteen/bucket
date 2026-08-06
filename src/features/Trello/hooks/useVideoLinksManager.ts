@@ -20,6 +20,7 @@ import {
   updateTrelloCardWithBreadcrumbs
 } from '@features/Baker'
 import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
+import { useCardPosterFrame } from './useCardPosterFrame'
 import { useBreadcrumbsVideoLinks } from '@features/Baker'
 import {
   useFileUpload,
@@ -58,6 +59,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     addVideoLink,
     removeVideoLink,
     reorderVideoLinks,
+    updateVideoLinkAsync,
     isUpdating,
     addError
   } = useBreadcrumbsVideoLinks({ projectPath })
@@ -89,6 +91,15 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
   const posterFrame = usePosterFrameForUpload({
     projectPath,
     videoTitle: formData.title
+  })
+
+  // Poster frame for an already-linked video, driven from the card action
+  // (Issue #141)
+  const cardPosterFrame = useCardPosterFrame({
+    projectPath,
+    videoLinks,
+    apiKey,
+    updateVideoLinkAsync
   })
 
   /**
@@ -401,6 +412,18 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
 
     // Branded poster frame state and handlers (Issue #140)
     posterFrame,
+
+    // Poster frame for an already-linked video, from the card action (Issue #141)
+    cardPosterFrame: cardPosterFrame.posterFrame,
+    posterFrameTarget: cardPosterFrame.target,
+    posterFrameTargetIndex: cardPosterFrame.targetIndex,
+    cardPosterFrameUnavailableReason: cardPosterFrame.unavailableReason,
+    thumbnailCacheKeys: cardPosterFrame.thumbnailCacheKeys,
+    posterFrameDisabledReason: cardPosterFrame.disabledReason,
+    requestSetPosterFrame: cardPosterFrame.request,
+    confirmSetPosterFrame: cardPosterFrame.confirm,
+    retrySetPosterFrame: cardPosterFrame.retry,
+    handlePosterFrameDialogOpenChange: cardPosterFrame.handleOpenChange,
 
     // Loading states
     isUpdating,

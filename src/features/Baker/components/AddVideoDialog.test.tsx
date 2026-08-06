@@ -338,3 +338,51 @@ describe('AddVideoDialog - poster frame status', () => {
     expect(screen.queryByText(/setting poster frame/i)).not.toBeInTheDocument()
   })
 })
+
+// Issue #141 amendment: a blank poster frame is never sent to Sprout, in the
+// upload flow as well as the card action (B7.1-B7.3).
+describe('AddVideoDialog - poster frame text is required (B7)', () => {
+  it('b7_1_blocks_the_upload_when_the_option_is_ticked_and_the_text_is_blank', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({ posterFrame: posterFrameState({ enabled: true, text: '' }) })}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /upload and add/i })).toBeDisabled()
+    expect(screen.getByText(/poster frame text is required/i)).toBeInTheDocument()
+  })
+
+  it('b7_3_treats_whitespace_only_text_as_blank', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({ posterFrame: posterFrameState({ enabled: true, text: '   ' }) })}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /upload and add/i })).toBeDisabled()
+    expect(screen.getByText(/poster frame text is required/i)).toBeInTheDocument()
+  })
+
+  it('b7_1_allows_the_upload_once_there_is_real_text', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({ posterFrame: posterFrameState({ enabled: true }) })}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /upload and add/i })).toBeEnabled()
+    expect(screen.queryByText(/poster frame text is required/i)).not.toBeInTheDocument()
+  })
+
+  it('b7_2_does_not_block_the_upload_when_the_option_is_unticked', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({ posterFrame: posterFrameState({ enabled: false, text: '' }) })}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /upload and add/i })).toBeEnabled()
+    expect(screen.queryByText(/poster frame text is required/i)).not.toBeInTheDocument()
+  })
+})

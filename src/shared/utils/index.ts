@@ -58,6 +58,8 @@ export { formatDurationSuffix } from './video'
 export { fileNameToTitle } from './video'
 /** Derive branded poster frame text from a video title (last ' - ' segment) */
 export { titleToPosterFrameText } from './video'
+/** Extract a Sprout Video id from a public or embed Sprout URL */
+export { sproutVideoIdFromUrl } from './video'
 
 // Runtime environment
 /** Whether the app is running inside the Tauri webview, where native APIs work */

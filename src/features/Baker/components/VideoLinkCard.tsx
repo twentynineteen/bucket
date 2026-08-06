@@ -3,7 +3,14 @@
  * Feature: 004-embed-multiple-video
  */
 
-import { ChevronDown, ChevronUp, ExternalLink, Trash2, Video } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Image as ImageIcon,
+  Trash2,
+  Video
+} from 'lucide-react'
 import React from 'react'
 
 import { Button } from '@shared/ui/button'
@@ -18,6 +25,21 @@ interface VideoLinkCardProps {
   onMoveDown: () => void
   canMoveUp: boolean
   canMoveDown: boolean
+  /** Opens the branded poster frame dialog for this link (Issue #141) */
+  onSetPosterFrame?: () => void
+  /** Why the poster frame action is unavailable; disables it when set */
+  posterFrameDisabledReason?: string | null
+  /**
+   * Bumped after a poster frame is set. Sprout may reuse the same asset URL,
+   * so without this the browser keeps serving the superseded image.
+   */
+  thumbnailCacheKey?: number | null
+}
+
+/** Appends a cache-busting param, respecting any query string already present */
+function withCacheKey(url: string, cacheKey: number | null | undefined): string {
+  if (!cacheKey) return url
+  return `${url}${url.includes('?') ? '&' : '?'}v=${cacheKey}`
 }
 
 function VideoLinkCardComponent({
@@ -26,7 +48,10 @@ function VideoLinkCardComponent({
   onMoveUp,
   onMoveDown,
   canMoveUp,
-  canMoveDown
+  canMoveDown,
+  onSetPosterFrame,
+  posterFrameDisabledReason,
+  thumbnailCacheKey
 }: VideoLinkCardProps) {
   const formatDate = (isoDate?: string) => {
     if (!isoDate) return null
@@ -52,7 +77,7 @@ function VideoLinkCardComponent({
       <div className="bg-muted relative aspect-video w-full">
         {videoLink.thumbnailUrl ? (
           <img
-            src={videoLink.thumbnailUrl}
+            src={withCacheKey(videoLink.thumbnailUrl, thumbnailCacheKey)}
             alt={videoLink.title}
             className="h-full w-full object-cover"
           />
@@ -84,6 +109,21 @@ function VideoLinkCardComponent({
           >
             <ChevronDown className="h-3.5 w-3.5" />
           </Button>
+          {onSetPosterFrame && (
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={onSetPosterFrame}
+              disabled={!!posterFrameDisabledReason}
+              className="bg-background h-7 w-7"
+              // The reason is the tooltip, but the action keeps its own name so
+              // it stays findable (and announced) while disabled.
+              aria-label="Set poster frame"
+              title={posterFrameDisabledReason || 'Set poster frame'}
+            >
+              <ImageIcon className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="icon"

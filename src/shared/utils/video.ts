@@ -26,6 +26,38 @@ export function formatDurationSuffix(seconds: number): string {
 }
 
 /**
+ * Extracts a Sprout Video id from either URL form the app stores:
+ * the public page (`sproutvideo.com/videos/{id}`) or the embed
+ * (`videos.sproutvideo.com/embed/{id}/...`). The protocol is optional.
+ *
+ * Lives here rather than inside a feature because both Upload (resolving a
+ * pasted URL) and Baker (setting a poster frame on a link that never stored
+ * its id) need it.
+ *
+ * @returns the id, or null when the URL is empty or not a Sprout URL
+ */
+export function sproutVideoIdFromUrl(url: string): string | null {
+  const trimmedUrl = url.trim()
+  if (!trimmedUrl) return null
+
+  const publicMatch = trimmedUrl.match(
+    /(?:https?:\/\/)?sproutvideo\.com\/videos\/([a-zA-Z0-9]+)/
+  )
+  if (publicMatch && publicMatch[1]) {
+    return publicMatch[1]
+  }
+
+  const embedMatch = trimmedUrl.match(
+    /(?:https?:\/\/)?videos\.sproutvideo\.com\/embed\/([a-zA-Z0-9]+)/
+  )
+  if (embedMatch && embedMatch[1]) {
+    return embedMatch[1]
+  }
+
+  return null
+}
+
+/**
  * Derives a default video title from a file path: the basename without
  * its extension (e.g. "/renders/WM101_final_v3.mp4" -> "WM101_final_v3").
  */
