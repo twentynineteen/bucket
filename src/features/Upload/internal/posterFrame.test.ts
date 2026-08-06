@@ -20,7 +20,9 @@ describe('posterFrameFileStem', () => {
   })
 
   it('b7_2_replaces_every_non_alphanumeric_character', () => {
-    expect(posterFrameFileStem('Week 1: Intro (v2)')).toBe('posterframe-Week_1__Intro__v2_')
+    expect(posterFrameFileStem('Week 1: Intro (v2)')).toBe(
+      'posterframe-Week_1__Intro__v2_'
+    )
   })
 
   it('b7_2_falls_back_to_a_generic_stem_for_empty_text', () => {
@@ -31,15 +33,19 @@ describe('posterFrameFileStem', () => {
 describe('isTransientPosterFrameError', () => {
   it('b5_4_treats_a_statusless_network_failure_as_transient', () => {
     expect(isTransientPosterFrameError({ message: 'error sending request' })).toBe(true)
-    expect(isTransientPosterFrameError({ status: null, message: 'connection reset' })).toBe(
-      true
-    )
+    expect(
+      isTransientPosterFrameError({ status: null, message: 'connection reset' })
+    ).toBe(true)
   })
 
   it('b5_4_treats_5xx_as_transient', () => {
     expect(isTransientPosterFrameError({ status: 500, message: 'boom' })).toBe(true)
-    expect(isTransientPosterFrameError({ status: 502, message: 'bad gateway' })).toBe(true)
-    expect(isTransientPosterFrameError({ status: 503, message: 'unavailable' })).toBe(true)
+    expect(isTransientPosterFrameError({ status: 502, message: 'bad gateway' })).toBe(
+      true
+    )
+    expect(isTransientPosterFrameError({ status: 503, message: 'unavailable' })).toBe(
+      true
+    )
   })
 
   it('b5_4_treats_429_rate_limiting_as_transient', () => {
@@ -58,7 +64,9 @@ describe('isTransientPosterFrameError', () => {
     expect(isTransientPosterFrameError({ status: 404, message: 'no such video' })).toBe(
       false
     )
-    expect(isTransientPosterFrameError({ status: 400, message: 'bad request' })).toBe(false)
+    expect(isTransientPosterFrameError({ status: 400, message: 'bad request' })).toBe(
+      false
+    )
   })
 })
 
@@ -74,7 +82,10 @@ describe('describePosterFrameError', () => {
   })
 
   it('passes through the backend message for other failures', () => {
-    const message = describePosterFrameError({ status: 401, message: 'Unauthorised' }, 100)
+    const message = describePosterFrameError(
+      { status: 401, message: 'Unauthorised' },
+      100
+    )
 
     expect(message).toMatch(/Unauthorised/)
     expect(message).not.toMatch(/500 KB/)

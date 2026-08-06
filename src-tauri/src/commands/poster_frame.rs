@@ -1,7 +1,129 @@
-//! Tests for the Sprout Video poster frame commands (Issue #140).
+//! Sprout Video poster frame commands (Issue #140).
 //!
-//! Written before the implementation: `resolve_available_poster_frame_path`,
-//! `save_poster_frame_copy` and `set_sprout_poster_frame` do not exist yet.
+//! Sprout takes a custom poster frame as a multipart `custom_poster_frame`
+//! part on `PUT /v1/videos/:id`. The image itself is generated on the
+//! frontend canvas, so these commands only move bytes: one to Sprout, one
+//! (optionally) into the project's `Graphics/` folder.
+
+use reqwest::{multipart, Client};
+use serde::Serialize;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+use tauri::command;
+
+/// Failure detail for a poster frame request. The HTTP status is kept
+/// separate from the message so the frontend can decide whether a retry is
+/// worth attempting (5xx/429) or pointless (413/401/404).
+#[derive(Debug, Clone, Serialize)]
+pub struct PosterFrameError {
+    pub status: Option<u16>,
+    pub message: String,
+}
+
+/// Builds a `PosterFrameError` for a non-success HTTP response.
+pub fn poster_frame_error_for_status(status: u16, message: &str) -> PosterFrameError {
+    PosterFrameError {
+        status: Some(status),
+        message: message.to_string(),
+    }
+}
+
+fn transport_error(message: String) -> PosterFrameError {
+    PosterFrameError {
+        status: None,
+        message,
+    }
+}
+
+/// Uploads a custom poster frame for an existing Sprout video.
+#[command]
+pub async fn set_sprout_poster_frame(
+    video_id: String,
+    api_key: String,
+    image_bytes: Vec<u8>,
+    file_name: Option<String>,
+) -> Result<(), PosterFrameError> {
+    let client = Client::builder()
+        .timeout(Duration::from_secs(120))
+        .build()
+        .map_err(|e| transport_error(format!("Failed to create HTTP client: {}", e)))?;
+
+    let part = multipart::Part::bytes(image_bytes)
+        .file_name(file_name.unwrap_or_else(|| "posterframe.jpg".to_string()))
+        .mime_str("image/jpeg")
+        .map_err(|e| transport_error(e.to_string()))?;
+
+    let form = multipart::Form::new().part("custom_poster_frame", part);
+
+    let response = client
+        .put(format!(
+            "https://api.sproutvideo.com/v1/videos/{}",
+            video_id
+        ))
+        .header("SproutVideo-Api-Key", api_key)
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| transport_error(e.to_string()))?;
+
+    let status = response.status();
+    if status.is_success() {
+        return Ok(());
+    }
+
+    // Sprout returns a JSON error body for most failures, but 413 comes back
+    // empty — fall back to the status' canonical reason in that case.
+    let body = response.text().await.unwrap_or_default();
+    let message = if body.trim().is_empty() {
+        status
+            .canonical_reason()
+            .unwrap_or("Poster frame upload failed")
+            .to_string()
+    } else {
+        body.trim().to_string()
+    };
+
+    Err(poster_frame_error_for_status(status.as_u16(), &message))
+}
+
+/// Returns the first free `<stem>.<ext>` / `<stem>-2.<ext>` / … path in `dir`.
+/// Existing poster frames are never overwritten.
+pub fn resolve_available_poster_frame_path(dir: &Path, stem: &str, ext: &str) -> PathBuf {
+    let first = dir.join(format!("{}.{}", stem, ext));
+    if !first.exists() {
+        return first;
+    }
+
+    let mut suffix = 2u32;
+    loop {
+        let candidate = dir.join(format!("{}-{}.{}", stem, suffix, ext));
+        if !candidate.exists() {
+            return candidate;
+        }
+        suffix += 1;
+    }
+}
+
+/// Writes a copy of the poster frame into `<project_path>/Graphics/`,
+/// creating the folder when the project doesn't have one. Returns the path
+/// that was written.
+#[command]
+pub fn save_poster_frame_copy(
+    project_path: String,
+    file_stem: String,
+    image_bytes: Vec<u8>,
+) -> Result<String, String> {
+    let graphics_dir = Path::new(&project_path).join("Graphics");
+    fs::create_dir_all(&graphics_dir)
+        .map_err(|e| format!("Could not create {}: {}", graphics_dir.display(), e))?;
+
+    let target = resolve_available_poster_frame_path(&graphics_dir, &file_stem, "jpg");
+    fs::write(&target, image_bytes)
+        .map_err(|e| format!("Could not write {}: {}", target.display(), e))?;
+
+    Ok(target.to_string_lossy().to_string())
+}
 
 #[cfg(test)]
 mod tests {

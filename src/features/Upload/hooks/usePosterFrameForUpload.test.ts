@@ -58,7 +58,10 @@ function wrapper({ children }: { children: React.ReactNode }) {
 function renderPosterFrameHook(videoTitle = 'WBS - MSc - Managing Change') {
   return renderHook(
     (props: { videoTitle: string }) =>
-      usePosterFrameForUpload({ projectPath: PROJECT_PATH, videoTitle: props.videoTitle }),
+      usePosterFrameForUpload({
+        projectPath: PROJECT_PATH,
+        videoTitle: props.videoTitle
+      }),
     { initialProps: { videoTitle }, wrapper }
   )
 }
@@ -109,8 +112,9 @@ describe('usePosterFrameForUpload - availability', () => {
 
     const { result } = renderPosterFrameHook()
 
-    await waitFor(() => expect(result.current.available).toBe(false))
-    expect(result.current.unavailableReason).toMatch(/Cabrito/i)
+    // The gating checks resolve asynchronously — wait for the reason itself
+    await waitFor(() => expect(result.current.unavailableReason).toMatch(/Cabrito/i))
+    expect(result.current.available).toBe(false)
   })
 
   it('b1_4_is_unavailable_without_a_default_background_folder', async () => {
@@ -118,8 +122,9 @@ describe('usePosterFrameForUpload - availability', () => {
 
     const { result } = renderPosterFrameHook()
 
-    await waitFor(() => expect(result.current.available).toBe(false))
-    expect(result.current.unavailableReason).toMatch(/settings/i)
+    // The gating checks resolve asynchronously — wait for the reason itself
+    await waitFor(() => expect(result.current.unavailableReason).toMatch(/settings/i))
+    expect(result.current.available).toBe(false)
   })
 
   it('b1_5_is_unavailable_when_the_background_folder_has_no_images', async () => {
@@ -127,8 +132,9 @@ describe('usePosterFrameForUpload - availability', () => {
 
     const { result } = renderPosterFrameHook()
 
-    await waitFor(() => expect(result.current.available).toBe(false))
-    expect(result.current.unavailableReason).toMatch(/no image/i)
+    // The gating checks resolve asynchronously — wait for the reason itself
+    await waitFor(() => expect(result.current.unavailableReason).toMatch(/no image/i))
+    expect(result.current.available).toBe(false)
   })
 })
 
@@ -194,9 +200,7 @@ describe('usePosterFrameForUpload - backgrounds', () => {
 
     act(() => result.current.setSelectedBackground(BACKGROUNDS[1]))
 
-    await waitFor(() =>
-      expect(api.readFileAsBytes).toHaveBeenCalledWith(BACKGROUNDS[1])
-    )
+    await waitFor(() => expect(api.readFileAsBytes).toHaveBeenCalledWith(BACKGROUNDS[1]))
   })
 })
 

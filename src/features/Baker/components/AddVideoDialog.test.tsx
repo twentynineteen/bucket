@@ -25,7 +25,6 @@ function posterFrameState(
     onBackgroundChange: vi.fn(),
     text: 'Managing Change',
     onTextChange: vi.fn(),
-    canvasRef: React.createRef<HTMLCanvasElement>(),
     previewImageUrl: 'blob:preview',
     saveCopy: false,
     onSaveCopyChange: vi.fn(),
@@ -36,9 +35,7 @@ function posterFrameState(
   }
 }
 
-function baseProps(
-  overrides: Partial<AddVideoDialogProps> = {}
-): AddVideoDialogProps {
+function baseProps(overrides: Partial<AddVideoDialogProps> = {}): AddVideoDialogProps {
   return {
     dialog: { isOpen: true, onOpenChange: vi.fn(), canAddVideo: true },
     mode: { addMode: 'upload', onTabChange: vi.fn() },
@@ -69,6 +66,7 @@ function baseProps(
     },
     errors: { validationErrors: [], addError: null },
     posterFrame: posterFrameState(),
+    posterFrameCanvasRef: React.createRef<HTMLCanvasElement>(),
     ...overrides
   }
 }
@@ -89,7 +87,11 @@ describe('AddVideoDialog - poster frame option', () => {
   })
 
   it('b1_1_hides_the_poster_frame_option_on_the_url_tab', () => {
-    render(<AddVideoDialog {...baseProps({ mode: { addMode: 'url', onTabChange: vi.fn() } })} />)
+    render(
+      <AddVideoDialog
+        {...baseProps({ mode: { addMode: 'url', onTabChange: vi.fn() } })}
+      />
+    )
 
     expect(
       screen.queryByRole('checkbox', { name: /create branded poster frame/i })

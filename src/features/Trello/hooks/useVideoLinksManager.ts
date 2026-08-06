@@ -23,6 +23,7 @@ import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
 import { useBreadcrumbsVideoLinks } from '@features/Baker'
 import {
   useFileUpload,
+  usePosterFrameForUpload,
   useSproutVideoApi,
   useSproutVideoProcessor,
   useUploadEvents
@@ -84,6 +85,34 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
 
+  // Branded poster frame options for the upload tab (Issue #140)
+  const posterFrame = usePosterFrameForUpload({
+    projectPath,
+    videoTitle: formData.title
+  })
+
+  /**
+   * Finishes an upload: when a branded poster frame was requested, it is set
+   * on Sprout first so the stored thumbnail can point at it (B6.1). The link
+   * is added either way — a failed poster frame must never cost the upload
+   * (B5.7).
+   */
+  const finishUpload = async (videoLink: VideoLink) => {
+    let linkToAdd = videoLink
+
+    if (posterFrame.enabled && videoLink.sproutVideoId && apiKey) {
+      const result = await posterFrame.run(videoLink.sproutVideoId, apiKey)
+      if (result.ok && result.posterFrameUrl) {
+        linkToAdd = { ...videoLink, thumbnailUrl: result.posterFrameUrl }
+      }
+    }
+
+    addVideoLink(linkToAdd)
+    if (trelloCards && trelloCards.length > 0 && trelloApiKey && trelloToken) {
+      setIsTrelloDialogOpen(true)
+    }
+  }
+
   // React Query-based upload processor
   const videoProcessor = useSproutVideoProcessor({
     response,
@@ -91,10 +120,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     uploading,
     enabled: addMode === 'upload',
     onVideoReady: (videoLink) => {
-      addVideoLink(videoLink)
-      if (trelloCards && trelloCards.length > 0 && trelloApiKey && trelloToken) {
-        setIsTrelloDialogOpen(true)
-      }
+      void finishUpload(videoLink)
     },
     onError: (error) => {
       setValidationErrors([error])
@@ -103,6 +129,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
 
   // Derive upload success from state
   const uploadSuccess = response && !uploading && addMode === 'upload'
+
+  // Nothing may be closed or reset while the poster frame request is running
+  const posterFrameWorking = posterFrame.enabled && posterFrame.status === 'working'
 
   // Handlers
   const handleFetchVideoDetails = async () => {
@@ -305,6 +334,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
   }
 
   const handleDialogOpenChange = (open: boolean) => {
+    // Closing mid-poster-frame would tear down the in-flight request
+    if (!open && posterFrameWorking) return
+
     setIsDialogOpen(open)
 
     if (!open) {
@@ -314,6 +346,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
       setAddMode('url')
       resetUploadState()
       videoProcessor.reset()
+      posterFrame.reset()
     }
   }
 
@@ -325,6 +358,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     if (value === 'url') {
       resetUploadState()
       videoProcessor.reset()
+      posterFrame.reset()
     }
   }
 
@@ -364,6 +398,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
 
     // Trello card rename proposal (null when no rename applies)
     renameProposal,
+
+    // Branded poster frame state and handlers (Issue #140)
+    posterFrame,
 
     // Loading states
     isUpdating,

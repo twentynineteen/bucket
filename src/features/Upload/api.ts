@@ -57,6 +57,41 @@ export async function openFolder(path: string): Promise<void> {
   return invoke('open_folder', { path })
 }
 
+/**
+ * Sets a custom poster frame on an existing Sprout video (Issue #140).
+ * Rejects with a `PosterFrameError` carrying Sprout's HTTP status.
+ */
+export async function setSproutPosterFrame(
+  videoId: string,
+  apiKey: string,
+  imageBytes: Uint8Array,
+  fileName?: string
+): Promise<void> {
+  return invoke('set_sprout_poster_frame', {
+    videoId,
+    apiKey,
+    imageBytes: Array.from(imageBytes),
+    fileName: fileName ?? null
+  })
+}
+
+/**
+ * Writes a copy of a poster frame into a project's Graphics/ folder,
+ * creating the folder if needed and never overwriting an existing file.
+ * Resolves with the path that was written.
+ */
+export async function savePosterFrameCopy(
+  projectPath: string,
+  fileStem: string,
+  imageBytes: Uint8Array
+): Promise<string> {
+  return invoke<string>('save_poster_frame_copy', {
+    projectPath,
+    fileStem,
+    imageBytes: Array.from(imageBytes)
+  })
+}
+
 // --- Tauri Event Listener Wrappers ---
 
 export async function listenUploadProgress(
@@ -135,4 +170,14 @@ export async function getFontDir(): Promise<string> {
 
 export async function fileExists(path: string): Promise<boolean> {
   return exists(path)
+}
+
+/**
+ * Whether the poster frame font (Cabrito.otf) is installed. Without it the
+ * canvas renders the background but no title text, so callers gate the
+ * poster frame option on this.
+ */
+export async function posterFrameFontAvailable(): Promise<boolean> {
+  const dir = await fontDir()
+  return exists(`${dir}/Cabrito.otf`)
 }

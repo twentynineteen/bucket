@@ -77,6 +77,25 @@ export interface ErrorState {
 }
 
 // Refactored props interface with grouped parameters
+// Issue #140: branded poster frame options group
+export interface PosterFrameState {
+  available: boolean
+  unavailableReason: string | null
+  enabled: boolean
+  onEnabledChange: (enabled: boolean) => void
+  backgrounds: string[]
+  selectedBackground: string | null
+  onBackgroundChange: (path: string) => void
+  text: string
+  onTextChange: (text: string) => void
+  previewImageUrl: string | null
+  saveCopy: boolean
+  onSaveCopyChange: (saveCopy: boolean) => void
+  status: 'idle' | 'working' | 'success' | 'error'
+  error: string | null
+  onRetry: () => void
+}
+
 export interface AddVideoDialogPropsRefactored {
   dialog: DialogState
   mode: ModeState
@@ -84,6 +103,8 @@ export interface AddVideoDialogPropsRefactored {
   urlMode: UrlModeState
   uploadMode: UploadModeState
   errors: ErrorState
+  posterFrame: PosterFrameState
+  posterFrameCanvasRef: React.RefObject<HTMLCanvasElement | null>
 }
 
 // Helper function to create default props
@@ -126,7 +147,25 @@ function createDefaultProps(): AddVideoDialogPropsRefactored {
     errors: {
       validationErrors: [],
       addError: null
-    }
+    },
+    posterFrame: {
+      available: true,
+      unavailableReason: null,
+      enabled: false,
+      onEnabledChange: vi.fn(),
+      backgrounds: ['/backgrounds/wbs-blue.jpg'],
+      selectedBackground: '/backgrounds/wbs-blue.jpg',
+      onBackgroundChange: vi.fn(),
+      text: '',
+      onTextChange: vi.fn(),
+      previewImageUrl: null,
+      saveCopy: false,
+      onSaveCopyChange: vi.fn(),
+      status: 'idle',
+      error: null,
+      onRetry: vi.fn()
+    },
+    posterFrameCanvasRef: React.createRef<HTMLCanvasElement>()
   }
 }
 
