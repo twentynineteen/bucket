@@ -3,7 +3,12 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { fileNameToTitle, formatDurationSuffix, titleToPosterFrameText } from './video'
+import {
+  fileNameToTitle,
+  formatDurationSuffix,
+  sproutVideoIdFromUrl,
+  titleToPosterFrameText
+} from './video'
 
 describe('formatDurationSuffix', () => {
   it('formats 90 seconds as 1:30mins', () => {
@@ -94,5 +99,41 @@ describe('titleToPosterFrameText', () => {
 
   it('trims surrounding whitespace on the derived segment', () => {
     expect(titleToPosterFrameText('WBS -   Managing Change  ')).toBe('Managing Change')
+  })
+})
+
+// Issue #141 (B2.2): a link added by URL often carries no stored sproutVideoId,
+// so the id has to come from the URL itself before a poster frame can be set.
+describe('sproutVideoIdFromUrl', () => {
+  it('b2_2_extracts_the_id_from_a_public_video_url', () => {
+    expect(sproutVideoIdFromUrl('https://sproutvideo.com/videos/abc123')).toBe('abc123')
+  })
+
+  it('b2_2_extracts_the_id_from_an_embed_url', () => {
+    expect(
+      sproutVideoIdFromUrl('https://videos.sproutvideo.com/embed/def456/sometoken')
+    ).toBe('def456')
+  })
+
+  it('b2_2_accepts_urls_without_a_protocol', () => {
+    expect(sproutVideoIdFromUrl('sproutvideo.com/videos/abc123')).toBe('abc123')
+  })
+
+  it('b2_2_trims_surrounding_whitespace', () => {
+    expect(sproutVideoIdFromUrl('  https://sproutvideo.com/videos/abc123  ')).toBe(
+      'abc123'
+    )
+  })
+
+  it('b2_3_returns_null_for_a_non_sprout_url', () => {
+    expect(sproutVideoIdFromUrl('https://youtube.com/watch?v=abc123')).toBeNull()
+  })
+
+  it('b2_3_returns_null_for_an_empty_url', () => {
+    expect(sproutVideoIdFromUrl('   ')).toBeNull()
+  })
+
+  it('b2_3_returns_null_when_no_id_follows_the_videos_segment', () => {
+    expect(sproutVideoIdFromUrl('https://sproutvideo.com/')).toBeNull()
   })
 })
