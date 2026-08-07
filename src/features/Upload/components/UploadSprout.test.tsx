@@ -45,10 +45,19 @@ let mockFileUploadState = {
   selectFile: mockSelectFile,
   uploadFile: mockUploadFile
 }
+/**
+ * Upload messages carry their own severity so nothing has to sniff the text.
+ * Cast at the assignment sites until the shape lands in @features/Upload.
+ */
+type UploadMessage = {
+  text: string
+  severity: 'error' | 'success' | 'info'
+}
+
 let mockUploadEventsState = {
   progress: 0,
   uploading: false,
-  message: null as string | null,
+  message: null as UploadMessage | null,
   setProgress: mockSetProgress,
   setMessage: mockSetMessage,
   setUploading: mockSetUploading
@@ -402,7 +411,7 @@ describe('UploadSprout Page', () => {
       mockUploadEventsState = {
         progress: 100,
         uploading: false,
-        message: 'Upload successful!',
+        message: { text: 'Upload successful!', severity: 'success' },
         setProgress: mockSetProgress,
         setMessage: mockSetMessage,
         setUploading: mockSetUploading
@@ -424,7 +433,7 @@ describe('UploadSprout Page', () => {
       mockUploadEventsState = {
         progress: 0,
         uploading: false,
-        message: 'Upload failed: Network error',
+        message: { text: 'Upload failed: Network error', severity: 'error' },
         setProgress: mockSetProgress,
         setMessage: mockSetMessage,
         setUploading: mockSetUploading
@@ -438,6 +447,65 @@ describe('UploadSprout Page', () => {
       expect(message).toBeInTheDocument()
       // Check it has error styling
       expect(message.closest('div')).toHaveClass('border-red-200')
+    })
+  })
+
+  // ==========================================
+  // UPLOAD-03: severity drives the styling, not the text
+  // ==========================================
+  describe('with an adversarial error message (UPLOAD-03)', () => {
+    // `includes('success')` returns true for this string, so today's
+    // text-sniffing paints a hard failure green.
+    const ADVERSARIAL_TEXT = 'Operation completed — 0 successes recorded'
+
+    beforeEach(() => {
+      mockUploadEventsState = {
+        progress: 0,
+        uploading: false,
+        message: { text: ADVERSARIAL_TEXT, severity: 'error' },
+        setProgress: mockSetProgress,
+        setMessage: mockSetMessage,
+        setUploading: mockSetUploading
+      }
+    })
+
+    it('should render failure styling even though the text contains "success"', () => {
+      expect(ADVERSARIAL_TEXT.toLowerCase()).toContain('success')
+
+      renderUploadSprout()
+
+      const message = screen.getByText(ADVERSARIAL_TEXT)
+      const box = message.closest('div')
+
+      expect(box).toHaveClass('bg-red-100')
+      expect(box).not.toHaveClass('bg-green-100')
+    })
+  })
+
+  describe('with an error message containing neither "failed" nor "success"', () => {
+    const HTTP_413_TEXT = 'Sprout rejected the upload: HTTP 413 — <html>'
+
+    beforeEach(() => {
+      mockUploadEventsState = {
+        progress: 0,
+        uploading: false,
+        message: { text: HTTP_413_TEXT, severity: 'error' },
+        setProgress: mockSetProgress,
+        setMessage: mockSetMessage,
+        setUploading: mockSetUploading
+      }
+    })
+
+    it('should render failure styling for an HTTP 413 rejection', () => {
+      expect(HTTP_413_TEXT.toLowerCase()).not.toContain('failed')
+      expect(HTTP_413_TEXT.toLowerCase()).not.toContain('success')
+
+      renderUploadSprout()
+
+      const box = screen.getByText(HTTP_413_TEXT).closest('div')
+
+      expect(box).toHaveClass('bg-red-100')
+      expect(box).not.toHaveClass('bg-green-100')
     })
   })
 

@@ -65,7 +65,7 @@ export interface UploadModeState {
   selectedFile: string | null
   uploading: boolean
   progress: number
-  message: string | null
+  message: { text: string; severity: 'info' | 'success' | 'error' } | null
   uploadSuccess: boolean
   onSelectFile: () => void
   onUploadAndAdd: () => void
@@ -302,7 +302,7 @@ describe('AddVideoDialog - URL Mode State Group', () => {
     // When fetching, button should be disabled and show no text (just spinner icon)
     const buttons = screen.getAllByRole('button')
     const fetchButton = buttons.find(
-      btn => btn.hasAttribute('disabled') && btn.closest('.flex')
+      (btn) => btn.hasAttribute('disabled') && btn.closest('.flex')
     )
     expect(fetchButton).toBeDisabled()
   })
@@ -414,7 +414,10 @@ describe('AddVideoDialog - Upload Mode State Group', () => {
   test('displays upload message when present', () => {
     const props = createDefaultProps()
     props.mode.addMode = 'upload'
-    props.uploadMode.message = 'Upload completed successfully'
+    props.uploadMode.message = {
+      text: 'Upload completed successfully',
+      severity: 'success'
+    }
 
     render(<AddVideoDialog {...props} />)
 

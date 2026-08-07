@@ -386,3 +386,81 @@ describe('AddVideoDialog - poster frame text is required (B7)', () => {
     expect(screen.queryByText(/poster frame text is required/i)).not.toBeInTheDocument()
   })
 })
+
+// ==========================================================================
+// UPLOAD-02 — upload message severity comes from the event, not the text.
+//
+// Every message below deliberately contains neither "failed" nor "success":
+// that is the whole regression. `message.includes('failed')` renders a hard
+// failure as a neutral notice.
+// ==========================================================================
+type UploadMessage = {
+  text: string
+  severity: 'error' | 'success' | 'info'
+}
+
+/**
+ * Casts through the current `string | null` prop type. Once the message shape
+ * lands in @features/Upload this cast disappears.
+ */
+const messageProps = (message: UploadMessage) =>
+  baseProps({
+    uploadMode: {
+      ...baseProps().uploadMode,
+      uploading: false,
+      message: message as unknown as string
+    }
+  })
+
+const DESTRUCTIVE_CLASSES = ['border-red-500/50', 'text-red-600']
+
+describe('AddVideoDialog - upload message severity (UPLOAD-02)', () => {
+  it('renders an HTTP 413 rejection with the destructive alert variant', () => {
+    const text = 'Sprout rejected the upload: HTTP 413 — <html>'
+
+    expect(text.toLowerCase()).not.toContain('failed')
+    expect(text.toLowerCase()).not.toContain('success')
+
+    render(<AddVideoDialog {...messageProps({ text, severity: 'error' })} />)
+
+    const alert = screen.getByRole('alert')
+    for (const cls of DESTRUCTIVE_CLASSES) {
+      expect(alert.className).toContain(cls)
+    }
+    expect(alert).toHaveTextContent(text)
+  })
+
+  it('renders a non-JSON body rejection with the destructive alert variant', () => {
+    const text = 'Sprout returned HTTP 200 but the response body was not valid JSON (…)'
+
+    expect(text.toLowerCase()).not.toContain('failed')
+
+    render(<AddVideoDialog {...messageProps({ text, severity: 'error' })} />)
+
+    const alert = screen.getByRole('alert')
+    for (const cls of DESTRUCTIVE_CLASSES) {
+      expect(alert.className).toContain(cls)
+    }
+    expect(alert).toHaveTextContent(text)
+  })
+
+  it('does not use the destructive variant for a success message', () => {
+    const text = 'Upload complete — the video is now on Sprout'
+
+    render(<AddVideoDialog {...messageProps({ text, severity: 'success' })} />)
+
+    const alert = screen.getByRole('alert')
+    for (const cls of DESTRUCTIVE_CLASSES) {
+      expect(alert.className).not.toContain(cls)
+    }
+    expect(alert).toHaveTextContent(text)
+  })
+
+  it('never renders the message as [object Object]', () => {
+    const text = 'Sprout rejected the upload: HTTP 413 — <html>'
+
+    render(<AddVideoDialog {...messageProps({ text, severity: 'error' })} />)
+
+    expect(screen.getByRole('alert')).not.toHaveTextContent('[object Object]')
+  })
+})
