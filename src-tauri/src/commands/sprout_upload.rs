@@ -55,6 +55,53 @@ pub fn upload_video(
     });
 }
 
+/// Maximum characters of a response body to quote in an error message. Enough to
+/// identify an HTML error page, short enough to stay readable in a toast.
+const BODY_EXCERPT_LIMIT: usize = 512;
+
+/// Renders a response body for an error message, truncated on a char boundary so
+/// multi-byte content cannot panic.
+fn body_excerpt(body: &str) -> String {
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        return "(empty body)".to_string();
+    }
+
+    let excerpt: String = trimmed.chars().take(BODY_EXCERPT_LIMIT).collect();
+    if trimmed.chars().count() > BODY_EXCERPT_LIMIT {
+        format!("{}… (truncated)", excerpt)
+    } else {
+        excerpt
+    }
+}
+
+/// Decides an upload's outcome from the HTTP status and the raw response body.
+///
+/// The body is parsed as JSON only on the success path. Sprout and the
+/// intermediaries in front of it return HTML or empty bodies for 413/502/504, so
+/// deserialising before checking the status throws away the status code that
+/// names the actual failure — and, because that parse failure propagated with
+/// `?`, it bypassed the only `upload_error` emitter entirely and left the
+/// frontend waiting forever. See issue #150.
+pub fn classify_response(status: reqwest::StatusCode, body: &str) -> Result<Value, String> {
+    if status.is_success() {
+        serde_json::from_str(body).map_err(|e| {
+            format!(
+                "Sprout returned HTTP {} but the response body was not valid JSON ({}): {}",
+                status,
+                e,
+                body_excerpt(body)
+            )
+        })
+    } else {
+        Err(format!(
+            "Sprout rejected the upload: HTTP {} — {}",
+            status,
+            body_excerpt(body)
+        ))
+    }
+}
+
 // Async Progress Tracking Reader using Tokio's AsyncRead API (with ReadBuf)
 pub struct ProgressReader<R> {
     inner: R,
@@ -191,18 +238,25 @@ async fn upload_video_task(
         .map_err(|e| e.to_string())?;
 
     let status = response.status();
-    // Parse the response body as JSON.
-    let response_json: Value = response.json().await.map_err(|e| e.to_string())?;
-    println!("Upload Response: {:?}", response_json);
+    println!("Upload response: HTTP {}", status);
 
-    if status.is_success() {
-        println!("Upload complete!");
-        let _ = app_handle.emit("upload_complete", response_json);
-        Ok(())
-    } else {
-        let error_message = format!("Upload failed: HTTP {} - {:?}", status, response_json);
-        let _ = app_handle.emit("upload_error", error_message.clone());
-        Err(error_message)
+    // Read the body as text first. Deciding the outcome must never depend on the
+    // body being parseable, or a non-JSON error page silently kills the upload.
+    let body_text = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response body (HTTP {}): {}", status, e))?;
+
+    match classify_response(status, &body_text) {
+        Ok(response_json) => {
+            println!("Upload complete!");
+            let _ = app_handle.emit("upload_complete", response_json);
+            Ok(())
+        }
+        Err(error_message) => {
+            let _ = app_handle.emit("upload_error", error_message.clone());
+            Err(error_message)
+        }
     }
 }
 
