@@ -5,6 +5,34 @@ All notable changes to the Bucket project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1] - 2026-08-07
+
+### Fixed
+
+- Sprout upload: a failed upload no longer hangs the Add Video dialog indefinitely. The
+  response body was parsed as JSON before the HTTP status was checked, so any non-2xx
+  answer with an HTML or empty body — an nginx `413`, a `502`/`504` from a load balancer —
+  failed to deserialise and exited through a bare `println!`, bypassing the only path that
+  told the frontend anything. The status is now decided first and reported with a body
+  excerpt. Confirmed in the wild: an upload stalled at 11.61% logged "error decoding
+  response body: expected value at line 1 column 1" (#150)
+- Sprout upload: a 2xx response carrying `null`, `[]` or a bare string no longer reports
+  success. It parsed fine but held no video record, so the upload appeared to work while no
+  link was ever added (#150)
+- Toasts are now visible on every theme. They rendered with no background on 10 of the 13
+  themes, because the app's theme name was passed to sonner verbatim and sonner only
+  defines its colour variables for `light` and `dark` — leaving `background: var(--normal-bg)`
+  invalid and transparent. Over a dialog overlay on the light custom themes this reached
+  ~1.15:1 contrast, making failures look like nothing had happened. Colours are now supplied
+  inline, and severity backgrounds are tints of the popover surface rather than solid fills,
+  which a contrast audit found fell below 4.5:1 in six of the twelve themes (#151)
+- Upload status severity is carried as typed data rather than matched from message text.
+  The Add Video dialog tested for the substring "failed" and the Sprout page for "success",
+  so a failure worded "Sprout rejected the upload: HTTP 413" rendered as a neutral notice
+  (#150, #151)
+- Upload status messages are cleared when the dialog closes, the tab changes, or a new
+  upload starts, so a previous attempt's text cannot sit beneath a live progress bar (#151)
+
 ## [0.18.0] - 2026-08-06
 
 ### Added

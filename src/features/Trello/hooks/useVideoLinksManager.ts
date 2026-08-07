@@ -77,7 +77,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     uploadFile,
     resetUploadState
   } = useFileUpload()
-  const { progress, message } = useUploadEvents()
+  const { progress, message, setMessage } = useUploadEvents()
 
   // UI state
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -238,6 +238,10 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
   const handleUploadAndAdd = async () => {
     if (!selectedFile || !apiKey) return
 
+    // Clear any previous attempt's message before the new one starts, so a
+    // stale error cannot sit under a live progress bar.
+    setMessage(null)
+
     try {
       await uploadFile(apiKey, formData.title)
     } catch (error) {
@@ -356,6 +360,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
       setFetchError(null)
       setAddMode('url')
       resetUploadState()
+      // The message lives in the React Query cache, which resetUploadState
+      // does not own -- clear it here or a previous run's text reappears.
+      setMessage(null)
       videoProcessor.reset()
       posterFrame.reset()
     }
@@ -368,6 +375,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
 
     if (value === 'url') {
       resetUploadState()
+      setMessage(null)
       videoProcessor.reset()
       posterFrame.reset()
     }

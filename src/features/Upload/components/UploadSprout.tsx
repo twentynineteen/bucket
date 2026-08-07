@@ -149,12 +149,12 @@ const UploadSproutContent: React.FC = () => {
               {message && (
                 <div
                   className={`mt-4 rounded-md border p-3 ${
-                    message.toLowerCase().includes('success')
-                      ? 'border-green-200 bg-green-100 text-green-800'
-                      : 'border-red-200 bg-red-100 text-red-800'
+                    message.severity === 'error'
+                      ? 'border-red-200 bg-red-100 text-red-800'
+                      : 'border-green-200 bg-green-100 text-green-800'
                   }`}
                 >
-                  {message}
+                  {message.text}
                 </div>
               )}
             </div>

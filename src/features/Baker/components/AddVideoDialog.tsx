@@ -14,6 +14,8 @@ import {
 } from 'lucide-react'
 import type { RefObject } from 'react'
 
+import type { UploadMessage } from '@features/Upload'
+
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
 import { Checkbox } from '@shared/ui/checkbox'
@@ -73,7 +75,7 @@ export interface UploadModeState {
   selectedFile: string | null
   uploading: boolean
   progress: number
-  message: string | null
+  message: UploadMessage | null
   uploadSuccess: boolean
   onSelectFile: () => void
   onUploadAndAdd: () => void
@@ -567,15 +569,10 @@ function UploadContent({
 
       {uploadMode.message && !uploadMode.uploading && (
         <Alert
-          variant={
-            typeof uploadMode.message === 'string' &&
-            uploadMode.message.includes('failed')
-              ? 'destructive'
-              : 'default'
-          }
+          variant={uploadMode.message.severity === 'error' ? 'destructive' : 'default'}
         >
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{String(uploadMode.message)}</AlertDescription>
+          <AlertDescription>{uploadMode.message.text}</AlertDescription>
         </Alert>
       )}
     </div>
