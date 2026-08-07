@@ -85,14 +85,28 @@ fn body_excerpt(body: &str) -> String {
 /// frontend waiting forever. See issue #150.
 pub fn classify_response(status: reqwest::StatusCode, body: &str) -> Result<Value, String> {
     if status.is_success() {
-        serde_json::from_str(body).map_err(|e| {
+        let parsed: Value = serde_json::from_str(body).map_err(|e| {
             format!(
                 "Sprout returned HTTP {} but the response body was not valid JSON ({}): {}",
                 status,
                 e,
                 body_excerpt(body)
             )
-        })
+        })?;
+
+        // A 2xx carrying `null`, `[]` or a bare string parses fine but is not a
+        // video record. Treating it as success emits `upload_complete` with a
+        // useless payload, so the user is told the upload worked and no video
+        // link appears. Require the `id` the frontend actually reads.
+        if parsed.get("id").is_none() {
+            return Err(format!(
+                "Sprout returned HTTP {} with an unexpected JSON shape (no \"id\"): {}",
+                status,
+                body_excerpt(body)
+            ));
+        }
+
+        Ok(parsed)
     } else {
         Err(format!(
             "Sprout rejected the upload: HTTP {} — {}",

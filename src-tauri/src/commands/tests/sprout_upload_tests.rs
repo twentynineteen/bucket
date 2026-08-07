@@ -59,6 +59,21 @@ fn non_2xx_with_json_body_still_reports_the_status_code() {
 }
 
 #[test]
+fn success_with_json_that_is_not_a_video_record_is_an_error() {
+    // A caching proxy answering 200 with `null` parses fine but carries no
+    // video. Emitting upload_complete here tells the user it worked while no
+    // link is ever added.
+    for body in ["null", "[]", "\"ok\"", "3", "{}", r#"{"error":"nope"}"#] {
+        let err = classify_response(StatusCode::OK, body)
+            .expect_err("a 2xx without an id is not a video record");
+        assert!(
+            err.contains("unexpected JSON shape"),
+            "body {body} should be rejected as a non-record, got: {err}"
+        );
+    }
+}
+
+#[test]
 fn success_with_unparseable_body_is_an_error_naming_the_status() {
     // This is the case that produced the reported hang:
     // "error decoding response body: expected value at line 1 column 1".
@@ -78,11 +93,27 @@ fn oversized_bodies_are_truncated_in_the_error_message() {
 
     let err = result.expect_err("a 500 must not be treated as success");
     assert!(
-        err.len() < 1024,
-        "error message must stay readable rather than embedding the whole body, got {} chars",
-        err.len()
+        err.contains("… (truncated)"),
+        "an oversized body must be marked as truncated, got: {err}"
+    );
+    // 512 chars of body + a short prefix. Pins the limit rather than just
+    // asserting "not enormous".
+    assert!(
+        (520..640).contains(&err.chars().count()),
+        "expected ~512 chars of body plus a prefix, got {} chars",
+        err.chars().count()
     );
     assert!(err.contains("500"), "got: {err}");
+}
+
+#[test]
+fn empty_body_is_reported_as_such() {
+    let err = classify_response(StatusCode::BAD_GATEWAY, "   \n\t ")
+        .expect_err("a 502 must not be treated as success");
+    assert!(
+        err.contains("(empty body)"),
+        "a whitespace-only body should read as empty, got: {err}"
+    );
 }
 
 #[test]

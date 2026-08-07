@@ -6,14 +6,15 @@ import { useCallback, useEffect, useRef } from 'react'
 import { logger } from '@shared/utils'
 
 import { listenUploadComplete, listenUploadError, listenUploadProgress } from '../api'
+import type { UploadMessage } from '../types'
 
 interface UseUploadEventsReturn {
   progress: number
   uploading: boolean
-  message: string | null
+  message: UploadMessage | null
   setUploading: (uploading: boolean) => void
   setProgress: (progress: number) => void
-  setMessage: (message: string | null) => void
+  setMessage: (message: UploadMessage | null) => void
 }
 
 export const useUploadEvents = (): UseUploadEventsReturn => {
@@ -27,7 +28,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
       async () => ({
         progress: 0,
         uploading: false,
-        message: null as string | null
+        message: null as UploadMessage | null
       }),
       'REALTIME',
       {
@@ -48,7 +49,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
       updates: Partial<{
         progress: number
         uploading: boolean
-        message: string | null
+        message: UploadMessage | null
       }>
     ) => {
       queryClient.setQueryData(
@@ -58,7 +59,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
             | {
                 progress: number
                 uploading: boolean
-                message: string | null
+                message: UploadMessage | null
               }
             | undefined
         ) => ({
@@ -89,7 +90,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
   )
 
   const setMessage = useCallback(
-    (newMessage: string | null) => {
+    (newMessage: UploadMessage | null) => {
       updateUploadState({ message: newMessage })
     },
     [updateUploadState]
@@ -121,7 +122,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
             // Backend sends the response object, not a string message
             // Convert to a success message for display
             updateUploadState({
-              message: 'Upload successful',
+              message: { text: 'Upload successful', severity: 'success' },
               uploading: false,
               progress: 100
             })
@@ -132,7 +133,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
           if (isMounted) {
             const errorMessage = event.payload as string
             updateUploadState({
-              message: errorMessage,
+              message: { text: errorMessage, severity: 'error' },
               uploading: false
             })
           }
@@ -140,7 +141,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
       } catch (error) {
         logger.error('Failed to setup upload event listeners:', error)
         updateUploadState({
-          message: 'Failed to setup event listeners',
+          message: { text: 'Failed to setup event listeners', severity: 'error' },
           uploading: false
         })
       }

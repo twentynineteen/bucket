@@ -1157,7 +1157,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 0,
         uploading: false,
-        message: 'Upload failed: Network error',
+        message: { text: 'Upload failed: Network error', severity: 'error' },
         setUploading: vi.fn(),
         setProgress: vi.fn(),
         setMessage: vi.fn()
@@ -1190,7 +1190,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 0,
         uploading: false,
-        message: 'Upload failed: Request timeout',
+        message: { text: 'Upload failed: Request timeout', severity: 'error' },
         setUploading: vi.fn(),
         setProgress: vi.fn(),
         setMessage: vi.fn()
@@ -1251,7 +1251,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 0,
         uploading: false,
-        message: 'Upload failed: Network error',
+        message: { text: 'Upload failed: Network error', severity: 'error' },
         setUploading: vi.fn(),
         setProgress: vi.fn(),
         setMessage: vi.fn()
@@ -1285,7 +1285,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 0,
         uploading: false,
-        message: 'Upload failed',
+        message: { text: 'Upload failed', severity: 'error' },
         setUploading: vi.fn(),
         setProgress: vi.fn(),
         setMessage: vi.fn()

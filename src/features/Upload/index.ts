@@ -43,3 +43,7 @@ export type { SproutVideoDetails } from './types'
 export type { PosterFrameRunResult } from './types'
 /** Progress of the poster frame step within an upload */
 export type { PosterFrameStatus } from './types'
+/** Severity of an upload status message -- info, success, or error */
+export type { UploadMessageSeverity } from './types'
+/** Upload status message carrying severity as typed data rather than sniffed from text */
+export type { UploadMessage } from './types'
