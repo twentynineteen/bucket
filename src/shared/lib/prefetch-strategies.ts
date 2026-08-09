@@ -2,7 +2,6 @@ import { CACHE } from '@shared/constants'
 import { QueryClient } from '@tanstack/react-query'
 import { core } from '@tauri-apps/api'
 import { getVersion } from '@tauri-apps/api/app'
-import { invoke } from '@tauri-apps/api/core'
 import { createNamespacedLogger, loadApiKeys } from '@shared/utils'
 
 import { queryKeys } from './query-keys'
@@ -171,49 +170,6 @@ export class QueryPrefetchManager {
   }
 
   /**
-   * Prefetch Sprout Video folders if API key is available
-   */
-  async prefetchSproutFolders(apiKey?: string, parentId: string | null = null) {
-    if (!apiKey) {
-      // Try to get API key from cache or storage
-      const apiKeys = this.queryClient.getQueryData(queryKeys.settings.apiKeys()) as
-        | Record<string, string>
-        | undefined
-      if (!apiKeys?.sproutVideo) {
-        logger.log('Sprout prefetch skipped: missing API key')
-        return
-      }
-      apiKey = apiKeys.sproutVideo
-    }
-
-    return this.queryClient.prefetchQuery({
-      ...createQueryOptions(
-        queryKeys.sprout.folders(apiKey, parentId),
-        async () => {
-          try {
-            const result = await invoke<{ folders: unknown[] }>('get_folders', {
-              apiKey,
-              parent_id: parentId
-            })
-            return result.folders
-          } catch (error) {
-            throw createQueryError(
-              `Failed to fetch Sprout folders: ${error}`,
-              'SPROUT_FOLDERS_FETCH'
-            )
-          }
-        },
-        'DYNAMIC',
-        {
-          staleTime: CACHE.QUICK, // 2 minutes
-          gcTime: CACHE.GC_STANDARD, // Keep cached for 5 minutes
-          retry: (failureCount, error) => shouldRetry(error, failureCount, 'sprout')
-        }
-      )
-    })
-  }
-
-  /**
    * Prefetch data for specific routes/pages
    */
   async prefetchForRoute(route: string) {
@@ -239,17 +195,12 @@ export class QueryPrefetchManager {
         break
       }
 
-      case '/upload-sprout': {
-        await this.prefetchApiKeys()
-        // Get Sprout credentials and prefetch root folders
-        const keys = this.queryClient.getQueryData(
-          queryKeys.settings.apiKeys()
-        ) as Record<string, unknown>
-        if (keys?.sproutVideo) {
-          return this.prefetchSproutFolders(keys.sproutVideo as string, null)
-        }
-        break
-      }
+      case '/upload-sprout':
+        // Folders are deliberately NOT prefetched. Sprout allows 200 requests
+        // per minute per ACCOUNT, shared with uploads -- speculative folder
+        // fetches spend budget an in-flight upload may need. The picker fetches
+        // a level only when the user dwells on it. See issue #155 R1.
+        return this.prefetchApiKeys()
 
       default:
         // For unknown routes, just prefetch basic app data
@@ -288,15 +239,7 @@ export class QueryPrefetchManager {
       }
     }
 
-    // If user is working with Sprout, prefetch folder data
-    if (userActions.includes('sprout') || currentRoute.includes('sprout')) {
-      const apiKeys = this.queryClient.getQueryData(
-        queryKeys.settings.apiKeys()
-      ) as Record<string, unknown>
-      if (apiKeys?.sproutVideo) {
-        await this.prefetchSproutFolders(apiKeys.sproutVideo as string, null)
-      }
-    }
+    // Sprout folders are never prefetched -- see issue #155 R1.
   }
 
   /**
@@ -322,15 +265,7 @@ export class QueryPrefetchManager {
       case 'settings-link':
         return this.prefetchApiKeys()
 
-      case 'sprout-button': {
-        const keys = this.queryClient.getQueryData(
-          queryKeys.settings.apiKeys()
-        ) as Record<string, unknown>
-        if (keys?.sproutVideo) {
-          return this.prefetchSproutFolders(keys.sproutVideo as string, null)
-        }
-        break
-      }
+      // 'sprout-button' hover deliberately prefetches nothing -- see #155 R1.
     }
   }
 

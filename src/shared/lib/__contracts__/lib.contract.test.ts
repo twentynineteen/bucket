@@ -199,7 +199,11 @@ describe('@shared/lib barrel contract', () => {
       expect(retryStrategies).toHaveProperty('validation')
       expect(retryStrategies).toHaveProperty('auth')
       expect(retryStrategies).toHaveProperty('trello')
-      expect(retryStrategies).toHaveProperty('sprout')
+      // No 'sprout' strategy by design: its only consumer (prefetchSproutFolders)
+      // was removed in #155 and its condition could never match a Tauri
+      // rejection. Sprout queries set `retry` explicitly so a 429 is never
+      // retried into a closed rate-limit window.
+      expect(retryStrategies).not.toHaveProperty('sprout')
       expect(retryStrategies.network.attempts).toBeGreaterThan(0)
       expect(retryStrategies.validation.attempts).toBe(0)
     })

@@ -11,6 +11,20 @@ export type {
 } from '@shared/types'
 
 /**
+ * A folder chosen as an upload destination.
+ *
+ * `name` and `path` are stored alongside `id` so the trigger can render a label
+ * before the tree has loaded -- and so a persisted choice still reads sensibly
+ * if the folder is later removed on Sprout's side.
+ */
+export interface SelectedSproutFolder {
+  id: string
+  name: string
+  /** Breadcrumb from the root, e.g. `Marketing / Q2 Campaign`. */
+  path: string
+}
+
+/**
  * Failure detail from the poster frame command. `status` is the HTTP status
  * Sprout returned, or null for a transport-level failure.
  */

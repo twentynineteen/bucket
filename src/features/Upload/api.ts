@@ -11,11 +11,18 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { exists, readDir, readFile, writeFile } from '@tauri-apps/plugin-fs'
 import { fontDir } from '@tauri-apps/api/path'
 
+import { isRateLimited } from '@shared/lib'
 import type {
   GetFoldersResponse,
   SproutUploadResponse,
   SproutVideoDetails
 } from '@shared/types'
+
+import {
+  recordBudget,
+  recordRateLimited,
+  runBrowseRequest
+} from './internal/sproutRateBudget'
 
 // --- Tauri Command Wrappers ---
 
@@ -33,13 +40,34 @@ export async function getVideoDuration(filePath: string): Promise<number> {
   return invoke<number>('get_video_duration', { filePath })
 }
 
+/**
+ * Lists the folders directly inside `parentId`, or the root folders for null.
+ *
+ * The argument key MUST be `parentId`. Tauri camelCases command arguments and
+ * does no snake_case fallback, so a snake_case key silently binds the Rust
+ * `Option` to `None` -- which is how every folder request returned the account
+ * root for so long (#155 §2). `api.contract.test.ts` pins this.
+ *
+ * Routed through the browse guard: serialised, and refused when the account's
+ * request budget is low so an in-flight upload keeps its headroom (#155 R6).
+ */
 export async function getFolders(
   apiKey: string,
   parentId: string | null
 ): Promise<GetFoldersResponse> {
-  return invoke<GetFoldersResponse>('get_folders', {
-    apiKey,
-    parent_id: parentId
+  return runBrowseRequest(async () => {
+    try {
+      const page = await invoke<GetFoldersResponse>('get_folders', {
+        apiKey,
+        parentId
+      })
+      recordBudget(page.rate_limit_remaining, page.rate_limit_reset)
+      return page
+    } catch (error) {
+      // A 429 opens a cooloff so queued submenu opens stop before the network.
+      if (isRateLimited(error)) recordRateLimited()
+      throw error
+    }
   })
 }
 

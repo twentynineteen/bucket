@@ -187,13 +187,11 @@ export const retryStrategies: Record<string, RetryConfiguration> = {
     delay: (attempt: number) => getBackoffDelay(attempt, RETRY.MAX_DELAY_MUTATION),
     condition: (error: Error) =>
       error.name === 'NetworkError' || error.message.includes('network')
-  },
-  sprout: {
-    attempts: RETRY.DEFAULT_ATTEMPTS,
-    delay: (attempt: number) => getBackoffDelay(attempt, RETRY.MAX_DELAY_MUTATION),
-    condition: (error: Error) =>
-      error.name === 'NetworkError' || error.message.includes('network')
   }
+  // NOTE: there is deliberately no `sprout` strategy. Its only consumer was
+  // `prefetchSproutFolders`, removed in #155, and its condition could never
+  // match a Tauri rejection anyway. Sprout queries set `retry` explicitly so a
+  // 429 is never retried into a closed rate-limit window -- see #155 R4.
 }
 
 export function shouldRetry(
@@ -219,6 +217,50 @@ export function getRetryDelay(
     return getBackoffDelay(attempt, RETRY.MAX_DELAY_MUTATION)
   }
   return config.delay(attempt)
+}
+
+/**
+ * Reads an error's message regardless of how it was thrown.
+ *
+ * Tauri commands returning `Err(String)` reject with a **bare string**, not an
+ * `Error` -- so anything typed to `Error` silently misses every backend failure
+ * in this app. See `useFileUpload.ts`, which already branches on
+ * `typeof error === 'string'`. Issue #155 / #156.
+ */
+function errorMessage(error: unknown): string {
+  if (typeof error === 'string') return error
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: unknown }).message)
+  }
+  return ''
+}
+
+/** Extracts an HTTP status code from an error message, if it names one. */
+function httpStatus(error: unknown): number | null {
+  const match = errorMessage(error).match(/\bHTTP (\d{3})\b/i)
+  return match ? Number(match[1]) : null
+}
+
+/**
+ * Whether an error is a rate limit (HTTP 429).
+ *
+ * Never retry one: retrying spends more of the budget that was just exhausted,
+ * while the window is still closed. Sprout's limit is 200 requests/minute and is
+ * account-wide, so an amplified retry can fail a user's in-flight upload.
+ */
+export function isRateLimited(error: unknown): boolean {
+  if (httpStatus(error) === 429) return true
+  const message = errorMessage(error).toLowerCase()
+  return message.includes('rate limit') || message.includes('too many requests')
+}
+
+/** Whether an error is an authentication or authorisation failure (401/403). */
+export function isAuthError(error: unknown): boolean {
+  const status = httpStatus(error)
+  if (status === 401 || status === 403) return true
+  const message = errorMessage(error).toLowerCase()
+  return message.includes('unauthorized') || message.includes('forbidden')
 }
 
 /**

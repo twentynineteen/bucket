@@ -80,6 +80,10 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
 
     // Computed
     hasApiKey,
+    sproutApiKey,
+    selectedFolder,
+    selectFolder,
+    recentFolders,
     canAddVideo,
 
     // Handlers
@@ -163,7 +167,11 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
             message: message,
             uploadSuccess: uploadSuccess,
             onSelectFile: selectFile,
-            onUploadAndAdd: handleUploadAndAdd
+            onUploadAndAdd: handleUploadAndAdd,
+            apiKey: sproutApiKey,
+            selectedFolder: selectedFolder,
+            onSelectedFolderChange: selectFolder,
+            recentFolders: recentFolders
           }}
           errors={{
             validationErrors: validationErrors,

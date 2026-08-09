@@ -19,6 +19,11 @@ export interface ApiKeys {
   trelloBoardId?: string // DEBT-014: Configurable Trello board ID
   // Add more services as needed.
   defaultBackgroundFolder?: string
+  /** Default Sprout upload folder id (issue #155). Undefined means root. */
+  sproutDefaultFolderId?: string
+  /** Human-readable label for the default folder, so the UI can render it
+   *  before the folder tree loads. */
+  sproutDefaultFolderName?: string
   ollamaUrl?: string
 }
 

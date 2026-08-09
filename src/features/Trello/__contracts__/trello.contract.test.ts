@@ -166,9 +166,19 @@ vi.mock('@features/Upload', () => ({
     selectedFile: null,
     uploading: false,
     response: null,
+    localDuration: null,
+    selectedFolder: null,
+    setSelectedFolder: vi.fn(),
     selectFile: vi.fn(),
     uploadFile: vi.fn(),
     resetUploadState: vi.fn()
+  }),
+  // Issue #155: destination folder, resolved from session/default/root
+  useSproutFolderSelection: () => ({
+    selectedFolder: null,
+    selectFolder: vi.fn(),
+    recentFolders: [],
+    commitFolder: vi.fn()
   }),
   useSproutVideoApi: () => ({
     fetchVideoDetailsAsync: vi.fn(),

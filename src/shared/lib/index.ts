@@ -59,6 +59,10 @@ export { shouldRetry } from './query-utils'
 export { getRetryDelay } from './query-utils'
 /** Classify an error into a domain-specific error type */
 export { inferErrorType } from './query-utils'
+/** True for HTTP 429 rate limits -- never retry these (#155 R4) */
+export { isRateLimited } from './query-utils'
+/** True for HTTP 401/403 auth failures, including Tauri's bare-string rejections */
+export { isAuthError } from './query-utils'
 /** Create a structured query error with type, message, and retry hint */
 export { createQueryError } from './query-utils'
 /** Calculate normalized progress (0-1) from loaded and total counts */
