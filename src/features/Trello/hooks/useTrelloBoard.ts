@@ -1,7 +1,8 @@
 import { CACHE } from '@shared/constants'
 import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
-import { loadApiKeys, logger } from '@shared/utils'
+import { useApiKeys } from '@shared/hooks'
+import { logger } from '@shared/utils'
 import { useMemo } from 'react'
 
 import { fetchBoardCards, fetchBoardLists } from '../api'
@@ -22,12 +23,9 @@ interface TrelloBoardData {
  */
 export function useTrelloBoard(boardId: string): TrelloBoardData {
   // Use a simpler approach - direct query for credentials
-  const { data: credentials, isLoading: credentialsLoading } = useQuery({
-    queryKey: ['api-keys'],
-    queryFn: loadApiKeys,
-    staleTime: CACHE.STANDARD,
-    refetchOnWindowFocus: false
-  })
+  // Uses the shared hook so this reads the same cache entry as everything
+  // else backed by api_keys.json (issue #155 P5-a).
+  const { data: credentials, isLoading: credentialsLoading } = useApiKeys()
 
   const apiKey = credentials?.trello || null
   const token = credentials?.trelloToken || null

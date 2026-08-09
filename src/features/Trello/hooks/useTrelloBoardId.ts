@@ -3,13 +3,13 @@
  * DEBT-014: Make Trello board ID configurable in Settings
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { CACHE } from '@shared/constants'
 import { queryKeys } from '@shared/lib'
 import { useAppStore } from '@shared/store'
 import { TrelloBoard } from '@shared/types'
-import { loadApiKeys, saveApiKeys } from '@shared/utils'
+import { useApiKeys } from '@shared/hooks'
+import { saveApiKeys } from '@shared/utils'
 import { validateBoardAccess } from '../internal/trelloBoardValidation'
 
 // Default board ID (original hardcoded value)
@@ -33,25 +33,30 @@ export function useTrelloBoardId(): UseTrelloBoardIdReturn {
   const setStoreBoardId = useAppStore((state) => state.setTrelloBoardId)
 
   // Load board ID from storage
-  const { data: apiKeys, isLoading } = useQuery({
-    queryKey: queryKeys.settings.apiKeys(),
-    queryFn: loadApiKeys,
-    staleTime: CACHE.STANDARD, // 5 minutes
-    gcTime: CACHE.GC_MEDIUM // 10 minutes
-  })
+  // One definition of this query, in @shared/hooks (issue #155 P5-a).
+  const { data: apiKeys, isLoading } = useApiKeys()
 
   // Mutation for saving board ID
   const saveBoardIdMutation = useMutation({
     mutationFn: async (newBoardId: string) => {
-      // Update app store first
+      // The store is updated optimistically, before the write. Capture the
+      // previous value so a failed write can be rolled back -- saveApiKeys now
+      // rethrows, so without this the store would hold a board id that never
+      // reached disk (issue #155 P5-b).
+      const previousBoardId = storeBoardId
       setStoreBoardId(newBoardId)
 
-      // Persist to storage
       const updatedKeys = {
         ...apiKeys,
         trelloBoardId: newBoardId
       }
-      await saveApiKeys(updatedKeys)
+
+      try {
+        await saveApiKeys(updatedKeys)
+      } catch (error) {
+        setStoreBoardId(previousBoardId)
+        throw error
+      }
 
       return updatedKeys
     },

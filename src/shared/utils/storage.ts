@@ -54,6 +54,9 @@ export const saveApiKeys = async (apiKeys: ApiKeys): Promise<void> => {
     await writeTextFile(filePath, data)
   } catch (error) {
     logger.error('Error saving API keys:', error)
+    // Rethrow: swallowing this told callers the write succeeded, so the user
+    // saw a saved setting that was gone at next launch (issue #155 P5-b).
+    throw error
   }
 }
 

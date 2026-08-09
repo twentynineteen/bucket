@@ -3,6 +3,7 @@
  *
  * Trello API key, token, authorization, and board selector.
  */
+import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { TrelloBoardSelector } from '@features/Trello'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -66,6 +67,9 @@ const TrelloSection: React.FC<TrelloSectionProps> = ({ apiKeys }) => {
       await saveMutation.mutateAsync({ trello: localTrelloKey })
     } catch (error) {
       logger.error('Failed to save Trello API key:', error)
+      // A failed write must be visible: saveApiKeys rethrows now, but a
+      // silent catch would still show the user a false success (#155 P5-b).
+      toast.error('Could not save your Trello settings. Please try again.')
     }
   }
 
@@ -74,6 +78,9 @@ const TrelloSection: React.FC<TrelloSectionProps> = ({ apiKeys }) => {
       await saveMutation.mutateAsync({ trelloToken: localTrelloToken })
     } catch (error) {
       logger.error('Failed to save Trello API token:', error)
+      // A failed write must be visible: saveApiKeys rethrows now, but a
+      // silent catch would still show the user a false success (#155 P5-b).
+      toast.error('Could not save your Trello settings. Please try again.')
     }
   }
 
@@ -125,6 +132,9 @@ const TrelloSection: React.FC<TrelloSectionProps> = ({ apiKeys }) => {
             await saveMutation.mutateAsync({ trelloBoardId: boardId })
           } catch (error) {
             logger.error('Failed to save board ID:', error)
+            // A failed write must be visible: saveApiKeys rethrows now, but a
+            // silent catch would still show the user a false success (#155 P5-b).
+            toast.error('Could not save your Trello settings. Please try again.')
           }
         }}
         label="Trello Board"

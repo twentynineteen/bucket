@@ -3,11 +3,13 @@
  *
  * Ollama URL configuration and connection testing.
  */
+import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { useAppStore } from '@shared/store'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import ApiKeyInput from '@shared/ui/ApiKeyInput'
 import { queryKeys, createQueryError } from '@shared/lib'
+import { logger } from '@shared/utils'
 import { CheckCircle, Loader2, XCircle } from 'lucide-react'
 import React, { useState } from 'react'
 
@@ -49,7 +51,14 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({ apiKeys }) => {
   }
 
   const handleSaveOllamaUrl = async () => {
-    await saveMutation.mutateAsync({ ollamaUrl })
+    try {
+      await saveMutation.mutateAsync({ ollamaUrl })
+    } catch (error) {
+      // saveApiKeys rethrows now (#155 P5-b); without this the rejection would
+      // go unhandled and the user would be told nothing.
+      logger.error('Failed to save Ollama URL:', error)
+      toast.error('Could not save your AI settings. Please try again.')
+    }
   }
 
   const handleTestConnection = async () => {
