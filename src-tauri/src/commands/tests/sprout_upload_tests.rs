@@ -133,7 +133,7 @@ fn multibyte_bodies_are_truncated_without_panicking() {
 // binding to `None`), and the query parameter name was wrong (`folder_id`, where
 // the folders endpoint takes `parent_id`). These tests pin the wire shape.
 
-use crate::commands::sprout_upload::{classify_folders_response, folders_url};
+use crate::commands::sprout_upload::{classify_folders_page, folders_url};
 
 #[test]
 fn folders_url_omits_parent_id_at_the_root() {
@@ -194,8 +194,9 @@ fn a_valid_folder_page_deserialises() {
         {"id":"f2","name":"Q2 Campaign","parent_id":"f1"}
     ],"total":2}"#;
 
-    let folders = classify_folders_response(StatusCode::OK, body, None)
-        .expect("a well-formed folder page should parse");
+    let folders = classify_folders_page(StatusCode::OK, body, None)
+        .expect("a well-formed folder page should parse")
+        .folders;
 
     assert_eq!(folders.len(), 2);
     assert_eq!(folders[0].name, "Marketing");
@@ -211,7 +212,7 @@ fn a_401_names_the_api_key_rather_than_returning_an_empty_list() {
     // The original code called response.json() with no status check, so an auth
     // failure rendered as a folder tree with nothing in it.
     let body = r#"{"error":"unauthorized"}"#;
-    let err = classify_folders_response(StatusCode::UNAUTHORIZED, body, None)
+    let err = classify_folders_page(StatusCode::UNAUTHORIZED, body, None)
         .expect_err("a 401 must not be treated as an empty folder list");
 
     assert!(err.contains("401"), "got: {err}");
@@ -223,14 +224,14 @@ fn a_401_names_the_api_key_rather_than_returning_an_empty_list() {
 
 #[test]
 fn a_403_is_treated_like_a_401() {
-    let err = classify_folders_response(StatusCode::FORBIDDEN, "{}", None)
+    let err = classify_folders_page(StatusCode::FORBIDDEN, "{}", None)
         .expect_err("a 403 must not be treated as success");
     assert!(err.to_lowercase().contains("api key"), "got: {err}");
 }
 
 #[test]
 fn a_429_names_the_rate_limit_and_the_wait() {
-    let err = classify_folders_response(StatusCode::TOO_MANY_REQUESTS, "", Some("30"))
+    let err = classify_folders_page(StatusCode::TOO_MANY_REQUESTS, "", Some("30"))
         .expect_err("a 429 must not be treated as success");
 
     assert!(err.contains("429"), "got: {err}");
@@ -246,7 +247,7 @@ fn a_429_names_the_rate_limit_and_the_wait() {
 
 #[test]
 fn a_429_without_retry_after_still_reports_the_limit() {
-    let err = classify_folders_response(StatusCode::TOO_MANY_REQUESTS, "", None)
+    let err = classify_folders_page(StatusCode::TOO_MANY_REQUESTS, "", None)
         .expect_err("a 429 must not be treated as success");
     assert!(err.contains("429"), "got: {err}");
 }
@@ -255,14 +256,14 @@ fn a_429_without_retry_after_still_reports_the_limit() {
 fn a_2xx_without_a_folders_key_is_an_error_not_an_empty_list() {
     // A 2xx carrying `[]` or an error object parses fine but is not a listing.
     // Treating it as success renders "no subfolders" over a real failure.
-    let err = classify_folders_response(StatusCode::OK, r#"{"error":"nope"}"#, None)
+    let err = classify_folders_page(StatusCode::OK, r#"{"error":"nope"}"#, None)
         .expect_err("a 2xx with no folders key must not be treated as an empty level");
     assert!(err.contains("folders"), "got: {err}");
 }
 
 #[test]
 fn a_2xx_with_a_non_json_body_reports_the_status() {
-    let err = classify_folders_response(StatusCode::OK, "<html>gateway</html>", None)
+    let err = classify_folders_page(StatusCode::OK, "<html>gateway</html>", None)
         .expect_err("an HTML body must not be treated as an empty folder list");
     assert!(err.contains("200"), "got: {err}");
 }

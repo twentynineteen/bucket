@@ -34,16 +34,16 @@ pub struct SproutFolder {
 /// Separate from `SproutFoldersPage` because the two have opposite needs: Sprout
 /// never sends `truncated`, and the aggregate must not carry `next_page`.
 #[derive(serde::Deserialize, Debug, Clone)]
-struct SproutFoldersWirePage {
-    folders: Vec<SproutFolder>,
+pub struct SproutFoldersWirePage {
+    pub folders: Vec<SproutFolder>,
     #[serde(default)]
-    total: Option<u32>,
+    pub total: Option<u32>,
     /// Read ONLY as a has-more signal, never followed. Sprout's own docs show
     /// this URL carrying neither `parent_id` nor the requested `per_page`, so
     /// following it from a scoped request would return the ROOT's next page and
     /// splice foreign folders into a child listing. See issue #155 Phase 1.
     #[serde(default)]
-    next_page: Option<String>,
+    pub next_page: Option<String>,
 }
 
 /// Every folder at one level, aggregated across pages. The command's public
@@ -99,15 +99,7 @@ pub fn folders_url(parent_id: Option<&str>, page: u32, per_page: u32) -> String 
 /// Mirrors `classify_response`: the status is checked BEFORE the body is
 /// parsed, so an HTML or empty error page can never be mistaken for an empty
 /// folder list. `retry_after` is rendered into the 429 message when present.
-pub fn classify_folders_response(
-    status: reqwest::StatusCode,
-    body: &str,
-    retry_after: Option<&str>,
-) -> Result<Vec<SproutFolder>, String> {
-    classify_folders_page(status, body, retry_after).map(|page| page.folders)
-}
-
-fn classify_folders_page(
+pub fn classify_folders_page(
     status: reqwest::StatusCode,
     body: &str,
     retry_after: Option<&str>,
