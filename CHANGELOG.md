@@ -5,6 +5,46 @@ All notable changes to the Bucket project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-08-10
+
+### Added
+
+- Sprout upload: choose the folder a video uploads into. Every upload had always landed
+  in the account root - the selected folder sat in a setter-less `useState(null)`, and
+  the backend sent the folders request with an argument key Tauri silently bound to
+  `None` - so the folder plumbing looked present but had never worked (#155, #159)
+- Sprout folder picker: a single drill-down panel (flyout submenus collide at depth in a
+  laptop window), with Root as the default and recently-used folders pinned on top (#159)
+- Folder search across the whole account. Sprout has no folder search or flat listing
+  endpoint, so a one-off crawl builds a local index that is saved to disk; results carry
+  their full breadcrumb so similarly named folders are distinguishable (#159)
+- Folder index export/import in Settings, so one person pays the crawl cost and the team
+  imports the result. Imports are validated by folder-id overlap at the root (colleagues
+  with different API keys to the same account work; another account's index is refused),
+  an interrupted crawl checkpoints and merges rather than overwriting, and an import only
+  ever adds (#159)
+- Default upload folder in Settings, with the session's last-used folder remembered;
+  resolution order is last-used, then default, then Root (#159)
+- Browsing folders can never starve an upload: Sprout's 200 requests/minute budget is
+  account-wide, so folder requests are serialised behind a shared budget guard with a
+  reserve, 429 responses are never retried, and crawl pacing adapts to the reported
+  rate-limit headroom (#159)
+
+### Fixed
+
+- Sprout and Trello credentials are no longer embedded verbatim in React Query cache
+  keys, where they were visible in Devtools and destined for disk under any future cache
+  persistence. Keys now discriminate by a short non-reversible fingerprint, and contract
+  tests forbid any factory or inline key from carrying a raw secret (#158, #160)
+- Window state: the saved position stored physical pixels but restored them as logical,
+  with no bounds check, so the window could drift off-screen between launches (#159)
+- The e2e suite runs again. The Playwright Tauri mocks still simulated the `move_files`
+  protocol deleted in #112, so every mocked transfer stalled at 0% until the watchdog
+  aborted it - and nobody noticed for four months because the workflow's triggers watched
+  paths and branches that no longer exist. The mocks now mirror the real transfer
+  backend, contract tests lock them to the current protocol, and the workflow triggers
+  point at the real module layout with master included in push builds (#161, #162)
+
 ## [0.18.1] - 2026-08-07
 
 ### Fixed
