@@ -75,7 +75,7 @@ src/
 +-- shared/
 |   +-- constants/     # Timing, animation, project constants (26 exports)
 |   +-- hooks/         # Cross-feature hooks: breadcrumb, search, API keys, mobile (8 exports)
-|   +-- lib/           # Query infrastructure: keys, client, utils, prefetch, perf (49 exports)
+|   +-- lib/           # Query infrastructure: keys, client, utils, prefetch, perf (50 exports)
 |   +-- services/      # ProgressTracker, feedback, cache services (5 exports)
 |   +-- store/         # Zustand stores: appStore, breadcrumbStore (3 exports)
 |   +-- types/         # Shared domain types: media, script, breadcrumbs (41 exports)

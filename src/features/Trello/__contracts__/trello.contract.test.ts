@@ -418,4 +418,20 @@ describe('Trello Module - No Direct Plugin Imports', () => {
       expect(tauriImports, `Found @tauri-apps import in ${file}`).toEqual([])
     }
   })
+
+  // B4.2 (issue #158): inline query keys must not embed credentials.
+  // Keys that vary by credential go through queryKeys factories, which
+  // fingerprint secrets instead of embedding them. Case-insensitive substring
+  // match so renamed identifiers (trelloApiKey, authToken) are still caught.
+  it('b4_2 no inline query key embeds a credential identifier', () => {
+    const allFiles = getFilesRecursive(modulePath, ['.ts', '.tsx'])
+    const inlineCredentialKey = /queryKey:\s*\[[^\]]*(apikey|token|secret)/i
+    for (const file of allFiles) {
+      const content = fs.readFileSync(file, 'utf-8')
+      expect(
+        inlineCredentialKey.test(content),
+        `Inline query key embedding a credential in ${file}`
+      ).toBe(false)
+    }
+  })
 })

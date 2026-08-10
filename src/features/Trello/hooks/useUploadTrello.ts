@@ -3,6 +3,7 @@
  * Extracted from UploadTrello.tsx (DEBT-002)
  */
 
+import { queryKeys } from '@shared/lib'
 import { appStore } from '@shared/store'
 import { SproutUploadResponse } from '@shared/types'
 import { useMemo, useState } from 'react'
@@ -86,7 +87,7 @@ export function useUploadTrello() {
 
   // Auto-sync card details when selection changes
   useQuery({
-    queryKey: ['cardDetailsSync', selectedCard?.id, apiKey, token],
+    queryKey: queryKeys.trello.cardDetailsSync(selectedCard?.id, apiKey, token),
     queryFn: async () => {
       if (selectedCard && selectedCard.id && apiKey && token) {
         refetchCard()
