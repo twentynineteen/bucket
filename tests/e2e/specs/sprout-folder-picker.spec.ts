@@ -170,7 +170,7 @@ test.describe('folder picker — layout the unit tests cannot see', () => {
     await page.getByRole('menuitem', { name: /MSc Programmes/ }).click()
     await expect(page.getByRole('menuitem', { name: /Module X/ })).toBeVisible()
 
-    await page.getByLabel('Filter loaded folders').click()
+    await page.getByLabel('Search folders').click()
     await page.keyboard.type('Module X')
 
     const hit = page.getByTitle(
@@ -239,7 +239,7 @@ test.describe('folder picker — Radix interaction hazards', () => {
     const trigger = await openPicker(page)
     await openMenu(page, trigger, /Marketing/)
 
-    const filter = page.getByLabel('Filter loaded folders')
+    const filter = page.getByLabel('Search folders')
     await filter.click()
     await page.keyboard.type('marketing', { delay: 60 })
 
@@ -253,7 +253,7 @@ test.describe('folder picker — Radix interaction hazards', () => {
     const trigger = await openPicker(page)
     await openMenu(page, trigger, /Marketing/)
 
-    const filter = page.getByLabel('Filter loaded folders')
+    const filter = page.getByLabel('Search folders')
     await filter.click()
     await page.keyboard.type('mark')
     await page.keyboard.press('Escape')
@@ -267,10 +267,56 @@ test.describe('folder picker — Radix interaction hazards', () => {
     await openMenu(page, trigger, /Marketing/)
     await resetFolderCalls(page)
 
-    await page.getByLabel('Filter loaded folders').click()
+    await page.getByLabel('Search folders').click()
     await page.keyboard.type('campaign', { delay: 40 })
     await page.waitForTimeout(600)
 
+    expect(await folderCalls(page)).toHaveLength(0)
+  })
+})
+
+test.describe('folder picker — search across the whole account', () => {
+  test('indexing makes a never-opened folder findable by code', async ({ page }) => {
+    // Sprout has no folder search endpoint, so without a saved crawl a folder the
+    // user has not clicked into is invisible to search. This is the whole loop:
+    // search finds nothing, index once, then the same search finds it by path.
+    await setupSproutMocks(page, { folders: DEEP_TREE })
+    const trigger = await openPicker(page)
+    await openMenu(page, trigger, /2026 Projects/)
+
+    const search = page.getByLabel('Search folders')
+    await search.click()
+    await page.keyboard.type('Module X')
+
+    // Not reachable yet -- only the root level has been loaded.
+    await expect(page.getByText(/Only folders you have opened/i)).toBeVisible()
+
+    await page.getByRole('button', { name: /Index all folders/i }).click()
+
+    // The crawl is paced, so give it room; the assertion is that it completes
+    // and the deep folder becomes searchable with its full path.
+    await expect(page.getByText(/folders indexed/i)).toBeVisible({ timeout: 30000 })
+    await expect(
+      page.getByTitle('2026 Projects / MSc Programmes / Module X -- Session Recordings')
+    ).toBeVisible({ timeout: 30000 })
+  })
+
+  test('searching an indexed account issues no further requests', async ({ page }) => {
+    await setupSproutMocks(page, { folders: DEEP_TREE })
+    const trigger = await openPicker(page)
+    await openMenu(page, trigger, /2026 Projects/)
+
+    await page.getByLabel('Search folders').click()
+    await page.keyboard.type('Module')
+    await page.getByRole('button', { name: /Index all folders/i }).click()
+    await expect(page.getByText(/folders indexed/i)).toBeVisible({ timeout: 30000 })
+
+    await resetFolderCalls(page)
+    await page.getByLabel('Search folders').fill('')
+    await page.getByLabel('Search folders').fill('Programmes')
+    await page.waitForTimeout(800)
+
+    // The index is the point: repeat searches must cost nothing.
     expect(await folderCalls(page)).toHaveLength(0)
   })
 })

@@ -180,7 +180,8 @@ describe('Upload Barrel Exports - Shape', () => {
     'useZoomPan',
     'usePosterFrameForUpload',
     'useSproutFolders',
-    'useSproutFolderSelection'
+    'useSproutFolderSelection',
+    'useSproutFolderIndex'
   ].sort()
 
   it('exports exactly the expected named exports (no more, no fewer)', () => {
@@ -188,8 +189,8 @@ describe('Upload Barrel Exports - Shape', () => {
     expect(exportNames).toEqual(expectedExports)
   })
 
-  it('exports exactly 16 members (4 components + 12 hooks)', () => {
-    expect(Object.keys(uploadBarrel)).toHaveLength(16)
+  it('exports exactly 17 members (4 components + 13 hooks)', () => {
+    expect(Object.keys(uploadBarrel)).toHaveLength(17)
   })
 
   // Component shape checks

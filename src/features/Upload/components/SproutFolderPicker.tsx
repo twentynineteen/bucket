@@ -45,7 +45,9 @@ import {
 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 
+import { useSproutFolderIndex } from '../hooks/useSproutFolderIndex'
 import { useSproutFolders } from '../hooks/useSproutFolders'
+import { matchFolders, withPaths } from '../internal/folderPaths'
 import type { SelectedSproutFolder } from '../types'
 
 /**
@@ -72,15 +74,13 @@ export interface SproutFolderPickerProps {
   disabled?: boolean
 }
 
-/** Flattens every folder level currently in the query cache, with its path. */
+/** Folders in the live query cache — levels the user has opened this session. */
 function useLoadedFolderIndex(apiKey: string | null, filterKey: string) {
   const queryClient = useQueryClient()
 
   return useMemo(() => {
     if (!apiKey || !filterKey) return []
 
-    // Only levels the user has already opened are in cache, so this searches
-    // exactly what is visible and issues no requests. See issue #155 R1.
     const entries = queryClient.getQueriesData<GetFoldersResponse>({
       queryKey: queryKeys.sprout.all
     })
@@ -90,51 +90,39 @@ function useLoadedFolderIndex(apiKey: string | null, filterKey: string) {
       for (const folder of data?.folders ?? []) byId.set(folder.id, folder)
     }
 
-    const pathOf = (folder: SproutFolder): string => {
-      const segments: string[] = [folder.name]
-      let cursor = folder.parent_id
-      // Guard against a cycle in malformed data rather than hanging the UI.
-      const seen = new Set<string>([folder.id])
-      while (cursor && !seen.has(cursor)) {
-        seen.add(cursor)
-        const parent = byId.get(cursor)
-        if (!parent) break
-        segments.unshift(parent.name)
-        cursor = parent.parent_id
-      }
-      return segments.join(' / ')
-    }
-
-    return [...byId.values()]
-      .map((folder) => ({ id: folder.id, name: folder.name, path: pathOf(folder) }))
-      .sort((a, b) => a.path.localeCompare(b.path))
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- filterKey is the
-    // intentional recompute trigger; queryClient is stable and carries no data.
+    // filterKey is the intentional recompute trigger: memoising on queryClient
+    // alone computed the index once at mount, when the cache is still empty.
+    return withPaths(byId.values())
   }, [apiKey, filterKey, queryClient])
 }
 
-interface FilterResultsProps {
+interface SearchResultsProps {
   matches: SelectedSproutFolder[]
-  loadedCount: number
+  /** How many folders the search actually covered. */
+  searchedCount: number
   onSelect: (folder: SelectedSproutFolder) => void
+  index: ReturnType<typeof useSproutFolderIndex>
 }
 
-/** Filter hits, rendered path-labelled. Searches cache only -- never fetches. */
-const FilterResults: React.FC<FilterResultsProps> = ({
+/**
+ * Search hits, path-labelled.
+ *
+ * Searches the saved index (every folder, including ones never opened) unioned
+ * with the live cache (levels opened this session, which may be newer than the
+ * index). Reading both costs no requests.
+ */
+const SearchResults: React.FC<SearchResultsProps> = ({
   matches,
-  loadedCount,
-  onSelect
+  searchedCount,
+  onSelect,
+  index
 }) => (
   <>
     <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
-      {matches.length} of {loadedCount} loaded folders
+      {matches.length} of {searchedCount} folders
+      {index.index?.partial ? ' (partial index)' : ''}
     </DropdownMenuLabel>
-    {matches.length === 0 && (
-      <p className="text-muted-foreground px-2 py-1.5 text-xs">
-        No match among folders opened this session. Filtering never fetches — open a level
-        to include it.
-      </p>
-    )}
+
     {matches.map((folder) => (
       <DropdownMenuItem key={folder.id} onSelect={() => onSelect(folder)}>
         <Folder className="text-muted-foreground shrink-0" />
@@ -143,8 +131,237 @@ const FilterResults: React.FC<FilterResultsProps> = ({
         </span>
       </DropdownMenuItem>
     ))}
+
+    {matches.length === 0 && (
+      <p className="text-muted-foreground px-2 py-1.5 text-xs">
+        {index.index
+          ? 'No folder matches. Re-index if you have added folders on Sprout since this index was built.'
+          : 'No match among folders opened this session.'}
+      </p>
+    )}
+
+    {!index.index && !index.isBuilding && (
+      <>
+        <DropdownMenuSeparator />
+        <div className="px-2 py-1.5">
+          <p className="text-muted-foreground text-xs">
+            Only folders you have opened are searchable. Index the account once to search
+            every folder by name or code.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 h-7 w-full text-xs"
+            onClick={(event) => {
+              event.preventDefault()
+              index.build()
+            }}
+          >
+            Index all folders
+          </Button>
+        </div>
+      </>
+    )}
   </>
 )
+
+/** Progress and staleness for the saved index, shown under the search box. */
+const IndexStatus: React.FC<{ index: ReturnType<typeof useSproutFolderIndex> }> = ({
+  index
+}) => {
+  if (index.isBuilding) {
+    return (
+      <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+        <span className="text-muted-foreground text-xs">
+          Indexing… {index.progress?.folders ?? 0} folders found
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 text-xs"
+          onClick={(event) => {
+            event.preventDefault()
+            index.cancel()
+          }}
+        >
+          Cancel
+        </Button>
+      </div>
+    )
+  }
+
+  if (!index.index) return null
+
+  return (
+    <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+      <span className="text-muted-foreground text-xs">
+        {index.folders.length} folders indexed
+        {index.ageInDays === 0
+          ? ' today'
+          : index.ageInDays !== null
+            ? ` ${index.ageInDays}d ago`
+            : ''}
+        {index.isStale ? ' — may be out of date' : ''}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-6 text-xs"
+        onClick={(event) => {
+          event.preventDefault()
+          index.build()
+        }}
+      >
+        Re-index
+      </Button>
+    </div>
+  )
+}
+
+/** Back / breadcrumb / select for the level currently drilled into. */
+const LevelHeader: React.FC<{
+  current: SelectedSproutFolder
+  isSelected: boolean
+  onBack: () => void
+  onUseThisFolder: () => void
+}> = ({ current, isSelected, onBack, onUseThisFolder }) => (
+  <>
+    {/* Drilling keeps the menu open, so this must not auto-close. */}
+    <DropdownMenuItem
+      onSelect={(event) => {
+        event.preventDefault()
+        onBack()
+      }}
+    >
+      <ChevronLeft className="text-muted-foreground shrink-0" />
+      Back
+    </DropdownMenuItem>
+    <DropdownMenuLabel
+      className="text-muted-foreground text-xs font-normal"
+      title={current.path}
+    >
+      <span className="block truncate">{current.path}</span>
+    </DropdownMenuLabel>
+    <DropdownMenuItem onSelect={onUseThisFolder}>
+      <FolderOpen className="text-muted-foreground shrink-0" />
+      Use this folder
+      {isSelected && <Check className="ml-auto h-3.5 w-3.5" />}
+    </DropdownMenuItem>
+    <DropdownMenuSeparator />
+  </>
+)
+
+/** Recently used folders and the Root option, shown at the top level. */
+const RootHeader: React.FC<{
+  recentFolders: SelectedSproutFolder[]
+  selectedId: string | null
+  isRootSelected: boolean
+  onSelect: (folder: SelectedSproutFolder | null) => void
+}> = ({ recentFolders, selectedId, isRootSelected, onSelect }) => (
+  <>
+    {recentFolders.length > 0 && (
+      <>
+        <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+          Recent
+        </DropdownMenuLabel>
+        {recentFolders.map((folder) => (
+          <DropdownMenuItem key={`recent-${folder.id}`} onSelect={() => onSelect(folder)}>
+            <Folder className="text-muted-foreground shrink-0" />
+            <span className="truncate" title={folder.path}>
+              {folder.path}
+            </span>
+            {selectedId === folder.id && (
+              <Check className="ml-auto h-3.5 w-3.5 shrink-0" />
+            )}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+      </>
+    )}
+
+    <DropdownMenuItem onSelect={() => onSelect(null)}>
+      <FolderOpen className="text-muted-foreground shrink-0" />
+      Root (no folder)
+      {isRootSelected && <Check className="ml-auto h-3.5 w-3.5 shrink-0" />}
+    </DropdownMenuItem>
+  </>
+)
+
+/** The current level's folders, plus its loading, error and empty states. */
+const LevelBody: React.FC<{
+  level: ReturnType<typeof useSproutFolders>
+  selectedId: string | null
+  onDrillInto: (folder: SproutFolder) => void
+}> = ({ level, selectedId, onDrillInto }) => {
+  const children = level.data?.folders ?? []
+
+  if (level.isLoading) {
+    return (
+      <div className="space-y-1 p-1" data-testid="folder-level-loading">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-6 w-40" />
+      </div>
+    )
+  }
+
+  if (level.isError) {
+    return (
+      <div className="px-2 py-1.5">
+        <p className="text-destructive flex items-start gap-1.5 text-xs">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{String(level.error)}</span>
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2 h-7 w-full text-xs"
+          onClick={(event) => {
+            event.preventDefault()
+            void level.refetch()
+          }}
+        >
+          Retry
+        </Button>
+        <p className="text-muted-foreground mt-2 text-xs">
+          You can still upload to the root folder.
+        </p>
+      </div>
+    )
+  }
+
+  if (children.length === 0) {
+    return <p className="text-muted-foreground px-2 py-1.5 text-xs">No subfolders</p>
+  }
+
+  return (
+    <>
+      {children.map((folder) => (
+        <DropdownMenuItem
+          key={folder.id}
+          onSelect={(event) => {
+            // Navigating is not choosing, so the menu must stay open.
+            event.preventDefault()
+            onDrillInto(folder)
+          }}
+        >
+          <Folder className="text-muted-foreground shrink-0" />
+          <span className="truncate" title={folder.name}>
+            {folder.name}
+          </span>
+          {selectedId === folder.id && <Check className="ml-2 h-3.5 w-3.5 shrink-0" />}
+          <ChevronRight className="ml-auto h-4 w-4 shrink-0 opacity-60" />
+        </DropdownMenuItem>
+      ))}
+
+      {level.data?.truncated && (
+        <p className="text-muted-foreground border-t px-2 py-1.5 text-xs">
+          Showing the first {children.length}
+          {level.data.total ? ` of ${level.data.total}` : ''} folders
+        </p>
+      )}
+    </>
+  )
+}
 
 export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
   apiKey,
@@ -170,12 +387,19 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
   })
 
   const loadedFolders = useLoadedFolderIndex(apiKey, filter.trim())
+  const index = useSproutFolderIndex(apiKey)
 
-  const matches = useMemo(() => {
-    const query = filter.trim().toLowerCase()
-    if (!query) return []
-    return loadedFolders.filter((folder) => folder.path.toLowerCase().includes(query))
-  }, [filter, loadedFolders])
+  // Union of the saved index and this session's cache. The index reaches folders
+  // never opened; the cache may hold levels newer than the index. Neither costs
+  // a request. The cache wins on id collisions since it is fresher.
+  const searchable = useMemo(() => {
+    const byId = new Map<string, SelectedSproutFolder>()
+    for (const folder of index.folders) byId.set(folder.id, folder)
+    for (const folder of loadedFolders) byId.set(folder.id, folder)
+    return [...byId.values()].sort((a, b) => a.path.localeCompare(b.path))
+  }, [index.folders, loadedFolders])
+
+  const matches = useMemo(() => matchFolders(searchable, filter), [searchable, filter])
 
   const close = (open: boolean) => {
     setIsOpen(open)
@@ -199,7 +423,6 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
   const goBack = () => setTrail(trail.slice(0, -1))
 
   const label = value ? `Folder: ${value.path}` : 'Folder: Root (no folder)'
-  const children = level.data?.folders ?? []
 
   if (!apiKey) {
     return (
@@ -237,9 +460,9 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
         <div className="flex items-center gap-2 px-2 py-1.5">
           <Search className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
           <input
-            aria-label="Filter loaded folders"
+            aria-label="Search folders"
             className="placeholder:text-muted-foreground w-full bg-transparent text-sm outline-hidden"
-            placeholder="Filter loaded folders…"
+            placeholder="Search folders by name or code…"
             value={filter}
             autoFocus
             onChange={(event) => setFilter(event.target.value)}
@@ -258,131 +481,38 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
         </div>
         <DropdownMenuSeparator />
 
+        <IndexStatus index={index} />
+
         {filter.trim() ? (
-          <FilterResults
+          <SearchResults
             matches={matches}
-            loadedCount={loadedFolders.length}
+            searchedCount={searchable.length}
             onSelect={select}
+            index={index}
           />
         ) : (
           <>
             {current ? (
-              <>
-                {/* Drilling keeps the menu open, so these must not auto-close. */}
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault()
-                    goBack()
-                  }}
-                >
-                  <ChevronLeft className="text-muted-foreground shrink-0" />
-                  Back
-                </DropdownMenuItem>
-                <DropdownMenuLabel
-                  className="text-muted-foreground text-xs font-normal"
-                  title={current.path}
-                >
-                  <span className="block truncate">{current.path}</span>
-                </DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => select(current)}>
-                  <FolderOpen className="text-muted-foreground shrink-0" />
-                  Use this folder
-                  {value?.id === current.id && <Check className="ml-auto h-3.5 w-3.5" />}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
+              <LevelHeader
+                current={current}
+                isSelected={value?.id === current.id}
+                onBack={goBack}
+                onUseThisFolder={() => select(current)}
+              />
             ) : (
-              <>
-                {recentFolders.length > 0 && (
-                  <>
-                    <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
-                      Recent
-                    </DropdownMenuLabel>
-                    {recentFolders.map((folder) => (
-                      <DropdownMenuItem
-                        key={`recent-${folder.id}`}
-                        onSelect={() => select(folder)}
-                      >
-                        <Folder className="text-muted-foreground shrink-0" />
-                        <span className="truncate" title={folder.path}>
-                          {folder.path}
-                        </span>
-                        {value?.id === folder.id && (
-                          <Check className="ml-auto h-3.5 w-3.5 shrink-0" />
-                        )}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-
-                <DropdownMenuItem onSelect={() => select(null)}>
-                  <FolderOpen className="text-muted-foreground shrink-0" />
-                  Root (no folder)
-                  {value === null && <Check className="ml-auto h-3.5 w-3.5 shrink-0" />}
-                </DropdownMenuItem>
-              </>
+              <RootHeader
+                recentFolders={recentFolders}
+                selectedId={value?.id ?? null}
+                isRootSelected={value === null}
+                onSelect={select}
+              />
             )}
 
-            {level.isLoading && (
-              <div className="space-y-1 p-1" data-testid="folder-level-loading">
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-6 w-40" />
-              </div>
-            )}
-
-            {level.isError && (
-              <div className="px-2 py-1.5">
-                <p className="text-destructive flex items-start gap-1.5 text-xs">
-                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>{String(level.error)}</span>
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 h-7 w-full text-xs"
-                  onClick={(event) => {
-                    event.preventDefault()
-                    void level.refetch()
-                  }}
-                >
-                  Retry
-                </Button>
-                <p className="text-muted-foreground mt-2 text-xs">
-                  You can still upload to the root folder.
-                </p>
-              </div>
-            )}
-
-            {!level.isLoading && !level.isError && children.length === 0 && (
-              <p className="text-muted-foreground px-2 py-1.5 text-xs">No subfolders</p>
-            )}
-
-            {children.map((folder) => (
-              <DropdownMenuItem
-                key={folder.id}
-                onSelect={(event) => {
-                  event.preventDefault()
-                  drillInto(folder)
-                }}
-              >
-                <Folder className="text-muted-foreground shrink-0" />
-                <span className="truncate" title={folder.name}>
-                  {folder.name}
-                </span>
-                {value?.id === folder.id && (
-                  <Check className="ml-2 h-3.5 w-3.5 shrink-0" />
-                )}
-                <ChevronRight className="ml-auto h-4 w-4 shrink-0 opacity-60" />
-              </DropdownMenuItem>
-            ))}
-
-            {level.data?.truncated && (
-              <p className="text-muted-foreground border-t px-2 py-1.5 text-xs">
-                Showing the first {children.length}
-                {level.data.total ? ` of ${level.data.total}` : ''} folders
-              </p>
-            )}
+            <LevelBody
+              level={level}
+              selectedId={value?.id ?? null}
+              onDrillInto={drillInto}
+            />
           </>
         )}
       </DropdownMenuContent>

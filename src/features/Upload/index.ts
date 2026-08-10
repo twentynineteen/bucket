@@ -33,6 +33,8 @@ export { usePosterFrameForUpload } from './hooks/usePosterFrameForUpload'
 export { useSproutFolders } from './hooks/useSproutFolders'
 /** Hook resolving the upload destination: session last-used, then default, then root */
 export { useSproutFolderSelection } from './hooks/useSproutFolderSelection'
+/** Hook owning the saved folder index that makes search cover unopened folders */
+export { useSproutFolderIndex } from './hooks/useSproutFolderIndex'
 
 // Types (re-export for consumers)
 /** Sprout Video upload response with video ID, embed code, and status */

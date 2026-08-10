@@ -8,8 +8,15 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import type { Event } from '@tauri-apps/api/event'
 import { open } from '@tauri-apps/plugin-dialog'
-import { exists, readDir, readFile, writeFile } from '@tauri-apps/plugin-fs'
-import { fontDir } from '@tauri-apps/api/path'
+import {
+  exists,
+  readDir,
+  readFile,
+  readTextFile,
+  writeFile,
+  writeTextFile
+} from '@tauri-apps/plugin-fs'
+import { appDataDir, fontDir } from '@tauri-apps/api/path'
 
 import { isRateLimited } from '@shared/lib'
 import type {
@@ -208,4 +215,35 @@ export async function fileExists(path: string): Promise<boolean> {
 export async function posterFrameFontAvailable(): Promise<boolean> {
   const dir = await fontDir()
   return exists(`${dir}/Cabrito.otf`)
+}
+
+// --- Saved folder index (issue #155, search) ---
+
+/** File holding the crawled folder index. Rebuildable cache, not user data. */
+const FOLDER_INDEX_FILE = 'sprout-folder-index.json'
+
+async function folderIndexPath(): Promise<string> {
+  return `${await appDataDir()}${FOLDER_INDEX_FILE}`
+}
+
+/**
+ * Reads the saved folder index, or null when there is none.
+ *
+ * Never throws: a missing or corrupt index must fall back to "not indexed yet"
+ * rather than break the picker, since the index is only ever a cache.
+ */
+export async function readFolderIndex(): Promise<unknown | null> {
+  try {
+    const path = await folderIndexPath()
+    if (!(await exists(path))) return null
+    return JSON.parse(await readTextFile(path))
+  } catch {
+    return null
+  }
+}
+
+/** Writes the folder index. Rejects so the caller can report a failed save. */
+export async function writeFolderIndex(index: unknown): Promise<void> {
+  const path = await folderIndexPath()
+  await writeTextFile(path, JSON.stringify(index))
 }

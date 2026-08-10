@@ -12,11 +12,16 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../api', () => ({ getFolders: vi.fn() }))
+vi.mock('../api', () => ({
+  getFolders: vi.fn(),
+  readFolderIndex: vi.fn().mockResolvedValue(null),
+  writeFolderIndex: vi.fn().mockResolvedValue(undefined)
+}))
 
 import { queryKeys } from '@shared/lib'
 
-import { getFolders } from '../api'
+import { getFolders, readFolderIndex } from '../api'
+import { accountFingerprint } from '../internal/folderIndex'
 import type { SelectedSproutFolder } from '../types'
 import { SproutFolderPicker } from './SproutFolderPicker'
 
@@ -145,7 +150,7 @@ describe('Radix regressions', () => {
     renderPicker()
 
     await user.click(screen.getByRole('button'))
-    const input = await screen.findByLabelText('Filter loaded folders')
+    const input = await screen.findByLabelText('Search folders')
 
     await user.type(input, 'mark')
 
@@ -242,11 +247,58 @@ describe('filtering searches what has been loaded', () => {
       )
     })
 
-    await user.type(await screen.findByLabelText('Filter loaded folders'), 'q2')
+    await user.type(await screen.findByLabelText('Search folders'), 'q2')
 
     // Rendered with its breadcrumb, so two folders of the same leaf name are
     // distinguishable.
     expect(await screen.findByText('Marketing / Q2 Campaign')).toBeInTheDocument()
+  })
+})
+
+describe('searching the saved index', () => {
+  it('finds a module code in a folder that was never opened', async () => {
+    // The whole point of the index: Sprout has no folder search endpoint, so
+    // without a saved crawl a folder the user has not clicked into is invisible.
+    const user = userEvent.setup()
+    vi.mocked(readFolderIndex).mockResolvedValue({
+      version: 1,
+      account: accountFingerprint('key-1'),
+      indexedAt: new Date().toISOString(),
+      partial: false,
+      folders: [
+        { id: 'p1', name: 'Postgraduate', parent_id: null },
+        { id: 'm1', name: 'IB9X7', parent_id: 'p1' },
+        { id: 'y1', name: '2026', parent_id: 'm1' }
+      ]
+    })
+
+    renderPicker()
+    await user.click(screen.getByRole('button'))
+    await user.type(await screen.findByLabelText('Search folders'), 'IB9X7')
+
+    // Full breadcrumb, so the programme and the year are both confirmable.
+    expect(await screen.findByText('Postgraduate / IB9X7 / 2026')).toBeInTheDocument()
+    expect(getFolders).not.toHaveBeenCalledWith('key-1', 'm1')
+  })
+
+  it('searching an indexed account issues no requests', async () => {
+    const user = userEvent.setup()
+    vi.mocked(readFolderIndex).mockResolvedValue({
+      version: 1,
+      account: accountFingerprint('key-1'),
+      indexedAt: new Date().toISOString(),
+      partial: false,
+      folders: [{ id: 'm1', name: 'IB9X7', parent_id: null }]
+    })
+
+    renderPicker()
+    await user.click(screen.getByRole('button'))
+    const before = vi.mocked(getFolders).mock.calls.length
+
+    await user.type(await screen.findByLabelText('Search folders'), 'IB9')
+    await screen.findByText('IB9X7')
+
+    expect(vi.mocked(getFolders).mock.calls.length).toBe(before)
   })
 })
 
@@ -258,20 +310,24 @@ describe('filtering is zero-request', () => {
     await user.click(screen.getByRole('button'))
     const callsAfterOpen = vi.mocked(getFolders).mock.calls.length
 
-    await user.type(await screen.findByLabelText('Filter loaded folders'), 'zzz')
+    await user.type(await screen.findByLabelText('Search folders'), 'zzz')
 
     // Filtering only ever searches what is already cached (#155 R1).
     expect(vi.mocked(getFolders).mock.calls.length).toBe(callsAfterOpen)
   })
 
-  it('explains that filtering only covers folders already opened', async () => {
+  it('offers to index the account when nothing matches and there is no index', async () => {
+    // Without an index, search can only see levels opened this session -- so the
+    // empty state has to explain that and offer the one-off crawl, rather than
+    // implying the folder does not exist.
     const user = userEvent.setup()
     renderPicker()
 
     await user.click(screen.getByRole('button'))
-    await user.type(await screen.findByLabelText('Filter loaded folders'), 'zzzz')
+    await user.type(await screen.findByLabelText('Search folders'), 'zzzz')
 
-    expect(await screen.findByText(/never fetches/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Only folders you have opened/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Index all folders/i })).toBeInTheDocument()
   })
 })
 

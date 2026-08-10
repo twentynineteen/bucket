@@ -128,8 +128,17 @@ export async function setupSproutMocks(
       if (cmd === 'get_version') return '0.0.0-e2e'
 
       // Settings live in api_keys.json, read through the fs plugin.
-      if (cmd === 'plugin:fs|exists') return true
-      if (cmd === 'plugin:fs|read_text_file') return apiKeysBytes
+      if (cmd === 'plugin:fs|exists') {
+        const path = String((payload.path as string) ?? '')
+        // No saved index at start, so tests exercise building one.
+        return !path.includes('sprout-folder-index')
+      }
+      if (cmd === 'plugin:fs|read_text_file') {
+        // The folder index lives in its own file; only api_keys.json is seeded.
+        const path = String((payload.path as string) ?? '')
+        if (path.includes('sprout-folder-index')) throw 'not found'
+        return apiKeysBytes
+      }
       if (cmd === 'plugin:fs|write_text_file') return null
       if (cmd === 'plugin:fs|read_dir') return []
 
