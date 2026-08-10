@@ -25,6 +25,46 @@ export interface SproutFolderIndexPanelProps {
   apiKey: string | null
 }
 
+/** Index / Export / Import, kept out of the panel body for readability. */
+const IndexActions: React.FC<{ index: ReturnType<typeof useSproutFolderIndex> }> = ({
+  index
+}) => (
+  <div className="flex flex-wrap gap-2">
+    <Button variant="outline" size="sm" onClick={index.build}>
+      <FolderSearch className="mr-2 h-4 w-4" />
+      {index.index ? 'Re-index folders' : 'Index folders now'}
+    </Button>
+
+    {/* Sharing turns a multi-minute crawl into a single request for everyone
+        else on the team. */}
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={index.exportIndex}
+      disabled={!index.index || index.isTransferring}
+      title={
+        index.index
+          ? 'Save the index to a file to share with your team'
+          : 'Index folders first'
+      }
+    >
+      <Download className="mr-2 h-4 w-4" />
+      Export
+    </Button>
+
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={index.importIndex}
+      disabled={index.isTransferring}
+      title="Load an index a colleague exported"
+    >
+      <UploadIcon className="mr-2 h-4 w-4" />
+      Import
+    </Button>
+  </div>
+)
+
 export const SproutFolderIndexPanel: React.FC<SproutFolderIndexPanelProps> = ({
   apiKey
 }) => {
@@ -85,40 +125,7 @@ export const SproutFolderIndexPanel: React.FC<SproutFolderIndexPanelProps> = ({
             )}
           </p>
 
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={index.build}>
-              <FolderSearch className="mr-2 h-4 w-4" />
-              {index.index ? 'Re-index folders' : 'Index folders now'}
-            </Button>
-
-            {/* Sharing turns a multi-minute crawl into a single request for
-                everyone else on the team. */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={index.exportIndex}
-              disabled={!index.index || index.isTransferring}
-              title={
-                index.index
-                  ? 'Save the index to a file to share with your team'
-                  : 'Index folders first'
-              }
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={index.importIndex}
-              disabled={index.isTransferring}
-              title="Load an index a colleague exported"
-            >
-              <UploadIcon className="mr-2 h-4 w-4" />
-              Import
-            </Button>
-          </div>
+          <IndexActions index={index} />
 
           <p className="text-muted-foreground text-xs">
             Indexing takes a few minutes on a large account. Export it and a colleague can

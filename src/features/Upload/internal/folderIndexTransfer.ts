@@ -21,7 +21,8 @@
  */
 import type { SproutFolder } from '@shared/types'
 
-import { FOLDER_INDEX_VERSION } from './folderIndex'
+import type { FolderIndex } from './folderIndex'
+import { FOLDER_INDEX_VERSION, accountFingerprint } from './folderIndex'
 
 export interface ImportedIndex {
   folders: SproutFolder[]
@@ -111,6 +112,60 @@ export function describeVerdict(verdict: ImportVerdict, folderCount: number): st
     return `Imported ${folderCount} folders. This account has no top-level folders to check against, so the index could not be verified.`
   }
   return `Imported ${folderCount} folders.`
+}
+
+/**
+ * Combines an imported index with the local one.
+ *
+ * Deliberately **not** `mergeFolderIndex`. That treats a complete crawl as
+ * grounds to replace wholesale, which is right for a crawl this machine just
+ * ran -- it observed the account as it is now. An import is different evidence:
+ * complete as of *someone else's machine*, at *some earlier time*. Replacing on
+ * that would delete folders discovered locally since they exported, so an import
+ * only ever adds.
+ *
+ * Deduplication is by folder **id**, which is what Sprout keys folders on. A
+ * folder both people already have therefore appears once, not twice. Two folders
+ * that merely share a name are genuinely distinct on Sprout and both survive.
+ *
+ * On an id collision the record from the **newer** source wins, so a stale
+ * export cannot revert a rename that the other side already knows about.
+ */
+export function mergeImportedIndex(
+  existing: FolderIndex | null,
+  imported: ImportedIndex,
+  apiKey: string,
+  now: string
+): FolderIndex {
+  const importedIsNewer = isNewer(imported.indexedAt, existing?.indexedAt ?? null)
+
+  const byId = new Map<string, SproutFolder>()
+  // The loser goes in first so the winner overwrites it.
+  const [first, second] = importedIsNewer
+    ? [existing?.folders ?? [], imported.folders]
+    : [imported.folders, existing?.folders ?? []]
+
+  for (const folder of first) byId.set(folder.id, folder)
+  for (const folder of second) byId.set(folder.id, folder)
+
+  return {
+    version: FOLDER_INDEX_VERSION,
+    account: accountFingerprint(apiKey),
+    indexedAt: now,
+    // A complete import still leaves a complete picture -- the union is a
+    // superset of it -- but it is reached by adding, never by deleting.
+    partial: imported.partial,
+    folders: [...byId.values()]
+  }
+}
+
+/** True when `a` is a later timestamp than `b`; unknown dates lose. */
+function isNewer(a: string | null, b: string | null): boolean {
+  const left = a ? Date.parse(a) : Number.NaN
+  const right = b ? Date.parse(b) : Number.NaN
+  if (Number.isNaN(left)) return false
+  if (Number.isNaN(right)) return true
+  return left > right
 }
 
 /** Suggested filename for an export, dated so versions are distinguishable. */

@@ -36,6 +36,7 @@ import {
   assessImport,
   describeVerdict,
   exportFileName,
+  mergeImportedIndex,
   parseImportedIndex
 } from '../internal/folderIndexTransfer'
 import { remainingBudget } from '../internal/sproutRateBudget'
@@ -196,11 +197,12 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
       if (!verdict.ok) throw new Error(describeVerdict(verdict, 0))
 
       const existing = parseFolderIndex(await readFolderIndex(), apiKey)
-      // Re-tagged with this machine's fingerprint, so it loads normally hereafter.
-      const merged = mergeFolderIndex(
+      // An import only ever adds -- see mergeImportedIndex for why it must not
+      // reuse the crawl's replace-on-complete rule. Re-tagged with this
+      // machine's fingerprint so it loads normally hereafter.
+      const merged = mergeImportedIndex(
         existing,
-        imported.folders,
-        !imported.partial,
+        imported,
         apiKey,
         new Date().toISOString()
       )
