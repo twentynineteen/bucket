@@ -3,6 +3,7 @@
  * Handles card selection state, fetching details, and validation
  */
 
+import { queryKeys } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
@@ -29,7 +30,7 @@ export function useTrelloCardSelection(apiKey: string | null, token: string | nu
 
   // Auto-sync card details when selection changes
   useQuery({
-    queryKey: ['cardDetailsSync', selectedCard?.id, apiKey, token],
+    queryKey: queryKeys.trello.cardDetailsSync(selectedCard?.id, apiKey, token),
     queryFn: async () => {
       if (selectedCard && selectedCard.id && apiKey && token) {
         refetchCard()

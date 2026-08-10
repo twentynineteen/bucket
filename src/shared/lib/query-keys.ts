@@ -1,3 +1,4 @@
+import { fingerprint } from './fingerprint'
 import type { QueryKey } from './query-utils'
 
 export const queryKeys = {
@@ -32,7 +33,23 @@ export const queryKeys = {
     card: (cardId: string) => ['trello', 'card', cardId] as const,
     lists: (boardId: string) => ['trello', 'lists', boardId] as const,
     integration: (projectId: string | number) =>
-      ['trello', 'integration', projectId] as const
+      ['trello', 'integration', projectId] as const,
+    // Credentials are fingerprinted, never embedded (issue #158). Nullable
+    // args are accepted because hooks build keys while creds are still loading.
+    cardDetailsSync: (
+      cardId: string | null | undefined,
+      apiKey: string | null | undefined,
+      token: string | null | undefined
+    ) =>
+      [
+        'trello',
+        'card-details-sync',
+        cardId ?? '',
+        fingerprint(apiKey ?? ''),
+        fingerprint(token ?? '')
+      ] as const,
+    me: (apiKey: string | null | undefined) =>
+      ['trello', 'me', fingerprint(apiKey ?? '')] as const
   },
 
   // User domain
@@ -55,13 +72,14 @@ export const queryKeys = {
   },
 
   // Sprout domain
+  // Credentials are fingerprinted, never embedded (issue #158)
   sprout: {
     all: ['sprout'] as const,
     folders: (apiKey: string, parentId: string | null) =>
-      ['sprout', 'folders', apiKey, parentId || 'root'] as const,
-    videos: (apiKey: string) => ['sprout', 'videos', apiKey] as const,
+      ['sprout', 'folders', fingerprint(apiKey), parentId || 'root'] as const,
+    videos: (apiKey: string) => ['sprout', 'videos', fingerprint(apiKey)] as const,
     video: (apiKey: string, videoId: string) =>
-      ['sprout', 'video', apiKey, videoId] as const
+      ['sprout', 'video', fingerprint(apiKey), videoId] as const
   },
 
   // Upload domain
