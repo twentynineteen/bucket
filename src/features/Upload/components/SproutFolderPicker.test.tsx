@@ -163,8 +163,52 @@ describe('Radix regressions', () => {
     await user.click(screen.getByRole('button'))
     const menu = await screen.findByRole('menu')
 
-    expect(menu.className).toMatch(/max-h-\[300px\]/)
+    expect(menu.className).toMatch(/max-h-\[320px\]/)
     expect(menu.className).toMatch(/overflow-y-auto/)
+  })
+})
+
+describe('drill-down navigation', () => {
+  it('opens a folder in place instead of a flyout, and does not select it', async () => {
+    // Flyout submenus need horizontal room per level; at trigger width they ran
+    // off the window by the second or third level and the names were unreadable.
+    // Drilling keeps one panel, so depth cannot cause a collision.
+    const user = userEvent.setup()
+    const { onChange } = renderPicker()
+
+    await user.click(screen.getByRole('button'))
+    await user.click(await screen.findByText('Marketing'))
+
+    // Navigating is not choosing: the menu stays open and nothing is selected.
+    expect(onChange).not.toHaveBeenCalled()
+    expect(await screen.findByText('Use this folder')).toBeInTheDocument()
+    expect(screen.getByText('Back')).toBeInTheDocument()
+  })
+
+  it('selects the folder drilled into via Use this folder', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderPicker()
+
+    await user.click(screen.getByRole('button'))
+    await user.click(await screen.findByText('Marketing'))
+    await user.click(await screen.findByText('Use this folder'))
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'f1', name: 'Marketing', path: 'Marketing' })
+    )
+  })
+
+  it('Back returns to the parent level', async () => {
+    const user = userEvent.setup()
+    renderPicker()
+
+    await user.click(screen.getByRole('button'))
+    await user.click(await screen.findByText('Marketing'))
+    await user.click(await screen.findByText('Back'))
+
+    // Root-level options are visible again.
+    expect(await screen.findByText('Root (no folder)')).toBeInTheDocument()
+    expect(screen.queryByText('Use this folder')).not.toBeInTheDocument()
   })
 })
 

@@ -1,23 +1,25 @@
 /**
  * SproutFolderPicker (issue #155)
  *
- * Chooses the Sprout folder an upload lands in. Built on Radix submenus so the
- * keyboard and a11y behaviour is Radix's rather than hand-rolled.
+ * Chooses the Sprout folder an upload lands in.
  *
- * Three details here are load-bearing and look like styling if you skim them:
+ * **One panel, drilled into — not flyout submenus.** Nested Radix submenus need
+ * horizontal room for every level, and each level here is as wide as the trigger
+ * so long folder names stay readable. In a laptop-width window that runs out of
+ * space by the second or third level: Radix flips the submenu to the left, and
+ * when that does not fit either it overflows the window and the names are
+ * unreadable. Drilling into one panel is depth-independent — the width never
+ * changes, so it cannot collide however deep the hierarchy goes.
  *
- * 1. `modal={false}` -- the menu renders inside AddVideoDialog, and a modal
+ * Two details are load-bearing and look cosmetic if you skim them:
+ *
+ * 1. `modal={false}` — the menu renders inside AddVideoDialog, and a modal
  *    dropdown nested in a modal dialog leaves `pointer-events: none` on the body.
- * 2. `max-h` + explicit per-axis overflow on every menu surface -- the base
- *    class sets `overflow-hidden` and Radix menus do not scroll, so a level with
- *    40 folders would be clipped with its tail unreachable. That would defeat
- *    the backend pagination fix entirely.
- * 3. The filter input stops its own keydown from bubbling -- Radix fires
- *    typeahead for any single character typed anywhere inside menu content, and
- *    typeahead moves DOM focus onto a menu item. Without this the box accepts
- *    exactly one character and then goes dead.
+ * 2. The filter input stops its own keydown from bubbling. Radix fires typeahead
+ *    for any single character typed anywhere inside menu content and moves DOM
+ *    focus onto the matching item, so without this the box takes exactly one
+ *    character and then goes dead.
  */
-import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@shared/lib'
 import type { GetFoldersResponse, SproutFolder } from '@shared/types'
 import { Button, buttonVariants } from '@shared/ui/button'
@@ -27,35 +29,35 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@shared/ui/dropdown-menu'
 import { Skeleton } from '@shared/ui/skeleton'
-import { AlertCircle, Check, ChevronDown, Folder, FolderOpen, Search } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Folder,
+  FolderOpen,
+  Search
+} from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 
 import { useSproutFolders } from '../hooks/useSproutFolders'
 import type { SelectedSproutFolder } from '../types'
 
-/** Shared by every menu surface. See note 2 in the file header. */
-const MENU_SCROLL = 'max-h-[300px] overflow-x-hidden overflow-y-auto'
-
 /**
- * The root menu matches its trigger's width rather than a fixed size.
- *
- * Search results are labelled with a full breadcrumb (`2026 Projects / MSc /
- * Module X`), which a narrow menu truncates to uselessness. The trigger is
- * full-width in both entry points, so borrowing its width uses the space the
- * layout already provides -- wide on the upload page, narrower inside
- * AddVideoDialog, correct in both without a magic number.
+ * The menu matches its trigger's width. Search results carry a full breadcrumb
+ * (`2026 Projects / MSc / Module X`), which a narrow menu truncates to
+ * uselessness. Safe to be this wide precisely because there are no submenus.
  */
 const MENU_WIDTH =
   'w-[var(--radix-dropdown-menu-trigger-width)] min-w-[20rem] max-w-[min(92vw,44rem)]'
 
-/** Submenus float beside their parent, so they size to content within bounds. */
-const SUBMENU_WIDTH = 'min-w-[14rem] max-w-[min(80vw,30rem)]'
+/** Radix menus do not scroll, and the base class is `overflow-hidden`. */
+const MENU_SCROLL = 'max-h-[320px] overflow-x-hidden overflow-y-auto'
 
 export interface SproutFolderPickerProps {
   /** Sprout API key. Without one the picker is disabled with an explanation. */
@@ -70,16 +72,7 @@ export interface SproutFolderPickerProps {
   disabled?: boolean
 }
 
-/**
- * Flattens every folder level currently in the query cache, with its path.
- *
- * Keyed on `filterKey` -- the live filter text -- rather than on `queryClient`,
- * which is referentially stable. Memoising on the client alone computed the
- * index once at mount, when the cache is still empty, and never again: search
- * silently matched nothing however many levels the user opened. Recomputing as
- * the filter text changes refreshes it at exactly the moment it is read, and
- * still costs no API requests.
- */
+/** Flattens every folder level currently in the query cache, with its path. */
 function useLoadedFolderIndex(apiKey: string | null, filterKey: string) {
   const queryClient = useQueryClient()
 
@@ -120,105 +113,6 @@ function useLoadedFolderIndex(apiKey: string | null, filterKey: string) {
   }, [apiKey, filterKey, queryClient])
 }
 
-interface FolderSubmenuProps {
-  apiKey: string
-  folder: SproutFolder
-  path: string
-  selectedId: string | null
-  onSelect: (folder: SelectedSproutFolder) => void
-}
-
-/** One folder as a submenu: pick it, or open it to reach its children. */
-const FolderSubmenu: React.FC<FolderSubmenuProps> = ({
-  apiKey,
-  folder,
-  path,
-  selectedId,
-  onSelect
-}) => {
-  const [isOpen, setIsOpen] = useState(false)
-  const { data, isLoading, isError, error, refetch } = useSproutFolders({
-    apiKey,
-    parentId: folder.id,
-    isOpen
-  })
-
-  const children = data?.folders ?? []
-
-  return (
-    <DropdownMenuSub open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuSubTrigger>
-        <Folder className="shrink-0 text-muted-foreground" />
-        <span className="truncate" title={folder.name}>
-          {folder.name}
-        </span>
-        {selectedId === folder.id && <Check className="ml-2 h-3.5 w-3.5 shrink-0" />}
-      </DropdownMenuSubTrigger>
-
-      <DropdownMenuSubContent className={`${SUBMENU_WIDTH} ${MENU_SCROLL}`}>
-        {/* Selecting is a distinct action from opening -- the ambiguity in the
-            old FolderTreeSprout was that one click did both. */}
-        <DropdownMenuItem
-          onSelect={() => onSelect({ id: folder.id, name: folder.name, path })}
-        >
-          <FolderOpen className="text-muted-foreground" />
-          Use this folder
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-
-        {isLoading && (
-          <div className="space-y-1 p-1" data-testid="folder-level-loading">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-6 w-32" />
-          </div>
-        )}
-
-        {isError && (
-          <div className="px-2 py-1.5">
-            <p className="text-destructive flex items-start gap-1.5 text-xs">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>{String(error)}</span>
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2 h-7 w-full text-xs"
-              onClick={(event) => {
-                event.preventDefault()
-                void refetch()
-              }}
-            >
-              Retry
-            </Button>
-          </div>
-        )}
-
-        {!isLoading && !isError && children.length === 0 && (
-          <p className="text-muted-foreground px-2 py-1.5 text-xs">No subfolders</p>
-        )}
-
-        {children.map((child) => (
-          <FolderSubmenu
-            key={child.id}
-            apiKey={apiKey}
-            folder={child}
-            path={`${path} / ${child.name}`}
-            selectedId={selectedId}
-            onSelect={onSelect}
-          />
-        ))}
-
-        {data?.truncated && (
-          <p className="text-muted-foreground border-t px-2 py-1.5 text-xs">
-            Showing the first {children.length}
-            {data.total ? ` of ${data.total}` : ''} folders
-          </p>
-        )}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-  )
-}
-
 interface FilterResultsProps {
   matches: SelectedSproutFolder[]
   loadedCount: number
@@ -243,7 +137,7 @@ const FilterResults: React.FC<FilterResultsProps> = ({
     )}
     {matches.map((folder) => (
       <DropdownMenuItem key={folder.id} onSelect={() => onSelect(folder)}>
-        <Folder className="shrink-0 text-muted-foreground" />
+        <Folder className="text-muted-foreground shrink-0" />
         <span className="truncate" title={folder.path}>
           {folder.path}
         </span>
@@ -261,8 +155,20 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [filter, setFilter] = useState('')
+  /** Folders drilled into, outermost first. Empty means the account root. */
+  const [trail, setTrail] = useState<SelectedSproutFolder[]>([])
 
-  const rootLevel = useSproutFolders({ apiKey, parentId: null, isOpen })
+  const current = trail.length > 0 ? trail[trail.length - 1] : null
+
+  // Fetched on an explicit click (opening the menu, or drilling in), so no dwell
+  // gate is needed -- nothing here fetches on hover at all.
+  const level = useSproutFolders({
+    apiKey,
+    parentId: current?.id ?? null,
+    isOpen,
+    immediate: true
+  })
+
   const loadedFolders = useLoadedFolderIndex(apiKey, filter.trim())
 
   const matches = useMemo(() => {
@@ -271,13 +177,29 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
     return loadedFolders.filter((folder) => folder.path.toLowerCase().includes(query))
   }, [filter, loadedFolders])
 
-  const select = (folder: SelectedSproutFolder | null) => {
-    onChange(folder)
-    setFilter('')
-    setIsOpen(false)
+  const close = (open: boolean) => {
+    setIsOpen(open)
+    if (!open) {
+      // Start from the root next time rather than mid-hierarchy.
+      setTrail([])
+      setFilter('')
+    }
   }
 
+  const select = (folder: SelectedSproutFolder | null) => {
+    onChange(folder)
+    close(false)
+  }
+
+  const drillInto = (folder: SproutFolder) => {
+    const path = current ? `${current.path} / ${folder.name}` : folder.name
+    setTrail([...trail, { id: folder.id, name: folder.name, path }])
+  }
+
+  const goBack = () => setTrail(trail.slice(0, -1))
+
   const label = value ? `Folder: ${value.path}` : 'Folder: Root (no folder)'
+  const children = level.data?.folders ?? []
 
   if (!apiKey) {
     return (
@@ -294,7 +216,7 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
   }
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
+    <DropdownMenu open={isOpen} onOpenChange={close} modal={false}>
       {/*
         Styled directly rather than `asChild` + <Button>. `@shared/ui/button` is
         a Framer Motion component, and composing a motion element through Radix's
@@ -323,7 +245,7 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
             onChange={(event) => setFilter(event.target.value)}
             onKeyDown={(event) => {
               // Let Radix keep navigation and dismissal; swallow the rest so
-              // typeahead cannot steal focus mid-word. See note 3 in the header.
+              // typeahead cannot steal focus mid-word. See note 2 in the header.
               const navigational =
                 event.key === 'Escape' ||
                 event.key === 'ArrowDown' ||
@@ -344,43 +266,76 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
           />
         ) : (
           <>
-            {recentFolders.length > 0 && (
+            {current ? (
               <>
-                <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
-                  Recent
+                {/* Drilling keeps the menu open, so these must not auto-close. */}
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    goBack()
+                  }}
+                >
+                  <ChevronLeft className="text-muted-foreground shrink-0" />
+                  Back
+                </DropdownMenuItem>
+                <DropdownMenuLabel
+                  className="text-muted-foreground text-xs font-normal"
+                  title={current.path}
+                >
+                  <span className="block truncate">{current.path}</span>
                 </DropdownMenuLabel>
-                {recentFolders.map((folder) => (
-                  <DropdownMenuItem
-                    key={`recent-${folder.id}`}
-                    onSelect={() => select(folder)}
-                  >
-                    <Folder className="text-muted-foreground" />
-                    <span className="truncate">{folder.path}</span>
-                    {value?.id === folder.id && <Check className="ml-auto h-3.5 w-3.5" />}
-                  </DropdownMenuItem>
-                ))}
+                <DropdownMenuItem onSelect={() => select(current)}>
+                  <FolderOpen className="text-muted-foreground shrink-0" />
+                  Use this folder
+                  {value?.id === current.id && <Check className="ml-auto h-3.5 w-3.5" />}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
+              </>
+            ) : (
+              <>
+                {recentFolders.length > 0 && (
+                  <>
+                    <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+                      Recent
+                    </DropdownMenuLabel>
+                    {recentFolders.map((folder) => (
+                      <DropdownMenuItem
+                        key={`recent-${folder.id}`}
+                        onSelect={() => select(folder)}
+                      >
+                        <Folder className="text-muted-foreground shrink-0" />
+                        <span className="truncate" title={folder.path}>
+                          {folder.path}
+                        </span>
+                        {value?.id === folder.id && (
+                          <Check className="ml-auto h-3.5 w-3.5 shrink-0" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+
+                <DropdownMenuItem onSelect={() => select(null)}>
+                  <FolderOpen className="text-muted-foreground shrink-0" />
+                  Root (no folder)
+                  {value === null && <Check className="ml-auto h-3.5 w-3.5 shrink-0" />}
+                </DropdownMenuItem>
               </>
             )}
 
-            <DropdownMenuItem onSelect={() => select(null)}>
-              <FolderOpen className="text-muted-foreground" />
-              Root (no folder)
-              {value === null && <Check className="ml-auto h-3.5 w-3.5" />}
-            </DropdownMenuItem>
-
-            {rootLevel.isLoading && (
-              <div className="space-y-1 p-1" data-testid="folder-root-loading">
+            {level.isLoading && (
+              <div className="space-y-1 p-1" data-testid="folder-level-loading">
                 <Skeleton className="h-6 w-48" />
                 <Skeleton className="h-6 w-40" />
               </div>
             )}
 
-            {rootLevel.isError && (
+            {level.isError && (
               <div className="px-2 py-1.5">
                 <p className="text-destructive flex items-start gap-1.5 text-xs">
                   <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>{String(rootLevel.error)}</span>
+                  <span>{String(level.error)}</span>
                 </p>
                 <Button
                   variant="outline"
@@ -388,7 +343,7 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
                   className="mt-2 h-7 w-full text-xs"
                   onClick={(event) => {
                     event.preventDefault()
-                    void rootLevel.refetch()
+                    void level.refetch()
                   }}
                 >
                   Retry
@@ -399,21 +354,33 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
               </div>
             )}
 
-            {(rootLevel.data?.folders ?? []).map((folder) => (
-              <FolderSubmenu
+            {!level.isLoading && !level.isError && children.length === 0 && (
+              <p className="text-muted-foreground px-2 py-1.5 text-xs">No subfolders</p>
+            )}
+
+            {children.map((folder) => (
+              <DropdownMenuItem
                 key={folder.id}
-                apiKey={apiKey}
-                folder={folder}
-                path={folder.name}
-                selectedId={value?.id ?? null}
-                onSelect={select}
-              />
+                onSelect={(event) => {
+                  event.preventDefault()
+                  drillInto(folder)
+                }}
+              >
+                <Folder className="text-muted-foreground shrink-0" />
+                <span className="truncate" title={folder.name}>
+                  {folder.name}
+                </span>
+                {value?.id === folder.id && (
+                  <Check className="ml-2 h-3.5 w-3.5 shrink-0" />
+                )}
+                <ChevronRight className="ml-auto h-4 w-4 shrink-0 opacity-60" />
+              </DropdownMenuItem>
             ))}
 
-            {rootLevel.data?.truncated && (
+            {level.data?.truncated && (
               <p className="text-muted-foreground border-t px-2 py-1.5 text-xs">
-                Showing the first {rootLevel.data.folders.length}
-                {rootLevel.data.total ? ` of ${rootLevel.data.total}` : ''} folders
+                Showing the first {children.length}
+                {level.data.total ? ` of ${level.data.total}` : ''} folders
               </p>
             )}
           </>

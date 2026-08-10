@@ -93,15 +93,19 @@ test.describe('folder picker — rate-limit behaviour in a real browser', () => 
     ).toHaveLength(0)
   })
 
-  test('dwelling on one folder fires exactly one request', async ({ page }) => {
+  test('opening a folder fires exactly one request, for that folder', async ({
+    page
+  }) => {
+    // Levels are fetched on an explicit click now, not on hover, so the request
+    // count per interaction is exactly one and the parent is unambiguous.
     await setupSproutMocks(page, { folders: SAMPLE_TREE })
     const trigger = await openPicker(page)
 
     await openMenu(page, trigger, /Marketing/)
     await resetFolderCalls(page)
 
-    await page.getByRole('menuitem', { name: /Marketing/ }).hover()
-    await page.waitForTimeout(900)
+    await page.getByRole('menuitem', { name: /Marketing/ }).click()
+    await expect(page.getByRole('menuitem', { name: /Use this folder/ })).toBeVisible()
 
     const calls = await folderCalls(page)
     expect(calls).toHaveLength(1)
@@ -154,28 +158,64 @@ test.describe('folder picker — layout the unit tests cannot see', () => {
   test('search results show the full breadcrumb path without clipping', async ({
     page
   }) => {
-    // Reported from manual testing: at a fixed narrow width, a path like
-    // `2026 Projects / MSc Programmes / Module X -- Session Recordings` was
-    // truncated to uselessness. The menu now borrows the trigger's width.
+    // Reported from manual testing: at a fixed narrow width a path like
+    // `2026 Projects / MSc Programmes / Module X` was truncated to uselessness.
+    // The menu now borrows the trigger's width.
     await setupSproutMocks(page, { folders: DEEP_TREE })
     const trigger = await openPicker(page)
     await openMenu(page, trigger, /2026 Projects/)
 
-    // Load the deeper levels so they are in cache and therefore filterable.
-    await page.getByRole('menuitem', { name: /2026 Projects/ }).hover()
-    await expect(page.getByRole('menuitem', { name: /MSc Programmes/ })).toBeVisible()
-    await page.getByRole('menuitem', { name: /MSc Programmes/ }).hover()
+    // Drill down so the deeper levels land in cache and become filterable.
+    await page.getByRole('menuitem', { name: /2026 Projects/ }).click()
+    await page.getByRole('menuitem', { name: /MSc Programmes/ }).click()
     await expect(page.getByRole('menuitem', { name: /Module X/ })).toBeVisible()
 
     await page.getByLabel('Filter loaded folders').click()
     await page.keyboard.type('Module X')
 
-    const hit = page.getByTitle('2026 Projects / MSc Programmes / Module X -- Session Recordings')
+    const hit = page.getByTitle(
+      '2026 Projects / MSc Programmes / Module X -- Session Recordings'
+    )
     await expect(hit).toBeVisible()
 
     // scrollWidth > clientWidth is exactly what CSS truncation looks like.
     const clipped = await hit.evaluate((el) => el.scrollWidth > el.clientWidth + 1)
     expect(clipped, 'the full path must be visible, not ellipsised').toBe(false)
+  })
+
+  test('the menu stays inside the window however deep you drill', async ({ page }) => {
+    // The bug this replaced: flyout submenus need horizontal room per level, so
+    // at trigger width they flipped left and then overflowed the window, leaving
+    // folder names unreadable. One drilled panel cannot drift off-screen.
+    await setupSproutMocks(page, { folders: DEEP_TREE })
+    const trigger = await openPicker(page)
+    await openMenu(page, trigger, /2026 Projects/)
+
+    const viewport = page.viewportSize()!
+    const assertInsideWindow = async (label: string) => {
+      const box = await page.getByRole('menu').boundingBox()
+      expect(box, `${label}: menu must be measurable`).not.toBeNull()
+      expect(box!.x, `${label}: menu ran off the left edge`).toBeGreaterThanOrEqual(0)
+      expect(box!.y, `${label}: menu ran off the top edge`).toBeGreaterThanOrEqual(0)
+      expect(
+        box!.x + box!.width,
+        `${label}: menu ran off the right edge`
+      ).toBeLessThanOrEqual(viewport.width + 1)
+    }
+
+    await assertInsideWindow('root level')
+
+    await page.getByRole('menuitem', { name: /2026 Projects/ }).click()
+    await expect(page.getByRole('menuitem', { name: /MSc Programmes/ })).toBeVisible()
+    await assertInsideWindow('level 2')
+
+    await page.getByRole('menuitem', { name: /MSc Programmes/ }).click()
+    await expect(page.getByRole('menuitem', { name: /Module X/ })).toBeVisible()
+    await assertInsideWindow('level 3')
+
+    // The deepest folder name must be readable, which was the actual complaint.
+    const deepest = page.getByRole('menuitem', { name: /Module X/ })
+    await expect(deepest).toBeInViewport()
   })
 
   test('the trigger reports the current destination without opening', async ({

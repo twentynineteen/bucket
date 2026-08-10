@@ -22,14 +22,26 @@ interface UseSproutFoldersOptions {
   apiKey: string | null
   /** Folder whose children to list. Null lists the account root. */
   parentId: string | null
-  /** Whether this level's submenu is currently open. */
+  /** Whether the panel showing this level is currently open. */
   isOpen: boolean
+  /**
+   * Skip the dwell gate. Set when the fetch is triggered by an explicit click
+   * rather than a hover, which is the case for the drill-down panel: there is
+   * no hover-open, so there is no fan-out to debounce and the delay would only
+   * add latency.
+   */
+  immediate?: boolean
 }
 
-export function useSproutFolders({ apiKey, parentId, isOpen }: UseSproutFoldersOptions) {
-  // Gate on a dwell, not the open event: hovering through a list of folders must
-  // not fetch anything. See useDebouncedFlag for why (R2).
-  const dwelling = useDebouncedFlag(isOpen, DWELL_MS)
+export function useSproutFolders({
+  apiKey,
+  parentId,
+  isOpen,
+  immediate = false
+}: UseSproutFoldersOptions) {
+  // Gate on a dwell unless the caller fetches on an explicit click. Hover-driven
+  // opens must never fan out one request per row (R2).
+  const dwelling = useDebouncedFlag(isOpen, DWELL_MS) || (immediate && isOpen)
 
   return useQuery<GetFoldersResponse>({
     queryKey: queryKeys.sprout.folders(apiKey ?? '', parentId),
