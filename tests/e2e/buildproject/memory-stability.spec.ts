@@ -141,8 +141,8 @@ test.describe('Memory Stability - Long Running Operations', () => {
     await mock.injectMocks()
 
     // Check initial listener count
-    const initialProgressListeners = await mock.getListenerCount('copy_progress')
-    const initialCompleteListeners = await mock.getListenerCount('copy_complete')
+    const initialProgressListeners = await mock.getListenerCount('file-transfer-progress')
+    const initialCompleteListeners = await mock.getListenerCount('file-transfer-complete')
 
     await buildPage.fillProjectDetails('Cleanup Test', 2)
     await buildPage.clickSelectDestination()
@@ -151,8 +151,8 @@ test.describe('Memory Stability - Long Running Operations', () => {
 
     // During operation, listeners should exist
     await page.waitForTimeout(500)
-    const duringProgressListeners = await mock.getListenerCount('copy_progress')
-    const duringCompleteListeners = await mock.getListenerCount('copy_complete')
+    const duringProgressListeners = await mock.getListenerCount('file-transfer-progress')
+    const duringCompleteListeners = await mock.getListenerCount('file-transfer-complete')
 
     // At least one listener should be registered during operation
     expect(duringProgressListeners + duringCompleteListeners).toBeGreaterThan(0)
@@ -166,8 +166,8 @@ test.describe('Memory Stability - Long Running Operations', () => {
     // After completion, listeners should be cleaned up
     // Note: The exact behavior depends on useCopyProgress implementation
     // Some implementations may keep listeners but stop processing
-    const finalProgressListeners = await mock.getListenerCount('copy_progress')
-    const finalCompleteListeners = await mock.getListenerCount('copy_complete')
+    const finalProgressListeners = await mock.getListenerCount('file-transfer-progress')
+    const finalCompleteListeners = await mock.getListenerCount('file-transfer-complete')
 
     console.log('Listener counts:', {
       initial: { progress: initialProgressListeners, complete: initialCompleteListeners },

@@ -3,21 +3,24 @@ name: E2E Tests
 on:
   pull_request:
     paths:
-      - 'src/pages/BuildProject/**'
-      - 'src/hooks/use*Progress*'
-      - 'src/hooks/useCreateProject*'
+      - 'src/features/build-project/**'
+      - 'src/features/BuildProject/**'
       - 'tests/e2e/**'
       - 'playwright.config.ts'
       - '.github/workflows/e2e-tests.yml'
   push:
     branches:
+      - master
       - release
-      - main
     paths:
-      - 'src/pages/BuildProject/**'
-      - 'src/hooks/use*Progress*'
-      - 'src/hooks/useCreateProject*'
+      - 'src/features/build-project/**'
+      - 'src/features/BuildProject/**'
       - 'tests/e2e/**'
+      - 'playwright.config.ts'
+      - '.github/workflows/e2e-tests.yml'
+  # Manual full-suite runs from the Actions tab (the large-file job below is
+  # push/dispatch-gated, so this is the way to exercise it on a branch)
+  workflow_dispatch:
 
 jobs:
   e2e-tests:
@@ -87,7 +90,7 @@ jobs:
     runs-on: ubuntu-24.04  # Use Linux (10x cheaper than macOS)
     timeout-minutes: 90
     # Run only on push to main branches, not on every PR
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code

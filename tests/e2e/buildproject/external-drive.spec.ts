@@ -281,9 +281,8 @@ test.describe('External Drive - Error Handling', () => {
       .setSpeedMultiplier(500)
       .setMaxEventsPerFile(5)
       .injectFailure({
-        type: 'partial',
-        failingFileIndices: [3, 4, 5], // Simulate failure at specific files
-        errorMessage: 'Drive disconnected'
+        errorMessage: 'Drive disconnected',
+        failAtFileIndex: 3 // Simulate the drive vanishing mid-transfer
       })
     await mock.setup()
 
@@ -296,14 +295,17 @@ test.describe('External Drive - Error Handling', () => {
     await buildPage.clickSelectFiles()
     await buildPage.clickCreateProject()
 
-    // Operation should still complete (partial failure skips files)
-    await buildPage.waitForCompletion(60000)
+    // A disconnected drive aborts the transfer - the error toast appears
+    // and the operation never reports success
+    await expect(
+      page.getByText('Please try again or contact support if the issue persists.')
+    ).toBeVisible({ timeout: 30000 })
 
-    // Get events to verify some files were processed
+    // Some files were processed before the disconnection
     const events = await mock.getDetailedEvents()
     expect(events.length).toBeGreaterThan(0)
 
-    await expect(buildPage.successMessage).toBeVisible()
+    expect(await buildPage.isComplete()).toBe(false)
   })
 
   test('handles complete drive failure gracefully', async ({ page }) => {
@@ -316,7 +318,6 @@ test.describe('External Drive - Error Handling', () => {
       .setSpeedMultiplier(500)
       .setMaxEventsPerFile(5)
       .injectFailure({
-        type: 'complete',
         errorMessage: 'Drive not found: /Volumes/Production'
       })
     await mock.setup()
@@ -334,7 +335,7 @@ test.describe('External Drive - Error Handling', () => {
     await page.waitForTimeout(2000)
 
     // Operation should have failed - no success message
-    // (The mock emits copy_error event which the frontend should handle)
+    // (The mock emits a failed file-transfer-complete event which the frontend handles)
     const isOperationActive = await mock.isOperationActive()
     expect(isOperationActive).toBe(false)
   })
