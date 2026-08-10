@@ -19,6 +19,11 @@ export interface ApiKeys {
   trelloBoardId?: string // DEBT-014: Configurable Trello board ID
   // Add more services as needed.
   defaultBackgroundFolder?: string
+  /** Default Sprout upload folder id (issue #155). Undefined means root. */
+  sproutDefaultFolderId?: string
+  /** Human-readable label for the default folder, so the UI can render it
+   *  before the folder tree loads. */
+  sproutDefaultFolderName?: string
   ollamaUrl?: string
 }
 
@@ -49,6 +54,9 @@ export const saveApiKeys = async (apiKeys: ApiKeys): Promise<void> => {
     await writeTextFile(filePath, data)
   } catch (error) {
     logger.error('Error saving API keys:', error)
+    // Rethrow: swallowing this told callers the write succeeded, so the user
+    // saw a saved setting that was gone at next launch (issue #155 P5-b).
+    throw error
   }
 }
 

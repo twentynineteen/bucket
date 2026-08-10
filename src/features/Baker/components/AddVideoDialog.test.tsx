@@ -3,12 +3,29 @@
  * Issue #140 (B1.1, B1.3-B1.5, B2.2, B4.1-B4.3, B5.2, B5.3, B5.6, B7.1)
  */
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as baseRender, screen } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { AddVideoDialog } from './AddVideoDialog'
 import type { AddVideoDialogProps, PosterFrameDialogState } from './AddVideoDialog'
+
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient } from '@tests/utils/queryClientWrapper'
+
+/**
+ * AddVideoDialog now renders SproutFolderPicker, which reads folder levels
+ * through React Query (issue #155). Every render needs a client in scope.
+ */
+const render: typeof baseRender = (ui, options) =>
+  baseRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={createTestQueryClient()}>
+        {children}
+      </QueryClientProvider>
+    ),
+    ...options
+  })
 
 const BACKGROUNDS = ['/backgrounds/wbs-blue.jpg', '/backgrounds/wbs-red.png']
 

@@ -1,4 +1,4 @@
-import { Breadcrumb, SproutUploadResponse } from '@shared/types'
+import { Breadcrumb, RecentSproutFolder, SproutUploadResponse } from '@shared/types'
 import { create } from 'zustand'
 
 // Global state definition
@@ -19,7 +19,18 @@ interface AppState {
   setLatestSproutUpload: (upload: SproutUploadResponse | null) => void
   ollamaUrl: string
   setOllamaUrl: (url: string) => void
+  /**
+   * Folders used this session, most recent first (issue #155). Session-scoped
+   * on purpose: the durable answer is the default in Settings, and this store
+   * has no persistence. Capped at RECENT_SPROUT_FOLDER_LIMIT.
+   */
+  recentSproutFolders: RecentSproutFolder[]
+  rememberSproutFolder: (folder: RecentSproutFolder | null) => void
 }
+
+/** How many recent folders to keep. Enough to cover a working set, short
+ * enough that the list stays scannable above the tree. */
+export const RECENT_SPROUT_FOLDER_LIMIT = 5
 
 // Create the Zustand store
 export const useAppStore = create<AppState>((set) => ({
@@ -38,7 +49,22 @@ export const useAppStore = create<AppState>((set) => ({
   latestSproutUpload: null,
   setLatestSproutUpload: (upload) => set({ latestSproutUpload: upload }),
   ollamaUrl: 'http://localhost:11434',
-  setOllamaUrl: (url) => set({ ollamaUrl: url })
+  setOllamaUrl: (url) => set({ ollamaUrl: url }),
+  recentSproutFolders: [],
+  rememberSproutFolder: (folder) =>
+    set((state) => {
+      // Root is the default, not a destination worth remembering.
+      if (!folder) return state
+      const withoutDuplicate = state.recentSproutFolders.filter(
+        (existing) => existing.id !== folder.id
+      )
+      return {
+        recentSproutFolders: [folder, ...withoutDuplicate].slice(
+          0,
+          RECENT_SPROUT_FOLDER_LIMIT
+        )
+      }
+    })
 }))
 
 export const appStore = useAppStore

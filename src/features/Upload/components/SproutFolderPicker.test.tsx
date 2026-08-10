@@ -1,0 +1,351 @@
+/**
+ * SproutFolderPicker (issue #155)
+ *
+ * Two of these pin Radix behaviours that fail *silently* if the workarounds are
+ * ever removed -- a filter box that dies after one keystroke, and a menu that
+ * clips long folder levels with no scrollbar. Both look like styling bugs and
+ * neither throws.
+ */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import React from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('../api', () => ({
+  getFolders: vi.fn(),
+  readFolderIndex: vi.fn().mockResolvedValue(null),
+  writeFolderIndex: vi.fn().mockResolvedValue(undefined)
+}))
+
+import { queryKeys } from '@shared/lib'
+
+import { getFolders, readFolderIndex } from '../api'
+import { accountFingerprint } from '../internal/folderIndex'
+import type { SelectedSproutFolder } from '../types'
+import { SproutFolderPicker } from './SproutFolderPicker'
+
+const rootPage = {
+  folders: [
+    { id: 'f1', name: 'Marketing', parent_id: null },
+    { id: 'f2', name: '2026 Projects', parent_id: null }
+  ],
+  total: 2,
+  truncated: false,
+  rate_limit_remaining: 190,
+  rate_limit_reset: null
+}
+
+function renderPicker(
+  props: Partial<React.ComponentProps<typeof SproutFolderPicker>> = {},
+  seed?: Array<[readonly unknown[], unknown]>
+) {
+  const onChange = vi.fn()
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } }
+  })
+
+  // Seeding stands in for folder levels the user has already opened.
+  for (const [key, value] of seed ?? []) client.setQueryData(key, value)
+
+  render(
+    <QueryClientProvider client={client}>
+      <SproutFolderPicker apiKey="key-1" value={null} onChange={onChange} {...props} />
+    </QueryClientProvider>
+  )
+
+  return { onChange, client }
+}
+
+// The global setup mocks getBoundingClientRect with `vi.fn(() => ({...}))`,
+// returning a FRESH object on every call. Radix's popper re-measures on each
+// render and treats each new object as a change, so it re-renders forever.
+// A stable rect breaks that loop without changing any measured value.
+const STABLE_RECT = {
+  width: 800,
+  height: 600,
+  top: 0,
+  left: 0,
+  bottom: 600,
+  right: 800,
+  x: 0,
+  y: 0,
+  toJSON: () => ({})
+} as DOMRect
+
+beforeEach(() => {
+  vi.mocked(getFolders).mockResolvedValue(rootPage)
+  Element.prototype.getBoundingClientRect = () => STABLE_RECT
+})
+
+describe('selection', () => {
+  it('defaults to Root and says so on the trigger', () => {
+    renderPicker()
+    expect(
+      screen.getByRole('button', { name: /Root \(no folder\)/i })
+    ).toBeInTheDocument()
+  })
+
+  it('shows the full breadcrumb path, not just the leaf name', () => {
+    // `Q2 Campaign` under two different parents is otherwise ambiguous.
+    const value: SelectedSproutFolder = {
+      id: 'f9',
+      name: 'Q2 Campaign',
+      path: 'Marketing / Q2 Campaign'
+    }
+    renderPicker({ value })
+
+    expect(
+      screen.getByRole('button', { name: /Marketing \/ Q2 Campaign/ })
+    ).toBeInTheDocument()
+  })
+
+  it('selects Root without navigating anywhere', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderPicker({
+      value: { id: 'f1', name: 'Marketing', path: 'Marketing' }
+    })
+
+    await user.click(screen.getByRole('button'))
+    await user.click(await screen.findByText('Root (no folder)'))
+
+    expect(onChange).toHaveBeenCalledWith(null)
+  })
+
+  it('offers recently used folders in one click', async () => {
+    const user = userEvent.setup()
+    const recent: SelectedSproutFolder[] = [
+      { id: 'r1', name: 'Module X', path: '2026 Projects / MSc / Module X' }
+    ]
+    const { onChange } = renderPicker({ recentFolders: recent })
+
+    await user.click(screen.getByRole('button'))
+    await user.click(await screen.findByText('2026 Projects / MSc / Module X'))
+
+    expect(onChange).toHaveBeenCalledWith(recent[0])
+  })
+})
+
+describe('no API key', () => {
+  it('disables the control and points at Settings rather than showing an empty tree', () => {
+    renderPicker({ apiKey: null })
+
+    const trigger = screen.getByRole('button')
+    expect(trigger).toBeDisabled()
+    expect(trigger).toHaveTextContent(/Settings/i)
+  })
+
+  it('never calls the API without a key', async () => {
+    renderPicker({ apiKey: null })
+    expect(getFolders).not.toHaveBeenCalled()
+  })
+})
+
+describe('Radix regressions', () => {
+  it('keeps focus in the filter input across multiple keystrokes', async () => {
+    // Radix fires typeahead for any single character typed inside menu content
+    // -- including in an <input> -- and typeahead calls .focus() on a matching
+    // item. Without stopPropagation the box takes one character and goes dead.
+    const user = userEvent.setup()
+    renderPicker()
+
+    await user.click(screen.getByRole('button'))
+    const input = await screen.findByLabelText('Search folders')
+
+    await user.type(input, 'mark')
+
+    expect(input).toHaveValue('mark')
+    expect(document.activeElement).toBe(input)
+  })
+
+  it('caps the menu height and makes it scrollable', async () => {
+    // Radix menus do not scroll, and the base class is `overflow-hidden`. A
+    // 40-folder level would be clipped with its tail unreachable -- which would
+    // silently undo the backend pagination fix.
+    const user = userEvent.setup()
+    renderPicker()
+
+    await user.click(screen.getByRole('button'))
+    const menu = await screen.findByRole('menu')
+
+    expect(menu.className).toMatch(/max-h-\[320px\]/)
+    expect(menu.className).toMatch(/overflow-y-auto/)
+  })
+})
+
+describe('drill-down navigation', () => {
+  it('opens a folder in place instead of a flyout, and does not select it', async () => {
+    // Flyout submenus need horizontal room per level; at trigger width they ran
+    // off the window by the second or third level and the names were unreadable.
+    // Drilling keeps one panel, so depth cannot cause a collision.
+    const user = userEvent.setup()
+    const { onChange } = renderPicker()
+
+    await user.click(screen.getByRole('button'))
+    await user.click(await screen.findByText('Marketing'))
+
+    // Navigating is not choosing: the menu stays open and nothing is selected.
+    expect(onChange).not.toHaveBeenCalled()
+    expect(await screen.findByText('Use this folder')).toBeInTheDocument()
+    expect(screen.getByText('Back')).toBeInTheDocument()
+  })
+
+  it('selects the folder drilled into via Use this folder', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderPicker()
+
+    await user.click(screen.getByRole('button'))
+    await user.click(await screen.findByText('Marketing'))
+    await user.click(await screen.findByText('Use this folder'))
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'f1', name: 'Marketing', path: 'Marketing' })
+    )
+  })
+
+  it('Back returns to the parent level', async () => {
+    const user = userEvent.setup()
+    renderPicker()
+
+    await user.click(screen.getByRole('button'))
+    await user.click(await screen.findByText('Marketing'))
+    await user.click(await screen.findByText('Back'))
+
+    // Root-level options are visible again.
+    expect(await screen.findByText('Root (no folder)')).toBeInTheDocument()
+    expect(screen.queryByText('Use this folder')).not.toBeInTheDocument()
+  })
+})
+
+describe('filtering searches what has been loaded', () => {
+  const page = (folders: unknown[]) => ({
+    folders,
+    total: folders.length,
+    truncated: false,
+    rate_limit_remaining: 190,
+    rate_limit_reset: null
+  })
+
+  it('finds a nested folder by its full path', async () => {
+    // Levels are seeded AFTER mount on purpose. Seeding beforehand passes even
+    // with a stale index, because the memo's one computation happens at mount
+    // with the data already present -- which is never the real sequence. In the
+    // app, levels arrive as the user opens them, long after mount.
+    const user = userEvent.setup()
+    const { client } = renderPicker()
+
+    await user.click(screen.getByRole('button'))
+
+    await act(async () => {
+      client.setQueryData(
+        queryKeys.sprout.folders('key-1', null),
+        page([{ id: 'f1', name: 'Marketing', parent_id: null }])
+      )
+      client.setQueryData(
+        queryKeys.sprout.folders('key-1', 'f1'),
+        page([{ id: 'f2', name: 'Q2 Campaign', parent_id: 'f1' }])
+      )
+    })
+
+    await user.type(await screen.findByLabelText('Search folders'), 'q2')
+
+    // Rendered with its breadcrumb, so two folders of the same leaf name are
+    // distinguishable.
+    expect(await screen.findByText('Marketing / Q2 Campaign')).toBeInTheDocument()
+  })
+})
+
+describe('searching the saved index', () => {
+  it('finds a module code in a folder that was never opened', async () => {
+    // The whole point of the index: Sprout has no folder search endpoint, so
+    // without a saved crawl a folder the user has not clicked into is invisible.
+    const user = userEvent.setup()
+    vi.mocked(readFolderIndex).mockResolvedValue({
+      version: 1,
+      account: accountFingerprint('key-1'),
+      indexedAt: new Date().toISOString(),
+      partial: false,
+      folders: [
+        { id: 'p1', name: 'Postgraduate', parent_id: null },
+        { id: 'm1', name: 'IB9X7', parent_id: 'p1' },
+        { id: 'y1', name: '2026', parent_id: 'm1' }
+      ]
+    })
+
+    renderPicker()
+    await user.click(screen.getByRole('button'))
+    await user.type(await screen.findByLabelText('Search folders'), 'IB9X7')
+
+    // Full breadcrumb, so the programme and the year are both confirmable.
+    expect(await screen.findByText('Postgraduate / IB9X7 / 2026')).toBeInTheDocument()
+    expect(getFolders).not.toHaveBeenCalledWith('key-1', 'm1')
+  })
+
+  it('searching an indexed account issues no requests', async () => {
+    const user = userEvent.setup()
+    vi.mocked(readFolderIndex).mockResolvedValue({
+      version: 1,
+      account: accountFingerprint('key-1'),
+      indexedAt: new Date().toISOString(),
+      partial: false,
+      folders: [{ id: 'm1', name: 'IB9X7', parent_id: null }]
+    })
+
+    renderPicker()
+    await user.click(screen.getByRole('button'))
+    const before = vi.mocked(getFolders).mock.calls.length
+
+    await user.type(await screen.findByLabelText('Search folders'), 'IB9')
+    await screen.findByText('IB9X7')
+
+    expect(vi.mocked(getFolders).mock.calls.length).toBe(before)
+  })
+})
+
+describe('filtering is zero-request', () => {
+  it('issues no API call while filtering', async () => {
+    const user = userEvent.setup()
+    renderPicker()
+
+    await user.click(screen.getByRole('button'))
+    const callsAfterOpen = vi.mocked(getFolders).mock.calls.length
+
+    await user.type(await screen.findByLabelText('Search folders'), 'zzz')
+
+    // Filtering only ever searches what is already cached (#155 R1).
+    expect(vi.mocked(getFolders).mock.calls.length).toBe(callsAfterOpen)
+  })
+
+  it('offers to index the account when nothing matches and there is no index', async () => {
+    // Without an index, search can only see levels opened this session -- so the
+    // empty state has to explain that and offer the one-off crawl, rather than
+    // implying the folder does not exist.
+    const user = userEvent.setup()
+    renderPicker()
+
+    await user.click(screen.getByRole('button'))
+    await user.type(await screen.findByLabelText('Search folders'), 'zzzz')
+
+    expect(await screen.findByText(/Only folders you have opened/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Index all folders/i })).toBeInTheDocument()
+  })
+})
+
+describe('failure does not block uploading', () => {
+  it('shows an actionable error and says root upload still works', async () => {
+    vi.mocked(getFolders).mockRejectedValue(
+      'Sprout rejected the folder request: HTTP 401 — check your Sprout Video API key in Settings.'
+    )
+    const user = userEvent.setup()
+    renderPicker()
+
+    await user.click(screen.getByRole('button'))
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/You can still upload to the root folder/i)
+      ).toBeInTheDocument()
+    )
+    expect(screen.getByRole('button', { name: /Retry/i })).toBeInTheDocument()
+  })
+})

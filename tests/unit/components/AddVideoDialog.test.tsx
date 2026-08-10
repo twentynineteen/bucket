@@ -6,10 +6,26 @@
  */
 
 import { AddVideoDialog } from '../../../src/features/Baker/components/AddVideoDialog'
-import { render, screen } from '@testing-library/react'
+import { render as baseRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { describe, expect, test, vi } from 'vitest'
+
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient } from '@tests/utils/queryClientWrapper'
+
+/**
+ * AddVideoDialog now renders SproutFolderPicker, which reads folder levels
+ * through React Query (issue #155). Every render needs a client in scope.
+ */
+const render: typeof baseRender = (ui, options) =>
+  baseRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={createTestQueryClient()}>{children}</QueryClientProvider>
+    ),
+    ...options
+  })
+
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock('framer-motion', () => ({

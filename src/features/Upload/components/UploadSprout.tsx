@@ -14,6 +14,8 @@ import { useSproutVideoApiKey } from '@shared/hooks'
 import { useBreadcrumb } from '@shared/hooks'
 import { fileNameToTitle } from '@shared/utils'
 import { useFileUpload } from '../hooks/useFileUpload'
+import { useSproutFolderSelection } from '../hooks/useSproutFolderSelection'
+import { SproutFolderPicker } from './SproutFolderPicker'
 import { useImageRefresh } from '../hooks/useImageRefresh'
 import { useUploadEvents } from '../hooks/useUploadEvents'
 import EmbedCodeInput from '@shared/ui/EmbedCodeInput'
@@ -28,6 +30,9 @@ const UploadSproutContent: React.FC = () => {
   const { progress, uploading, message, setProgress, setMessage, setUploading } =
     useUploadEvents()
   const { selectedFile, response, selectFile, uploadFile } = useFileUpload()
+  // Destination folder, resolved once: session last-used -> default -> root.
+  const { selectedFolder, selectFolder, recentFolders, commitFolder } =
+    useSproutFolderSelection()
   const { thumbnailLoaded, refreshTimestamp, setThumbnailLoaded } =
     useImageRefresh(response)
   const [title, setTitle] = useState('')
@@ -51,12 +56,16 @@ const UploadSproutContent: React.FC = () => {
   }
 
   // Handle upload with API key
-  const handleUpload = () => {
+  const handleUpload = async () => {
     // Reset progress and message before starting upload
     setProgress(0)
     setMessage(null)
     setUploading(true)
-    uploadFile(apiKey, title)
+    // The destination is passed explicitly rather than set on useFileUpload
+    // first -- setting state then uploading would send the previous value.
+    await uploadFile(apiKey, title, selectedFolder)
+    // Only remember a folder an upload actually used.
+    commitFolder(selectedFolder)
   }
 
   return (
@@ -112,6 +121,20 @@ const UploadSproutContent: React.FC = () => {
                     Used as the video title on Sprout Video. Leave blank to use the
                     filename.
                   </p>
+
+                  <div className="space-y-2 pt-2">
+                    <Label>Sprout Folder</Label>
+                    <SproutFolderPicker
+                      apiKey={apiKey}
+                      value={selectedFolder}
+                      onChange={selectFolder}
+                      recentFolders={recentFolders}
+                      disabled={uploading}
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      Where the video is filed on Sprout. Defaults to the account root.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

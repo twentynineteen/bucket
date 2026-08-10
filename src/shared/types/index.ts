@@ -23,6 +23,8 @@ export type { SproutAssets } from './media'
 // Core domain types (breadcrumbs, footage, sprout upload)
 /** Sprout Video folder with id, name, and parent folder reference */
 export type { SproutFolder } from './types'
+/** A folder remembered as an upload destination, with its breadcrumb path */
+export type { RecentSproutFolder } from './types'
 /** Response from the Sprout Video folders API endpoint */
 export type { GetFoldersResponse } from './types'
 /** Footage file data with camera number, file path, and metadata */

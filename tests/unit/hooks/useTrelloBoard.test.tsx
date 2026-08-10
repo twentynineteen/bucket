@@ -41,6 +41,11 @@ vi.mock('@shared/lib/query-keys', () => ({
     trello: {
       cards: (boardId: string) => ['trello', 'cards', boardId],
       lists: (boardId: string) => ['trello', 'lists', boardId]
+    },
+    // useTrelloBoard now reads credentials through useApiKeys, which uses the
+    // single shared key for api_keys.json (issue #155 P5-a).
+    settings: {
+      apiKeys: () => ['settings', 'api-keys']
     }
   }
 }))

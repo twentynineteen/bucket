@@ -25,6 +25,7 @@ import { useBreadcrumbsVideoLinks } from '@features/Baker'
 import {
   useFileUpload,
   usePosterFrameForUpload,
+  useSproutFolderSelection,
   useSproutVideoApi,
   useSproutVideoProcessor,
   useUploadEvents
@@ -77,6 +78,10 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     uploadFile,
     resetUploadState
   } = useFileUpload()
+
+  // Destination folder, resolved once: session last-used -> default -> root.
+  const { selectedFolder, selectFolder, recentFolders, commitFolder } =
+    useSproutFolderSelection()
   const { progress, message, setMessage } = useUploadEvents()
 
   // UI state
@@ -243,7 +248,11 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     setMessage(null)
 
     try {
-      await uploadFile(apiKey, formData.title)
+      // Pass the destination explicitly -- it is resolved by
+      // useSproutFolderSelection, not held in useFileUpload's own state.
+      await uploadFile(apiKey, formData.title, selectedFolder)
+      // Only remember a folder an upload actually used.
+      commitFolder(selectedFolder)
     } catch (error) {
       logger.error('Upload failed:', error)
     }
@@ -437,8 +446,15 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     isUpdating,
     isFetchingVideo,
 
+    // Sprout destination folder for the upload tab (issue #155)
+    selectedFolder,
+    selectFolder,
+    recentFolders,
+
     // Computed
     hasApiKey: !!apiKey,
+    /** The Sprout key itself, for the folder picker (issue #155) */
+    sproutApiKey: apiKey,
     canAddVideo: videoLinks.length < 20 && !isUpdating,
 
     // Handlers

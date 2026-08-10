@@ -72,6 +72,11 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] }
     },
     {
+      name: 'sprout-folders',
+      testMatch: /sprout-folder-picker\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] }
+    },
+    {
       name: 'long-operations',
       testMatch: /long-operation-states\.spec\.ts/,
       use: {

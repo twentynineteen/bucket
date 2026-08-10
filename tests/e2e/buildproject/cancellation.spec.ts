@@ -174,8 +174,8 @@ test.describe('Transfer Cancellation - Page Navigation', () => {
     await page.waitForTimeout(500)
 
     // Check listeners before navigation
-    const progressListenersBefore = await mock.getListenerCount('copy_progress')
-    const completeListenersBefore = await mock.getListenerCount('copy_complete')
+    const progressListenersBefore = await mock.getListenerCount('file-transfer-progress')
+    const completeListenersBefore = await mock.getListenerCount('file-transfer-complete')
     expect(progressListenersBefore + completeListenersBefore).toBeGreaterThan(0)
 
     // Navigate away
@@ -385,7 +385,7 @@ test.describe('Transfer Cancellation - State Cleanup', () => {
     // Wait for listeners to be registered
     await page.waitForTimeout(500)
 
-    const listenersDuring = await mock.getListenerCount('copy_progress')
+    const listenersDuring = await mock.getListenerCount('file-transfer-progress')
     expect(listenersDuring).toBeGreaterThan(0)
 
     // Cancel

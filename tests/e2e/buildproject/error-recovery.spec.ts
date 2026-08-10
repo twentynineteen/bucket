@@ -1,8 +1,12 @@
 /**
  * Error Recovery Tests
  *
- * Validates that the application handles file operation failures gracefully.
- * Tests partial failures (some files fail), complete failures, and retry scenarios.
+ * Validates that the application surfaces file transfer failures.
+ *
+ * The native transfer backend (#112) aborts the WHOLE transfer when any file
+ * fails and reports it via a failed `file-transfer-complete` event - there is
+ * no skip-and-continue mode. The mock mirrors those semantics, so a failure
+ * part-way through must end in an error state, never a success message.
  */
 
 import { test, expect } from '@playwright/test'
@@ -11,10 +15,14 @@ import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
 import { SCENARIOS, generateMockFiles } from '../utils/large-file-simulator'
 import { TEST_PROJECTS, generateFilesWithFailures } from '../fixtures/mock-file-data'
 
-test.describe('Error Recovery - Partial Failures', () => {
-  test('handles partial file failures gracefully', async ({ page }) => {
-    // Setup with failure injection: files 5-8 fail (reduced file count for speed)
-    const { files } = generateFilesWithFailures(20, 2, [5, 6, 7, 8])
+/** The constant description shown on every BuildProject error toast */
+const ERROR_TOAST_TEXT = 'Please try again or contact support if the issue persists.'
+
+test.describe('Error Recovery - Mid-Transfer Failures', () => {
+  test('aborts and surfaces an error when a file fails mid-transfer', async ({
+    page
+  }) => {
+    const { files } = generateFilesWithFailures(20, 2, [5])
 
     const mock = createTauriMock(page)
     mock
@@ -24,9 +32,8 @@ test.describe('Error Recovery - Partial Failures', () => {
       .setSpeedMultiplier(1000)
       .setMaxEventsPerFile(3)
       .injectFailure({
-        type: 'partial',
-        failingFileIndices: [5, 6, 7, 8],
-        errorMessage: 'Permission denied'
+        errorMessage: 'Permission denied',
+        failAtFileIndex: 5
       })
     await mock.setup()
 
@@ -34,40 +41,39 @@ test.describe('Error Recovery - Partial Failures', () => {
     await buildPage.goto()
     await mock.injectMocks()
 
-    await buildPage.fillProjectDetails('Partial Failure Test', 4)
+    await buildPage.fillProjectDetails('Mid-Transfer Failure Test', 4)
     await buildPage.clickSelectDestination()
     await buildPage.clickSelectFiles()
     await buildPage.clickCreateProject()
 
-    // Wait for operation to complete (should continue despite failures)
-    await buildPage.waitForCompletion(120000)
+    // The transfer aborts, so the error toast must appear...
+    await expect(page.getByText(ERROR_TOAST_TEXT)).toBeVisible({ timeout: 30000 })
 
-    // Operation should complete (remaining files succeeded)
-    await expect(buildPage.successMessage).toBeVisible()
+    // ...and the success message must never appear
+    expect(await buildPage.isComplete()).toBe(false)
 
-    // Get emitted events to verify progress continued
+    // Progress was made before the failure, but never reached 100%
     const events = await mock.getEmittedEvents()
     expect(events.length).toBeGreaterThan(0)
-
-    // Final progress should still reach 100%
-    const lastEvent = events[events.length - 1]
-    expect(lastEvent.percent).toBeGreaterThanOrEqual(99)
+    const maxPercent = Math.max(...events.map((e) => e.percent))
+    expect(maxPercent).toBeLessThan(100)
   })
 
-  test('progress continues after individual file failure', async ({ page }) => {
-    const { files } = generateFilesWithFailures(10, 2, [5]) // One file fails in middle (reduced files for speed)
+  test('progress events stop at the failure point', async ({ page }) => {
+    const failAt = 5
+    const totalFiles = 10
+    const { files } = generateFilesWithFailures(totalFiles, 2, [failAt])
 
     const mock = createTauriMock(page)
     mock
       .setScenario(SCENARIOS.SMOKE_TEST)
       .setMockFiles(files)
       .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
-      .setSpeedMultiplier(1000) // Fast for CI
+      .setSpeedMultiplier(1000)
       .setMaxEventsPerFile(3)
       .injectFailure({
-        type: 'partial',
-        failingFileIndices: [5],
-        errorMessage: 'Disk full'
+        errorMessage: 'Disk full',
+        failAtFileIndex: failAt
       })
     await mock.setup()
 
@@ -75,56 +81,25 @@ test.describe('Error Recovery - Partial Failures', () => {
     await buildPage.goto()
     await mock.injectMocks()
 
-    await buildPage.fillProjectDetails('Continue After Failure', 2)
+    await buildPage.fillProjectDetails('Abort Point Test', 2)
     await buildPage.clickSelectDestination()
     await buildPage.clickSelectFiles()
     await buildPage.clickCreateProject()
 
-    // Wait for completion directly instead of monitoring progress
-    await buildPage.waitForCompletion(60000)
+    await expect(page.getByText(ERROR_TOAST_TEXT)).toBeVisible({ timeout: 30000 })
 
-    // Verify success message shown (operation completed despite partial failure)
-    await expect(buildPage.successMessage).toBeVisible()
-  })
+    // No events may come from files at or beyond the failure index
+    const events = await mock.getDetailedEvents()
+    const beyondFailure = events.filter((e) => e.fileIndex >= failAt)
+    expect(beyondFailure).toEqual([])
 
-  test('handles multiple scattered failures', async ({ page }) => {
-    // Failures at various points: beginning, middle, end
-    const failureIndices = [0, 1, 5, 10, 15, 18, 19]
-    const { files } = generateFilesWithFailures(20, 4, failureIndices)
-
-    const mock = createTauriMock(page)
-    mock
-      .setScenario(SCENARIOS.SMOKE_TEST)
-      .setMockFiles(files)
-      .setSelectedFolder(TEST_PROJECTS.PROFESSIONAL.folder)
-      .setSpeedMultiplier(500)
-      .setMaxEventsPerFile(5)
-      .injectFailure({
-        type: 'partial',
-        failingFileIndices: failureIndices,
-        errorMessage: 'File corrupted'
-      })
-    await mock.setup()
-
-    const buildPage = new BuildProjectPage(page)
-    await buildPage.goto()
-    await mock.injectMocks()
-
-    await buildPage.fillProjectDetails('Scattered Failures', 4)
-    await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
-
-    // Wait for completion
-    await buildPage.waitForCompletion(60000)
-
-    // Operation should complete despite multiple failures
-    await expect(buildPage.successMessage).toBeVisible()
+    // The mock's operation flag must be cleared (transfer ended)
+    expect(await mock.isOperationActive()).toBe(false)
   })
 })
 
 test.describe('Error Recovery - Complete Failure', () => {
-  test('handles complete operation failure', async ({ page }) => {
+  test('handles failure of the very first file (immediate abort)', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
       .setScenario(SCENARIOS.SMOKE_TEST)
@@ -133,7 +108,6 @@ test.describe('Error Recovery - Complete Failure', () => {
       .setSpeedMultiplier(500)
       .setMaxEventsPerFile(5)
       .injectFailure({
-        type: 'complete',
         errorMessage: 'Destination not writable'
       })
     await mock.setup()
@@ -147,20 +121,54 @@ test.describe('Error Recovery - Complete Failure', () => {
     await buildPage.clickSelectFiles()
     await buildPage.clickCreateProject()
 
-    // Wait for error to be shown
-    await page.waitForTimeout(2000)
+    // Error surfaces without any progress having been made
+    await expect(page.getByText(ERROR_TOAST_TEXT)).toBeVisible({ timeout: 30000 })
+    expect(await buildPage.isComplete()).toBe(false)
 
-    // Success message should NOT be visible (operation failed)
-    const isComplete = await buildPage.isComplete()
-    expect(isComplete).toBe(false)
-
-    // Look for error indication (dialog, toast, or error message)
-    // The exact behavior depends on implementation
-    const errorVisible = await page.locator('text=/error|failed/i').isVisible().catch(() => false)
-    // Note: If no error UI exists, this test documents expected behavior
-    console.log('Error indicator visible:', errorVisible)
+    const events = await mock.getEmittedEvents()
+    expect(events).toEqual([])
   })
 
+  test('aborts at the last file without reporting success', async ({ page }) => {
+    const totalFiles = 10
+    const { files } = generateFilesWithFailures(totalFiles, 2, [totalFiles - 1])
+
+    const mock = createTauriMock(page)
+    mock
+      .setScenario(SCENARIOS.SMOKE_TEST)
+      .setMockFiles(files)
+      .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
+      .setSpeedMultiplier(500)
+      .setMaxEventsPerFile(5)
+      .injectFailure({
+        errorMessage: 'Write failed',
+        failAtFileIndex: totalFiles - 1
+      })
+    await mock.setup()
+
+    const buildPage = new BuildProjectPage(page)
+    await buildPage.goto()
+    await mock.injectMocks()
+
+    await buildPage.fillProjectDetails('Last File Failure', 2)
+    await buildPage.clickSelectDestination()
+    await buildPage.clickSelectFiles()
+    await buildPage.clickCreateProject()
+
+    // Even 90% of the way through, a failed transfer is a failed project
+    await expect(page.getByText(ERROR_TOAST_TEXT)).toBeVisible({ timeout: 30000 })
+    expect(await buildPage.isComplete()).toBe(false)
+
+    // Progress got close to, but never reached, 100%
+    const events = await mock.getEmittedEvents()
+    expect(events.length).toBeGreaterThan(0)
+    const maxPercent = Math.max(...events.map((e) => e.percent))
+    expect(maxPercent).toBeGreaterThan(50)
+    expect(maxPercent).toBeLessThan(100)
+  })
+})
+
+test.describe('Error Recovery - User Experience', () => {
   test.skip('allows retry after complete failure', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -170,7 +178,6 @@ test.describe('Error Recovery - Complete Failure', () => {
       .setSpeedMultiplier(1000)
       .setMaxEventsPerFile(3)
       .injectFailure({
-        type: 'complete',
         errorMessage: 'Destination not writable'
       })
     await mock.setup()
@@ -185,7 +192,7 @@ test.describe('Error Recovery - Complete Failure', () => {
     await buildPage.clickCreateProject()
 
     // Wait for failure
-    await page.waitForTimeout(2000)
+    await expect(page.getByText(ERROR_TOAST_TEXT)).toBeVisible({ timeout: 30000 })
 
     // Clear failure injection and reset
     mock.clearFailure()
@@ -203,156 +210,7 @@ test.describe('Error Recovery - Complete Failure', () => {
     await buildPage.waitForCompletion(60000)
     await expect(buildPage.successMessage).toBeVisible()
   })
-})
 
-test.describe('Error Recovery - Edge Cases', () => {
-  test('handles failure at first file', async ({ page }) => {
-    const { files } = generateFilesWithFailures(10, 2, [0])
-
-    const mock = createTauriMock(page)
-    mock
-      .setScenario(SCENARIOS.SMOKE_TEST)
-      .setMockFiles(files)
-      .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
-      .setSpeedMultiplier(500)
-      .setMaxEventsPerFile(5)
-      .injectFailure({
-        type: 'partial',
-        failingFileIndices: [0],
-        errorMessage: 'Access denied'
-      })
-    await mock.setup()
-
-    const buildPage = new BuildProjectPage(page)
-    await buildPage.goto()
-    await mock.injectMocks()
-
-    await buildPage.fillProjectDetails('First File Failure', 2)
-    await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
-
-    // Should complete (remaining files succeed)
-    await buildPage.waitForCompletion(30000)
-    await expect(buildPage.successMessage).toBeVisible()
-  })
-
-  test('handles failure at last file', async ({ page }) => {
-    const { files } = generateFilesWithFailures(10, 2, [9]) // Last file
-
-    const mock = createTauriMock(page)
-    mock
-      .setScenario(SCENARIOS.SMOKE_TEST)
-      .setMockFiles(files)
-      .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
-      .setSpeedMultiplier(500)
-      .setMaxEventsPerFile(5)
-      .injectFailure({
-        type: 'partial',
-        failingFileIndices: [9],
-        errorMessage: 'Write failed'
-      })
-    await mock.setup()
-
-    const buildPage = new BuildProjectPage(page)
-    await buildPage.goto()
-    await mock.injectMocks()
-
-    await buildPage.fillProjectDetails('Last File Failure', 2)
-    await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
-
-    // Should complete (previous files succeeded)
-    await buildPage.waitForCompletion(30000)
-    await expect(buildPage.successMessage).toBeVisible()
-  })
-
-  test('handles all files failing except one', async ({ page }) => {
-    // All files fail except the last one
-    const failureIndices = Array.from({ length: 9 }, (_, i) => i) // [0,1,2,3,4,5,6,7,8]
-    const { files } = generateFilesWithFailures(10, 2, failureIndices)
-
-    const mock = createTauriMock(page)
-    mock
-      .setScenario(SCENARIOS.SMOKE_TEST)
-      .setMockFiles(files)
-      .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
-      .setSpeedMultiplier(500)
-      .setMaxEventsPerFile(5)
-      .injectFailure({
-        type: 'partial',
-        failingFileIndices: failureIndices,
-        errorMessage: 'Various errors'
-      })
-    await mock.setup()
-
-    const buildPage = new BuildProjectPage(page)
-    await buildPage.goto()
-    await mock.injectMocks()
-
-    await buildPage.fillProjectDetails('Almost All Fail', 2)
-    await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
-
-    // Should still complete (one file succeeded)
-    await buildPage.waitForCompletion(30000)
-    await expect(buildPage.successMessage).toBeVisible()
-  })
-
-  test('maintains progress state after transient error', async ({ page }) => {
-    // Simulates a scenario where an error occurs but doesn't stop the operation
-    const { files } = generateFilesWithFailures(10, 2, [3, 4, 5])
-
-    const mock = createTauriMock(page)
-    mock
-      .setScenario(SCENARIOS.SMOKE_TEST)
-      .setMockFiles(files)
-      .setSelectedFolder(TEST_PROJECTS.PROFESSIONAL.folder)
-      .setSpeedMultiplier(1000)
-      .setMaxEventsPerFile(3)
-      .injectFailure({
-        type: 'partial',
-        failingFileIndices: [3, 4, 5],
-        errorMessage: 'Transient error'
-      })
-    await mock.setup()
-
-    const buildPage = new BuildProjectPage(page)
-    await buildPage.goto()
-    await mock.injectMocks()
-
-    await buildPage.fillProjectDetails('Transient Error Test', 2)
-    await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
-
-    // Wait for completion
-    await buildPage.waitForCompletion(60000)
-
-    // Get emitted events after completion
-    const events = await mock.getEmittedEvents()
-
-    // Categorize events
-    const progressBefore = events.filter((e) => e.fileIndex < 3).map((e) => e.percent)
-    const progressAfter = events.filter((e) => e.fileIndex > 5).map((e) => e.percent)
-
-    // Progress should continue after errors
-    expect(progressAfter.length).toBeGreaterThan(0)
-
-    // Progress after errors should be higher than before
-    if (progressBefore.length > 0 && progressAfter.length > 0) {
-      const maxBefore = Math.max(...progressBefore)
-      const minAfter = Math.min(...progressAfter)
-      expect(minAfter).toBeGreaterThan(maxBefore)
-    }
-
-    await expect(buildPage.successMessage).toBeVisible()
-  })
-})
-
-test.describe('Error Recovery - User Experience', () => {
   test.skip('user can clear and start new project after failure', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -362,7 +220,6 @@ test.describe('Error Recovery - User Experience', () => {
       .setSpeedMultiplier(1000)
       .setMaxEventsPerFile(3)
       .injectFailure({
-        type: 'complete',
         errorMessage: 'Operation failed'
       })
     await mock.setup()
@@ -376,7 +233,7 @@ test.describe('Error Recovery - User Experience', () => {
     await buildPage.clickSelectDestination()
     await buildPage.clickSelectFiles()
     await buildPage.clickCreateProject()
-    await page.waitForTimeout(2000)
+    await expect(page.getByText(ERROR_TOAST_TEXT)).toBeVisible({ timeout: 30000 })
 
     // Clear everything
     await buildPage.clickClearAll()

@@ -11,6 +11,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { useMemo } from 'react'
 import { toast } from 'sonner'
 
+import { queryKeys } from '@shared/lib'
 import { logger } from '@shared/utils'
 
 import {
@@ -47,7 +48,7 @@ export function useTrelloSelfAssignment({
 
   // The Trello member that owns the current token -- cached across cards.
   const { data: currentMember } = useQuery({
-    queryKey: ['trello', 'me', trelloApiKey],
+    queryKey: queryKeys.trello.me(trelloApiKey),
     queryFn: () => fetchCurrentTrelloMember(trelloApiKey!, trelloApiToken!),
     enabled,
     staleTime: ME_STALE_TIME
