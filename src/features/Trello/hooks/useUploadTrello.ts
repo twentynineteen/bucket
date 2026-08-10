@@ -87,11 +87,7 @@ export function useUploadTrello() {
 
   // Auto-sync card details when selection changes
   useQuery({
-    queryKey: queryKeys.trello.cardDetailsSync(
-      selectedCard?.id ?? '',
-      apiKey ?? '',
-      token ?? ''
-    ),
+    queryKey: queryKeys.trello.cardDetailsSync(selectedCard?.id, apiKey, token),
     queryFn: async () => {
       if (selectedCard && selectedCard.id && apiKey && token) {
         refetchCard()

@@ -34,15 +34,22 @@ export const queryKeys = {
     lists: (boardId: string) => ['trello', 'lists', boardId] as const,
     integration: (projectId: string | number) =>
       ['trello', 'integration', projectId] as const,
-    // Credentials are fingerprinted, never embedded (issue #158)
-    cardDetailsSync: (cardId: string, apiKey: string, token: string) =>
+    // Credentials are fingerprinted, never embedded (issue #158). Nullable
+    // args are accepted because hooks build keys while creds are still loading.
+    cardDetailsSync: (
+      cardId: string | null | undefined,
+      apiKey: string | null | undefined,
+      token: string | null | undefined
+    ) =>
       [
         'trello',
         'card-details-sync',
-        cardId,
-        fingerprint(apiKey),
-        fingerprint(token)
-      ] as const
+        cardId ?? '',
+        fingerprint(apiKey ?? ''),
+        fingerprint(token ?? '')
+      ] as const,
+    me: (apiKey: string | null | undefined) =>
+      ['trello', 'me', fingerprint(apiKey ?? '')] as const
   },
 
   // User domain

@@ -25,7 +25,7 @@ function leaksSecret(key: readonly unknown[], secret: string): boolean {
     // Non-string segments (objects, arrays) can smuggle a secret through
     // properties -- compare their serialised form too.
     const segment =
-      typeof rawSegment === 'string' ? rawSegment : JSON.stringify(rawSegment) ?? ''
+      typeof rawSegment === 'string' ? rawSegment : (JSON.stringify(rawSegment) ?? '')
     return (
       segment.length > 0 &&
       (segment.includes(secret) || (segment.length >= 6 && secret.includes(segment)))
