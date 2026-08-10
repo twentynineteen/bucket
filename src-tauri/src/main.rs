@@ -40,11 +40,11 @@ fn main() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .invoke_handler(tauri::generate_handler![
             get_folders,
             upload_video,
-            graceful_restart,
             check_auth,
             add_token,
             copy_premiere_project,

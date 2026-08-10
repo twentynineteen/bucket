@@ -110,8 +110,7 @@ describe('useUpdateManager restart flow (characterisation)', () => {
     await waitFor(() => {
       const manualRestartCalls = messageMock.mock.calls.filter(
         ([, options]) =>
-          (options as { title?: string } | undefined)?.title ===
-          'Manual Restart Required'
+          (options as { title?: string } | undefined)?.title === 'Manual Restart Required'
       )
       expect(manualRestartCalls).toHaveLength(1)
     })

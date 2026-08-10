@@ -10,6 +10,7 @@
     "updater:allow-check",
     "updater:allow-download",
     "updater:allow-install",
+    "process:allow-restart",
     "macos-permissions:default",
     "macos-permissions:allow-check-full-disk-access-permission",
     "macos-permissions:allow-check-accessibility-permission",
