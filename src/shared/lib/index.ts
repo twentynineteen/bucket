@@ -7,6 +7,8 @@
 // Query keys factory
 /** Structured query key factory organized by domain -- trello, sprout, baker, etc. */
 export { queryKeys } from './query-keys'
+/** Stable non-reversible 8-char discriminator for credentials in query keys */
+export { fingerprint } from './fingerprint'
 /** Domain-specific cache invalidation rules mapping mutations to affected queries */
 export { invalidationRules } from './query-keys'
 /** Create a typed query key array from domain and parameters */

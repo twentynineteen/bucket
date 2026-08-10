@@ -42,12 +42,16 @@ describe('credential-free query keys (issue #158)', () => {
 
   describe('B2: sprout key factories', () => {
     test('B2.1 no segment equals or contains the raw apiKey', () => {
-      expect(leaksSecret(queryKeys.sprout.folders(SPROUT_KEY, 'parent-1'), SPROUT_KEY)).toBe(
+      expect(
+        leaksSecret(queryKeys.sprout.folders(SPROUT_KEY, 'parent-1'), SPROUT_KEY)
+      ).toBe(false)
+      expect(leaksSecret(queryKeys.sprout.folders(SPROUT_KEY, null), SPROUT_KEY)).toBe(
         false
       )
-      expect(leaksSecret(queryKeys.sprout.folders(SPROUT_KEY, null), SPROUT_KEY)).toBe(false)
       expect(leaksSecret(queryKeys.sprout.videos(SPROUT_KEY), SPROUT_KEY)).toBe(false)
-      expect(leaksSecret(queryKeys.sprout.video(SPROUT_KEY, 'vid-1'), SPROUT_KEY)).toBe(false)
+      expect(leaksSecret(queryKeys.sprout.video(SPROUT_KEY, 'vid-1'), SPROUT_KEY)).toBe(
+        false
+      )
     })
 
     test('B2.2 different credentials produce distinct keys', () => {
@@ -66,7 +70,9 @@ describe('credential-free query keys (issue #158)', () => {
       expect(queryKeys.sprout.folders(SPROUT_KEY, 'parent-1')).toEqual(
         queryKeys.sprout.folders(SPROUT_KEY, 'parent-1')
       )
-      expect(queryKeys.sprout.videos(SPROUT_KEY)).toEqual(queryKeys.sprout.videos(SPROUT_KEY))
+      expect(queryKeys.sprout.videos(SPROUT_KEY)).toEqual(
+        queryKeys.sprout.videos(SPROUT_KEY)
+      )
       expect(queryKeys.sprout.video(SPROUT_KEY, 'vid-1')).toEqual(
         queryKeys.sprout.video(SPROUT_KEY, 'vid-1')
       )
@@ -89,7 +95,9 @@ describe('credential-free query keys (issue #158)', () => {
 
     test('B3.2 distinct credentials produce distinct keys; same credentials identical keys', () => {
       const key = queryKeys.trello.cardDetailsSync('card-1', TRELLO_KEY, TRELLO_TOKEN)
-      expect(key).toEqual(queryKeys.trello.cardDetailsSync('card-1', TRELLO_KEY, TRELLO_TOKEN))
+      expect(key).toEqual(
+        queryKeys.trello.cardDetailsSync('card-1', TRELLO_KEY, TRELLO_TOKEN)
+      )
       expect(key).not.toEqual(
         queryKeys.trello.cardDetailsSync('card-1', `${TRELLO_KEY}_B`, TRELLO_TOKEN)
       )
@@ -109,9 +117,10 @@ describe('credential-free query keys (issue #158)', () => {
       ]
       for (const key of keys) {
         for (const secret of [SPROUT_KEY, TRELLO_KEY, TRELLO_TOKEN]) {
-          expect(leaksSecret(key, secret), `secret leaked in ${JSON.stringify(key)}`).toBe(
-            false
-          )
+          expect(
+            leaksSecret(key, secret),
+            `secret leaked in ${JSON.stringify(key)}`
+          ).toBe(false)
         }
       }
     })
