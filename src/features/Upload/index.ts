@@ -5,8 +5,10 @@ export { default as UploadSprout } from './components/UploadSprout'
 export { default as Posterframe } from './components/Posterframe'
 /** Page for uploading transcripts to Otter.ai integration */
 export { default as UploadOtter } from './components/UploadOtter'
-/** Folder tree component for navigating Sprout Video folder hierarchy */
-export { default as FolderTreeSprout } from './components/FolderTreeSprout'
+/** Picker for choosing which Sprout folder an upload lands in */
+export { SproutFolderPicker } from './components/SproutFolderPicker'
+/** Settings panel for building the saved folder index that powers search */
+export { SproutFolderIndexPanel } from './components/SproutFolderIndexPanel'
 
 // Hooks
 /** Hook for managing file upload state, progress, and completion callbacks */
@@ -29,6 +31,12 @@ export { useFileSelection } from './hooks/useFileSelection'
 export { useZoomPan } from './hooks/useZoomPan'
 /** Hook for preparing a branded poster frame and setting it on Sprout after upload */
 export { usePosterFrameForUpload } from './hooks/usePosterFrameForUpload'
+/** Hook for listing one level of the Sprout folder tree, rate-limit aware */
+export { useSproutFolders } from './hooks/useSproutFolders'
+/** Hook resolving the upload destination: session last-used, then default, then root */
+export { useSproutFolderSelection } from './hooks/useSproutFolderSelection'
+/** Hook owning the saved folder index that makes search cover unopened folders */
+export { useSproutFolderIndex } from './hooks/useSproutFolderIndex'
 
 // Types (re-export for consumers)
 /** Sprout Video upload response with video ID, embed code, and status */
@@ -47,3 +55,5 @@ export type { PosterFrameStatus } from './types'
 export type { UploadMessageSeverity } from './types'
 /** Upload status message carrying severity as typed data rather than sniffed from text */
 export type { UploadMessage } from './types'
+/** A folder chosen as an upload destination, with its breadcrumb path */
+export type { SelectedSproutFolder } from './types'

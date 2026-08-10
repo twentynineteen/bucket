@@ -24,6 +24,8 @@ import type { SproutUploadResponse } from '@shared/types'
 import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { createFileUploadMock } from '@tests/factories/fileUploadMock'
+
 import type { VideoLink } from '../types'
 import { VideoLinksManager } from './VideoLinksManager'
 
@@ -240,15 +242,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     // Mock useFileUpload
-    vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-      selectedFile: null,
-      uploading: false,
-      response: null,
-      localDuration: null,
-      selectFile: mockSelectFile,
-      uploadFile: mockUploadFile,
-      resetUploadState: mockResetUploadState
-    })
+    vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+      createFileUploadMock({
+        selectedFile: null,
+        uploading: false,
+        response: null,
+        localDuration: null,
+        selectFile: mockSelectFile,
+        uploadFile: mockUploadFile,
+        resetUploadState: mockResetUploadState
+      })
+    )
 
     // Mock useUploadEvents
     vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
@@ -258,6 +262,14 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       setUploading: vi.fn(),
       setProgress: vi.fn(),
       setMessage: vi.fn()
+    })
+
+    // Mock useSproutFolderSelection (Issue #155)
+    vi.mocked(useFileUploadModule.useSproutFolderSelection).mockReturnValue({
+      selectedFolder: null,
+      selectFolder: vi.fn(),
+      recentFolders: [],
+      commitFolder: vi.fn()
     })
 
     // Mock usePosterFrameForUpload (Issue #140)
@@ -388,15 +400,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
 
     it('should reset upload state when switching tabs', async () => {
       // Mock a selected file
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -453,14 +467,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
 
     it('should display selected filename after file selection', async () => {
       // Mock a selected file
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/path/to/test-video.mp4',
-        uploading: false,
-        response: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/path/to/test-video.mp4',
+          uploading: false,
+          response: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -491,15 +507,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
 
     it('should enable "Upload and Add" button after file selection', async () => {
       // Mock a selected file
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -540,15 +558,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       })
 
       // Mock selected file
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -567,14 +587,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
 
     it('should disable "Upload and Add" during upload (uploading = true)', async () => {
       // Mock uploading state
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: true,
-        response: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: true,
+          response: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -590,14 +612,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
 
     it('should show "Uploading... X%" during upload', async () => {
       // Mock uploading state with progress
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: true,
-        response: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: true,
+          response: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 45,
@@ -636,15 +660,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       })
 
       // Phase 1: Initial state with file selected (before upload)
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 0,
@@ -673,14 +699,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       expect(uploadButton).toBeEnabled()
 
       // Phase 2: Uploading state (button should be disabled)
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: true,
-        response: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: true,
+          response: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 50,
@@ -727,14 +755,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         created_at: '2025-01-15T10:30:00Z'
       })
 
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: mockUploadResponse,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: mockUploadResponse,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 100,
@@ -783,14 +813,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
 
     it('should show progress bar when upload starts', async () => {
       // Mock uploading state
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: true,
-        response: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: true,
+          response: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 25,
@@ -816,14 +848,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should update progress bar with percentage (0-100%)', async () => {
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: true,
-        response: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: true,
+          response: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 67,
@@ -864,14 +898,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       })
 
       // Initial uploading state at 0%
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: true,
-        response: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: true,
+          response: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
         progress: 0,
@@ -989,14 +1025,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
 
     it('should call addVideoLink with correct VideoLink after successful upload', async () => {
       // Mock successful upload response
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/renders/test-video.mp4',
-        uploading: false,
-        response: mockUploadResponse,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/renders/test-video.mp4',
+          uploading: false,
+          response: mockUploadResponse,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1027,14 +1065,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         title: ''
       }
 
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/renders/my-awesome-video.mp4',
-        uploading: false,
-        response: responseWithoutTitle,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/renders/my-awesome-video.mp4',
+          uploading: false,
+          response: responseWithoutTitle,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1055,14 +1095,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should keep dialog open after successful add and show Close button', async () => {
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: mockUploadResponse,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: mockUploadResponse,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1089,14 +1131,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should reset upload state when closing dialog after successful add', async () => {
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: mockUploadResponse,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: mockUploadResponse,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1122,14 +1166,16 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should extract only filename for sourceRenderFile (no path)', async () => {
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/deep/nested/path/to/renders/final-cut.mp4',
-        uploading: false,
-        response: mockUploadResponse,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/deep/nested/path/to/renders/final-cut.mp4',
+          uploading: false,
+          response: mockUploadResponse,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1163,15 +1209,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         setMessage: vi.fn()
       })
 
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1196,15 +1244,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         setMessage: vi.fn()
       })
 
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1226,15 +1276,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         error: null
       })
 
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1257,15 +1309,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         setMessage: vi.fn()
       })
 
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1291,15 +1345,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         setMessage: vi.fn()
       })
 
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1319,15 +1375,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
   // ==========================================
   describe('T008: Dialog cleanup', () => {
     it('should reset upload state when closing dialog', async () => {
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1433,15 +1491,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should show clean state when opening dialog again', async () => {
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/test/video.mp4',
-        uploading: false,
-        response: null,
-        localDuration: null,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/test/video.mp4',
+          uploading: false,
+          response: null,
+          localDuration: null,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -1489,15 +1549,17 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     const renderUploadTab = async () => {
-      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue({
-        selectedFile: '/renders/test-video.mp4',
-        uploading: false,
-        response: uploadResponse,
-        localDuration: 120,
-        selectFile: mockSelectFile,
-        uploadFile: mockUploadFile,
-        resetUploadState: mockResetUploadState
-      })
+      vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
+        createFileUploadMock({
+          selectedFile: '/renders/test-video.mp4',
+          uploading: false,
+          response: uploadResponse,
+          localDuration: 120,
+          selectFile: mockSelectFile,
+          uploadFile: mockUploadFile,
+          resetUploadState: mockResetUploadState
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
       await userEvent.click(screen.getByRole('button', { name: /add video/i }))

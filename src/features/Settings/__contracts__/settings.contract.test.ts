@@ -104,7 +104,17 @@ vi.mock('@shared/constants/timing', async (importOriginal) => {
 vi.mock('@shared/lib/query-keys', () => ({
   queryKeys: {
     settings: {
-      apiKeys: () => ['settings', 'apiKeys']
+      apiKeys: () => ['settings', 'api-keys']
+    },
+    // SproutVideoSection now renders the default-folder picker (issue #155).
+    sprout: {
+      all: ['sprout'],
+      folders: (apiKey: string, parentId: string | null) => [
+        'sprout',
+        'folders',
+        apiKey,
+        parentId || 'root'
+      ]
     }
   }
 }))

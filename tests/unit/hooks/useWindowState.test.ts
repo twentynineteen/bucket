@@ -4,7 +4,7 @@
  */
 
 import { useWindowState } from '../../../src/shared/hooks/useWindowState'
-import { LogicalPosition, LogicalSize } from '@tauri-apps/api/window'
+import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window'
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -23,15 +23,16 @@ const mockOnResized = vi.fn()
 const mockOnMoved = vi.fn()
 
 vi.mock('@tauri-apps/api/window', () => {
-  // Mock LogicalPosition and LogicalSize classes - must be defined inside the factory
-  class MockLogicalPosition {
+  // Physical, not Logical: saved geometry is in physical pixels, and restoring
+  // it as logical multiplied it by the display scale factor on every launch.
+  class MockPhysicalPosition {
     constructor(
       public x: number,
       public y: number
     ) {}
   }
 
-  class MockLogicalSize {
+  class MockPhysicalSize {
     constructor(
       public width: number,
       public height: number
@@ -47,13 +48,20 @@ vi.mock('@tauri-apps/api/window', () => {
       onResized: mockOnResized,
       onMoved: mockOnMoved
     }),
-    LogicalPosition: MockLogicalPosition,
-    LogicalSize: MockLogicalSize
+    PhysicalPosition: MockPhysicalPosition,
+    PhysicalSize: MockPhysicalSize,
+    // Restore is skipped without monitor bounds, so a display must be reported.
+    currentMonitor: () =>
+      Promise.resolve({
+        position: { x: 0, y: 0 },
+        size: { width: 2560, height: 1440 },
+        scaleFactor: 2
+      })
   }
 })
 
 describe('useWindowState', () => {
-  const STORAGE_KEY = 'bucket-window-state'
+  const STORAGE_KEY = 'bucket-window-state-v2'
 
   // Mock localStorage
   const mockLocalStorage = {
@@ -107,8 +115,8 @@ describe('useWindowState', () => {
       await vi.runAllTimersAsync()
 
       expect(mockLocalStorage.getItem).toHaveBeenCalledWith(STORAGE_KEY)
-      expect(mockSetPosition).toHaveBeenCalledWith(new LogicalPosition(50, 50))
-      expect(mockSetSize).toHaveBeenCalledWith(new LogicalSize(1024, 768))
+      expect(mockSetPosition).toHaveBeenCalledWith(new PhysicalPosition(50, 50))
+      expect(mockSetSize).toHaveBeenCalledWith(new PhysicalSize(1024, 768))
     })
 
     it('should not restore if no saved state exists', async () => {
@@ -383,10 +391,13 @@ describe('useWindowState', () => {
 
       await vi.runAllTimersAsync()
 
-      expect(mockSetPosition).toHaveBeenCalledWith(new LogicalPosition(0, 0))
+      expect(mockSetPosition).toHaveBeenCalledWith(new PhysicalPosition(0, 0))
     })
 
-    it('should handle negative position values', async () => {
+    it('clamps a negative y so the title bar stays reachable', async () => {
+      // A negative y hides the title bar behind the menu bar, leaving the
+      // window impossible to drag back into view. x may stay negative as long
+      // as part of the window remains grabbable.
       const savedState = JSON.stringify({
         x: -100,
         y: -50,
@@ -400,7 +411,7 @@ describe('useWindowState', () => {
 
       await vi.runAllTimersAsync()
 
-      expect(mockSetPosition).toHaveBeenCalledWith(new LogicalPosition(-100, -50))
+      expect(mockSetPosition).toHaveBeenCalledWith(new PhysicalPosition(-100, 0))
     })
 
     it('should handle very large window dimensions', async () => {

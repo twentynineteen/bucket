@@ -1,5 +1,6 @@
 import { appStore } from '@shared/store'
 import { SproutUploadResponse } from '@shared/types'
+import type { SelectedSproutFolder } from '../types'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -18,8 +19,21 @@ interface UseFileUploadReturn {
   uploading: boolean
   response: SproutUploadResponse | null
   localDuration: number | null
+  /** Destination folder on Sprout. Null uploads to the account root. */
+  selectedFolder: SelectedSproutFolder | null
+  setSelectedFolder: (folder: SelectedSproutFolder | null) => void
   selectFile: () => Promise<string | null>
-  uploadFile: (apiKey: string | null, title?: string) => Promise<void>
+  /**
+   * Starts the upload. `folder` overrides `selectedFolder` when given -- callers
+   * that resolve the destination themselves (default / recently-used) pass it
+   * explicitly rather than setting state first, which would upload against the
+   * pre-update value.
+   */
+  uploadFile: (
+    apiKey: string | null,
+    title?: string,
+    folder?: SelectedSproutFolder | null
+  ) => Promise<void>
   resetUploadState: () => void
 }
 
@@ -28,7 +42,9 @@ export const useFileUpload = (): UseFileUploadReturn => {
   const [uploading, setUploading] = useState(false)
   const [response, setResponse] = useState<SproutUploadResponse | null>(null)
   const [localDuration, setLocalDuration] = useState<number | null>(null)
-  const [selectedFolder] = useState<string | null>(null)
+  // Before #155 this was a setter-less useState pinned to null, so every upload
+  // landed in the account root no matter what the user wanted.
+  const [selectedFolder, setSelectedFolder] = useState<SelectedSproutFolder | null>(null)
 
   const selectFile = async (): Promise<string | null> => {
     const file = await openFileDialog({
@@ -56,7 +72,12 @@ export const useFileUpload = (): UseFileUploadReturn => {
     setResponse(null)
   }
 
-  const uploadFile = async (apiKey: string | null, title?: string) => {
+  const uploadFile = async (
+    apiKey: string | null,
+    title?: string,
+    folder?: SelectedSproutFolder | null
+  ) => {
+    const destination = folder !== undefined ? folder : selectedFolder
     // Validate file selection and API key
     if (!selectedFile) {
       toast.error('Please select a video file.')
@@ -122,12 +143,15 @@ export const useFileUpload = (): UseFileUploadReturn => {
         })
 
         // Invoke the Rust backend command to start the upload
-        uploadVideo(selectedFile, apiKey, selectedFolder, title?.trim() || null).catch(
-          async (error) => {
-            await cleanup()
-            reject(error)
-          }
-        )
+        uploadVideo(
+          selectedFile,
+          apiKey,
+          destination?.id ?? null,
+          title?.trim() || null
+        ).catch(async (error) => {
+          await cleanup()
+          reject(error)
+        })
       })
 
       // Update the state with the final response from the backend upload
@@ -166,6 +190,8 @@ export const useFileUpload = (): UseFileUploadReturn => {
     uploading,
     response,
     localDuration,
+    selectedFolder,
+    setSelectedFolder,
     selectFile,
     uploadFile,
     resetUploadState

@@ -14,7 +14,8 @@ import {
 } from 'lucide-react'
 import type { RefObject } from 'react'
 
-import type { UploadMessage } from '@features/Upload'
+import type { SelectedSproutFolder, UploadMessage } from '@features/Upload'
+import { SproutFolderPicker } from '@features/Upload'
 
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
@@ -79,6 +80,13 @@ export interface UploadModeState {
   uploadSuccess: boolean
   onSelectFile: () => void
   onUploadAndAdd: () => void
+  /** Sprout API key, for the folder picker. Null disables it (issue #155). */
+  apiKey: string | null
+  /** Destination folder on Sprout. Null uploads to the account root. */
+  selectedFolder: SelectedSproutFolder | null
+  onSelectedFolderChange: (folder: SelectedSproutFolder | null) => void
+  /** Recently used folders, most recent first. */
+  recentFolders: SelectedSproutFolder[]
 }
 
 export interface ErrorState {
@@ -530,6 +538,22 @@ function UploadContent({
           />
           <p className="text-muted-foreground text-xs">
             Used as the video title on Sprout Video. Leave blank to use the filename.
+          </p>
+        </div>
+      )}
+
+      {uploadMode.selectedFile && (
+        <div className="space-y-2">
+          <Label>Sprout Folder</Label>
+          <SproutFolderPicker
+            apiKey={uploadMode.apiKey}
+            value={uploadMode.selectedFolder}
+            onChange={uploadMode.onSelectedFolderChange}
+            recentFolders={uploadMode.recentFolders}
+            disabled={uploadMode.uploading || uploadMode.uploadSuccess}
+          />
+          <p className="text-muted-foreground text-xs">
+            Where the video is filed on Sprout. Defaults to the account root.
           </p>
         </div>
       )}

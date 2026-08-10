@@ -1,14 +1,28 @@
 // types.ts
-// Define the interface for a SproutVideo folder.
+/**
+ * A SproutVideo folder. `parent_id` is null for a root folder.
+ *
+ * snake_case is correct here and must not be "fixed": the Tauri macro
+ * camelCases command *arguments* only -- return values serialise through plain
+ * serde, so the Rust `SproutFolder` reaches us exactly as written. See #155.
+ */
 export interface SproutFolder {
   id: string
   name: string
   parent_id: string | null
 }
 
-// The expected API response from the Tauri command.
+/** Every folder at one level, aggregated across Sprout's pages by the backend. */
 export interface GetFoldersResponse {
   folders: SproutFolder[]
+  /** Sprout's count for this level -- diverges from folders.length when truncated. */
+  total?: number
+  /** True when the backend's page cap stopped it before Sprout ran out of pages. */
+  truncated: boolean
+  /** Sprout's remaining request budget, for the rate guard. Null if not reported. */
+  rate_limit_remaining: number | null
+  /** When the rate limit window resets (UTC epoch seconds). */
+  rate_limit_reset: number | null
 }
 
 // interface for camera number and footage filename
@@ -86,9 +100,15 @@ export interface SproutUploadResponse {
   direct_file_access: string | null
 }
 
-// Define an interface for folder data (adjust fields as needed)
-export interface SproutFolder {
+// (SproutFolder is declared once, at the top of this file. A byte-identical
+// second declaration used to live here and was silently declaration-merged.)
+
+/**
+ * A folder remembered as an upload destination. Carries name and path alongside
+ * the id so a label can render before the tree loads. See issue #155.
+ */
+export interface RecentSproutFolder {
   id: string
   name: string
-  parent_id: string | null // Null means a root folder
+  path: string
 }

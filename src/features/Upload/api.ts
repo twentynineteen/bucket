@@ -7,15 +7,29 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import type { Event } from '@tauri-apps/api/event'
-import { open } from '@tauri-apps/plugin-dialog'
-import { exists, readDir, readFile, writeFile } from '@tauri-apps/plugin-fs'
-import { fontDir } from '@tauri-apps/api/path'
+import { open, save } from '@tauri-apps/plugin-dialog'
+import {
+  exists,
+  readDir,
+  readFile,
+  readTextFile,
+  writeFile,
+  writeTextFile
+} from '@tauri-apps/plugin-fs'
+import { appDataDir, fontDir } from '@tauri-apps/api/path'
 
+import { isRateLimited } from '@shared/lib'
 import type {
   GetFoldersResponse,
   SproutUploadResponse,
   SproutVideoDetails
 } from '@shared/types'
+
+import {
+  recordBudget,
+  recordRateLimited,
+  runBrowseRequest
+} from './internal/sproutRateBudget'
 
 // --- Tauri Command Wrappers ---
 
@@ -33,13 +47,34 @@ export async function getVideoDuration(filePath: string): Promise<number> {
   return invoke<number>('get_video_duration', { filePath })
 }
 
+/**
+ * Lists the folders directly inside `parentId`, or the root folders for null.
+ *
+ * The argument key MUST be `parentId`. Tauri camelCases command arguments and
+ * does no snake_case fallback, so a snake_case key silently binds the Rust
+ * `Option` to `None` -- which is how every folder request returned the account
+ * root for so long (#155 §2). `api.contract.test.ts` pins this.
+ *
+ * Routed through the browse guard: serialised, and refused when the account's
+ * request budget is low so an in-flight upload keeps its headroom (#155 R6).
+ */
 export async function getFolders(
   apiKey: string,
   parentId: string | null
 ): Promise<GetFoldersResponse> {
-  return invoke<GetFoldersResponse>('get_folders', {
-    apiKey,
-    parent_id: parentId
+  return runBrowseRequest(async () => {
+    try {
+      const page = await invoke<GetFoldersResponse>('get_folders', {
+        apiKey,
+        parentId
+      })
+      recordBudget(page.rate_limit_remaining, page.rate_limit_reset)
+      return page
+    } catch (error) {
+      // A 429 opens a cooloff so queued submenu opens stop before the network.
+      if (isRateLimited(error)) recordRateLimited()
+      throw error
+    }
   })
 }
 
@@ -180,4 +215,63 @@ export async function fileExists(path: string): Promise<boolean> {
 export async function posterFrameFontAvailable(): Promise<boolean> {
   const dir = await fontDir()
   return exists(`${dir}/Cabrito.otf`)
+}
+
+// --- Saved folder index (issue #155, search) ---
+
+/** File holding the crawled folder index. Rebuildable cache, not user data. */
+const FOLDER_INDEX_FILE = 'sprout-folder-index.json'
+
+async function folderIndexPath(): Promise<string> {
+  return `${await appDataDir()}${FOLDER_INDEX_FILE}`
+}
+
+/**
+ * Reads the saved folder index, or null when there is none.
+ *
+ * Never throws: a missing or corrupt index must fall back to "not indexed yet"
+ * rather than break the picker, since the index is only ever a cache.
+ */
+export async function readFolderIndex(): Promise<unknown | null> {
+  try {
+    const path = await folderIndexPath()
+    if (!(await exists(path))) return null
+    return JSON.parse(await readTextFile(path))
+  } catch {
+    return null
+  }
+}
+
+/** Writes the folder index. Rejects so the caller can report a failed save. */
+export async function writeFolderIndex(index: unknown): Promise<void> {
+  const path = await folderIndexPath()
+  await writeTextFile(path, JSON.stringify(index))
+}
+
+/** Prompts for a location to write an exported index to. Null if cancelled. */
+export async function saveFileDialog(defaultPath: string): Promise<string | null> {
+  return save({
+    defaultPath,
+    filters: [{ name: 'Folder index', extensions: ['json'] }]
+  })
+}
+
+/** Prompts for an exported index to import. Null if cancelled. */
+export async function openJsonFileDialog(): Promise<string | null> {
+  const picked = await open({
+    multiple: false,
+    directory: false,
+    filters: [{ name: 'Folder index', extensions: ['json'] }]
+  })
+  return typeof picked === 'string' ? picked : null
+}
+
+/** Writes an index to an arbitrary path chosen by the user. */
+export async function writeFolderIndexTo(path: string, index: unknown): Promise<void> {
+  await writeTextFile(path, JSON.stringify(index, null, 2))
+}
+
+/** Reads an exported index from an arbitrary path. Rejects if unreadable. */
+export async function readFolderIndexFrom(path: string): Promise<unknown> {
+  return JSON.parse(await readTextFile(path))
 }

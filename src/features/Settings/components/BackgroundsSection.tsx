@@ -3,6 +3,7 @@
  *
  * Default folder picker and save.
  */
+import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { useAppStore } from '@shared/store'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -50,6 +51,9 @@ const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({ apiKeys }) => {
       await saveMutation.mutateAsync({ defaultBackgroundFolder })
     } catch (error) {
       logger.error('Failed to save default background folder:', error)
+      // A failed write must be visible: saveApiKeys rethrows now, but a
+      // silent catch would still show the user a false success (#155 P5-b).
+      toast.error('Could not save your background folder. Please try again.')
     }
   }
 

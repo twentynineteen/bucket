@@ -17,18 +17,25 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => getCurrentWindowMock(),
-  LogicalPosition: class {
+  // Physical, not Logical -- see the note on WindowState in the hook.
+  PhysicalPosition: class {
     constructor(
       public x: number,
       public y: number
     ) {}
   },
-  LogicalSize: class {
+  PhysicalSize: class {
     constructor(
       public width: number,
       public height: number
     ) {}
-  }
+  },
+  currentMonitor: () =>
+    Promise.resolve({
+      position: { x: 0, y: 0 },
+      size: { width: 2560, height: 1440 },
+      scaleFactor: 2
+    })
 }))
 
 import { useWindowState } from './useWindowState'
@@ -90,7 +97,7 @@ describe('useWindowState inside the Tauri webview', () => {
   it('b2_3_restores_a_saved_window_state', async () => {
     isTauriMock.mockReturnValue(true)
     localStorage.setItem(
-      'bucket-window-state',
+      'bucket-window-state-v2',
       JSON.stringify({ x: 10, y: 20, width: 1024, height: 768 })
     )
 

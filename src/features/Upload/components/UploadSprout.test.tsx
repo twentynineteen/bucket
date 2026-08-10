@@ -69,7 +69,10 @@ let mockImageRefreshState = {
 }
 
 vi.mock('@shared/hooks/useApiKeys', () => ({
-  useSproutVideoApiKey: vi.fn(() => mockApiKeyState)
+  useSproutVideoApiKey: vi.fn(() => mockApiKeyState),
+  // useSproutFolderSelection reads the Settings default through useApiKeys.
+  useApiKeys: vi.fn(() => ({ data: {}, isLoading: false, error: null })),
+  useTrelloApiKeys: vi.fn(() => ({}))
 }))
 
 vi.mock('../hooks/useFileUpload', () => ({
@@ -297,7 +300,9 @@ describe('UploadSprout Page', () => {
       const uploadButton = screen.getByRole('button', { name: /Upload Video/i })
       fireEvent.click(uploadButton)
 
-      expect(mockUploadFile).toHaveBeenCalledWith('test-api-key', '')
+      // The destination is passed explicitly (issue #155) -- null is the account
+      // root, which is what a fresh session with no default resolves to.
+      expect(mockUploadFile).toHaveBeenCalledWith('test-api-key', '', null)
     })
   })
 
