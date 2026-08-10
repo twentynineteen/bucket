@@ -37,9 +37,14 @@ function walk(dir: string, match: RegExp): string[] {
 
 describe('updater relaunch wiring -- B1.1 process plugin registration', () => {
   it('main.rs registers tauri_plugin_process::init()', () => {
+    // Strip line comments so a commented-out registration cannot satisfy the
+    // scan, and require the full .plugin(...) call, not just the name.
     const mainSource = readFileSync(MAIN_RS, 'utf-8')
+      .split('\n')
+      .map((line) => line.replace(/\/\/.*$/, ''))
+      .join('\n')
     expect(
-      /tauri_plugin_process::init\(\)/.test(mainSource),
+      mainSource.includes('.plugin(tauri_plugin_process::init())'),
       'src-tauri/src/main.rs does not register tauri_plugin_process::init() -- ' +
         'without it plugin:process|restart does not exist at runtime and ' +
         'relaunch() after an update rejects into the manual-restart fallback'
@@ -50,8 +55,12 @@ describe('updater relaunch wiring -- B1.1 process plugin registration', () => {
 describe('updater relaunch wiring -- B1.2 capability permission', () => {
   it('the main window capability grants process:allow-restart', () => {
     const capability = JSON.parse(readFileSync(CAPABILITY_FILE, 'utf-8')) as {
+      windows: string[]
       permissions: Array<string | { identifier: string }>
     }
+    // The grant must sit on the capability that actually targets the main
+    // window -- a future capability split must not strand it elsewhere.
+    expect(capability.windows).toContain('main')
     const identifiers = capability.permissions.map((p) =>
       typeof p === 'string' ? p : p.identifier
     )
@@ -79,12 +88,17 @@ describe('updater relaunch wiring -- B1.4 legacy graceful_restart stays deleted'
     ).toEqual([])
   })
 
-  it('no frontend source invokes graceful_restart', () => {
-    const offenders = walk(join(REPO_ROOT, 'src'), /\.(ts|tsx)$/)
+  it('no frontend source or doc references graceful_restart', () => {
+    // docs/ is scanned too: stale command documentation with usage examples
+    // is how the next caller of a deleted command gets written
+    const offenders = [
+      ...walk(join(REPO_ROOT, 'src'), /\.(ts|tsx)$/),
+      ...walk(join(REPO_ROOT, 'docs'), /\.md$/)
+    ]
       .filter((file) => file !== __filename)
       .filter((file) => readFileSync(file, 'utf-8').includes('graceful_restart'))
       .map((file) => file.slice(REPO_ROOT.length + 1))
-    expect(offenders, `graceful_restart invoked from: ${offenders.join(', ')}`).toEqual(
+    expect(offenders, `graceful_restart referenced in: ${offenders.join(', ')}`).toEqual(
       []
     )
   })

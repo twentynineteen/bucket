@@ -91,6 +91,8 @@ describe('useUpdateManager restart flow (characterisation)', () => {
     })
     await result.current.onUpdate()
 
+    // Guard against vacuous passes: the restart path must actually run
+    expect(relaunchMock).toHaveBeenCalled()
     const manualRestartCalls = messageMock.mock.calls.filter(
       ([, options]) =>
         (options as { title?: string } | undefined)?.title === 'Manual Restart Required'

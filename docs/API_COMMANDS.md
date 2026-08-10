@@ -132,26 +132,6 @@ pub fn open_folder(path: String)
 await invoke('open_folder', { path })
 ```
 
-### `graceful_restart`
-
-**Purpose:** Restart the application by spawning a new process and exiting the current one. No-op in debug/development mode.
-
-**Rust signature:**
-
-```rust
-pub async fn graceful_restart(_app_handle: AppHandle) -> Result<(), String>
-```
-
-**Parameters:** None (AppHandle auto-injected)
-
-**Returns:** `Result<(), String>`
-
-**Frontend usage** (`shared/hooks/useUpdateMutation.ts`):
-
-```typescript
-await invoke('graceful_restart')
-```
-
 ### `open_resource_file`
 
 **Purpose:** Read a file from the bundled resource directory and return its raw bytes.

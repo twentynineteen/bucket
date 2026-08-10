@@ -184,7 +184,7 @@ All frontend-to-backend communication uses Tauri's `invoke()` IPC mechanism. Com
 **AI/RAG:** `search_similar_scripts`, `get_example_by_id`, `get_all_examples`, `get_all_examples_with_metadata`, `upload_example`, `replace_example`, `delete_example`, `validate_provider_connection`, `validate_provider_with_auth`
 **DOCX:** `parse_docx_file`, `generate_docx_file`, `validate_docx_file`
 **Premiere Plugins:** `get_available_plugins`, `install_plugin`, `check_plugin_installed`, `get_cep_directory`, `enable_cep_debug_mode`, `open_cep_folder`
-**System:** `graceful_restart`, `show_confirmation_dialog`, `open_resource_file`, `get_username`, `check_auth`, `add_token`
+**System:** `show_confirmation_dialog`, `open_resource_file`, `get_username`, `check_auth`, `add_token`
 
 **Event Emitters (Rust to Frontend):**
 - `copy_file_error` - Individual file copy failure
