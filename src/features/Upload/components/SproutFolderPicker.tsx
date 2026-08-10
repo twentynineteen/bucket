@@ -42,6 +42,21 @@ import type { SelectedSproutFolder } from '../types'
 /** Shared by every menu surface. See note 2 in the file header. */
 const MENU_SCROLL = 'max-h-[300px] overflow-x-hidden overflow-y-auto'
 
+/**
+ * The root menu matches its trigger's width rather than a fixed size.
+ *
+ * Search results are labelled with a full breadcrumb (`2026 Projects / MSc /
+ * Module X`), which a narrow menu truncates to uselessness. The trigger is
+ * full-width in both entry points, so borrowing its width uses the space the
+ * layout already provides -- wide on the upload page, narrower inside
+ * AddVideoDialog, correct in both without a magic number.
+ */
+const MENU_WIDTH =
+  'w-[var(--radix-dropdown-menu-trigger-width)] min-w-[20rem] max-w-[min(92vw,44rem)]'
+
+/** Submenus float beside their parent, so they size to content within bounds. */
+const SUBMENU_WIDTH = 'min-w-[14rem] max-w-[min(80vw,30rem)]'
+
 export interface SproutFolderPickerProps {
   /** Sprout API key. Without one the picker is disabled with an explanation. */
   apiKey: string | null
@@ -55,12 +70,21 @@ export interface SproutFolderPickerProps {
   disabled?: boolean
 }
 
-/** Flattens every folder level currently in the query cache, with its path. */
-function useLoadedFolderIndex(apiKey: string | null) {
+/**
+ * Flattens every folder level currently in the query cache, with its path.
+ *
+ * Keyed on `filterKey` -- the live filter text -- rather than on `queryClient`,
+ * which is referentially stable. Memoising on the client alone computed the
+ * index once at mount, when the cache is still empty, and never again: search
+ * silently matched nothing however many levels the user opened. Recomputing as
+ * the filter text changes refreshes it at exactly the moment it is read, and
+ * still costs no API requests.
+ */
+function useLoadedFolderIndex(apiKey: string | null, filterKey: string) {
   const queryClient = useQueryClient()
 
   return useMemo(() => {
-    if (!apiKey) return []
+    if (!apiKey || !filterKey) return []
 
     // Only levels the user has already opened are in cache, so this searches
     // exactly what is visible and issues no requests. See issue #155 R1.
@@ -91,7 +115,9 @@ function useLoadedFolderIndex(apiKey: string | null) {
     return [...byId.values()]
       .map((folder) => ({ id: folder.id, name: folder.name, path: pathOf(folder) }))
       .sort((a, b) => a.path.localeCompare(b.path))
-  }, [apiKey, queryClient])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filterKey is the
+    // intentional recompute trigger; queryClient is stable and carries no data.
+  }, [apiKey, filterKey, queryClient])
 }
 
 interface FolderSubmenuProps {
@@ -122,12 +148,14 @@ const FolderSubmenu: React.FC<FolderSubmenuProps> = ({
   return (
     <DropdownMenuSub open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuSubTrigger>
-        <Folder className="text-muted-foreground" />
-        <span className="truncate">{folder.name}</span>
-        {selectedId === folder.id && <Check className="ml-2 h-3.5 w-3.5" />}
+        <Folder className="shrink-0 text-muted-foreground" />
+        <span className="truncate" title={folder.name}>
+          {folder.name}
+        </span>
+        {selectedId === folder.id && <Check className="ml-2 h-3.5 w-3.5 shrink-0" />}
       </DropdownMenuSubTrigger>
 
-      <DropdownMenuSubContent className={MENU_SCROLL}>
+      <DropdownMenuSubContent className={`${SUBMENU_WIDTH} ${MENU_SCROLL}`}>
         {/* Selecting is a distinct action from opening -- the ambiguity in the
             old FolderTreeSprout was that one click did both. */}
         <DropdownMenuItem
@@ -215,8 +243,10 @@ const FilterResults: React.FC<FilterResultsProps> = ({
     )}
     {matches.map((folder) => (
       <DropdownMenuItem key={folder.id} onSelect={() => onSelect(folder)}>
-        <Folder className="text-muted-foreground" />
-        <span className="truncate">{folder.path}</span>
+        <Folder className="shrink-0 text-muted-foreground" />
+        <span className="truncate" title={folder.path}>
+          {folder.path}
+        </span>
       </DropdownMenuItem>
     ))}
   </>
@@ -233,7 +263,7 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
   const [filter, setFilter] = useState('')
 
   const rootLevel = useSproutFolders({ apiKey, parentId: null, isOpen })
-  const loadedFolders = useLoadedFolderIndex(apiKey)
+  const loadedFolders = useLoadedFolderIndex(apiKey, filter.trim())
 
   const matches = useMemo(() => {
     const query = filter.trim().toLowerCase()
@@ -281,7 +311,7 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
         <ChevronDown className="ml-auto h-4 w-4 shrink-0 opacity-60" />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className={`w-72 ${MENU_SCROLL}`}>
+      <DropdownMenuContent align="start" className={`${MENU_WIDTH} ${MENU_SCROLL}`}>
         <div className="flex items-center gap-2 px-2 py-1.5">
           <Search className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
           <input

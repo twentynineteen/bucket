@@ -7,12 +7,14 @@
  * neither throws.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../api', () => ({ getFolders: vi.fn() }))
+
+import { queryKeys } from '@shared/lib'
 
 import { getFolders } from '../api'
 import type { SelectedSproutFolder } from '../types'
@@ -30,12 +32,16 @@ const rootPage = {
 }
 
 function renderPicker(
-  props: Partial<React.ComponentProps<typeof SproutFolderPicker>> = {}
+  props: Partial<React.ComponentProps<typeof SproutFolderPicker>> = {},
+  seed?: Array<[readonly unknown[], unknown]>
 ) {
   const onChange = vi.fn()
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } }
   })
+
+  // Seeding stands in for folder levels the user has already opened.
+  for (const [key, value] of seed ?? []) client.setQueryData(key, value)
 
   render(
     <QueryClientProvider client={client}>
@@ -159,6 +165,44 @@ describe('Radix regressions', () => {
 
     expect(menu.className).toMatch(/max-h-\[300px\]/)
     expect(menu.className).toMatch(/overflow-y-auto/)
+  })
+})
+
+describe('filtering searches what has been loaded', () => {
+  const page = (folders: unknown[]) => ({
+    folders,
+    total: folders.length,
+    truncated: false,
+    rate_limit_remaining: 190,
+    rate_limit_reset: null
+  })
+
+  it('finds a nested folder by its full path', async () => {
+    // Levels are seeded AFTER mount on purpose. Seeding beforehand passes even
+    // with a stale index, because the memo's one computation happens at mount
+    // with the data already present -- which is never the real sequence. In the
+    // app, levels arrive as the user opens them, long after mount.
+    const user = userEvent.setup()
+    const { client } = renderPicker()
+
+    await user.click(screen.getByRole('button'))
+
+    await act(async () => {
+      client.setQueryData(
+        queryKeys.sprout.folders('key-1', null),
+        page([{ id: 'f1', name: 'Marketing', parent_id: null }])
+      )
+      client.setQueryData(
+        queryKeys.sprout.folders('key-1', 'f1'),
+        page([{ id: 'f2', name: 'Q2 Campaign', parent_id: 'f1' }])
+      )
+    })
+
+    await user.type(await screen.findByLabelText('Filter loaded folders'), 'q2')
+
+    // Rendered with its breadcrumb, so two folders of the same leaf name are
+    // distinguishable.
+    expect(await screen.findByText('Marketing / Q2 Campaign')).toBeInTheDocument()
   })
 })
 

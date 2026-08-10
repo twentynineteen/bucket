@@ -13,6 +13,7 @@
 import { expect, test } from '@playwright/test'
 
 import {
+  DEEP_TREE,
   SAMPLE_TREE,
   folderCalls,
   resetFolderCalls,
@@ -148,6 +149,33 @@ test.describe('folder picker — layout the unit tests cannot see', () => {
     const last = page.getByRole('menuitem', { name: 'Folder 039' })
     await last.scrollIntoViewIfNeeded()
     await expect(last).toBeInViewport()
+  })
+
+  test('search results show the full breadcrumb path without clipping', async ({
+    page
+  }) => {
+    // Reported from manual testing: at a fixed narrow width, a path like
+    // `2026 Projects / MSc Programmes / Module X -- Session Recordings` was
+    // truncated to uselessness. The menu now borrows the trigger's width.
+    await setupSproutMocks(page, { folders: DEEP_TREE })
+    const trigger = await openPicker(page)
+    await openMenu(page, trigger, /2026 Projects/)
+
+    // Load the deeper levels so they are in cache and therefore filterable.
+    await page.getByRole('menuitem', { name: /2026 Projects/ }).hover()
+    await expect(page.getByRole('menuitem', { name: /MSc Programmes/ })).toBeVisible()
+    await page.getByRole('menuitem', { name: /MSc Programmes/ }).hover()
+    await expect(page.getByRole('menuitem', { name: /Module X/ })).toBeVisible()
+
+    await page.getByLabel('Filter loaded folders').click()
+    await page.keyboard.type('Module X')
+
+    const hit = page.getByTitle('2026 Projects / MSc Programmes / Module X -- Session Recordings')
+    await expect(hit).toBeVisible()
+
+    // scrollWidth > clientWidth is exactly what CSS truncation looks like.
+    const clipped = await hit.evaluate((el) => el.scrollWidth > el.clientWidth + 1)
+    expect(clipped, 'the full path must be visible, not ellipsised').toBe(false)
   })
 
   test('the trigger reports the current destination without opening', async ({

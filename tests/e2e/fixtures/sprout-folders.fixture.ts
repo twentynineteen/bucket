@@ -49,6 +49,17 @@ export const SAMPLE_TREE: FolderNode[] = [
   { id: 'child-2', name: 'Q2 Campaign', parent_id: 'root-1' }
 ]
 
+/**
+ * A deep hierarchy whose breadcrumb paths are long, for the width check.
+ * `2026 Projects / MSc Programmes / Module X -- Session Recordings` is the kind
+ * of path a real account produces.
+ */
+export const DEEP_TREE: FolderNode[] = [
+  { id: 'd1', name: '2026 Projects', parent_id: null },
+  { id: 'd2', name: 'MSc Programmes', parent_id: 'd1' },
+  { id: 'd3', name: 'Module X -- Session Recordings', parent_id: 'd2' }
+]
+
 /** A level with more folders than fit on screen, for the scrolling check. */
 export function wideTree(count: number): FolderNode[] {
   return Array.from({ length: count }, (_, i) => ({
