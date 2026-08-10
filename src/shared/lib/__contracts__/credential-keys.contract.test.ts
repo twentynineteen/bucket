@@ -19,14 +19,18 @@ const SPROUT_KEY_B = 'RAW_SPROUT_API_KEY_SENTINEL_B'
 const TRELLO_KEY = 'RAW_TRELLO_API_KEY_SENTINEL'
 const TRELLO_TOKEN = 'RAW_TRELLO_TOKEN_SENTINEL'
 
-/** True if any string segment reveals the secret verbatim or as a truncation. */
+/** True if any segment reveals the secret verbatim or as a truncation. */
 function leaksSecret(key: readonly unknown[], secret: string): boolean {
-  return key.some(
-    (segment) =>
-      typeof segment === 'string' &&
+  return key.some((rawSegment) => {
+    // Non-string segments (objects, arrays) can smuggle a secret through
+    // properties -- compare their serialised form too.
+    const segment =
+      typeof rawSegment === 'string' ? rawSegment : JSON.stringify(rawSegment) ?? ''
+    return (
       segment.length > 0 &&
       (segment.includes(secret) || (segment.length >= 6 && secret.includes(segment)))
-  )
+    )
+  })
 }
 
 describe('credential-free query keys (issue #158)', () => {
@@ -105,6 +109,16 @@ describe('credential-free query keys (issue #158)', () => {
         queryKeys.trello.cardDetailsSync('card-1', TRELLO_KEY, `${TRELLO_TOKEN}_B`)
       )
     })
+
+    test('B3.3 trello.me fingerprints the apiKey and tolerates absent credentials', () => {
+      const key = queryKeys.trello.me(TRELLO_KEY)
+      expect(leaksSecret(key, TRELLO_KEY)).toBe(false)
+      expect(key).toEqual(queryKeys.trello.me(TRELLO_KEY))
+      expect(key).not.toEqual(queryKeys.trello.me(`${TRELLO_KEY}_B`))
+      // Hooks call this while credentials are still loading
+      expect(queryKeys.trello.me(undefined)).toEqual(queryKeys.trello.me(undefined))
+      expect(queryKeys.trello.me(undefined)).not.toEqual(queryKeys.trello.me(TRELLO_KEY))
+    })
   })
 
   describe('B4.1: no credential-taking factory leaks its secret', () => {
@@ -113,7 +127,8 @@ describe('credential-free query keys (issue #158)', () => {
         [...queryKeys.sprout.folders(SPROUT_KEY, 'parent-1')],
         [...queryKeys.sprout.videos(SPROUT_KEY)],
         [...queryKeys.sprout.video(SPROUT_KEY, 'vid-1')],
-        [...queryKeys.trello.cardDetailsSync('card-1', TRELLO_KEY, TRELLO_TOKEN)]
+        [...queryKeys.trello.cardDetailsSync('card-1', TRELLO_KEY, TRELLO_TOKEN)],
+        [...queryKeys.trello.me(TRELLO_KEY)]
       ]
       for (const key of keys) {
         for (const secret of [SPROUT_KEY, TRELLO_KEY, TRELLO_TOKEN]) {
