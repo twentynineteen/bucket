@@ -14,7 +14,15 @@ import { CACHE } from '@shared/constants'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 
-import { getFolders, readFolderIndex, writeFolderIndex } from '../api'
+import {
+  getFolders,
+  openJsonFileDialog,
+  readFolderIndex,
+  readFolderIndexFrom,
+  saveFileDialog,
+  writeFolderIndex,
+  writeFolderIndexTo
+} from '../api'
 import type { CrawlProgress } from '../internal/crawlSproutFolders'
 import { crawlSproutFolders } from '../internal/crawlSproutFolders'
 import type { FolderIndex } from '../internal/folderIndex'
@@ -24,6 +32,12 @@ import {
   parseFolderIndex
 } from '../internal/folderIndex'
 import { withPaths } from '../internal/folderPaths'
+import {
+  assessImport,
+  describeVerdict,
+  exportFileName,
+  parseImportedIndex
+} from '../internal/folderIndexTransfer'
 import { remainingBudget } from '../internal/sproutRateBudget'
 import type { SelectedSproutFolder } from '../types'
 
@@ -49,6 +63,15 @@ export interface UseSproutFolderIndexResult {
   incompleteReason: string | null
   build: () => void
   cancel: () => void
+  /** Writes the index to a file the user picks, for a colleague to import. */
+  exportIndex: () => void
+  /** Reads a colleague's exported index and merges it in. */
+  importIndex: () => void
+  isTransferring: boolean
+  /** Outcome of the last export or import, for display. */
+  transferMessage: string | null
+  /** True when the last transfer failed, so the message can be styled as such. */
+  transferFailed: boolean
 }
 
 export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderIndexResult {
@@ -125,6 +148,78 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
 
   const cancel = useCallback(() => abortRef.current?.abort(), [])
 
+  const [transferMessage, setTransferMessage] = useState<string | null>(null)
+  const [transferFailed, setTransferFailed] = useState(false)
+
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      if (!apiKey) throw new Error('No Sprout Video API key configured')
+      const current = parseFolderIndex(await readFolderIndex(), apiKey)
+      if (!current) throw new Error('There is no index to export yet')
+
+      const path = await saveFileDialog(exportFileName(current.indexedAt))
+      if (!path) return null // cancelled
+
+      await writeFolderIndexTo(path, current)
+      return current.folders.length
+    },
+    onSuccess: (count) => {
+      setTransferFailed(false)
+      setTransferMessage(
+        count === null
+          ? null
+          : `Exported ${count} folders. Share the file with your team.`
+      )
+    },
+    onError: (error: Error) => {
+      setTransferFailed(true)
+      setTransferMessage(`Export failed: ${error.message}`)
+    }
+  })
+
+  const importMutation = useMutation({
+    mutationFn: async () => {
+      if (!apiKey) throw new Error('No Sprout Video API key configured')
+
+      const path = await openJsonFileDialog()
+      if (!path) return null // cancelled
+
+      const imported = parseImportedIndex(await readFolderIndexFrom(path))
+      if (!imported) {
+        throw new Error('That file is not a folder index Bucket can read')
+      }
+
+      // One request, versus the minutes the import is replacing. Folder ids are
+      // account-scoped, so overlapping roots prove the index belongs here.
+      const roots = (await getFolders(apiKey, null)).folders.map((folder) => folder.id)
+      const verdict = assessImport(imported, roots)
+      if (!verdict.ok) throw new Error(describeVerdict(verdict, 0))
+
+      const existing = parseFolderIndex(await readFolderIndex(), apiKey)
+      // Re-tagged with this machine's fingerprint, so it loads normally hereafter.
+      const merged = mergeFolderIndex(
+        existing,
+        imported.folders,
+        !imported.partial,
+        apiKey,
+        new Date().toISOString()
+      )
+      await writeFolderIndex(merged)
+
+      return { merged, message: describeVerdict(verdict, merged.folders.length) }
+    },
+    onSuccess: (result) => {
+      setTransferFailed(false)
+      if (!result) return
+      queryClient.setQueryData(indexQueryKey(apiKey ?? ''), result.merged)
+      setTransferMessage(result.message)
+    },
+    onError: (error: Error) => {
+      setTransferFailed(true)
+      setTransferMessage(error.message)
+    }
+  })
+
   // Validated rather than trusted: the query cache can be seeded or mocked with
   // anything, and a shape mismatch must not throw during render.
   const raw = indexQuery.data
@@ -145,7 +240,12 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
     progress,
     incompleteReason,
     build: buildMutation.mutate,
-    cancel
+    cancel,
+    exportIndex: exportMutation.mutate,
+    importIndex: importMutation.mutate,
+    isTransferring: exportMutation.isPending || importMutation.isPending,
+    transferMessage,
+    transferFailed
   }
 }
 

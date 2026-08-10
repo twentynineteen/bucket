@@ -15,13 +15,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../api', () => ({
   getFolders: vi.fn(),
   readFolderIndex: vi.fn(),
-  writeFolderIndex: vi.fn()
+  writeFolderIndex: vi.fn(),
+  saveFileDialog: vi.fn(),
+  openJsonFileDialog: vi.fn(),
+  writeFolderIndexTo: vi.fn(),
+  readFolderIndexFrom: vi.fn()
 }))
 
 import type { SproutFolder } from '@shared/types'
 
-import { getFolders, readFolderIndex, writeFolderIndex } from '../api'
-import { accountFingerprint } from '../internal/folderIndex'
+import {
+  getFolders,
+  openJsonFileDialog,
+  readFolderIndex,
+  readFolderIndexFrom,
+  saveFileDialog,
+  writeFolderIndex,
+  writeFolderIndexTo
+} from '../api'
+import { accountFingerprint, createFolderIndex } from '../internal/folderIndex'
 import { paceFromBudget, useSproutFolderIndex } from './useSproutFolderIndex'
 import {
   __resetBudget,
@@ -30,6 +42,7 @@ import {
 } from '../internal/sproutRateBudget'
 
 const KEY = 'key-1'
+const NOW_ISO = '2026-08-10T09:30:00.000Z'
 
 const TREE: SproutFolder[] = [
   { id: 'p1', name: 'Postgraduate', parent_id: null },
@@ -60,6 +73,136 @@ beforeEach(() => {
   vi.mocked(getFolders).mockImplementation(async (_key, parentId) =>
     page(TREE.filter((f) => f.parent_id === parentId))
   )
+  vi.mocked(saveFileDialog).mockResolvedValue('/tmp/index.json')
+  vi.mocked(openJsonFileDialog).mockResolvedValue('/tmp/theirs.json')
+  vi.mocked(writeFolderIndexTo).mockResolvedValue(undefined)
+})
+
+/** Runs an action and waits for its message to settle. */
+async function runTransfer(
+  result: { current: ReturnType<typeof useSproutFolderIndex> },
+  action: 'exportIndex' | 'importIndex'
+) {
+  await act(async () => {
+    result.current[action]()
+  })
+  await waitFor(() => expect(result.current.isTransferring).toBe(false), {
+    timeout: 10_000
+  })
+}
+
+describe('sharing an index with the team', () => {
+  const THEIR_INDEX = createFolderIndex('their-different-key', TREE, false, NOW_ISO)
+
+  it('exports the saved index to the chosen file', async () => {
+    vi.mocked(readFolderIndex).mockResolvedValue(
+      createFolderIndex(KEY, TREE, false, NOW_ISO)
+    )
+
+    const { result } = renderHook(() => useSproutFolderIndex(KEY), { wrapper })
+    await runTransfer(result, 'exportIndex')
+
+    expect(writeFolderIndexTo).toHaveBeenCalledWith('/tmp/index.json', expect.anything())
+    expect(result.current.transferMessage).toMatch(/Exported 2 folders/)
+    expect(result.current.transferFailed).toBe(false)
+  })
+
+  it('refuses to export when nothing has been indexed', async () => {
+    vi.mocked(readFolderIndex).mockResolvedValue(null)
+
+    const { result } = renderHook(() => useSproutFolderIndex(KEY), { wrapper })
+    await runTransfer(result, 'exportIndex')
+
+    expect(writeFolderIndexTo).not.toHaveBeenCalled()
+    expect(result.current.transferFailed).toBe(true)
+  })
+
+  it('writes nothing when the save dialog is cancelled', async () => {
+    vi.mocked(readFolderIndex).mockResolvedValue(
+      createFolderIndex(KEY, TREE, false, NOW_ISO)
+    )
+    vi.mocked(saveFileDialog).mockResolvedValue(null)
+
+    const { result } = renderHook(() => useSproutFolderIndex(KEY), { wrapper })
+    await runTransfer(result, 'exportIndex')
+
+    expect(writeFolderIndexTo).not.toHaveBeenCalled()
+  })
+
+  it("imports a colleague's index even though their API key differs", async () => {
+    // Fingerprints are per key, so requiring a match would strand a legitimate
+    // share between two people on the same Sprout account.
+    vi.mocked(readFolderIndex).mockResolvedValue(null)
+    vi.mocked(readFolderIndexFrom).mockResolvedValue(THEIR_INDEX)
+
+    const { result } = renderHook(() => useSproutFolderIndex(KEY), { wrapper })
+    await runTransfer(result, 'importIndex')
+
+    expect(writeFolderIndex).toHaveBeenCalled()
+    expect(result.current.transferFailed).toBe(false)
+    expect(result.current.transferMessage).toMatch(/Imported 2 folders/)
+  })
+
+  it('refuses an index from a different account instead of importing it', async () => {
+    // Its folder ids do not exist here, so uploads would be filed against ids
+    // Sprout rejects.
+    vi.mocked(readFolderIndex).mockResolvedValue(null)
+    vi.mocked(readFolderIndexFrom).mockResolvedValue(
+      createFolderIndex(
+        'k',
+        [{ id: 'not-ours', name: 'Elsewhere', parent_id: null }],
+        false,
+        NOW_ISO
+      )
+    )
+
+    const { result } = renderHook(() => useSproutFolderIndex(KEY), { wrapper })
+    await runTransfer(result, 'importIndex')
+
+    expect(writeFolderIndex).not.toHaveBeenCalled()
+    expect(result.current.transferFailed).toBe(true)
+    expect(result.current.transferMessage).toMatch(/different Sprout Video account/i)
+  })
+
+  it('reports a file it cannot read rather than importing nothing silently', async () => {
+    vi.mocked(readFolderIndex).mockResolvedValue(null)
+    vi.mocked(readFolderIndexFrom).mockResolvedValue({ not: 'an index' })
+
+    const { result } = renderHook(() => useSproutFolderIndex(KEY), { wrapper })
+    await runTransfer(result, 'importIndex')
+
+    expect(writeFolderIndex).not.toHaveBeenCalled()
+    expect(result.current.transferMessage).toMatch(/not a folder index/i)
+  })
+
+  it('keeps locally known folders when importing a partial index', async () => {
+    vi.mocked(readFolderIndex).mockResolvedValue(
+      createFolderIndex(
+        KEY,
+        [{ id: 'mine', name: 'Local only', parent_id: null }],
+        false,
+        NOW_ISO
+      )
+    )
+    vi.mocked(readFolderIndexFrom).mockResolvedValue(
+      createFolderIndex('their-key', TREE, true, NOW_ISO)
+    )
+    // 'mine' is a real root here, and so is p1, so the import verifies.
+    vi.mocked(getFolders).mockResolvedValue(
+      page([
+        { id: 'mine', name: 'Local only', parent_id: null },
+        { id: 'p1', name: 'Postgraduate', parent_id: null }
+      ])
+    )
+
+    const { result } = renderHook(() => useSproutFolderIndex(KEY), { wrapper })
+    await runTransfer(result, 'importIndex')
+
+    const saved = vi.mocked(writeFolderIndex).mock.calls.at(-1)![0] as {
+      folders: SproutFolder[]
+    }
+    expect(saved.folders.map((f) => f.id).sort()).toEqual(['m1', 'mine', 'p1'])
+  })
 })
 
 describe('building an index', () => {

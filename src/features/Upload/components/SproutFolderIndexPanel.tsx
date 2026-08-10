@@ -9,7 +9,13 @@
  * reads the index from the picker — this is only where it is built.
  */
 import { Button } from '@shared/ui/button'
-import { AlertCircle, FolderSearch, Loader2 } from 'lucide-react'
+import {
+  AlertCircle,
+  Download,
+  FolderSearch,
+  Loader2,
+  Upload as UploadIcon
+} from 'lucide-react'
 import React from 'react'
 
 import { useSproutFolderIndex } from '../hooks/useSproutFolderIndex'
@@ -79,11 +85,59 @@ export const SproutFolderIndexPanel: React.FC<SproutFolderIndexPanelProps> = ({
             )}
           </p>
 
-          <Button variant="outline" size="sm" onClick={index.build}>
-            <FolderSearch className="mr-2 h-4 w-4" />
-            {index.index ? 'Re-index folders' : 'Index folders now'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={index.build}>
+              <FolderSearch className="mr-2 h-4 w-4" />
+              {index.index ? 'Re-index folders' : 'Index folders now'}
+            </Button>
+
+            {/* Sharing turns a multi-minute crawl into a single request for
+                everyone else on the team. */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={index.exportIndex}
+              disabled={!index.index || index.isTransferring}
+              title={
+                index.index
+                  ? 'Save the index to a file to share with your team'
+                  : 'Index folders first'
+              }
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={index.importIndex}
+              disabled={index.isTransferring}
+              title="Load an index a colleague exported"
+            >
+              <UploadIcon className="mr-2 h-4 w-4" />
+              Import
+            </Button>
+          </div>
+
+          <p className="text-muted-foreground text-xs">
+            Indexing takes a few minutes on a large account. Export it and a colleague can
+            import the same index in one step, without walking the tree again.
+          </p>
         </div>
+      )}
+
+      {index.transferMessage && (
+        <p
+          className={`flex items-start gap-1.5 text-xs ${
+            index.transferFailed ? 'text-destructive' : 'text-muted-foreground'
+          }`}
+        >
+          {index.transferFailed && (
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          )}
+          <span>{index.transferMessage}</span>
+        </p>
       )}
 
       {index.incompleteReason && !index.isBuilding && (

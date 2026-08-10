@@ -7,7 +7,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import type { Event } from '@tauri-apps/api/event'
-import { open } from '@tauri-apps/plugin-dialog'
+import { open, save } from '@tauri-apps/plugin-dialog'
 import {
   exists,
   readDir,
@@ -246,4 +246,32 @@ export async function readFolderIndex(): Promise<unknown | null> {
 export async function writeFolderIndex(index: unknown): Promise<void> {
   const path = await folderIndexPath()
   await writeTextFile(path, JSON.stringify(index))
+}
+
+/** Prompts for a location to write an exported index to. Null if cancelled. */
+export async function saveFileDialog(defaultPath: string): Promise<string | null> {
+  return save({
+    defaultPath,
+    filters: [{ name: 'Folder index', extensions: ['json'] }]
+  })
+}
+
+/** Prompts for an exported index to import. Null if cancelled. */
+export async function openJsonFileDialog(): Promise<string | null> {
+  const picked = await open({
+    multiple: false,
+    directory: false,
+    filters: [{ name: 'Folder index', extensions: ['json'] }]
+  })
+  return typeof picked === 'string' ? picked : null
+}
+
+/** Writes an index to an arbitrary path chosen by the user. */
+export async function writeFolderIndexTo(path: string, index: unknown): Promise<void> {
+  await writeTextFile(path, JSON.stringify(index, null, 2))
+}
+
+/** Reads an exported index from an arbitrary path. Rejects if unreadable. */
+export async function readFolderIndexFrom(path: string): Promise<unknown> {
+  return JSON.parse(await readTextFile(path))
 }
