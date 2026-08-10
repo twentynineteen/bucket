@@ -10,9 +10,14 @@ import type { Page } from '@playwright/test'
 import type { SimulatedFileSet, MockFile } from '../utils/large-file-simulator'
 
 export interface FailureInjection {
-  type: 'partial' | 'complete'
-  failingFileIndices?: number[]
+  /** Error message carried on the failed `file-transfer-complete` event */
   errorMessage: string
+  /**
+   * File index at which the transfer aborts (default 0 — fail immediately).
+   * Mirrors the real backend: any file error aborts the whole transfer;
+   * there is no skip-and-continue mode.
+   */
+  failAtFileIndex?: number
 }
 
 export interface TauriMockConfig {
@@ -152,6 +157,7 @@ export class TauriE2EMock {
         __E2E_EVENTS__: Array<{ percent: number; fileIndex: number; fileProgress?: number }>
         __E2E_LISTENERS__: Map<string, Map<number, EventCallback>>
         __E2E_NEXT_EVENT_ID__: number
+        __E2E_NEXT_OPERATION_ID__: number
         __E2E_CALLBACKS__: Record<number, (response: unknown) => void>
         __E2E_CANCELLED__: boolean
         __E2E_OPERATION_IN_PROGRESS__: boolean
@@ -169,6 +175,7 @@ export class TauriE2EMock {
       win.__E2E_EVENTS__ = []
       win.__E2E_LISTENERS__ = new Map()
       win.__E2E_NEXT_EVENT_ID__ = 1
+      win.__E2E_NEXT_OPERATION_ID__ = 1
       win.__E2E_CANCELLED__ = false
       win.__E2E_OPERATION_IN_PROGRESS__ = false
 
@@ -260,22 +267,38 @@ export class TauriE2EMock {
             return
           }
 
-          // Handle cancel_copy command
-          if (cmd === 'cancel_copy') {
-            console.log('[E2E Mock] Cancelling copy operation')
+          // Handle cancel_file_transfer (mirrors src-tauri/src/build_project/commands.rs:
+          // returns a boolean; the running transfer notices the flag and emits a
+          // cancelled `file-transfer-complete` event)
+          if (cmd === 'cancel_file_transfer') {
+            console.log('[E2E Mock] Cancelling file transfer:', args?.operationId)
             win.__E2E_CANCELLED__ = true
-            return { success: true }
+            return true
           }
 
-          // Handle move_files with intra-file progress simulation
-          if (cmd === 'move_files') {
-            console.log('[E2E Mock] Mocking move_files')
+          // Handle transfer_files_with_progress with intra-file progress simulation.
+          // Mirrors the real backend: returns an operation ID immediately, then runs
+          // the transfer in the background emitting `file-transfer-progress` events
+          // and exactly one `file-transfer-complete` event (success, failure or
+          // cancellation). Any file error aborts the whole transfer.
+          if (cmd === 'transfer_files_with_progress') {
+            const request = args?.request as
+              | { files: Array<{ source: string; destination: string }> }
+              | undefined
+            const requestFiles = request?.files ?? []
+            const operationId = `e2e-op-${win.__E2E_NEXT_OPERATION_ID__++}`
+            console.log(
+              '[E2E Mock] Mocking transfer_files_with_progress:',
+              operationId,
+              requestFiles.length,
+              'files'
+            )
 
             // Reset cancellation flag
             win.__E2E_CANCELLED__ = false
             win.__E2E_OPERATION_IN_PROGRESS__ = true
 
-            const totalFiles = cfg.mockFiles.length || 10
+            const totalFiles = requestFiles.length || cfg.mockFiles.length || 10
             const enableIntraFile = cfg.enableIntraFileProgress !== false
             const maxEventsPerFile = cfg.maxEventsPerFile || 100
             const BUFFER_SIZE = 8192 // 8KB - matches Rust backend
@@ -283,8 +306,11 @@ export class TauriE2EMock {
             // Calculate base interval (adjusted by speed multiplier)
             const baseIntervalMs = Math.max(1, cfg.scenario.progressIntervalMs / cfg.speedMultiplier)
 
+            const baseName = (p: string) => p.split('/').pop() || p
+
             setTimeout(async () => {
-              console.log('[E2E Mock] Starting file copy simulation', {
+              console.log('[E2E Mock] Starting file transfer simulation', {
+                operationId,
                 totalFiles,
                 enableIntraFile,
                 maxEventsPerFile,
@@ -292,50 +318,80 @@ export class TauriE2EMock {
                 speedMultiplier: cfg.speedMultiplier
               })
 
-              const movedFiles: string[] = []
+              const startedAt = Date.now()
+              let filesTransferred = 0
+
+              const emitComplete = (success: boolean, error: string | null) => {
+                emitEvent('file-transfer-complete', {
+                  operationId,
+                  success,
+                  filesTransferred,
+                  error
+                })
+                win.__E2E_OPERATION_IN_PROGRESS__ = false
+              }
+
+              const emitProgress = (
+                currentFile: string,
+                bytesTransferred: number,
+                totalBytes: number,
+                percentage: number
+              ) => {
+                const elapsedMs = Math.max(1, Date.now() - startedAt)
+                const bytesPerSecond = Math.round((bytesTransferred / elapsedMs) * 1000)
+                const estimatedTimeRemaining =
+                  percentage > 0
+                    ? Math.round((elapsedMs / percentage) * (100 - percentage))
+                    : 0
+                emitEvent('file-transfer-progress', {
+                  operationId,
+                  currentFile,
+                  filesCompleted: filesTransferred,
+                  totalFiles,
+                  bytesTransferred,
+                  totalBytes,
+                  percentage,
+                  bytesPerSecond,
+                  estimatedTimeRemaining
+                })
+              }
 
               for (let fileIndex = 0; fileIndex < totalFiles; fileIndex++) {
                 // Check for cancellation
                 if (win.__E2E_CANCELLED__) {
-                  console.log('[E2E Mock] Operation cancelled at file', fileIndex)
-                  emitEvent('copy_cancelled', { filesCompleted: fileIndex, movedFiles })
-                  win.__E2E_OPERATION_IN_PROGRESS__ = false
+                  console.log('[E2E Mock] Transfer cancelled at file', fileIndex)
+                  emitComplete(false, 'Transfer cancelled by user')
                   return
                 }
 
-                // Check for failure injection
-                if (cfg.failureInjection?.type === 'complete') {
-                  console.log('[E2E Mock] Complete failure injected')
-                  emitEvent('copy_error', { error: cfg.failureInjection.errorMessage })
-                  win.__E2E_OPERATION_IN_PROGRESS__ = false
-                  return
-                }
-
+                // Check for failure injection - like the real backend, a file
+                // error aborts the whole transfer with a failed complete event
                 if (
-                  cfg.failureInjection?.type === 'partial' &&
-                  cfg.failureInjection.failingFileIndices?.includes(fileIndex)
+                  cfg.failureInjection &&
+                  fileIndex >= (cfg.failureInjection.failAtFileIndex ?? 0)
                 ) {
-                  console.log('[E2E Mock] Partial failure at file', fileIndex)
-                  // Skip this file but continue
-                  continue
+                  console.log('[E2E Mock] Failure injected at file', fileIndex)
+                  emitComplete(false, cfg.failureInjection.errorMessage)
+                  return
                 }
 
                 const mockFile = cfg.mockFiles[fileIndex]
                 const fileSize = mockFile?.simulatedSize || cfg.scenario.averageFileSize
+                const currentFile = baseName(
+                  requestFiles[fileIndex]?.source || mockFile?.file.path || `file_${fileIndex}`
+                )
 
                 if (enableIntraFile) {
                   // Intra-file progress: emit events as if reading 8KB chunks
                   // Cap the number of events per file for performance
                   const theoreticalChunks = Math.ceil(fileSize / BUFFER_SIZE)
                   const eventsPerFile = Math.min(maxEventsPerFile, theoreticalChunks)
-                  // Note: bytesPerEvent = fileSize / eventsPerFile (used for simulation timing)
 
                   for (let chunk = 0; chunk < eventsPerFile; chunk++) {
                     // Check for cancellation within file
                     if (win.__E2E_CANCELLED__) {
-                      console.log('[E2E Mock] Operation cancelled during file', fileIndex)
-                      emitEvent('copy_cancelled', { filesCompleted: fileIndex, movedFiles })
-                      win.__E2E_OPERATION_IN_PROGRESS__ = false
+                      console.log('[E2E Mock] Transfer cancelled during file', fileIndex)
+                      emitComplete(false, 'Transfer cancelled by user')
                       return
                     }
 
@@ -349,7 +405,12 @@ export class TauriE2EMock {
                       fileIndex,
                       fileProgress
                     })
-                    emitEvent('copy_progress', overallProgress)
+                    emitProgress(
+                      currentFile,
+                      Math.round(fileSize * fileProgress),
+                      fileSize,
+                      overallProgress
+                    )
 
                     // Only wait between chunks, not after the last one
                     if (chunk < eventsPerFile - 1) {
@@ -357,13 +418,13 @@ export class TauriE2EMock {
                     }
                   }
                 } else {
-                  // Legacy mode: one event per file (for backward compatibility)
+                  // One event per file
                   const percent = ((fileIndex + 1) / totalFiles) * 100
                   win.__E2E_EVENTS__.push({ percent, fileIndex })
-                  emitEvent('copy_progress', percent)
+                  emitProgress(currentFile, fileSize, fileSize, percent)
                 }
 
-                movedFiles.push(mockFile?.file.path || `file_${fileIndex}`)
+                filesTransferred++
 
                 // Small delay between files
                 if (fileIndex < totalFiles - 1) {
@@ -371,15 +432,19 @@ export class TauriE2EMock {
                 }
               }
 
-              // Ensure we emit exactly 100% at the end
+              // Ensure we emit exactly 100% at the end, then the success event
               win.__E2E_EVENTS__.push({ percent: 100, fileIndex: totalFiles - 1 })
-              emitEvent('copy_progress', 100)
-              emitEvent('copy_complete', movedFiles)
-              win.__E2E_OPERATION_IN_PROGRESS__ = false
-              console.log('[E2E Mock] move_files complete, files moved:', movedFiles.length)
+              emitProgress('', 0, 0, 100)
+              emitComplete(true, null)
+              console.log(
+                '[E2E Mock] Transfer complete:',
+                operationId,
+                'files transferred:',
+                filesTransferred
+              )
             }, 10)
 
-            return { success: true }
+            return operationId
           }
 
           // Handle other commands
