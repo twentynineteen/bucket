@@ -168,6 +168,7 @@ describe('Upload Barrel Exports - Shape', () => {
     'Posterframe',
     'UploadOtter',
     'SproutFolderPicker',
+    'SproutFolderIndexPanel',
     // Hooks
     'useFileUpload',
     'useUploadEvents',
@@ -189,8 +190,8 @@ describe('Upload Barrel Exports - Shape', () => {
     expect(exportNames).toEqual(expectedExports)
   })
 
-  it('exports exactly 17 members (4 components + 13 hooks)', () => {
-    expect(Object.keys(uploadBarrel)).toHaveLength(17)
+  it('exports exactly 18 members (5 components + 13 hooks)', () => {
+    expect(Object.keys(uploadBarrel)).toHaveLength(18)
   })
 
   // Component shape checks
@@ -198,7 +199,8 @@ describe('Upload Barrel Exports - Shape', () => {
     'UploadSprout',
     'Posterframe',
     'UploadOtter',
-    'SproutFolderPicker'
+    'SproutFolderPicker',
+    'SproutFolderIndexPanel'
   ] as const
 
   for (const name of componentNames) {

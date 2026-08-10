@@ -10,7 +10,7 @@ import { logger } from '@shared/utils'
 import ApiKeyInput from '@shared/ui/ApiKeyInput'
 import React, { useState } from 'react'
 
-import { SproutFolderPicker } from '@features/Upload'
+import { SproutFolderIndexPanel, SproutFolderPicker } from '@features/Upload'
 import type { SelectedSproutFolder } from '@features/Upload'
 
 import { saveSettingsApiKeys } from '../api'
@@ -122,6 +122,11 @@ const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({ apiKeys }) => {
           Where new uploads are filed on Sprout Video. The folder you last uploaded to
           takes precedence for the rest of the session.
         </p>
+      </div>
+
+      <div className="border-t pt-4">
+        <label className="mb-2 block text-sm font-medium">Folder search index</label>
+        <SproutFolderIndexPanel apiKey={apiKeys.sproutVideo || null} />
       </div>
     </section>
   )

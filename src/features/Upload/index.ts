@@ -7,6 +7,8 @@ export { default as Posterframe } from './components/Posterframe'
 export { default as UploadOtter } from './components/UploadOtter'
 /** Picker for choosing which Sprout folder an upload lands in */
 export { SproutFolderPicker } from './components/SproutFolderPicker'
+/** Settings panel for building the saved folder index that powers search */
+export { SproutFolderIndexPanel } from './components/SproutFolderIndexPanel'
 
 // Hooks
 /** Hook for managing file upload state, progress, and completion callbacks */

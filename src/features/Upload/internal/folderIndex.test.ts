@@ -15,6 +15,7 @@ import {
   accountFingerprint,
   createFolderIndex,
   indexAgeInDays,
+  mergeFolderIndex,
   parseFolderIndex
 } from './folderIndex'
 
@@ -125,5 +126,66 @@ describe('staleness', () => {
         Date.now()
       )
     ).toBeNull()
+  })
+})
+
+describe('merging a crawl into an existing index', () => {
+  const EXISTING: SproutFolder[] = [
+    { id: 'p1', name: 'Postgraduate', parent_id: null },
+    { id: 'm1', name: 'IB9X7', parent_id: 'p1' },
+    { id: 'm2', name: 'IB9Y2', parent_id: 'p1' }
+  ]
+
+  it('never loses folders when an interrupted crawl found fewer', () => {
+    // The bug this exists to prevent: a 1200-folder account takes minutes to
+    // crawl, so interruption is normal. Writing only the partial result wiped
+    // folders the user could previously find.
+    const existing = createFolderIndex(KEY, EXISTING, false, NOW)
+    const partial = [{ id: 'p1', name: 'Postgraduate', parent_id: null }]
+
+    const merged = mergeFolderIndex(existing, partial, false, KEY, NOW)
+
+    expect(merged.folders.map((f) => f.id).sort()).toEqual(['m1', 'm2', 'p1'])
+  })
+
+  it('marks a merged index partial so the UI does not imply full coverage', () => {
+    const existing = createFolderIndex(KEY, EXISTING, false, NOW)
+    expect(mergeFolderIndex(existing, [], false, KEY, NOW).partial).toBe(true)
+  })
+
+  it('adds newly discovered folders to what was already known', () => {
+    const existing = createFolderIndex(KEY, EXISTING, false, NOW)
+    const found = [{ id: 'y1', name: '2026', parent_id: 'm1' }]
+
+    const merged = mergeFolderIndex(existing, found, false, KEY, NOW)
+
+    expect(merged.folders).toHaveLength(4)
+    expect(merged.folders.map((f) => f.id)).toContain('y1')
+  })
+
+  it('lets the fresher crawl win on a renamed folder', () => {
+    const existing = createFolderIndex(KEY, EXISTING, false, NOW)
+    const renamed = [{ id: 'm1', name: 'IB9X7 (retired)', parent_id: 'p1' }]
+
+    const merged = mergeFolderIndex(existing, renamed, false, KEY, NOW)
+
+    expect(merged.folders.find((f) => f.id === 'm1')!.name).toBe('IB9X7 (retired)')
+  })
+
+  it('replaces wholesale on a complete crawl, so deleted folders drop out', () => {
+    // Only a full pass can know a folder is gone; a partial one must not assume.
+    const existing = createFolderIndex(KEY, EXISTING, false, NOW)
+    const complete = [{ id: 'p1', name: 'Postgraduate', parent_id: null }]
+
+    const merged = mergeFolderIndex(existing, complete, true, KEY, NOW)
+
+    expect(merged.folders).toEqual(complete)
+    expect(merged.partial).toBe(false)
+  })
+
+  it('works with no existing index', () => {
+    const merged = mergeFolderIndex(null, EXISTING, false, KEY, NOW)
+    expect(merged.folders).toHaveLength(3)
+    expect(merged.partial).toBe(true)
   })
 })

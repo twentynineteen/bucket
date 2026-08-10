@@ -19,11 +19,12 @@ import type { CrawlProgress } from '../internal/crawlSproutFolders'
 import { crawlSproutFolders } from '../internal/crawlSproutFolders'
 import type { FolderIndex } from '../internal/folderIndex'
 import {
-  createFolderIndex,
   indexAgeInDays,
+  mergeFolderIndex,
   parseFolderIndex
 } from '../internal/folderIndex'
 import { withPaths } from '../internal/folderPaths'
+import { remainingBudget } from '../internal/sproutRateBudget'
 import type { SelectedSproutFolder } from '../types'
 
 /** Suggest a rebuild past this age; folder structures drift slowly. */
@@ -77,24 +78,39 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
       setProgress({ folders: 0, requests: 0 })
       setIncompleteReason(null)
 
+      // Whatever is already indexed, so a partial crawl adds to it rather than
+      // replacing it. Losing known folders to an interrupted re-index is the bug
+      // this guards against.
+      const existing = parseFolderIndex(await readFolderIndex(), apiKey)
+
+      const save = async (
+        folders: Parameters<typeof mergeFolderIndex>[1],
+        complete: boolean
+      ) => {
+        const merged = mergeFolderIndex(
+          existing,
+          folders,
+          complete,
+          apiKey,
+          new Date().toISOString()
+        )
+        await writeFolderIndex(merged)
+        return merged
+      }
+
       const result = await crawlSproutFolders({
         // Routed through api.ts, so the shared budget guard serialises these and
         // refuses them near the reserve — an upload keeps its headroom.
         fetchLevel: async (parentId) => (await getFolders(apiKey, parentId)).folders,
         signal: controller.signal,
-        onProgress: setProgress
+        onProgress: setProgress,
+        paceMs: paceFromBudget,
+        // A full pass over a large account runs for minutes, so progress is
+        // written as it goes and an interruption keeps what was found.
+        onCheckpoint: (folders) => save(folders, false).then(() => undefined)
       })
 
-      const index = createFolderIndex(
-        apiKey,
-        result.folders,
-        result.incomplete,
-        new Date().toISOString()
-      )
-
-      // Saved even when incomplete: a partial index still answers most searches,
-      // and the UI says it is partial rather than implying full coverage.
-      await writeFolderIndex(index)
+      const index = await save(result.folders, !result.incomplete)
       return { index, stoppedBecause: result.stoppedBecause, error: result.error }
     },
     onSuccess: ({ index, stoppedBecause, error }) => {
@@ -131,6 +147,22 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
     build: buildMutation.mutate,
     cancel
   }
+}
+
+/**
+ * Chooses a gap between requests from Sprout's reported remaining budget.
+ *
+ * Sprout allows 200 requests/minute account-wide. With plenty of headroom the
+ * crawl can move at ~4/second; as the budget runs down it backs off so an upload
+ * running alongside is never the thing that gets 429ed. Unknown budget uses the
+ * conservative default, since guessing high is what would break an upload.
+ */
+export function paceFromBudget(): number {
+  const remaining = remainingBudget()
+  if (remaining === null) return 500
+  if (remaining > 150) return 250
+  if (remaining > 80) return 500
+  return 1500
 }
 
 /** Turns a crawl outcome into something worth showing a user. */

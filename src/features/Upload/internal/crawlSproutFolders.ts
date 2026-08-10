@@ -25,11 +25,14 @@ export interface CrawlProgress {
 export interface CrawlOptions {
   fetchLevel: FetchLevel
   /**
-   * Milliseconds between requests. The default paces to ~120 requests/minute,
-   * deliberately well under Sprout's 200 so an upload running alongside keeps
-   * headroom. Faster would finish sooner and risk 429ing the user's own upload.
+   * Milliseconds between requests, or a function returning it so the caller can
+   * adapt to Sprout's reported remaining budget.
+   *
+   * The default paces to ~120 requests/minute, well under Sprout's 200 so an
+   * upload running alongside keeps headroom. Faster finishes sooner and risks
+   * 429ing the user's own upload.
    */
-  paceMs?: number
+  paceMs?: number | (() => number)
   /** Runaway guard on folders discovered. Reported, never silent. */
   maxFolders?: number
   /** Runaway guard on requests issued. Reported, never silent. */
@@ -37,6 +40,16 @@ export interface CrawlOptions {
   /** Cancels between requests; an in-flight request is allowed to settle. */
   signal?: AbortSignal
   onProgress?: (progress: CrawlProgress) => void
+  /**
+   * Called with everything found so far, every `checkpointEvery` requests.
+   *
+   * A full pass over a large account takes minutes, so it will often be
+   * interrupted. Checkpointing means an interrupted crawl keeps its progress
+   * instead of starting over.
+   */
+  onCheckpoint?: (folders: SproutFolder[]) => void | Promise<void>
+  /** Requests between checkpoints. */
+  checkpointEvery?: number
   /** Injectable for tests. */
   sleep?: (ms: number) => Promise<void>
 }
@@ -53,8 +66,12 @@ export interface CrawlResult {
 }
 
 export const DEFAULT_PACE_MS = 500
-export const DEFAULT_MAX_FOLDERS = 5000
-export const DEFAULT_MAX_REQUESTS = 2000
+export const DEFAULT_CHECKPOINT_EVERY = 100
+export const DEFAULT_MAX_FOLDERS = 20_000
+// One request per folder plus the root, so this must exceed the folder bound or
+// the request cap would stop a crawl the folder cap was sized to allow. A real
+// account here has ~1200 folders.
+export const DEFAULT_MAX_REQUESTS = 20_001
 
 const defaultSleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -74,8 +91,12 @@ export async function crawlSproutFolders(options: CrawlOptions): Promise<CrawlRe
     maxRequests = DEFAULT_MAX_REQUESTS,
     signal,
     onProgress,
+    onCheckpoint,
+    checkpointEvery = DEFAULT_CHECKPOINT_EVERY,
     sleep = defaultSleep
   } = options
+
+  const paceFor = () => (typeof paceMs === 'function' ? paceMs() : paceMs)
 
   const found = new Map<string, SproutFolder>()
   // null is the root level. Ids already queued are never queued twice, so a
@@ -86,6 +107,17 @@ export async function crawlSproutFolders(options: CrawlOptions): Promise<CrawlRe
   let first = true
 
   const report = () => onProgress?.({ folders: found.size, requests })
+
+  /** Records the newly seen children of a level, queuing each one once. */
+  const absorb = (children: SproutFolder[]) => {
+    for (const child of children) {
+      if (found.has(child.id)) continue
+      found.set(child.id, child)
+      if (queued.has(child.id)) continue
+      queued.add(child.id)
+      queue.push(child.id)
+    }
+  }
 
   /** Whether to stop before issuing another request, and why. */
   const stopReason = (): CrawlResult['stoppedBecause'] | null => {
@@ -108,7 +140,7 @@ export async function crawlSproutFolders(options: CrawlOptions): Promise<CrawlRe
 
     // Pace between requests, not before the first -- the first level should feel
     // immediate, and there is nothing to pace away from yet.
-    if (!first) await sleep(paceMs)
+    if (!first) await sleep(paceFor())
     first = false
 
     const parentId = queue.shift() as string | null
@@ -128,16 +160,14 @@ export async function crawlSproutFolders(options: CrawlOptions): Promise<CrawlRe
       }
     }
 
-    for (const child of children) {
-      if (found.has(child.id)) continue
-      found.set(child.id, child)
-      if (!queued.has(child.id)) {
-        queued.add(child.id)
-        queue.push(child.id)
-      }
-    }
-
+    absorb(children)
     report()
+
+    // Awaited, not fired and forgotten: the checkpoint writes a file, and
+    // overlapping writes would corrupt it.
+    if (onCheckpoint && requests % checkpointEvery === 0) {
+      await onCheckpoint([...found.values()])
+    }
   }
 
   return {

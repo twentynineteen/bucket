@@ -154,6 +154,16 @@ export class BudgetError extends Error {
   }
 }
 
+/**
+ * Last remaining-request count Sprout reported, or null if unknown.
+ *
+ * Exposed so a long crawl can pace itself against the real budget rather than a
+ * fixed guess -- fast while there is headroom, slower as it runs down.
+ */
+export function remainingBudget(): number | null {
+  return state.remaining
+}
+
 /** Test seam -- resets all accounting. Not used in production code. */
 export function __resetBudget(): void {
   state.remaining = null

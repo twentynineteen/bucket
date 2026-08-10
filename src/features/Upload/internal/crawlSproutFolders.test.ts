@@ -196,3 +196,82 @@ describe('malformed data', () => {
     expect(probed).toEqual([null, 'a'])
   })
 })
+
+describe('checkpointing', () => {
+  /** A tree wide enough to cross several checkpoint boundaries. */
+  const wide: SproutFolder[] = Array.from({ length: 12 }, (_, i) => ({
+    id: `f${i}`,
+    name: `Folder ${i}`,
+    parent_id: null
+  }))
+
+  it('reports progress periodically so an interrupted crawl keeps it', async () => {
+    // A full pass over a large account takes minutes; without checkpoints an
+    // interruption throws away everything found.
+    const onCheckpoint = vi.fn()
+    await crawlSproutFolders({
+      fetchLevel: fetcherFor(wide),
+      sleep: noSleep,
+      checkpointEvery: 4,
+      onCheckpoint
+    })
+
+    // 13 requests (root + 12 folders) => checkpoints at 4, 8 and 12.
+    expect(onCheckpoint).toHaveBeenCalledTimes(3)
+  })
+
+  it('hands the checkpoint everything found so far', async () => {
+    const seen: number[] = []
+    await crawlSproutFolders({
+      fetchLevel: fetcherFor(wide),
+      sleep: noSleep,
+      checkpointEvery: 4,
+      onCheckpoint: (folders) => {
+        seen.push(folders.length)
+      }
+    })
+
+    expect(seen.length).toBeGreaterThan(0)
+    // Every checkpoint carries the full set discovered up to that point.
+    expect(seen.at(-1)).toBe(12)
+  })
+
+  it('waits for a slow checkpoint rather than racing it', async () => {
+    // The checkpoint writes a file; overlapping writes would corrupt it.
+    let writing = false
+    let overlapped = false
+
+    await crawlSproutFolders({
+      fetchLevel: fetcherFor(wide),
+      sleep: noSleep,
+      checkpointEvery: 2,
+      onCheckpoint: async () => {
+        if (writing) overlapped = true
+        writing = true
+        await Promise.resolve()
+        writing = false
+      }
+    })
+
+    expect(overlapped).toBe(false)
+  })
+})
+
+describe('adaptive pacing', () => {
+  it('accepts a function so the caller can react to remaining budget', async () => {
+    const paces = [1000, 250, 250, 250, 250, 250, 250]
+    let call = 0
+    const sleep = vi.fn(async () => undefined)
+
+    await crawlSproutFolders({
+      fetchLevel: fetcherFor(TREE),
+      sleep,
+      paceMs: () => paces[Math.min(call++, paces.length - 1)]
+    })
+
+    // The first gap used the first value, so pacing is consulted per request
+    // rather than captured once.
+    expect(sleep.mock.calls[0][0]).toBe(1000)
+    expect(sleep.mock.calls[1][0]).toBe(250)
+  })
+})

@@ -98,6 +98,35 @@ export function createFolderIndex(
   }
 }
 
+/**
+ * Combines a crawl result with whatever index already existed.
+ *
+ * A **complete** crawl replaces wholesale, so folders deleted on Sprout drop out.
+ * A **partial** crawl -- cancelled, bounded, or stopped by an error -- is merged
+ * into the existing index instead.
+ *
+ * Merging is the important half. Writing only the partial result would shrink a
+ * good index every time a long crawl was interrupted, silently losing folders
+ * the user could previously find. On a 1200-folder account a full pass takes
+ * minutes, so interruption is the normal case, not the exception.
+ */
+export function mergeFolderIndex(
+  existing: FolderIndex | null,
+  crawled: SproutFolder[],
+  complete: boolean,
+  apiKey: string,
+  now: string
+): FolderIndex {
+  if (complete) return createFolderIndex(apiKey, crawled, false, now)
+
+  const byId = new Map<string, SproutFolder>()
+  // Existing entries first so the fresher crawl wins on a name change.
+  for (const folder of existing?.folders ?? []) byId.set(folder.id, folder)
+  for (const folder of crawled) byId.set(folder.id, folder)
+
+  return createFolderIndex(apiKey, [...byId.values()], true, now)
+}
+
 /** Whole days since the index was built; null when the date is unreadable. */
 export function indexAgeInDays(index: FolderIndex, now: number): number | null {
   const built = Date.parse(index.indexedAt)
