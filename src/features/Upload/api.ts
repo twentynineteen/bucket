@@ -16,9 +16,10 @@ import {
   writeFile,
   writeTextFile
 } from '@tauri-apps/plugin-fs'
-import { appDataDir, fontDir } from '@tauri-apps/api/path'
+import { fontDir, join } from '@tauri-apps/api/path'
 
 import { isRateLimited } from '@shared/lib'
+import { resolveAppDataFile } from '@shared/utils'
 import type {
   GetFoldersResponse,
   SproutUploadResponse,
@@ -230,12 +231,22 @@ export async function listDirectory(folderPath: string): Promise<BackgroundFolde
   }
 }
 
-export async function getFontDir(): Promise<string> {
-  return fontDir()
-}
+/** Poster frame title font, shipped alongside the app. */
+const POSTER_FRAME_FONT = 'Cabrito.otf'
 
 export async function fileExists(path: string): Promise<boolean> {
   return exists(path)
+}
+
+/**
+ * Full path to the poster frame font.
+ *
+ * The single source of the path: loadFont lives in internal/ and may not
+ * import @tauri-apps itself, so routing it through here is what stops the two
+ * from drifting apart (issue #167).
+ */
+export async function posterFrameFontPath(): Promise<string> {
+  return join(await fontDir(), POSTER_FRAME_FONT)
 }
 
 /**
@@ -244,8 +255,7 @@ export async function fileExists(path: string): Promise<boolean> {
  * poster frame option on this.
  */
 export async function posterFrameFontAvailable(): Promise<boolean> {
-  const dir = await fontDir()
-  return exists(`${dir}/Cabrito.otf`)
+  return exists(await posterFrameFontPath())
 }
 
 // --- Saved folder index (issue #155, search) ---
@@ -254,7 +264,9 @@ export async function posterFrameFontAvailable(): Promise<boolean> {
 const FOLDER_INDEX_FILE = 'sprout-folder-index.json'
 
 async function folderIndexPath(): Promise<string> {
-  return `${await appDataDir()}${FOLDER_INDEX_FILE}`
+  // Joined rather than concatenated, relocating any copy an earlier build left
+  // beside the app data directory (issue #167).
+  return resolveAppDataFile(FOLDER_INDEX_FILE)
 }
 
 /**

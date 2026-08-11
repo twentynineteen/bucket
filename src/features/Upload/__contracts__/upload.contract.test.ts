@@ -29,7 +29,7 @@ vi.mock('../api', () => ({
   // Tagged result since issue #166: a bare array would be read as a missing
   // `status` and misclassify inside the test rather than failing loudly.
   listDirectory: vi.fn().mockResolvedValue({ status: 'ok', files: [] }),
-  getFontDir: vi.fn().mockResolvedValue('/fonts'),
+  posterFrameFontPath: vi.fn().mockResolvedValue('/fonts/Cabrito.otf'),
   fileExists: vi.fn().mockResolvedValue(false),
   posterFrameFontAvailable: vi.fn().mockResolvedValue(false),
   setSproutPosterFrame: vi.fn().mockResolvedValue(undefined),

@@ -81,6 +81,39 @@ describe('e2e mock protocol — B2.2 mock speaks the current protocol', () => {
   })
 })
 
+describe('e2e mock protocol — #167 every fixture joins paths for real', () => {
+  /**
+   * A substring check would pass against `return null` or a constant. Three of
+   * these fixtures answered every `plugin:path|*` command with one hardcoded
+   * directory, which would have collapsed api_keys.json and the folder index
+   * onto a single path. So the handler is executed, not merely located.
+   */
+  const FIXTURES = [
+    'tauri-e2e-mocks.ts',
+    'sprout-folders.fixture.ts',
+    'posterframe-backgrounds.fixture.ts',
+    'mocks.fixture.ts'
+  ]
+
+  it.each(FIXTURES)('%s answers plugin:path|join by concatenating its segments', (file) => {
+    const source = fs.readFileSync(path.join(E2E_DIR, 'fixtures', file), 'utf-8')
+
+    expect(
+      source.includes("'plugin:path|join'"),
+      `tests/e2e/fixtures/${file} has no plugin:path|join handler — the app ` +
+        'joins the app data directory to a filename (#167), and an unhandled ' +
+        'or constant answer silently merges every settings file onto one path'
+    ).toBe(true)
+
+    // The handler must read the paths argument rather than return a constant.
+    expect(
+      /plugin:path\|join'[\s\S]{0,320}paths/.test(source),
+      `tests/e2e/fixtures/${file} answers plugin:path|join without reading ` +
+        'the `paths` argument, so it returns a constant rather than a join'
+    ).toBe(true)
+  })
+})
+
 describe('e2e mock protocol — B2.3 no legacy residue in the e2e specs', () => {
   const specFiles = collectTsFiles(E2E_DIR)
 

@@ -1,7 +1,7 @@
 import { appStore } from '@shared/store'
-import { appDataDir } from '@tauri-apps/api/path'
 import { exists, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 
+import { removeMisplacedResidue, resolveAppDataFile } from './appDataPath'
 import { logger } from './logger'
 
 const setSproutVideoApiKey = (state: string) =>
@@ -29,14 +29,22 @@ export interface ApiKeys {
 
 const API_KEYS_FILE = 'api_keys.json' // New file for storing API keys as JSON
 
+/** Superseded by api_keys.json and read by nothing; swept up on the way past
+ *  (issue #167). */
+const LEGACY_API_KEY_FILE = 'api_key.txt'
+
 // default background folder state
 const setDefaultBackgroundFolder = (path: string) =>
   appStore.getState().setDefaultBackgroundFolder(path)
 
 // Get full path for storing API keys.
+//
+// Joined rather than concatenated, and any copy an earlier build left beside
+// the app data directory is relocated first (issue #167).
 const getFilePath = async () => {
-  const dir = await appDataDir()
-  return `${dir}${API_KEYS_FILE}`
+  const path = await resolveAppDataFile(API_KEYS_FILE)
+  await removeMisplacedResidue(LEGACY_API_KEY_FILE)
+  return path
 }
 
 // Save API keys to a local file as JSON.

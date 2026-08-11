@@ -10,16 +10,23 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { appDataDirMock, joinMock, existsMock, statMock, renameMock, removeMock, mkdirMock } =
-  vi.hoisted(() => ({
-    appDataDirMock: vi.fn(),
-    joinMock: vi.fn(),
-    existsMock: vi.fn(),
-    statMock: vi.fn(),
-    renameMock: vi.fn(),
-    removeMock: vi.fn(),
-    mkdirMock: vi.fn()
-  }))
+const {
+  appDataDirMock,
+  joinMock,
+  existsMock,
+  statMock,
+  renameMock,
+  removeMock,
+  mkdirMock
+} = vi.hoisted(() => ({
+  appDataDirMock: vi.fn(),
+  joinMock: vi.fn(),
+  existsMock: vi.fn(),
+  statMock: vi.fn(),
+  renameMock: vi.fn(),
+  removeMock: vi.fn(),
+  mkdirMock: vi.fn()
+}))
 
 vi.mock('@tauri-apps/api/path', () => ({
   appDataDir: appDataDirMock,

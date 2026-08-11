@@ -93,6 +93,9 @@ export async function installBackgroundMocks(
     win.__backgroundListings__ = []
     win.__nextListenerId__ = 1
 
+    /** No trailing separator, matching the real appDataDir (issue #167). */
+    const APP_DATA_DIR = '/tmp/bucket-e2e'
+
     const settings: Record<string, string> = { sproutVideo: 'e2e-sprout-key' }
     if (cfg.configured) settings.defaultBackgroundFolder = cfg.folder
 
@@ -116,6 +119,11 @@ export async function installBackgroundMocks(
         // The Cabrito font probe goes through the same exists() call.
         if (path.toLowerCase().includes('cabrito')) return cfg.fontInstalled
         if (path === cfg.folder) return cfg.scenario !== 'missing'
+        // A path beside the app data directory rather than inside it is the
+        // pre-#167 layout. E2E runs start already migrated.
+        if (path.startsWith(APP_DATA_DIR) && !path.startsWith(`${APP_DATA_DIR}/`)) {
+          return false
+        }
         return true
       }
 
@@ -226,13 +234,24 @@ export async function installBackgroundMocks(
       if (cmd === 'get_username') return 'E2E User'
       if (cmd === 'get_version') return '0.0.0-e2e'
 
+      // join must genuinely concatenate. The catch-all below would break the
+      // cabrito probe above by returning a constant (issue #167).
+      if (cmd === 'plugin:path|join') {
+        const parts = (payload.paths as string[]) ?? []
+        return parts.join('/').replace(/\/{2,}/g, '/')
+      }
+
       if (cmd === 'tauri' && payload && typeof payload === 'object') {
         const inner = (payload as { cmd?: string }).cmd
-        if (inner?.startsWith('plugin:path|')) return '/tmp/bucket-e2e/'
+        if (inner === 'plugin:path|join') {
+          const parts = ((payload as { paths?: string[] }).paths as string[]) ?? []
+          return parts.join('/').replace(/\/{2,}/g, '/')
+        }
+        if (inner?.startsWith('plugin:path|')) return APP_DATA_DIR
         return null
       }
 
-      if (cmd.startsWith('plugin:path|')) return '/tmp/bucket-e2e/'
+      if (cmd.startsWith('plugin:path|')) return APP_DATA_DIR
       if (cmd.startsWith('plugin:')) return null
 
       return null

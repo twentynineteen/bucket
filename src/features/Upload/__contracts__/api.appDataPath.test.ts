@@ -10,19 +10,29 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { appDataDirMock, fontDirMock, joinMock, existsMock, statMock, renameMock, removeMock, mkdirMock, readTextFileMock, writeTextFileMock } =
-  vi.hoisted(() => ({
-    appDataDirMock: vi.fn(),
-    fontDirMock: vi.fn(),
-    joinMock: vi.fn(),
-    existsMock: vi.fn(),
-    statMock: vi.fn(),
-    renameMock: vi.fn(),
-    removeMock: vi.fn(),
-    mkdirMock: vi.fn(),
-    readTextFileMock: vi.fn(),
-    writeTextFileMock: vi.fn()
-  }))
+const {
+  appDataDirMock,
+  fontDirMock,
+  joinMock,
+  existsMock,
+  statMock,
+  renameMock,
+  removeMock,
+  mkdirMock,
+  readTextFileMock,
+  writeTextFileMock
+} = vi.hoisted(() => ({
+  appDataDirMock: vi.fn(),
+  fontDirMock: vi.fn(),
+  joinMock: vi.fn(),
+  existsMock: vi.fn(),
+  statMock: vi.fn(),
+  renameMock: vi.fn(),
+  removeMock: vi.fn(),
+  mkdirMock: vi.fn(),
+  readTextFileMock: vi.fn(),
+  writeTextFileMock: vi.fn()
+}))
 
 vi.mock('@tauri-apps/api/path', () => ({
   appDataDir: appDataDirMock,
@@ -55,8 +65,15 @@ const FONT_PATH = '/mock/fonts/Cabrito.otf'
 
 const INDEX = JSON.stringify({ folders: [{ id: 'f1', name: 'Marketing' }] })
 
+/**
+ * A fake filesystem that actually moves things, so a migrated index is
+ * readable at its new path rather than vanishing.
+ */
+const files = new Set<string>()
+
 function present(...paths: string[]) {
-  existsMock.mockImplementation((p: string) => Promise.resolve(paths.includes(p)))
+  files.clear()
+  paths.forEach((p) => files.add(p))
 }
 
 async function freshSession() {
@@ -72,9 +89,20 @@ beforeEach(() => {
     Promise.resolve(parts.join('/').replace(/\/{2,}/g, '/'))
   )
   statMock.mockResolvedValue({ isFile: true, isDirectory: false, isSymlink: false })
-  renameMock.mockResolvedValue(undefined)
-  removeMock.mockResolvedValue(undefined)
-  mkdirMock.mockResolvedValue(undefined)
+  existsMock.mockImplementation((p: string) => Promise.resolve(files.has(p)))
+  renameMock.mockImplementation((from: string, to: string) => {
+    files.delete(from)
+    files.add(to)
+    return Promise.resolve(undefined)
+  })
+  removeMock.mockImplementation((p: string) => {
+    files.delete(p)
+    return Promise.resolve(undefined)
+  })
+  mkdirMock.mockImplementation((p: string) => {
+    files.add(p)
+    return Promise.resolve(undefined)
+  })
   writeTextFileMock.mockResolvedValue(undefined)
   readTextFileMock.mockResolvedValue(INDEX)
 })

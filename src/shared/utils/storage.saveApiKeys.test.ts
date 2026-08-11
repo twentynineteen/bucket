@@ -17,10 +17,18 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   writeTextFile: writeTextFileMock,
   readTextFile: readTextFileMock,
   exists: existsMock,
+  stat: vi.fn().mockResolvedValue({ isFile: true, isDirectory: false, isSymlink: false }),
+  rename: vi.fn(),
+  remove: vi.fn(),
+  mkdir: vi.fn(),
   BaseDirectory: {}
 }))
 vi.mock('@tauri-apps/api/path', () => ({
-  appDataDir: vi.fn().mockResolvedValue('/tmp/bucket/')
+  // No trailing separator, matching the real API (issue #167).
+  appDataDir: vi.fn().mockResolvedValue('/tmp/bucket'),
+  join: vi.fn((...parts: string[]) =>
+    Promise.resolve(parts.join('/').replace(/\/{2,}/g, '/'))
+  )
 }))
 
 import { saveApiKeys } from './storage'

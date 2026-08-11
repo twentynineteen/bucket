@@ -19,7 +19,7 @@ import { usePosterFrameForUpload } from './usePosterFrameForUpload'
 vi.mock('../api', () => ({
   listDirectory: vi.fn().mockResolvedValue({ status: 'ok', files: [] }),
   readFileAsBytes: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
-  getFontDir: vi.fn().mockResolvedValue('/fonts'),
+  posterFrameFontPath: vi.fn().mockResolvedValue('/fonts/Cabrito.otf'),
   fileExists: vi.fn().mockResolvedValue(true),
   posterFrameFontAvailable: vi.fn().mockResolvedValue(true),
   setSproutPosterFrame: vi.fn().mockResolvedValue(undefined),
