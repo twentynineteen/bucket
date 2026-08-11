@@ -84,6 +84,14 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] }
     },
     {
+      // Walks Baker to reach the poster frame dialogs. Scan completion arrives
+      // via useBakerScan's 2s status poll, so these are slower than the
+      // folder-only specs. Issue #166.
+      name: 'posterframe-baker',
+      testMatch: /posterframe-baker-journey\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] }
+    },
+    {
       name: 'long-operations',
       testMatch: /long-operation-states\.spec\.ts/,
       use: {

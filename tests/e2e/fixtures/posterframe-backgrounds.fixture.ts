@@ -35,7 +35,23 @@ export interface BackgroundMockOptions {
   folder?: string
   /** Whether the Cabrito poster frame font should report as installed. */
   fontInstalled?: boolean
+  /**
+   * Serve the Baker scan and video-link commands too, so a spec can walk
+   * Baker > project > Video Links and reach the poster frame dialogs. Off by
+   * default to keep the folder-only specs from paying for the scan mocks.
+   */
+  bakerJourney?: boolean
+  /**
+   * Whether the project already has a linked Sprout video. Needed to reach
+   * SetPosterFrameDialog, whose trigger is disabled without a Sprout id.
+   */
+  withLinkedVideo?: boolean
 }
+
+export const DRIVE_ROOT = '/Volumes/E2E-Drive'
+export const PROJECT_PATH = `${DRIVE_ROOT}/2026 Managing Change`
+export const PROJECT_NAME = '2026 Managing Change'
+export const LINKED_VIDEO_TITLE = 'Managing Change - Session 1'
 
 export const DEFAULT_FOLDER = '/Users/e2e/Documents/backgrounds'
 export const IMAGE_NAMES = ['wbs-blue.jpg', 'wbs-red.png']
@@ -54,8 +70,14 @@ export async function installBackgroundMocks(
     settingsUnreadable: options.settingsUnreadable ?? false,
     folder: options.folder ?? DEFAULT_FOLDER,
     fontInstalled: options.fontInstalled ?? true,
+    bakerJourney: options.bakerJourney ?? false,
+    withLinkedVideo: options.withLinkedVideo ?? false,
     imageNames: IMAGE_NAMES,
-    nonImageNames: NON_IMAGE_NAMES
+    nonImageNames: NON_IMAGE_NAMES,
+    driveRoot: DRIVE_ROOT,
+    projectPath: PROJECT_PATH,
+    projectName: PROJECT_NAME,
+    linkedVideoTitle: LINKED_VIDEO_TITLE
   }
 
   await page.addInitScript((cfg: typeof config) => {
@@ -64,9 +86,12 @@ export async function installBackgroundMocks(
       __TAURI__?: unknown
       /** Every folder listing the app attempted, so tests can assert absence. */
       __backgroundListings__: string[]
+      /** Monotonic id handed back for each event listener registration. */
+      __nextListenerId__: number
     }
 
     win.__backgroundListings__ = []
+    win.__nextListenerId__ = 1
 
     const settings: Record<string, string> = { sproutVideo: 'e2e-sprout-key' }
     if (cfg.configured) settings.defaultBackgroundFolder = cfg.folder
@@ -111,8 +136,92 @@ export async function installBackgroundMocks(
       if (cmd === 'plugin:fs|write_text_file') return null
       if (cmd === 'plugin:fs|write_file') return null
 
-      if (cmd === 'plugin:dialog|open') return '/Volumes/Media/session-bgs'
+      if (cmd === 'plugin:dialog|open') {
+        const opts = (payload.options ?? payload) as {
+          title?: string
+          directory?: boolean
+        }
+        // A file picker (not a directory one) is the Add Video upload flow.
+        if (!opts?.directory) return `${cfg.driveRoot}/clip.mp4`
+        // Baker's folder dialog passes a `title`; the Posterframe background
+        // picker does not. That is the only thing separating the two callers.
+        return opts?.title ? cfg.driveRoot : '/Volumes/Media/session-bgs'
+      }
       if (cmd === 'plugin:dialog|save') return '/Users/e2e/Desktop'
+
+      // Must be a numeric listener id: returning null makes the upload hook
+      // report "Failed to setup event listeners" and hide the whole panel.
+      // Events are never delivered here, only registered.
+      if (cmd === 'plugin:event|listen') return win.__nextListenerId__++
+      if (cmd === 'plugin:event|unlisten') return null
+
+      if (cmd === 'get_video_duration') return 120
+
+      if (cfg.bakerJourney) {
+        if (cmd === 'baker_start_scan') return 'scan-e2e-1'
+        if (cmd === 'baker_get_scan_status') {
+          // endTime present, so the hook's poll treats the scan as finished.
+          // Events are not mocked here; the poll is the documented fallback.
+          return {
+            startTime: '2026-08-11T10:00:00Z',
+            endTime: '2026-08-11T10:00:02Z',
+            rootPath: cfg.driveRoot,
+            totalFolders: 1,
+            validProjects: 1,
+            updatedBreadcrumbs: 0,
+            createdBreadcrumbs: 0,
+            totalFolderSize: 1024,
+            errors: [],
+            projects: [
+              {
+                path: cfg.projectPath,
+                name: cfg.projectName,
+                isValid: true,
+                hasBreadcrumbs: true,
+                staleBreadcrumbs: false,
+                invalidBreadcrumbs: false,
+                lastScanned: '2026-08-11T10:00:02Z',
+                cameraCount: 1,
+                validationErrors: [],
+                folderSizeBytes: 1024
+              }
+            ]
+          }
+        }
+        if (cmd === 'baker_get_video_links') {
+          if (!cfg.withLinkedVideo) return []
+          return [
+            {
+              url: 'https://sproutvideo.com/videos/abc123',
+              sproutVideoId: 'abc123',
+              title: cfg.linkedVideoTitle,
+              addedAt: '2026-08-11T09:00:00Z'
+            }
+          ]
+        }
+        if (cmd === 'baker_read_breadcrumbs') {
+          return {
+            projectTitle: cfg.projectName,
+            parentFolder: cfg.driveRoot,
+            cameras: [],
+            files: [],
+            videoLinks: cfg.withLinkedVideo
+              ? [
+                  {
+                    url: 'https://sproutvideo.com/videos/abc123',
+                    sproutVideoId: 'abc123',
+                    title: cfg.linkedVideoTitle,
+                    addedAt: '2026-08-11T09:00:00Z'
+                  }
+                ]
+              : []
+          }
+        }
+        if (cmd === 'baker_read_raw_breadcrumbs') return null
+        if (cmd === 'baker_scan_current_files') return []
+        if (cmd === 'baker_get_trello_cards') return []
+        if (cmd === 'get_folder_size') return 1024
+      }
 
       if (cmd === 'get_username') return 'E2E User'
       if (cmd === 'get_version') return '0.0.0-e2e'
