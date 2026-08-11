@@ -44,6 +44,17 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
+/**
+ * A client whose default IS to retry, so a test asserting "did not retry"
+ * actually exercises the query's own `retry: false` rather than the harness's.
+ */
+function retryingWrapper({ children }: { children: React.ReactNode }) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: 3, retryDelay: 1, gcTime: 0 } }
+  })
+  return React.createElement(QueryClientProvider, { client: queryClient }, children)
+}
+
 /** Settings query resolved successfully. */
 function settingsLoaded() {
   vi.mocked(useApiKeys).mockReturnValue({
@@ -172,7 +183,12 @@ describe('useBackgroundFolder - state classification (#166)', () => {
   it('b2_9_surfaces_an_unexpected_rejection_without_retrying', async () => {
     vi.mocked(api.listDirectory).mockRejectedValue(new Error('boom'))
 
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    // Deliberately a client that DOES retry: with `retry: false` in the wrapper
+    // defaults this assertion could not fail, because nothing would retry even
+    // without the query's own override.
+    const { result } = renderHook(() => useBackgroundFolder(), {
+      wrapper: retryingWrapper
+    })
 
     await waitFor(() => expect(result.current.status).toBe('cannot-read'))
     // One attempt only: a deterministic failure must not burn ~7s of backoff.

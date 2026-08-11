@@ -1,8 +1,8 @@
 /**
  * Backgrounds Settings Section
  *
- * Default folder picker and save, plus a warning when the saved folder is no
- * longer on this machine (issue #166).
+ * Default folder picker and save, plus a warning when the saved folder cannot
+ * be read on this machine (issue #166).
  */
 import { toast } from 'sonner'
 import { AlertTriangle } from 'lucide-react'
@@ -116,8 +116,15 @@ const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({
           <p className="text-destructive mt-1 flex items-start gap-1.5 text-sm">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
-              This folder no longer exists on this machine. Choose another folder, or
-              reconnect the drive it lives on.
+              {/*
+                Worded to be true whether the folder is absent or present but
+                unreadable, matching the Posterframe page. Asserting absence
+                here would repeat the misattribution this fix removes: a TCC
+                denial on ~/Documents makes the probe fail, not the folder
+                vanish (issue #166, review round).
+              */}
+              Bucket cannot read this folder. It may have moved, or be on a drive that is
+              not connected.
             </span>
           </p>
         )}

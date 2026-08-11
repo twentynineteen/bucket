@@ -1,5 +1,5 @@
 /**
- * Tests for BackgroundsSection - flagging a saved folder that no longer exists.
+ * Tests for BackgroundsSection - flagging a saved folder that cannot be read.
  * Issue #166 (B7.1-B7.4)
  *
  * Settings is the one screen a user checks to answer "is this configured?".
@@ -51,7 +51,7 @@ describe('BackgroundsSection - dead path warning (#166)', () => {
 
     expect(await screen.findByText(FOLDER)).toBeInTheDocument()
     await waitFor(() =>
-      expect(screen.queryByText(/no longer exists/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/cannot read this folder/i)).not.toBeInTheDocument()
     )
   })
 
@@ -61,9 +61,7 @@ describe('BackgroundsSection - dead path warning (#166)', () => {
     renderSection()
 
     expect(await screen.findByText(FOLDER)).toBeInTheDocument()
-    expect(
-      await screen.findByText(/this folder no longer exists on this machine/i)
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/bucket cannot read this folder/i)).toBeInTheDocument()
   })
 
   it('b7_3_does_not_modify_or_clear_the_stored_value_when_it_warns', async () => {
@@ -71,7 +69,7 @@ describe('BackgroundsSection - dead path warning (#166)', () => {
 
     renderSection()
 
-    await screen.findByText(/no longer exists/i)
+    await screen.findByText(/cannot read this folder/i)
     expect(useAppStore.getState().defaultBackgroundFolder).toBe(FOLDER)
     expect(api.saveSettingsApiKeys).not.toHaveBeenCalled()
   })
@@ -81,7 +79,7 @@ describe('BackgroundsSection - dead path warning (#166)', () => {
 
     renderSection()
 
-    await screen.findByText(/no longer exists/i)
+    await screen.findByText(/cannot read this folder/i)
     // The folder may be on an unmounted volume; saving must not be blocked.
     expect(screen.getByRole('button', { name: /^save$/i })).toBeEnabled()
   })

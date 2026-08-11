@@ -3,7 +3,7 @@ import { queryKeys } from '@shared/lib'
 import { useAppStore } from '@shared/store'
 import { logger } from '@shared/utils'
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { listDirectory } from '../api'
 
@@ -84,9 +84,14 @@ export function useBackgroundFolder(): BackgroundFolderData {
     retry: false
   })
 
-  if (data?.status === 'unreadable') {
-    logger.error(`Background folder unreadable (${folderInUse}): ${data.detail}`)
-  }
+  // In an effect, not the render body: any unrelated re-render would otherwise
+  // log the same failure again and bury the first occurrence.
+  const unreadableDetail = data?.status === 'unreadable' ? data.detail : null
+  useEffect(() => {
+    if (unreadableDetail !== null) {
+      logger.error(`Background folder unreadable (${folderInUse}): ${unreadableDetail}`)
+    }
+  }, [unreadableDetail, folderInUse])
 
   const { status, reason } = resolveState({
     settingsPending,

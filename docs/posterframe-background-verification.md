@@ -35,8 +35,8 @@ Run this checklist against a real build before releasing a change that touches
 5. **Expect not** "The background folder contains no image files", and not
    "No default background folder configured".
 6. Settings > Backgrounds.
-7. **Expect** the path still printed, now with "This folder no longer exists on
-   this machine", and the stored value unchanged.
+7. **Expect** the path still printed, now with "Bucket cannot read this folder",
+   and the stored value unchanged.
 
 ## 3. Session recovery leaves the default alone
 

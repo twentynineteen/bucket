@@ -126,15 +126,15 @@ test.describe('Settings > Backgrounds', () => {
     await page.goto(SETTINGS_BACKGROUNDS_ROUTE)
 
     await expect(page.getByText(DEFAULT_FOLDER)).toBeVisible()
-    await expect(page.getByText(/no longer exists/i)).toBeHidden()
+    await expect(page.getByText(/cannot read this folder/i)).toBeHidden()
   })
 
-  test('flags a path that no longer exists', async ({ page }) => {
+  test('flags a path it cannot read', async ({ page }) => {
     await installBackgroundMocks(page, { scenario: 'missing' })
     await page.goto(SETTINGS_BACKGROUNDS_ROUTE)
 
     await expect(page.getByText(DEFAULT_FOLDER)).toBeVisible()
-    await expect(page.getByText(/no longer exists on this machine/i)).toBeVisible()
+    await expect(page.getByText(/bucket cannot read this folder/i)).toBeVisible()
   })
 
   test('banners a settings read failure and disables saving', async ({ page }) => {
@@ -168,7 +168,13 @@ test.describe('Settings > Backgrounds', () => {
  * than these filesystem ones.
  *
  * B6 is covered instead at:
- *   - hook level, usePosterFrameForUpload.test.ts (b6_1, b6_3, b6_6)
- *   - render level, Baker/components/SetPosterFrameDialog.test.tsx (b4_1-b4_3)
+ *   - hook level, usePosterFrameForUpload.test.ts (b6_1 to b6_6)
+ *   - render level, Baker/components/SetPosterFrameDialog.test.tsx (b6_1, b6_3).
+ *     The b4_* cases in that file belong to issue #141 and assert the older
+ *     reason strings, so they do not cover this change on their own.
  *   - by hand, docs/posterframe-background-verification.md
+ *
+ * Still uncovered end to end: that Baker's AddVideoDialog and Trello's
+ * useCardPosterFrame surface the reason in a real browser. Both render the same
+ * panel state as SetPosterFrameDialog, so the render tests carry it.
  */

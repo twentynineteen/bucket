@@ -68,14 +68,28 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-function renderPosterFrameHook(videoTitle = 'WBS - MSc - Managing Change') {
+/**
+ * A client whose default IS to retry, so a test asserting "did not retry"
+ * exercises the query's own `retry: false` rather than the harness's (#166).
+ */
+function retryingWrapper({ children }: { children: React.ReactNode }) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: 3, retryDelay: 1, gcTime: 0 } }
+  })
+  return React.createElement(QueryClientProvider, { client: queryClient }, children)
+}
+
+function renderPosterFrameHook(
+  videoTitle = 'WBS - MSc - Managing Change',
+  hookWrapper = wrapper
+) {
   return renderHook(
     (props: { videoTitle: string }) =>
       usePosterFrameForUpload({
         projectPath: PROJECT_PATH,
         videoTitle: props.videoTitle
       }),
-    { initialProps: { videoTitle }, wrapper }
+    { initialProps: { videoTitle }, wrapper: hookWrapper }
   )
 }
 
@@ -196,10 +210,48 @@ describe('usePosterFrameForUpload - accurate unavailable reasons (#166)', () => 
     expect(result.current.available).toBe(false)
   })
 
+  it('b6_2_still_names_an_empty_folder_exactly', async () => {
+    vi.mocked(api.listDirectory).mockResolvedValue({ status: 'ok', files: [] })
+
+    const { result } = renderPosterFrameHook()
+
+    await waitFor(() =>
+      expect(result.current.unavailableReason).toBe(
+        'The background folder contains no image files.'
+      )
+    )
+  })
+
+  it('b6_4_gives_the_full_font_guidance_when_the_font_is_genuinely_absent', async () => {
+    vi.mocked(api.posterFrameFontAvailable).mockResolvedValue(false)
+
+    const { result } = renderPosterFrameHook()
+
+    await waitFor(() =>
+      expect(result.current.unavailableReason).toBe(
+        'Poster frame text requires Cabrito.otf in ~/Library/Fonts.'
+      )
+    )
+  })
+
+  it('b6_5_claims_no_font_reason_while_the_font_check_is_in_flight', async () => {
+    // Never resolves: the folder is fine, so only the font check is outstanding.
+    vi.mocked(api.posterFrameFontAvailable).mockReturnValue(
+      new Promise(() => {}) as never
+    )
+
+    const { result } = renderPosterFrameHook()
+
+    // Wait for the folder to resolve, then assert the font check stays silent.
+    await waitFor(() => expect(api.listDirectory).toHaveBeenCalled())
+    expect(result.current.unavailableReason).toBeNull()
+    expect(result.current.available).toBe(false)
+  })
+
   it('b6_6_does_not_retry_a_failed_font_check', async () => {
     vi.mocked(api.posterFrameFontAvailable).mockRejectedValue(new Error('probe failed'))
 
-    const { result } = renderPosterFrameHook()
+    const { result } = renderPosterFrameHook(undefined, retryingWrapper)
 
     await waitFor(() => expect(result.current.unavailableReason).not.toBeNull())
     expect(api.posterFrameFontAvailable).toHaveBeenCalledTimes(1)

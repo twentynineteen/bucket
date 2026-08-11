@@ -180,6 +180,49 @@ describe('SetPosterFrameDialog - unavailable configuration', () => {
     expect(screen.getByRole('button', { name: /^set poster frame$/i })).toBeDisabled()
   })
 
+  // Issue #166 B6.1. The b4_* cases above predate the cannot-read state, so
+  // without this the dialog had no test proving it renders the new reason: the
+  // one a user actually hits when a configured folder stops resolving.
+  it('b6_1_explains_a_background_folder_it_cannot_read_and_disables_the_action', () => {
+    render(
+      <SetPosterFrameDialog
+        {...baseProps({
+          posterFrame: panelState({
+            unavailableReason:
+              'Cannot read background folder: /Users/me/Documents/backgrounds',
+            backgrounds: []
+          })
+        })}
+      />
+    )
+
+    expect(
+      screen.getByText(
+        /Cannot read background folder: \/Users\/me\/Documents\/backgrounds/i
+      )
+    ).toBeInTheDocument()
+    // Must not regress to blaming an empty folder for one that is not there.
+    expect(screen.queryByText(/no image files/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^set poster frame$/i })).toBeDisabled()
+  })
+
+  it('b6_3_explains_a_font_check_that_could_not_run_and_disables_the_action', () => {
+    render(
+      <SetPosterFrameDialog
+        {...baseProps({
+          posterFrame: panelState({
+            unavailableReason:
+              'Could not check whether the poster frame font is installed.'
+          })
+        })}
+      />
+    )
+
+    expect(screen.getByText(/could not check whether/i)).toBeInTheDocument()
+    expect(screen.queryByText(/requires Cabrito/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^set poster frame$/i })).toBeDisabled()
+  })
+
   it('b4_2_explains_a_folder_with_no_images_and_disables_the_action', () => {
     render(
       <SetPosterFrameDialog
