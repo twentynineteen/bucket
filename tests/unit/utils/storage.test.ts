@@ -205,22 +205,30 @@ describe('storage utility', () => {
       expect(result.trelloBoardId).toBeUndefined()
     })
 
-    it('should handle file read errors gracefully', async () => {
+    // Issue #166 B8.1: these two previously asserted `return {}`. Swallowing a
+    // read failure reported "nothing configured" for a file that was merely
+    // unreadable, so every settings section rendered blank and the Posterframe
+    // page claimed no folder was set. saveApiKeys was hardened the same way for
+    // issue #155 P5-b; this is the read side of that fix.
+    it('b8_1_rethrows_when_the_file_exists_but_cannot_be_read', async () => {
       vi.mocked(tauriFs.exists).mockResolvedValue(true)
       vi.mocked(tauriFs.readTextFile).mockRejectedValue(new Error('Read error'))
 
-      const result = await loadApiKeys()
-
-      expect(result).toEqual({})
+      await expect(loadApiKeys()).rejects.toThrow('Read error')
     })
 
-    it('should handle malformed JSON gracefully', async () => {
+    it('b8_1_rethrows_when_the_file_holds_malformed_json', async () => {
       vi.mocked(tauriFs.exists).mockResolvedValue(true)
       vi.mocked(tauriFs.readTextFile).mockResolvedValue('invalid json {')
 
-      const result = await loadApiKeys()
+      await expect(loadApiKeys()).rejects.toThrow()
+    })
 
-      expect(result).toEqual({})
+    it('b8_2_still_resolves_empty_when_the_file_does_not_exist', async () => {
+      vi.mocked(tauriFs.exists).mockResolvedValue(false)
+
+      // First run is not a failure: absent is distinct from unreadable.
+      await expect(loadApiKeys()).resolves.toEqual({})
     })
   })
 

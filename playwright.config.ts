@@ -77,6 +77,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] }
     },
     {
+      // Every project here uses an explicit testMatch, so a spec that matches
+      // none of them never runs at all. Issue #166.
+      name: 'posterframe-backgrounds',
+      testMatch: /posterframe-backgrounds\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] }
+    },
+    {
       name: 'long-operations',
       testMatch: /long-operation-states\.spec\.ts/,
       use: {

@@ -14,8 +14,10 @@ import { useAppStore } from '@shared/store'
 import * as api from '../api'
 import { usePosterFrameForUpload } from './usePosterFrameForUpload'
 
+// Issue #166: listDirectory returns a tagged result rather than a bare array,
+// so a missing folder is distinguishable from an empty one.
 vi.mock('../api', () => ({
-  listDirectory: vi.fn().mockResolvedValue([]),
+  listDirectory: vi.fn().mockResolvedValue({ status: 'ok', files: [] }),
   readFileAsBytes: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
   getFontDir: vi.fn().mockResolvedValue('/fonts'),
   fileExists: vi.fn().mockResolvedValue(true),
@@ -30,6 +32,17 @@ vi.mock('../api', () => ({
     assets: { poster_frames: ['https://sproutvideo.com/custom-poster.jpg'] }
   })
 }))
+
+// useBackgroundFolder now reads the settings query's status so it can tell
+// "not configured" from "settings not loaded yet" from "settings unreadable"
+// (issue #166 B2.1-B2.3). Report settings as loaded unless a test says otherwise.
+vi.mock('@shared/hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/hooks')>()
+  return {
+    ...actual,
+    useApiKeys: vi.fn(() => ({ isPending: false, isError: false, error: null }))
+  }
+})
 
 // The canvas export and the retry sleeps are the two pieces that cannot run in
 // jsdom; everything else in the internals module stays real.
@@ -78,7 +91,7 @@ beforeAll(() => {
 beforeEach(() => {
   localStorage.clear()
   useAppStore.setState({ defaultBackgroundFolder: '/backgrounds' })
-  vi.mocked(api.listDirectory).mockResolvedValue(BACKGROUNDS)
+  vi.mocked(api.listDirectory).mockResolvedValue({ status: 'ok', files: BACKGROUNDS })
   vi.mocked(api.posterFrameFontAvailable).mockResolvedValue(true)
   vi.mocked(api.setSproutPosterFrame).mockResolvedValue(undefined)
   vi.mocked(api.savePosterFrameCopy).mockResolvedValue(
@@ -128,13 +141,68 @@ describe('usePosterFrameForUpload - availability', () => {
   })
 
   it('b1_5_is_unavailable_when_the_background_folder_has_no_images', async () => {
-    vi.mocked(api.listDirectory).mockResolvedValue([])
+    vi.mocked(api.listDirectory).mockResolvedValue({ status: 'ok', files: [] })
 
     const { result } = renderPosterFrameHook()
 
     // The gating checks resolve asynchronously — wait for the reason itself
     await waitFor(() => expect(result.current.unavailableReason).toMatch(/no image/i))
     expect(result.current.available).toBe(false)
+  })
+})
+
+describe('usePosterFrameForUpload - accurate unavailable reasons (#166)', () => {
+  it('b6_1_names_a_missing_folder_instead_of_claiming_it_is_empty', async () => {
+    vi.mocked(api.listDirectory).mockResolvedValue({ status: 'missing' })
+
+    const { result } = renderPosterFrameHook()
+
+    await waitFor(() =>
+      expect(result.current.unavailableReason).toBe(
+        'Cannot read background folder: /backgrounds'
+      )
+    )
+    expect(result.current.unavailableReason).not.toMatch(/no image/i)
+    expect(result.current.available).toBe(false)
+  })
+
+  it('b6_1_names_an_unreadable_folder_the_same_way', async () => {
+    vi.mocked(api.listDirectory).mockResolvedValue({
+      status: 'unreadable',
+      detail: 'os error 13'
+    })
+
+    const { result } = renderPosterFrameHook()
+
+    await waitFor(() =>
+      expect(result.current.unavailableReason).toBe(
+        'Cannot read background folder: /backgrounds'
+      )
+    )
+    // The detail belongs in the log, not in front of the user.
+    expect(result.current.unavailableReason).not.toContain('os error 13')
+  })
+
+  it('b6_3_distinguishes_a_failed_font_check_from_an_absent_font', async () => {
+    vi.mocked(api.posterFrameFontAvailable).mockRejectedValue(new Error('probe failed'))
+
+    const { result } = renderPosterFrameHook()
+
+    await waitFor(() => expect(result.current.unavailableReason).not.toBeNull())
+    // Blaming a missing font for a check that never completed is the same
+    // misattribution as claiming an absent folder is empty.
+    expect(result.current.unavailableReason).toMatch(/could not check/i)
+    expect(result.current.unavailableReason).not.toMatch(/requires Cabrito/i)
+    expect(result.current.available).toBe(false)
+  })
+
+  it('b6_6_does_not_retry_a_failed_font_check', async () => {
+    vi.mocked(api.posterFrameFontAvailable).mockRejectedValue(new Error('probe failed'))
+
+    const { result } = renderPosterFrameHook()
+
+    await waitFor(() => expect(result.current.unavailableReason).not.toBeNull())
+    expect(api.posterFrameFontAvailable).toHaveBeenCalledTimes(1)
   })
 })
 
