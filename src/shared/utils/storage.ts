@@ -79,6 +79,12 @@ export const loadApiKeys = async (): Promise<ApiKeys> => {
     return result
   } catch (error) {
     logger.error('Error loading API keys:', error)
-    return {}
+    // Rethrow, mirroring saveApiKeys above. Returning {} turned a failure into a
+    // success: every settings section rendered as never-configured and the
+    // Posterframe page claimed no background folder was set, while the file on
+    // disk was merely unreadable rather than lost (issue #166 B8.1). A genuinely
+    // absent file still returns {} at the exists() check above, because a first
+    // run is not a failure.
+    throw error
   }
 }

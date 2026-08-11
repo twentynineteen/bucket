@@ -104,7 +104,13 @@ vi.mock('@shared/constants/timing', async (importOriginal) => {
 vi.mock('@shared/lib/query-keys', () => ({
   queryKeys: {
     settings: {
-      apiKeys: () => ['settings', 'api-keys']
+      apiKeys: () => ['settings', 'api-keys'],
+      // BackgroundsSection checks the saved folder is still on disk (issue #166).
+      backgroundFolderPresent: (folderPath: string | null) => [
+        'settings',
+        'background-folder-present',
+        folderPath ?? 'none'
+      ]
     },
     // SproutVideoSection now renders the default-folder picker (issue #155).
     sprout: {

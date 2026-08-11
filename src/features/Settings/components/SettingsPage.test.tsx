@@ -74,8 +74,13 @@ describe('SettingsPage - settings read failure (#166)', () => {
 
     renderPage()
 
+    // The 'settings' retry strategy deliberately retries a read/parse failure
+    // once after 500ms (query-utils.ts:179-184), so the banner is legitimately
+    // slower than the 1s default wait.
     expect(
-      await screen.findByText(/could not read your saved settings/i)
+      await screen.findByText(/could not read your saved settings/i, undefined, {
+        timeout: 5000
+      })
     ).toBeInTheDocument()
     for (const name of SECTIONS) {
       expect(screen.getByTestId(`section-${name}`)).toBeInTheDocument()
@@ -87,7 +92,9 @@ describe('SettingsPage - settings read failure (#166)', () => {
 
     renderPage()
 
-    await screen.findByText(/could not read your saved settings/i)
+    await screen.findByText(/could not read your saved settings/i, undefined, {
+      timeout: 5000
+    })
     for (const name of SAVING_SECTIONS) {
       expect(sectionProps[name]).toMatchObject({ settingsUnavailable: true })
     }
@@ -101,7 +108,9 @@ describe('SettingsPage - settings read failure (#166)', () => {
     renderPage()
 
     await screen.findByTestId('section-backgrounds')
-    expect(screen.queryByText(/could not read your saved settings/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/could not read your saved settings/i)
+    ).not.toBeInTheDocument()
     for (const name of SAVING_SECTIONS) {
       expect(sectionProps[name]).toMatchObject({ settingsUnavailable: false })
     }

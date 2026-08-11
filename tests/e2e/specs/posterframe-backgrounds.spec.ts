@@ -18,7 +18,7 @@ import {
 } from '../fixtures/posterframe-backgrounds.fixture'
 
 const POSTERFRAME_ROUTE = '/upload/posterframe'
-const SETTINGS_BACKGROUNDS_ROUTE = '/settings/backgrounds'
+const SETTINGS_BACKGROUNDS_ROUTE = '/settings/general#backgrounds'
 
 test.describe('Posterframe page', () => {
   test('names the folder it cannot read and keeps the picker available', async ({
@@ -158,29 +158,17 @@ test.describe('Settings > Backgrounds', () => {
   })
 })
 
-test.describe('Sprout upload poster frame', () => {
-  test('reports a missing folder rather than an empty one', async ({ page }) => {
-    await installBackgroundMocks(page, { scenario: 'missing' })
-    await page.goto('/upload/sprout')
-
-    await expect(
-      page.getByText(`Cannot read background folder: ${DEFAULT_FOLDER}`)
-    ).toBeVisible()
-    await expect(page.getByText(/contains no image files/i)).toBeHidden()
-  })
-
-  test('reports an empty folder as empty', async ({ page }) => {
-    await installBackgroundMocks(page, { scenario: 'empty' })
-    await page.goto('/upload/sprout')
-
-    await expect(page.getByText(/contains no image files/i)).toBeVisible()
-  })
-
-  test('distinguishes a missing font from a folder problem', async ({ page }) => {
-    await installBackgroundMocks(page, { scenario: 'ready', fontInstalled: false })
-    await page.goto('/upload/sprout')
-
-    await expect(page.getByText(/Cabrito/i)).toBeVisible()
-    await expect(page.getByText(/cannot read background folder/i)).toBeHidden()
-  })
-})
+/*
+ * The poster frame upload dialog (B6.1-B6.6) is deliberately NOT covered here.
+ *
+ * usePosterFrameForUpload is consumed by Baker's AddVideoDialog and
+ * SetPosterFrameDialog and by Trello's useCardPosterFrame -- not by
+ * /upload/sprout -- so reaching it end to end means driving a drive scan,
+ * project selection and dialog open, which needs the Baker scan fixtures rather
+ * than these filesystem ones.
+ *
+ * B6 is covered instead at:
+ *   - hook level, usePosterFrameForUpload.test.ts (b6_1, b6_3, b6_6)
+ *   - render level, Baker/components/SetPosterFrameDialog.test.tsx (b4_1-b4_3)
+ *   - by hand, docs/posterframe-background-verification.md
+ */

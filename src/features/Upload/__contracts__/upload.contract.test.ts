@@ -62,7 +62,18 @@ vi.mock('@shared/utils/logger', () => ({
 vi.mock('@shared/lib/query-keys', () => ({
   queryKeys: {
     upload: {
-      events: () => ['upload', 'events']
+      events: () => ['upload', 'events'],
+      // Issue #166: useBackgroundFolder keys its listing on the folder, and
+      // reads the settings query's status to tell "not configured" from
+      // "settings unreadable".
+      backgroundFolder: (folderPath: string | null) => [
+        'upload',
+        'background-folder',
+        folderPath ?? 'none'
+      ]
+    },
+    settings: {
+      apiKeys: () => ['settings', 'api-keys']
     },
     images: {
       refresh: (id: string) => ['images', 'refresh', id],

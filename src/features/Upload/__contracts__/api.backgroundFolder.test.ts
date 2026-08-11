@@ -10,7 +10,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as tauriFs from '@tauri-apps/plugin-fs'
 
-import { listDirectory } from './api'
+import { listDirectory } from '../api'
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   exists: vi.fn(),

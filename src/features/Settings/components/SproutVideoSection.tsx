@@ -18,9 +18,18 @@ import type { ApiKeys } from '../api'
 
 interface SproutVideoSectionProps {
   apiKeys: ApiKeys
+  /**
+   * The settings file could not be read, so `apiKeys` is the empty fallback.
+   * Saving is blocked while this holds, or one save would overwrite a merely
+   * unparseable file and destroy the credentials still in it (#166 B8.4).
+   */
+  settingsUnavailable?: boolean
 }
 
-const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({ apiKeys }) => {
+const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({
+  apiKeys,
+  settingsUnavailable = false
+}) => {
   const queryClient = useQueryClient()
   const [localKey, setLocalKey] = useState(apiKeys.sproutVideo || '')
   const [prevPropValue, setPrevPropValue] = useState(apiKeys.sproutVideo)
@@ -103,6 +112,7 @@ const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({ apiKeys }) => {
           SproutVideo API Key
         </label>
         <ApiKeyInput
+          saveDisabled={settingsUnavailable}
           id="sprout-video-api-key-input"
           apiKey={localKey}
           setApiKey={setLocalKey}

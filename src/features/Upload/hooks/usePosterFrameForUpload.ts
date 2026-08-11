@@ -87,18 +87,24 @@ export function usePosterFrameForUpload({
 
   const text = ownText ?? titleToPosterFrameText(videoTitle)
 
-  const {
-    files: backgrounds,
-    currentFolder,
-    isLoading: backgroundsLoading
-  } = useBackgroundFolder()
-  const { selectedFilePath, selectedFileBlob, selectFile } = useFileSelection()
+  // The folder path itself is no longer needed here: the hook reports its own
+  // reason, already worded with the path in it (issue #166 B6.1).
+  const { files: backgrounds, reason: folderReason } = useBackgroundFolder()
+  const { selectedFilePath, selectedFileBlob, selectFile, clearSelection } =
+    useFileSelection()
   const { canvasRef, draw } = usePosterframeCanvas()
 
-  const { data: fontAvailable, isPending: fontCheckPending } = useQuery({
+  const {
+    data: fontAvailable,
+    isPending: fontCheckPending,
+    isError: fontCheckFailed
+  } = useQuery({
     queryKey: ['posterframe', 'font-available'],
     queryFn: posterFrameFontAvailable,
-    staleTime: Infinity
+    staleTime: Infinity,
+    // A missing font file is as deterministic as a missing folder, so retrying
+    // only delays the message (issue #166 B6.6).
+    retry: false
   })
 
   // Keep the preview in step with the chosen background and text (B4.2).
@@ -111,21 +117,31 @@ export function usePosterFrameForUpload({
     }
   }, [backgrounds, selectedFilePath, selectFile])
 
-  // Configuration problems are reported before the font check, and neither is
-  // claimed while its check is still in flight (B1.3-B1.5).
-  const unavailableReason = !currentFolder
-    ? 'No default background folder configured. Set one in Settings.'
-    : backgroundsLoading
-      ? null
-      : backgrounds.length === 0
-        ? 'The background folder contains no image files.'
-        : fontCheckPending
-          ? null
-          : !fontAvailable
-            ? 'Poster frame text requires Cabrito.otf in ~/Library/Fonts.'
-            : null
+  // Never hold a selection the folder no longer offers, or the dialog reports
+  // itself unavailable while still carrying a background (issue #166 B4.1).
+  useEffect(() => {
+    if (selectedFilePath && !backgrounds.includes(selectedFilePath)) {
+      clearSelection()
+    }
+  }, [backgrounds, selectedFilePath, clearSelection])
 
-  const available = unavailableReason === null && fontAvailable === true
+  // The folder hook already reports its own state, including which of "not
+  // configured", "cannot read" and "no images" applies; deriving it again from
+  // truthiness here is what made a missing folder report as empty (#166 B6.1).
+  // Font problems are reported only once the folder is known to be fine, and
+  // neither is claimed while its own check is in flight.
+  const unavailableReason =
+    folderReason ??
+    (fontCheckFailed
+      ? 'Could not check whether the poster frame font is installed.'
+      : fontCheckPending
+        ? null
+        : !fontAvailable
+          ? 'Poster frame text requires Cabrito.otf in ~/Library/Fonts.'
+          : null)
+
+  const available =
+    unavailableReason === null && fontAvailable === true && backgrounds.length > 0
 
   const setEnabled = useCallback((enabled: boolean) => {
     setPreferences((current) => {

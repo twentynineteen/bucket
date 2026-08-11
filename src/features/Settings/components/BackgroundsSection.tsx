@@ -1,29 +1,54 @@
 /**
  * Backgrounds Settings Section
  *
- * Default folder picker and save.
+ * Default folder picker and save, plus a warning when the saved folder is no
+ * longer on this machine (issue #166).
  */
 import { toast } from 'sonner'
+import { AlertTriangle } from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { useAppStore } from '@shared/store'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys, createQueryError } from '@shared/lib'
 import { logger } from '@shared/utils'
 import React from 'react'
 
-import { openFolderPicker, saveSettingsApiKeys } from '../api'
+import { directoryExists, openFolderPicker, saveSettingsApiKeys } from '../api'
 import type { ApiKeys } from '../api'
 
 interface BackgroundsSectionProps {
   apiKeys: ApiKeys
+  /**
+   * The settings file could not be read, so `apiKeys` is the empty fallback.
+   * Saving is blocked while this holds: every section writes
+   * `{...apiKeys, ...newKeys}`, so one save would overwrite a file that is
+   * merely unparseable and destroy the credentials still in it (#166 B8.4).
+   */
+  settingsUnavailable?: boolean
 }
 
-const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({ apiKeys }) => {
+const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({
+  apiKeys,
+  settingsUnavailable = false
+}) => {
   const queryClient = useQueryClient()
   const defaultBackgroundFolder = useAppStore((state) => state.defaultBackgroundFolder)
   const setDefaultBackgroundFolder = useAppStore(
     (state) => state.setDefaultBackgroundFolder
   )
+
+  // Checks the path on display rather than only the saved one, so what the user
+  // is looking at is what gets verified. A query, not an effect, per the
+  // repo's data-fetching convention.
+  const { data: folderPresent } = useQuery({
+    queryKey: queryKeys.settings.backgroundFolderPresent(defaultBackgroundFolder),
+    queryFn: async () => {
+      if (!defaultBackgroundFolder) return true
+      return directoryExists(defaultBackgroundFolder)
+    },
+    enabled: !!defaultBackgroundFolder,
+    retry: false
+  })
 
   const saveMutation = useMutation({
     mutationFn: async (newKeys: Partial<ApiKeys>) => {
@@ -76,12 +101,25 @@ const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({ apiKeys }) => {
           <Button onClick={handleSelectFolder} className="rounded border px-3 py-1">
             Choose Folder
           </Button>
-          <Button onClick={handleSave} className="rounded border px-3 py-1">
+          <Button
+            onClick={handleSave}
+            disabled={settingsUnavailable}
+            className="rounded border px-3 py-1"
+          >
             Save
           </Button>
         </div>
         {defaultBackgroundFolder && (
           <p className="text-muted-foreground mt-1 text-sm">{defaultBackgroundFolder}</p>
+        )}
+        {defaultBackgroundFolder && folderPresent === false && (
+          <p className="text-destructive mt-1 flex items-start gap-1.5 text-sm">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              This folder no longer exists on this machine. Choose another folder, or
+              reconnect the drive it lives on.
+            </span>
+          </p>
         )}
       </div>
     </section>
