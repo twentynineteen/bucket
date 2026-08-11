@@ -160,11 +160,113 @@ Only three aliases exist in tsconfig.json:
 
 ### Contract Tests
 
-Each feature has `__contracts__/` with three test types:
+Each feature has `__contracts__/` verifying the module boundary. Keep these thin -- they guard
+the architecture, not the features.
 
-- **Shape tests**: Verify export counts and type signatures from the barrel
-- **Behavioral tests**: Verify hooks return expected shapes, api.ts calls correct functions
+- **Shape tests**: Verify the barrel exports the names other modules import, and their type
+  signatures. Assert named exports individually. Never assert a total export count.
+- **Behavioural tests**: Verify hooks return the documented shape and that `api.ts` calls the
+  correct Tauri command.
 - **No-bypass tests**: Grep source files to ensure zero direct `@tauri-apps` imports (all I/O through api.ts)
+
+A contract test earns its place only if breaking it means another module breaks. If it would
+only break a refactor, it belongs in a unit test, or nowhere.
+
+## Testing Policy
+
+The suite is green and runs in under 30 seconds. Protect both properties. Every rule here
+exists because of something already in this repo, not as general advice.
+
+### The proportionality question
+
+Before writing a test, answer this: **what behaviour breaks for a user if this test is
+deleted?** If the answer is "nothing, but a refactor would have to update it", do not write it.
+Tests that describe the current shape of the code make refactoring expensive and catch no
+defects.
+
+The suite is currently around 54k lines of test against 40k lines of source. That ratio is not
+a target to defend or to grow. Prefer deleting a weak test over adding a second one beside it.
+
+### Where tests live
+
+One location per kind. Do not introduce a new convention.
+
+| Kind        | Location                                        | Purpose                          |
+| ----------- | ----------------------------------------------- | -------------------------------- |
+| Unit        | Colocated `*.test.ts(x)` beside the source file  | One module's behaviour           |
+| Contract    | `src/features/<Name>/__contracts__/`             | Module boundary guarantees       |
+| Integration | `tests/integration/`                             | Two or more modules together     |
+| E2E         | `tests/e2e/`                                     | Playwright, against the real app |
+
+`tests/unit/`, `tests/component/`, `tests/lib/`, `tests/contract/` and `__tests__/` are legacy
+locations that predate this policy. Do not add files to them. When you are already editing a
+file that has a test in a legacy location, move that test to the colocated position rather than
+growing it in place.
+
+### Do not write these
+
+Each pattern below exists in the repo today and each is a net negative.
+
+**Export-count assertions.** A legitimate new export should never fail a test.
+
+```typescript
+// BAD -- breaks on every legitimate addition, verifies no behaviour
+expect(Object.keys(bakerApi)).toHaveLength(29)
+
+// GOOD -- asserts the guarantee that actually matters to callers
+expect(typeof bakerApi.scanDrive).toBe('function')
+```
+
+**Tests that mock every child they render.** If everything is mocked, the assertion only proves
+the mocks were called. It passes when the real component is broken.
+
+```typescript
+// BAD -- mocks AppSidebar, then asserts the mock rendered
+vi.mock('@shared/ui/layout/app-sidebar', () => ({ AppSidebar: () => <div>AppSidebar</div> }))
+expect(screen.getByText('AppSidebar')).toBeInTheDocument()
+
+// GOOD -- mock only the I/O boundary, then assert what a user would see
+vi.mock('@features/Auth', () => ({ useAuth: () => ({ logout: vi.fn() }) }))
+expect(screen.getByRole('navigation')).toBeInTheDocument()
+```
+
+**Soft checks.** A test that logs violations and passes regardless is not a test. Either assert
+the rule or delete the test. `tests/integration/us11-boundary-integrity.test.ts` currently does
+this and should be fixed rather than copied.
+
+**"Renders without crashing" as the only assertion.** Name what it should render.
+
+**A second test file for a unit that already has one.** The sidebar currently has five files and
+roughly 3,900 lines across two locations. Extend the existing file instead.
+
+### Mocks must resolve
+
+`vi.mock()` pointed at a path that no longer exists fails silently and the test still passes.
+Only the `@features/*`, `@shared/*` and `@tests/*` aliases exist; `@/` was removed and
+`src/pages/` no longer exists. Confirm the module is really there before mocking it.
+
+### Deleting tests
+
+Delete a test when it asserts a shape rather than a behaviour, duplicates an existing test,
+mocks the thing it claims to verify, or has needed updating more than once for reasons
+unrelated to a real defect. Removing such a test is a fix, not a regression -- say so plainly in
+the PR body.
+
+Do not delete a test because it is failing. A failing test is either a real defect or a wrong
+assertion, and you must state which before touching it.
+
+### Before calling test work done
+
+Walk this list and say which entries applied:
+
+1. Does a test already exist for this unit? Extend it rather than adding a file.
+2. Is every `vi.mock()` path resolvable?
+3. Does each new test actually fail when you break the behaviour it names? Verify by breaking it.
+4. Is the test in the correct location from the table above?
+5. Does `bun run test:run` still finish in under 30 seconds?
+
+These are good defaults, not hard rules. A developer's explicit instruction overrides anything
+in this section.
 
 ## How to Add a New Feature Module
 
@@ -173,7 +275,8 @@ Each feature has `__contracts__/` with three test types:
 3. **Create `types.ts`**: Define shared type definitions for the module
 4. **Create page/hook/component files** in `components/`, `hooks/` subdirectories
 5. **Create `index.ts` barrel**: Re-export public API with JSDoc on every export
-6. **Create `__contracts__/`** with shape + behavioral + no-bypass tests
+6. **Create `__contracts__/`** with shape + behavioural + no-bypass tests, following the
+   [Testing Policy](#testing-policy). Keep them thin and assert named exports, never counts
 7. **Add lazy route** in `AppRouter.tsx` using `React.lazy()` pattern:
    ```typescript
    const MyFeaturePage = React.lazy(() => import('@features/MyFeature').then(m => ({ default: m.MyFeaturePage })))
