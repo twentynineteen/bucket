@@ -20,9 +20,18 @@ import type { ConnectionStatus } from '../types'
 
 interface AIModelsSectionProps {
   apiKeys: ApiKeys
+  /**
+   * The settings file could not be read, so `apiKeys` is the empty fallback.
+   * Saving is blocked while this holds, or one save would overwrite a merely
+   * unparseable file and destroy the credentials still in it (#166 B8.4).
+   */
+  settingsUnavailable?: boolean
 }
 
-const AIModelsSection: React.FC<AIModelsSectionProps> = ({ apiKeys }) => {
+const AIModelsSection: React.FC<AIModelsSectionProps> = ({
+  apiKeys,
+  settingsUnavailable = false
+}) => {
   const queryClient = useQueryClient()
   const ollamaUrl = useAppStore((state) => state.ollamaUrl)
   const setOllamaUrl = useAppStore((state) => state.setOllamaUrl)
@@ -108,6 +117,7 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({ apiKeys }) => {
         </label>
         <div className="space-y-2">
           <ApiKeyInput
+            saveDisabled={settingsUnavailable}
             id="ollama-url-input"
             apiKey={ollamaUrl || 'http://localhost:11434'}
             setApiKey={handleOllamaUrlChange}

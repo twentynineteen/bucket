@@ -9,6 +9,8 @@ type Props = {
   id?: string // Optional ID for label association
   inputType?: 'text' | 'password' // Allow specifying input type (default: password for API keys)
   placeholder?: string // Optional custom placeholder
+  /** Block saving, e.g. while the settings file cannot be read (issue #166). */
+  saveDisabled?: boolean
 }
 
 const ApiKeyInput: React.FC<Props> = ({
@@ -17,7 +19,8 @@ const ApiKeyInput: React.FC<Props> = ({
   onSave,
   id,
   inputType = 'password',
-  placeholder = 'Enter your API key...'
+  placeholder = 'Enter your API key...',
+  saveDisabled = false
 }) => {
   // State to track whether the API key should be visible
   const [showApiKey, setShowApiKey] = useState(false)
@@ -41,7 +44,7 @@ const ApiKeyInput: React.FC<Props> = ({
         {showApiKey ? 'Hide' : 'Show'}
       </Button>
       {/* Button to save the API key */}
-      <Button onClick={onSave} style={{ marginLeft: '8px' }}>
+      <Button onClick={onSave} disabled={saveDisabled} style={{ marginLeft: '8px' }}>
         Save
       </Button>
     </div>

@@ -17,9 +17,18 @@ import type { ApiKeys } from '../api'
 
 interface TrelloSectionProps {
   apiKeys: ApiKeys
+  /**
+   * The settings file could not be read, so `apiKeys` is the empty fallback.
+   * Saving is blocked while this holds, or one save would overwrite a merely
+   * unparseable file and destroy the credentials still in it (#166 B8.4).
+   */
+  settingsUnavailable?: boolean
 }
 
-const TrelloSection: React.FC<TrelloSectionProps> = ({ apiKeys }) => {
+const TrelloSection: React.FC<TrelloSectionProps> = ({
+  apiKeys,
+  settingsUnavailable = false
+}) => {
   const queryClient = useQueryClient()
   const [localTrelloKey, setLocalTrelloKey] = useState(apiKeys.trello || '')
   const [localTrelloToken, setLocalTrelloToken] = useState(apiKeys.trelloToken || '')
@@ -100,6 +109,7 @@ const TrelloSection: React.FC<TrelloSectionProps> = ({ apiKeys }) => {
           Trello API Key
         </label>
         <ApiKeyInput
+          saveDisabled={settingsUnavailable}
           id="trello-api-key-input"
           apiKey={localTrelloKey}
           setApiKey={setLocalTrelloKey}
@@ -118,6 +128,7 @@ const TrelloSection: React.FC<TrelloSectionProps> = ({ apiKeys }) => {
           Trello API Token
         </label>
         <ApiKeyInput
+          saveDisabled={settingsUnavailable}
           id="trello-api-token-input"
           apiKey={localTrelloToken}
           setApiKey={setLocalTrelloToken}

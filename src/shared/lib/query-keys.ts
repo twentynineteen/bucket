@@ -68,7 +68,10 @@ export const queryKeys = {
     configuration: () => ['settings', 'configuration'] as const,
     theme: () => ['settings', 'theme'] as const,
     integrations: () => ['settings', 'integrations'] as const,
-    apiKeys: () => ['settings', 'api-keys'] as const
+    apiKeys: () => ['settings', 'api-keys'] as const,
+    /** Whether the saved background folder is still on disk (issue #166). */
+    backgroundFolderPresent: (folderPath: string | null) =>
+      ['settings', 'background-folder-present', folderPath ?? 'none'] as const
   },
 
   // Sprout domain
@@ -89,6 +92,9 @@ export const queryKeys = {
     event: (eventId: string) => ['upload', 'event', eventId] as const,
     progress: (uploadId: string) => ['upload', 'progress', uploadId] as const,
     status: (uploadId: string) => ['upload', 'status', uploadId] as const,
+    /** Background folder listing, keyed on the folder being read (issue #166). */
+    backgroundFolder: (folderPath: string | null) =>
+      ['upload', 'background-folder', folderPath ?? 'none'] as const,
     sprout: {
       all: () => ['upload', 'sprout'] as const,
       video: (videoId: string) => ['upload', 'sprout', 'video', videoId] as const,

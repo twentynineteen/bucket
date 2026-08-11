@@ -29,6 +29,7 @@ import {
   Maximize2,
   RefreshCw,
   Save,
+  Undo2,
   ZoomIn,
   ZoomOut
 } from 'lucide-react'
@@ -41,8 +42,18 @@ const PosterframeContent: React.FC = () => {
   const [videoTitle, setVideoTitle] = useState('')
   const [savePath, setSavePath] = useState<string | null>(null)
 
-  const { files: backgroundFiles, loadFolder } = useBackgroundFolder()
-  const { selectedFilePath, selectedFileBlob, selectFile } = useFileSelection()
+  const {
+    files: backgroundFiles,
+    loadFolder,
+    useDefaultFolder,
+    status: folderStatus,
+    reason: folderReason,
+    folderInUse,
+    defaultFolder,
+    isSessionOverride
+  } = useBackgroundFolder()
+  const { selectedFilePath, selectedFileBlob, selectFile, clearSelection } =
+    useFileSelection()
   const { canvasRef, draw, fontStatus } = usePosterframeCanvas()
   // Toast exactly once when we first discover the font isn't installed —
   // otherwise the user gets a blank thumbnail with no explanation and no
@@ -79,6 +90,14 @@ const PosterframeContent: React.FC = () => {
     selectFile,
     criteria: { preferImage: true } // Prefer images for posterframe
   })
+
+  // Never keep a preview of an image from a folder the page is simultaneously
+  // warning it cannot read (issue #166 B4.1).
+  useEffect(() => {
+    if (selectedFilePath && !backgroundFiles.includes(selectedFilePath)) {
+      clearSelection()
+    }
+  }, [backgroundFiles, selectedFilePath, clearSelection])
 
   const chooseSavePath = async () => {
     const folder = await openFolderDialog()
@@ -182,6 +201,60 @@ const PosterframeContent: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
+                  {/*
+                    Which folder is in use was never shown before, so a dead
+                    configured path was indistinguishable from no configuration
+                    at all: there was nothing on screen to contradict "the
+                    setting is being ignored" (issue #166 B5.1, B3.2).
+                  */}
+                  {folderInUse && (
+                    <div className="text-xs">
+                      {isSessionOverride ? (
+                        <>
+                          <p className="text-muted-foreground">
+                            Using this session:{' '}
+                            <span className="text-foreground font-medium break-all">
+                              {folderInUse}
+                            </span>
+                          </p>
+                          {defaultFolder && (
+                            <p className="text-muted-foreground mt-0.5">
+                              Default: <span className="break-all">{defaultFolder}</span>
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-muted-foreground">
+                          Folder:{' '}
+                          <span className="text-foreground font-medium break-all">
+                            {folderInUse}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/*
+                    No reason is reported while a check is in flight, so nothing
+                    flashes a wrong cause mid-read (B5.6).
+                  */}
+                  {folderReason && (
+                    <p
+                      role="alert"
+                      className="text-destructive flex items-start gap-1.5 text-xs"
+                    >
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span className="break-all">
+                        {folderReason}
+                        {folderStatus === 'cannot-read' && (
+                          <span className="text-muted-foreground block break-normal">
+                            Pick another folder below, or update the default in Settings.
+                          </span>
+                        )}
+                      </span>
+                    </p>
+                  )}
+
                   <Button
                     onClick={() =>
                       openFolderDialog().then(
@@ -195,6 +268,23 @@ const PosterframeContent: React.FC = () => {
                     <FolderOpen className="h-3.5 w-3.5" />
                     Select Background Folder
                   </Button>
+
+                  {/*
+                    Without this, a session pick is sticky until restart: the
+                    resolved folder is `session || default`, so there was no way
+                    back to the configured default (B3.3).
+                  */}
+                  {isSessionOverride && (
+                    <Button
+                      onClick={useDefaultFolder}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full gap-1.5"
+                    >
+                      <Undo2 className="h-3.5 w-3.5" />
+                      Use default
+                    </Button>
+                  )}
 
                   {backgroundFiles.length > 0 && (
                     <Select

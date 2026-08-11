@@ -186,17 +186,48 @@ const IMAGE_EXTENSIONS = new Set([
   '.tif'
 ])
 
-export async function listDirectory(folderPath: string): Promise<string[]> {
-  const entries = await readDir(folderPath)
-  const imageFiles = entries
-    .filter((entry) => {
-      const name = entry.name || ''
-      const ext = name.slice(name.lastIndexOf('.')).toLowerCase()
-      return IMAGE_EXTENSIONS.has(ext)
-    })
-    .map((entry) => `${folderPath}/${entry.name}`)
-    .sort()
-  return imageFiles
+/**
+ * Outcome of listing a background folder (issue #166).
+ *
+ * Tagged rather than thrown, because callers need to tell "not there" from
+ * "there but unreadable" from "there, readable, no images". Previously readDir's
+ * rejection was swallowed into an empty array, so all three -- and "never
+ * configured" -- rendered identically.
+ *
+ * `missing` and `unreadable` stay distinct here even though the UI shows one
+ * message for both: the distinction is worth logging, and worth having if the
+ * UI ever wants to act on it.
+ */
+export type BackgroundFolderResult =
+  | { status: 'ok'; files: string[] }
+  | { status: 'missing' }
+  | { status: 'unreadable'; detail: string }
+
+export async function listDirectory(folderPath: string): Promise<BackgroundFolderResult> {
+  // An existence probe rather than matching on readDir's rejection text: that
+  // text is unversioned and locale-sensitive, the same brittleness as the
+  // `includes('4')` retry heuristic flagged in #156.
+  try {
+    if (!(await exists(folderPath))) return { status: 'missing' }
+  } catch (error) {
+    // A probe that cannot run is not evidence of absence.
+    return { status: 'unreadable', detail: String(error) }
+  }
+
+  try {
+    const entries = await readDir(folderPath)
+    const files = entries
+      .filter((entry) => {
+        const name = entry.name || ''
+        const ext = name.slice(name.lastIndexOf('.')).toLowerCase()
+        return IMAGE_EXTENSIONS.has(ext)
+      })
+      .map((entry) => `${folderPath}/${entry.name}`)
+      .sort()
+    return { status: 'ok', files }
+  } catch (error) {
+    return { status: 'unreadable', detail: String(error) }
+  }
 }
 
 export async function getFontDir(): Promise<string> {

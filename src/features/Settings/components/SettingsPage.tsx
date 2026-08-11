@@ -26,7 +26,7 @@ const SettingsPageContent: React.FC = () => {
 
   useBreadcrumb([{ label: 'Settings', href: '/settings/general' }, { label: 'General' }])
 
-  const { data: apiKeys = {} } = useQuery({
+  const { data: apiKeys = {}, isError: settingsUnavailable } = useQuery({
     ...createQueryOptions(
       queryKeys.settings.apiKeys(),
       async () => {
@@ -58,11 +58,38 @@ const SettingsPageContent: React.FC = () => {
         </div>
 
         <div className="max-w-full space-y-8 px-6 py-4">
-          <AIModelsSection apiKeys={apiKeys} />
+          {/*
+            loadApiKeys rethrows on an unreadable or unparseable file rather than
+            resolving {} (issue #166 B8.1), so a read failure is now visible
+            instead of masquerading as "nothing configured". Sections still
+            render so their state is inspectable, but they cannot save.
+          */}
+          {settingsUnavailable && (
+            <div
+              role="alert"
+              className="border-destructive/50 bg-destructive/10 text-destructive flex items-start gap-2 rounded-lg border p-4 text-sm"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Could not read your saved settings.</p>
+                <p className="mt-0.5">
+                  The values below may be incomplete. Saving is disabled to avoid
+                  overwriting credentials that may still be recoverable.
+                </p>
+              </div>
+            </div>
+          )}
+          <AIModelsSection apiKeys={apiKeys} settingsUnavailable={settingsUnavailable} />
           <AppearanceSection />
-          <BackgroundsSection apiKeys={apiKeys} />
-          <SproutVideoSection apiKeys={apiKeys} />
-          <TrelloSection apiKeys={apiKeys} />
+          <BackgroundsSection
+            apiKeys={apiKeys}
+            settingsUnavailable={settingsUnavailable}
+          />
+          <SproutVideoSection
+            apiKeys={apiKeys}
+            settingsUnavailable={settingsUnavailable}
+          />
+          <TrelloSection apiKeys={apiKeys} settingsUnavailable={settingsUnavailable} />
         </div>
       </div>
     </div>
