@@ -110,6 +110,19 @@ describe('resolveAppDataFile - migration happy path (#167 B2)', () => {
     expect(result).toBe(CORRECT)
   })
 
+  it('b2_5_creates_the_app_data_directory_even_when_nothing_needs_migrating', async () => {
+    // Nothing else creates it: rag.rs makes it on demand, and the old
+    // concatenation worked precisely because it wrote into the always-present
+    // parent. Joining correctly without this breaks saves on a fresh install.
+    present() // neither the directory nor any stray file
+    const { resolveAppDataFile } = await freshSession()
+
+    const result = await resolveAppDataFile(KEYS)
+
+    expect(mkdirMock).toHaveBeenCalledWith(DIR, { recursive: true })
+    expect(result).toBe(CORRECT)
+  })
+
   it('b2_3_creates_the_app_data_directory_before_moving_when_it_does_not_exist', async () => {
     present(MISPLACED) // directory itself absent
     const { resolveAppDataFile } = await freshSession()
@@ -197,17 +210,27 @@ describe('resolveAppDataFile - idempotence and concurrency (#167 B4)', () => {
   })
 
   it('b4_4_a_second_session_leaves_the_same_state_as_the_first', async () => {
-    present(DIR, MISPLACED)
+    // The second session must inherit what the first actually did, not a
+    // hand-set state, or this proves nothing about idempotence.
+    const disk = new Set([DIR, MISPLACED])
+    existsMock.mockImplementation((p: string) => Promise.resolve(disk.has(p)))
+    renameMock.mockImplementation((from: string, to: string) => {
+      disk.delete(from)
+      disk.add(to)
+      return Promise.resolve(undefined)
+    })
+
     const first = await freshSession()
     await first.resolveAppDataFile(KEYS)
-    expect(renameMock).toHaveBeenCalledTimes(1)
+    const afterFirst = [...disk].sort()
 
-    // Second launch: the file is now where it belongs.
-    present(DIR, CORRECT)
     const second = await freshSession()
     const result = await second.resolveAppDataFile(KEYS)
 
     expect(renameMock).toHaveBeenCalledTimes(1)
+    expect([...disk].sort()).toEqual(afterFirst)
+    expect(disk.has(CORRECT)).toBe(true)
+    expect(disk.has(MISPLACED)).toBe(false)
     expect(result).toBe(CORRECT)
   })
 })
@@ -237,6 +260,28 @@ describe('resolveAppDataFile - failure (#167 B5)', () => {
 
     // An unanswerable probe is not evidence that a misplaced file exists.
     await expect(resolveAppDataFile(KEYS)).resolves.toBe(CORRECT)
+    expect(renameMock).not.toHaveBeenCalled()
+  })
+
+  it('b5_6_propagates_a_failure_to_resolve_the_app_data_directory', async () => {
+    // There is no honest path to return without a directory, and #166
+    // established that a failed settings read must be loud rather than empty.
+    appDataDirMock.mockRejectedValue(new Error('no app data dir'))
+    const { resolveAppDataFile } = await freshSession()
+
+    await expect(resolveAppDataFile(KEYS)).rejects.toThrow(/no app data dir/)
+  })
+
+  it('b5_7_does_not_redirect_to_the_misplaced_path_when_join_rejects', async () => {
+    // join is an IPC round trip and can fail. Treating that as a failed move
+    // would send reads and writes beside the directory with no evidence a
+    // misplaced file exists. join is what produces the correct path, so there
+    // is nothing to fall back to and the failure propagates.
+    present(DIR, CORRECT)
+    joinMock.mockRejectedValue(new Error('ipc dropped'))
+    const { resolveAppDataFile } = await freshSession()
+
+    await expect(resolveAppDataFile(KEYS)).rejects.toThrow(/ipc dropped/)
     expect(renameMock).not.toHaveBeenCalled()
   })
 

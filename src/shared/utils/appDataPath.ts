@@ -52,10 +52,47 @@ function misplacedSibling(dir: string, filename: string): string {
   return `${dir}${filename}`
 }
 
-async function migrateAndResolve(filename: string): Promise<string> {
-  const dir = await appDataDir()
+/**
+ * Signals that a stray file was found and could not be moved -- the one
+ * failure that justifies falling back to the old location.
+ *
+ * Distinguished from every other failure because the fallback is only correct
+ * when a misplaced file is known to exist. A rejecting join or probe is not
+ * evidence of one, and must not silently redirect reads and writes back beside
+ * the directory.
+ */
+class MigrationFailed extends Error {
+  constructor(
+    readonly misplaced: string,
+    readonly reason: unknown
+  ) {
+    super(`Could not move ${misplaced}`)
+    this.name = 'MigrationFailed'
+  }
+}
+
+/**
+ * Creates the app data directory if it is missing.
+ *
+ * Nothing else does: the only other creation is on demand in rag.rs, and the
+ * concatenation this issue fixes worked precisely because it wrote into the
+ * always-present parent. Without this, joining the path correctly would break
+ * saves for anyone whose directory has never been created.
+ */
+async function ensureDirectory(dir: string): Promise<void> {
+  try {
+    if (!(await exists(dir))) await mkdir(dir, { recursive: true })
+  } catch (error) {
+    // The write that follows reports this far more usefully than we can.
+    logger.error(`Could not ensure ${dir} exists:`, error)
+  }
+}
+
+async function migrateAndResolve(dir: string, filename: string): Promise<string> {
   const correct = await join(dir, filename)
   const misplaced = misplacedSibling(dir, filename)
+
+  await ensureDirectory(dir)
 
   // Nothing to migrate, and moving it would destroy the real file.
   if (misplaced === correct) return correct
@@ -87,15 +124,13 @@ async function migrateAndResolve(filename: string): Promise<string> {
   }
 
   try {
-    if (!(await exists(dir))) await mkdir(dir, { recursive: true })
     await rename(misplaced, correct)
     logger.info(`Moved ${misplaced} to ${correct}`)
     return correct
   } catch (error) {
     // Keep working against the old location so reads and writes agree. The
     // next call retries.
-    logger.error(`Could not move ${misplaced} to ${correct}:`, error)
-    throw error
+    throw new MigrationFailed(misplaced, error)
   }
 }
 
@@ -103,19 +138,31 @@ async function migrateAndResolve(filename: string): Promise<string> {
  * Path to a file inside the app data directory, relocating any copy an earlier
  * build left beside the directory.
  *
- * Never rejects. If the move fails, the misplaced path is returned so the app
- * keeps working exactly as it did before, and the move is retried on the next
- * call.
+ * Filesystem failures never reject: if the move fails, the misplaced path is
+ * returned so the app keeps working exactly as it did before, and the move is
+ * retried on the next call.
+ *
+ * A failure to resolve the app data directory itself does reject. There is no
+ * honest path to hand back without one, and #166 established that a settings
+ * read which cannot be performed must say so rather than report emptiness.
  */
 export async function resolveAppDataFile(filename: string): Promise<string> {
   const cached = resolved.get(filename)
   if (cached) return cached
 
-  const attempt = migrateAndResolve(filename).catch(async (error) => {
-    resolved.delete(filename)
-    logger.error(`Falling back to the pre-migration path for ${filename}:`, error)
-    return misplacedSibling(await appDataDir(), filename)
-  })
+  const attempt = appDataDir()
+    .then((dir) => migrateAndResolve(dir, filename))
+    .catch((error) => {
+      // Evicted whichever way this settles, so a transient failure cannot pin
+      // the session to the old location or cache a rejection.
+      resolved.delete(filename)
+
+      if (error instanceof MigrationFailed) {
+        logger.error(`Could not move ${error.misplaced}, using it as-is:`, error.reason)
+        return error.misplaced
+      }
+      throw error
+    })
 
   resolved.set(filename, attempt)
   return attempt

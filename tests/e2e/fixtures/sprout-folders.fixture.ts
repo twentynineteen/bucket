@@ -134,8 +134,14 @@ export async function setupSproutMocks(
       if (cmd === 'plugin:fs|exists') {
         const path = String((payload.path as string) ?? '')
         // A path beside the app data directory rather than inside it is the
-        // pre-#167 layout. E2E runs start already migrated.
-        if (path.startsWith(APP_DATA_DIR) && !path.startsWith(`${APP_DATA_DIR}/`)) {
+        // pre-#167 layout. E2E runs start already migrated. The directory
+        // itself must still report as present, or every run takes the mkdir
+        // branch.
+        if (
+          path !== APP_DATA_DIR &&
+          path.startsWith(APP_DATA_DIR) &&
+          !path.startsWith(`${APP_DATA_DIR}/`)
+        ) {
           return false
         }
         // No saved index at start, so tests exercise building one.

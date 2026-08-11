@@ -120,8 +120,14 @@ export async function installBackgroundMocks(
         if (path.toLowerCase().includes('cabrito')) return cfg.fontInstalled
         if (path === cfg.folder) return cfg.scenario !== 'missing'
         // A path beside the app data directory rather than inside it is the
-        // pre-#167 layout. E2E runs start already migrated.
-        if (path.startsWith(APP_DATA_DIR) && !path.startsWith(`${APP_DATA_DIR}/`)) {
+        // pre-#167 layout. E2E runs start already migrated. The directory
+        // itself must still report as present, or every run takes the mkdir
+        // branch.
+        if (
+          path !== APP_DATA_DIR &&
+          path.startsWith(APP_DATA_DIR) &&
+          !path.startsWith(`${APP_DATA_DIR}/`)
+        ) {
           return false
         }
         return true

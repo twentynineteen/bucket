@@ -140,6 +140,19 @@ describe('saveApiKeys path targeting (#167 B2, B5)', () => {
     expect(target).toBe(CORRECT)
   })
 
+  it('b2_5_creates_the_directory_before_writing_on_a_fresh_install', async () => {
+    present() // no app data directory at all
+    const { saveApiKeys } = await freshSession()
+
+    await expect(saveApiKeys({ sproutVideo: 'new-key' })).resolves.toBeUndefined()
+
+    expect(mkdirMock).toHaveBeenCalledWith(DIR, { recursive: true })
+    expect(mkdirMock.mock.invocationCallOrder[0]).toBeLessThan(
+      writeTextFileMock.mock.invocationCallOrder[0]
+    )
+    expect(writeTextFileMock.mock.calls[0][0]).toBe(CORRECT)
+  })
+
   it('b2_4_writes_inside_the_directory_when_nothing_needs_migrating', async () => {
     present(DIR)
     const { saveApiKeys } = await freshSession()

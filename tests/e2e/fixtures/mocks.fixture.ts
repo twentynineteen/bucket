@@ -167,7 +167,10 @@ export async function setupTauriMocks(page: Page): Promise<void> {
             const parts = ((args as { paths?: string[] })?.paths ?? []) as string[]
             return parts.join('/').replace(/\/{2,}/g, '/')
           }
-          case 'plugin:path|app_data_dir':
+          // appDataDir()/fontDir() resolve through resolve_directory with a
+          // directory enum, not through per-directory commands. Without this
+          // the call fell through to `default` and returned null.
+          case 'plugin:path|resolve_directory':
             // No trailing separator, matching the real API.
             return '/tmp/bucket-test/data'
           case 'check_auth':

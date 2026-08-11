@@ -190,15 +190,17 @@ const mockTauriApis = () => {
   // None of the directory getters returns a trailing separator, matching the
   // real API. A file-level vi.mock replaces this factory wholesale, so any
   // test file declaring its own must supply `join` too (issue #167).
+  // Plain functions rather than vi.fn: vitest.config.ts sets `mockReset`, so a
+  // vi.fn's implementation is wiped before every test after the first, leaving
+  // appDataDir() returning undefined. Files that need to assert on these calls
+  // declare their own factory, which replaces this one wholesale.
   vi.mock('@tauri-apps/api/path', () => ({
-    appDataDir: vi.fn().mockResolvedValue('/mock/app/data'),
-    appConfigDir: vi.fn().mockResolvedValue('/mock/app/config'),
-    appCacheDir: vi.fn().mockResolvedValue('/mock/app/cache'),
-    appLocalDataDir: vi.fn().mockResolvedValue('/mock/app/local-data'),
-    fontDir: vi.fn().mockResolvedValue('/mock/fonts'),
-    join: vi.fn((...parts: string[]) =>
-      Promise.resolve(parts.join('/').replace(/\/{2,}/g, '/'))
-    )
+    appDataDir: async () => '/mock/app/data',
+    appConfigDir: async () => '/mock/app/config',
+    appCacheDir: async () => '/mock/app/cache',
+    appLocalDataDir: async () => '/mock/app/local-data',
+    fontDir: async () => '/mock/fonts',
+    join: async (...parts: string[]) => parts.join('/').replace(/\/{2,}/g, '/')
   }))
 
   // Mock window API for useWindowState and useSystemTheme hooks

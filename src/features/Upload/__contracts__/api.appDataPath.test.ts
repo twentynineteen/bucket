@@ -152,6 +152,28 @@ describe('folder index failure handling (#167 B5)', () => {
     expect(renameMock).toHaveBeenCalledWith(MISPLACED, CORRECT)
   })
 
+  it('b5_5_writeFolderIndex_still_rejects_when_the_write_fails_after_a_failed_move', async () => {
+    // The clause that matters: the migration failed, so the write targets the
+    // misplaced path -- and a failure there must still reach the caller.
+    present(DIR, MISPLACED)
+    renameMock.mockRejectedValue(new Error('EACCES'))
+    writeTextFileMock.mockRejectedValue(new Error('disk full'))
+    const { writeFolderIndex } = await freshSession()
+
+    await expect(writeFolderIndex({ folders: [] })).rejects.toThrow(/disk full/)
+    expect(renameMock).toHaveBeenCalledWith(MISPLACED, CORRECT)
+  })
+
+  it('b5_2_writes_to_the_misplaced_path_when_the_move_failed', async () => {
+    present(DIR, MISPLACED)
+    renameMock.mockRejectedValue(new Error('EACCES'))
+    const { writeFolderIndex } = await freshSession()
+
+    await writeFolderIndex({ folders: [] })
+
+    expect(writeTextFileMock.mock.calls[0][0]).toBe(MISPLACED)
+  })
+
   it('b5_5_writeFolderIndex_still_rejects_on_a_genuine_write_failure', async () => {
     present(DIR)
     writeTextFileMock.mockRejectedValue(new Error('disk full'))
@@ -179,5 +201,24 @@ describe('poster frame font path (#167 B1)', () => {
     // loadFont lives in internal/ and cannot import @tauri-apps itself
     // (upload.contract.test.ts), so it must consume this export.
     await expect(api.posterFrameFontPath()).resolves.toBe(FONT_PATH)
+  })
+
+  it('b1_4_loadFont_probes_and_reads_exactly_the_path_the_helper_returns', async () => {
+    vi.resetModules()
+    const fileExists = vi.fn().mockResolvedValue(false)
+    const posterFrameFontPath = vi.fn().mockResolvedValue(FONT_PATH)
+    vi.doMock('../api', () => ({
+      fileExists,
+      posterFrameFontPath,
+      readFileAsBytes: vi.fn()
+    }))
+
+    const { loadFont } = await import('../internal/loadFont')
+    await loadFont()
+
+    // Asserting the same value flows through is what stops the two paths
+    // drifting apart, which is how they diverged before (#167).
+    expect(posterFrameFontPath).toHaveBeenCalled()
+    expect(fileExists).toHaveBeenCalledWith(FONT_PATH)
   })
 })
