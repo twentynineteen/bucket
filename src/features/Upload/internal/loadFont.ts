@@ -1,6 +1,6 @@
 import { Font, parse } from 'opentype.js'
 
-import { fileExists, getFontDir, readFileAsBytes } from '../api'
+import { fileExists, posterFrameFontPath, readFileAsBytes } from '../api'
 
 let parsedFont: Font | null = null
 
@@ -15,8 +15,7 @@ export async function loadFont(): Promise<Font | null> {
     return parsedFont
   }
   // Load the font from the Tauri font directory
-  const fontPath = await getFontDir()
-  const path = `${fontPath}/Cabrito.otf`
+  const path = await posterFrameFontPath()
 
   // Check if the font file exists return null if not
   const found = await fileExists(path)

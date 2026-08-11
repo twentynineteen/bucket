@@ -13,13 +13,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock Tauri APIs
 vi.mock('@tauri-apps/api/path', () => ({
-  appDataDir: vi.fn()
+  appDataDir: vi.fn(),
+  // Without this the join throws, the migration falls back, and the assertions
+  // below pass against the concatenated path this issue fixes (#167).
+  join: vi.fn((...parts: string[]) =>
+    Promise.resolve(parts.join('/').replace(/\/{2,}/g, '/'))
+  )
 }))
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   exists: vi.fn(),
   readTextFile: vi.fn(),
-  writeTextFile: vi.fn()
+  writeTextFile: vi.fn(),
+  stat: vi.fn().mockResolvedValue({ isFile: true, isDirectory: false, isSymlink: false }),
+  rename: vi.fn(),
+  remove: vi.fn(),
+  mkdir: vi.fn()
 }))
 
 // Mock app store
@@ -37,8 +46,10 @@ vi.mock('@shared/store/useAppStore', () => ({
 }))
 
 describe('storage utility', () => {
-  const mockAppDataDir = '/mock/app/data/dir/'
-  const mockFilePath = `${mockAppDataDir}api_keys.json`
+  // No trailing separator: the real appDataDir never returns one, and the
+  // trailing slash here is what hid #167 from this suite.
+  const mockAppDataDir = '/mock/app/data/dir'
+  const mockFilePath = `${mockAppDataDir}/api_keys.json`
 
   beforeEach(() => {
     vi.clearAllMocks()

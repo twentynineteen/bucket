@@ -495,6 +495,14 @@ export class TauriE2EMock {
             return '/mock/app/data'
           }
 
+          // Must genuinely concatenate: the app joins the app data directory
+          // to a filename, and a constant answer would collapse every settings
+          // file onto one path (issue #167).
+          if (cmd === 'plugin:path|join') {
+            const parts = (args?.paths as string[]) ?? []
+            return parts.join('/').replace(/\/{2,}/g, '/')
+          }
+
           if (
             cmd === 'plugin:path|app_data_dir' ||
             cmd === 'plugin:path|app_config_dir' ||
@@ -503,7 +511,8 @@ export class TauriE2EMock {
             cmd === 'plugin:path|app_log_dir'
           ) {
             console.log('[E2E Mock] Mocking', cmd)
-            return '/mock/app/data/'
+            // No trailing separator, matching the real API (issue #167).
+            return '/mock/app/data'
           }
 
           if (

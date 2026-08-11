@@ -7,26 +7,42 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { writeTextFileMock, readTextFileMock, existsMock } = vi.hoisted(() => ({
-  writeTextFileMock: vi.fn(),
-  readTextFileMock: vi.fn(),
-  existsMock: vi.fn()
-}))
+const { writeTextFileMock, readTextFileMock, existsMock, appDataDirMock, joinMock } =
+  vi.hoisted(() => ({
+    writeTextFileMock: vi.fn(),
+    readTextFileMock: vi.fn(),
+    existsMock: vi.fn(),
+    appDataDirMock: vi.fn(),
+    joinMock: vi.fn()
+  }))
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   writeTextFile: writeTextFileMock,
   readTextFile: readTextFileMock,
   exists: existsMock,
+  stat: vi.fn().mockResolvedValue({ isFile: true, isDirectory: false, isSymlink: false }),
+  rename: vi.fn(),
+  remove: vi.fn(),
+  mkdir: vi.fn(),
   BaseDirectory: {}
 }))
 vi.mock('@tauri-apps/api/path', () => ({
-  appDataDir: vi.fn().mockResolvedValue('/tmp/bucket/')
+  appDataDir: appDataDirMock,
+  join: joinMock
 }))
 
 import { saveApiKeys } from './storage'
 
 beforeEach(() => {
   writeTextFileMock.mockReset().mockResolvedValue(undefined)
+  // vitest.config.ts sets mockReset, so implementations declared in the mock
+  // factory are wiped between tests and must be restored here.
+  // No trailing separator, matching the real API (issue #167).
+  appDataDirMock.mockResolvedValue('/tmp/bucket')
+  joinMock.mockImplementation((...parts: string[]) =>
+    Promise.resolve(parts.join('/').replace(/\/{2,}/g, '/'))
+  )
+  existsMock.mockResolvedValue(false)
 })
 
 describe('saveApiKeys', () => {

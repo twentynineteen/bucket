@@ -23,9 +23,22 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   exists: vi.fn(),
   readDir: vi.fn(),
   readFile: vi.fn(),
-  writeFile: vi.fn()
+  writeFile: vi.fn(),
+  readTextFile: vi.fn(),
+  writeTextFile: vi.fn(),
+  stat: vi.fn().mockResolvedValue({ isFile: true, isDirectory: false, isSymlink: false }),
+  rename: vi.fn(),
+  remove: vi.fn(),
+  mkdir: vi.fn()
 }))
-vi.mock('@tauri-apps/api/path', () => ({ fontDir: vi.fn() }))
+vi.mock('@tauri-apps/api/path', () => ({
+  fontDir: vi.fn(),
+  // No trailing separator, and join must exist: api.ts now joins paths rather
+  // than concatenating them (issue #167). Plain functions, so `mockReset` in
+  // vitest.config.ts cannot wipe them between tests.
+  appDataDir: async () => '/appdata',
+  join: async (...parts: string[]) => parts.join('/').replace(/\/{2,}/g, '/')
+}))
 
 import { getFolders, uploadVideo } from '../api'
 import { __resetBudget } from '../internal/sproutRateBudget'

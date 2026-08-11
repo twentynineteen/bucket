@@ -81,6 +81,121 @@ describe('e2e mock protocol — B2.2 mock speaks the current protocol', () => {
   })
 })
 
+describe('e2e mock protocol — #167 every fixture joins paths for real', () => {
+  /**
+   * A source grep would pass against `return null` or a constant. Three of
+   * these fixtures answered every `plugin:path|*` command with one hardcoded
+   * directory, which would have collapsed api_keys.json and the folder index
+   * onto a single path -- so each fixture's init script is executed against a
+   * fake window and its handler actually invoked. That also proves the handler
+   * is reachable given the fixture's if-ordering, not merely present.
+   */
+  type Invoke = (cmd: string, args?: unknown) => Promise<unknown>
+
+  /** Runs a fixture's setup, capturing the invoke it installs on window. */
+  async function captureInvoke(
+    setup: (page: never) => Promise<void>
+  ): Promise<Invoke> {
+    const win: Record<string, unknown> = {}
+    const page = {
+      addInitScript: async (fn: (arg?: unknown) => void, arg?: unknown) => {
+        const originalWindow = globalThis.window
+        // The init script closes over `window`, so stand one in for it.
+        Object.defineProperty(globalThis, 'window', {
+          value: win,
+          configurable: true,
+          writable: true
+        })
+        try {
+          fn(arg)
+        } finally {
+          Object.defineProperty(globalThis, 'window', {
+            value: originalWindow,
+            configurable: true,
+            writable: true
+          })
+        }
+      },
+      route: async () => {},
+      on: () => {},
+      goto: async () => {},
+      evaluate: async () => {},
+      waitForLoadState: async () => {}
+    }
+
+    await setup(page as never)
+
+    const internals = win.__TAURI_INTERNALS__ as { invoke?: Invoke } | undefined
+    if (!internals?.invoke) {
+      throw new Error('fixture installed no __TAURI_INTERNALS__.invoke')
+    }
+    return internals.invoke
+  }
+
+  const FIXTURES: Array<[string, () => Promise<(page: never) => Promise<void>>]> = [
+    [
+      'tauri-e2e-mocks.ts',
+      async () => {
+        const mod = await import('../e2e/fixtures/tauri-e2e-mocks')
+        return (page: never) => mod.createTauriMock(page).setup()
+      }
+    ],
+    [
+      'sprout-folders.fixture.ts',
+      async () => {
+        const mod = await import('../e2e/fixtures/sprout-folders.fixture')
+        return (page: never) => mod.setupSproutMocks(page, { folders: [] })
+      }
+    ],
+    [
+      'posterframe-backgrounds.fixture.ts',
+      async () => {
+        const mod = await import('../e2e/fixtures/posterframe-backgrounds.fixture')
+        return (page: never) => mod.installBackgroundMocks(page)
+      }
+    ],
+    [
+      'mocks.fixture.ts',
+      async () => (await import('../e2e/fixtures/mocks.fixture')).setupTauriMocks
+    ]
+  ]
+
+  it.each(FIXTURES)(
+    '%s answers plugin:path|join by concatenating its segments',
+    async (file, load) => {
+      const invoke = await captureInvoke(await load())
+
+      const joined = await invoke('plugin:path|join', {
+        paths: ['/data/dir', 'api_keys.json']
+      })
+
+      expect(
+        joined,
+        `tests/e2e/fixtures/${file} does not join paths — the app joins the ` +
+          'app data directory to a filename (#167), and a constant or absent ' +
+          'answer silently merges every settings file onto one path'
+      ).toBe('/data/dir/api_keys.json')
+    }
+  )
+
+  it.each(FIXTURES)('%s resolves the app data directory without a trailing separator', async (file, load) => {
+    const invoke = await captureInvoke(await load())
+
+    const dir = (await invoke('plugin:path|resolve_directory', { directory: 13 })) as string
+
+    expect(
+      typeof dir === 'string' && dir.length > 0,
+      `tests/e2e/fixtures/${file} returns no app data directory — appDataDir() ` +
+        'resolves through resolve_directory, not a per-directory command'
+    ).toBe(true)
+    expect(
+      dir.endsWith('/'),
+      `tests/e2e/fixtures/${file} returns a trailing separator, which the real ` +
+        'appDataDir never does — that fiction is what hid #167'
+    ).toBe(false)
+  })
+})
+
 describe('e2e mock protocol — B2.3 no legacy residue in the e2e specs', () => {
   const specFiles = collectTsFiles(E2E_DIR)
 
