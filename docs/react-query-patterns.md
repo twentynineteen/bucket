@@ -508,13 +508,8 @@ const { data, isLoading, error } = useQuery({
 
 ### Validation
 
-Run the migration validation script:
-
-```bash
-npx ts-node scripts/validate-migration.ts
-```
-
-This will check for:
+The one-off migration validation script (`scripts/validate-migration.ts`) has been
+removed now that the migration is complete. The checks it performed:
 
 - Proper React Query usage
 - Remaining legacy patterns
