@@ -25,6 +25,13 @@ export interface ApiKeys {
    *  before the folder tree loads. */
   sproutDefaultFolderName?: string
   ollamaUrl?: string
+  /** Folder holding the QC reference pools, with `watermarks/` and `stings/`
+   *  subfolders (issue #180). Undefined means QC has nothing to compare against. */
+  qcReferenceFolder?: string
+  /** Directory holding ffmpeg and ffprobe, when they are not in a standard
+   *  location (issue #180). Undefined searches /opt/homebrew/bin, /usr/local/bin
+   *  and /usr/bin. */
+  ffmpegDirectory?: string
 }
 
 const API_KEYS_FILE = 'api_keys.json' // New file for storing API keys as JSON

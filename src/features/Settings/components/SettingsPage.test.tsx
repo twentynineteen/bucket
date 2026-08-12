@@ -47,10 +47,24 @@ vi.mock('./AppearanceSection', () => stubSection('appearance'))
 vi.mock('./BackgroundsSection', () => stubSection('backgrounds'))
 vi.mock('./SproutVideoSection', () => stubSection('sprout'))
 vi.mock('./TrelloSection', () => stubSection('trello'))
+vi.mock('./QualityControlSection', () => stubSection('quality-control'))
 
-const SECTIONS = ['ai-models', 'appearance', 'backgrounds', 'sprout', 'trello']
+const SECTIONS = [
+  'ai-models',
+  'appearance',
+  'backgrounds',
+  'sprout',
+  'trello',
+  'quality-control'
+]
 /** Sections that receive api keys and can write them back. */
-const SAVING_SECTIONS = ['ai-models', 'backgrounds', 'sprout', 'trello']
+const SAVING_SECTIONS = [
+  'ai-models',
+  'backgrounds',
+  'sprout',
+  'trello',
+  'quality-control'
+]
 
 function renderPage() {
   const queryClient = new QueryClient({

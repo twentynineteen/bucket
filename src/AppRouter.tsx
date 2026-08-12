@@ -53,6 +53,9 @@ const PremierePluginManager = React.lazy(() =>
 const UploadTrello = React.lazy(() =>
   import('@features/Trello').then((m) => ({ default: m.UploadTrello }))
 )
+const QualityControlPage = React.lazy(() =>
+  import('@features/QualityControl').then((m) => ({ default: m.QualityControlPage }))
+)
 
 const log = createNamespacedLogger('AppRouter')
 
@@ -166,6 +169,7 @@ export const AppRouter: React.FC = () => {
               <Route path="posterframe" element={<Posterframe />} />
               <Route path="trello" element={<UploadTrello />} />
               <Route path="otter" element={<UploadOtter />} />
+              <Route path="quality-control" element={<QualityControlPage />} />
             </Route>
             <Route path="premiere">
               <Route

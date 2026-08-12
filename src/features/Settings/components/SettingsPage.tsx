@@ -18,6 +18,7 @@ import { useSettingsScroll } from '../hooks/useSettingsScroll'
 import AIModelsSection from './AIModelsSection'
 import AppearanceSection from './AppearanceSection'
 import BackgroundsSection from './BackgroundsSection'
+import QualityControlSection from './QualityControlSection'
 import SproutVideoSection from './SproutVideoSection'
 import TrelloSection from './TrelloSection'
 
@@ -90,6 +91,10 @@ const SettingsPageContent: React.FC = () => {
             settingsUnavailable={settingsUnavailable}
           />
           <TrelloSection apiKeys={apiKeys} settingsUnavailable={settingsUnavailable} />
+          <QualityControlSection
+            apiKeys={apiKeys}
+            settingsUnavailable={settingsUnavailable}
+          />
         </div>
       </div>
     </div>
