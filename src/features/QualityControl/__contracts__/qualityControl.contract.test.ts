@@ -29,6 +29,12 @@ describe('QualityControl barrel shape', () => {
     expect(typeof barrel.useQcAvailability).toBe('function')
   })
 
+  it('exports the watermark run hook the upload flow will consume in stage 4', async () => {
+    const barrel = await import('../index')
+
+    expect(typeof barrel.useWatermarkCheck).toBe('function')
+  })
+
   it('does not leak internal helpers through the barrel', async () => {
     const barrel = (await import('../index')) as Record<string, unknown>
 
@@ -74,6 +80,67 @@ describe('QualityControl I/O boundary', () => {
     // Rust side would see a missing argument rather than an explicit "no
     // custom directory".
     expect(calls[0].args).toMatchObject({ customDir: null })
+  })
+
+  it('routes a watermark run through the qc_run_watermark_check command', async () => {
+    const calls = captureInvokes()
+    const { runWatermarkCheck } = await import('../api')
+
+    await runWatermarkCheck({
+      videoPath: '/Volumes/Renders/module.mp4',
+      referenceFiles: ['/refs/Watermarks/right.png'],
+      ffmpegDirectory: null,
+      matchThreshold: 0.92
+    })
+
+    expect(calls[0].cmd).toBe('qc_run_watermark_check')
+    expect(calls[0].args).toMatchObject({
+      request: {
+        videoPath: '/Volumes/Renders/module.mp4',
+        referenceFiles: ['/refs/Watermarks/right.png'],
+        ffmpegDirectory: null,
+        matchThreshold: 0.92
+      }
+    })
+  })
+
+  it('sends a null threshold rather than omitting it, so the default applies', async () => {
+    const calls = captureInvokes()
+    const { runWatermarkCheck } = await import('../api')
+
+    await runWatermarkCheck({
+      videoPath: '/a.mp4',
+      referenceFiles: ['/refs/right.png']
+    })
+
+    // An omitted key would arrive as a missing argument rather than an explicit
+    // "no override", which is a different thing on the Rust side.
+    expect(calls[0].args).toMatchObject({ request: { matchThreshold: null } })
+  })
+
+  it('routes cancellation through the qc_cancel_run command', async () => {
+    const calls = captureInvokes()
+    const { cancelQcRun } = await import('../api')
+
+    await cancelQcRun()
+
+    expect(calls[0].cmd).toBe('qc_cancel_run')
+  })
+
+  it('routes evidence saving through the qc_save_evidence command', async () => {
+    const calls = captureInvokes()
+    const { saveQcEvidence } = await import('../api')
+
+    await saveQcEvidence('/Volumes/Evidence', 'qc-module', [
+      { label: 'watermark-missing-12.0s', atSeconds: 12, jpeg: [255, 216] }
+    ])
+
+    expect(calls[0].cmd).toBe('qc_save_evidence')
+    expect(calls[0].args).toMatchObject({
+      folder: '/Volumes/Evidence',
+      prefix: 'qc-module',
+      items: [{ label: 'watermark-missing-12.0s', jpeg: [255, 216] }]
+    })
   })
 })
 
