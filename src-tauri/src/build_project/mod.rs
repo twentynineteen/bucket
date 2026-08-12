@@ -4,13 +4,13 @@
 //! in the BuildProject workflow, including:
 //!
 //! - **OperationRegistry**: Centralized registry for tracking and cancelling operations
-//! - **Transfer types**: Data structures for file transfer progress and results
+//! - **Commands**: Tauri commands for starting and cancelling file transfers
 //! - **Error types**: Strongly-typed errors for build project operations
 //!
 //! # Example
 //!
 //! ```rust,ignore
-//! use build_project::{OperationRegistry, TransferProgress, TransferStatus};
+//! use build_project::OperationRegistry;
 //!
 //! // Create a shared registry (typically managed by Tauri state)
 //! let registry = OperationRegistry::new();
@@ -31,9 +31,6 @@
 pub mod commands;
 pub mod error;
 mod registry;
-mod transfer;
 
 pub use commands::*;
-pub use error::*;
 pub use registry::*;
-pub use transfer::*;
