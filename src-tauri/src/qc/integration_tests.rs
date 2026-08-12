@@ -354,6 +354,39 @@ fn b4_2_reports_a_mid_video_gap_as_a_measured_time_range() {
 }
 
 #[test]
+fn b4_2_samples_densely_enough_to_bound_the_blind_spot() {
+    // Pins the coarse interval, which no other test does. The blind spot inherent to
+    // coarse-then-refine is as long as the interval: an absence shorter than it can
+    // fall entirely between two samples and never be looked at. The other gap test
+    // cannot pin this, because its absence runs 11s and so is caught at any spacing
+    // up to that.
+    //
+    // Asserting a floor on sample count rather than an exact figure: sampling more
+    // densely is always a legitimate change, sampling less densely widens the blind
+    // spot and should have to be argued for. A 40s fixture gives a 28s assumed span,
+    // which is 14 samples at the agreed 2s spacing and only 3 at the 10s spacing this
+    // was first written with.
+    let (ffmpeg, ffprobe) = require_ffmpeg!();
+    let dir = tempfile::tempdir().unwrap();
+
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let video = make_fixture(&ffmpeg, dir.path(), "dense.mp4", 40, &[(&right, "1")]);
+
+    let report = run(&ffmpeg, &ffprobe, &video, &[&right]).expect("the run completes");
+
+    let span = report.span.end_seconds - report.span.start_seconds;
+    let widest_blind_spot = span / report.coarse_samples as f64;
+    assert!(
+        widest_blind_spot <= 2.5,
+        "an absence shorter than {:.1}s could hide between coarse samples; \
+         {} samples over {:.1}s of span",
+        widest_blind_spot,
+        report.coarse_samples,
+        span
+    );
+}
+
+#[test]
 fn b3_7_fails_naming_the_corner_change_and_when_it_happened() {
     let (ffmpeg, ffprobe) = require_ffmpeg!();
     let dir = tempfile::tempdir().unwrap();

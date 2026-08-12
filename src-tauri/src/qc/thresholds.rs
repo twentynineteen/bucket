@@ -61,7 +61,16 @@ pub const MEASURED_WEAKEST_PRESENCE: f32 = 0.9803;
 pub const MEASURED_STRONGEST_ABSENCE: f32 = 0.0135;
 
 /// Seconds between coarse samples in the single decode pass.
-pub const COARSE_INTERVAL_SECONDS: f64 = 10.0;
+///
+/// Two seconds, matching the agreed design, because the blind spot inherent to
+/// coarse-then-refine is as long as this interval: an absence shorter than it can
+/// fall entirely between two samples. Ten seconds was measured here first and is
+/// not worth the wider blind spot, because the tighter interval is very nearly
+/// free. The decode dominates a coarse pass, and the `fps` filter changes only how
+/// many frames are *emitted*, not how many are decoded: a full pass over a 144s
+/// 4K render took 4.635s at 10s spacing and 4.637s at 2s. The only real cost is
+/// five times as many correlations, which is a few million pixel operations.
+pub const COARSE_INTERVAL_SECONDS: f64 = 2.0;
 
 /// Seconds between samples in a refinement pass over one neighbourhood.
 pub const FINE_INTERVAL_SECONDS: f64 = 0.5;
