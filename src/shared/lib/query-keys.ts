@@ -104,14 +104,14 @@ export const queryKeys = {
   },
 
   // Video QC domain (issue #180)
-  qc: {
-    all: ['qc'] as const,
+  kavanagh: {
+    all: ['kavanagh'] as const,
     /** ffmpeg discovery, keyed on the configured directory so changing it refetches. */
     ffmpeg: (customDir: string | null) =>
-      ['qc', 'ffmpeg', customDir ?? 'default'] as const,
+      ['kavanagh', 'ffmpeg', customDir ?? 'default'] as const,
     /** Reference pool listing, keyed on the folder and which pool is being read. */
     referencePool: (folderPath: string | null, pool: string) =>
-      ['qc', 'reference-pool', folderPath ?? 'none', pool] as const,
+      ['kavanagh', 'reference-pool', folderPath ?? 'none', pool] as const,
     /**
      * Whether the configured QC reference folder is still on disk. Its own key
      * rather than reusing `settings.backgroundFolderPresent`: two different
@@ -119,7 +119,7 @@ export const queryKeys = {
      * what both report.
      */
     referenceFolderPresent: (folderPath: string | null) =>
-      ['qc', 'reference-folder-present', folderPath ?? 'none'] as const
+      ['kavanagh', 'reference-folder-present', folderPath ?? 'none'] as const
   },
 
   // Image/Canvas domain

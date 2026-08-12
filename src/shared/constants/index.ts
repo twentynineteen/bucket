@@ -69,13 +69,13 @@ export { PROJECT_LIMITS } from './project'
 // Video QC constants (issue #180)
 export {
   /** Calibrated watermark match confidence default and override bounds */
-  QC_THRESHOLDS,
+  KAVANAGH_THRESHOLDS,
   /** Turns an override field into the value a run should use, or undefined for the default */
   resolveMatchConfidenceOverride,
   /** Why a match confidence override was refused, or null when it is usable */
   validateMatchConfidence
-} from './qc'
+} from './kavanagh'
 export type {
   /** Rejection reason for a match confidence override, or null */
-  QcThresholdProblem
-} from './qc'
+  KavanaghThresholdProblem
+} from './kavanagh'

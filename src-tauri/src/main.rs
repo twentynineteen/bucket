@@ -4,7 +4,7 @@
 mod baker;
 mod build_project;
 mod commands;
-mod qc;
+mod kavanagh;
 mod state;
 mod utils;
 
@@ -17,7 +17,7 @@ use std::sync::Mutex;
 use baker::*;
 use build_project::{transfer_files_with_progress, cancel_file_transfer, OperationRegistry};
 use commands::*;
-use qc::{qc_cancel_run, qc_detect_ffmpeg, qc_run_watermark_check, qc_save_evidence, QcRunState};
+use kavanagh::{kavanagh_cancel_run, kavanagh_detect_ffmpeg, kavanagh_run_watermark_check, kavanagh_save_evidence, KavanaghRunState};
 use state::AuthState;
 
 fn main() {
@@ -39,7 +39,7 @@ fn main() {
         })
         .manage(baker::ScanState::new())
         .manage(OperationRegistry::new())
-        .manage(QcRunState::new())
+        .manage(KavanaghRunState::new())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -110,10 +110,10 @@ fn main() {
             transfer_files_with_progress,
             cancel_file_transfer,
             // Issue #180: Video QC - ffmpeg discovery and the watermark check
-            qc_detect_ffmpeg,
-            qc_run_watermark_check,
-            qc_cancel_run,
-            qc_save_evidence
+            kavanagh_detect_ffmpeg,
+            kavanagh_run_watermark_check,
+            kavanagh_cancel_run,
+            kavanagh_save_evidence
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");
