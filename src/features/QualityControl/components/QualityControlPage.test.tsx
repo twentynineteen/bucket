@@ -1,7 +1,7 @@
 /**
  * Quality Control page (issue #180, B8, B10, B13)
  *
- * Only the I/O boundary is mocked — `api.ts`, which owns every Tauri call, and the
+ * Only the I/O boundary is mocked - `api.ts`, which owns every Tauri call, and the
  * availability hook, which owns the prerequisite ones. Everything the assertions
  * touch is the real component and the real run hook, so a broken page fails these
  * tests rather than a mock reporting itself present.
@@ -257,8 +257,8 @@ describe('QualityControlPage watermark run', () => {
   })
 
   it('B8.6 surfaces the backend rejection when a run is already in flight', async () => {
-    // The page's own guard can be bypassed — a second page, or a run started from
-    // the upload flow in stage 4 — so the backend's rejection has to be shown.
+    // The page's own guard can be bypassed - a second page, or a run started from
+    // the upload flow in stage 4 - so the backend's rejection has to be shown.
     runWatermarkCheck.mockRejectedValue({
       kind: 'busy',
       message: 'A quality control run is already in progress.'

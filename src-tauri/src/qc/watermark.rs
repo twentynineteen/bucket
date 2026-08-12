@@ -3,8 +3,8 @@
 //!
 //! ## Why the corners are hstacked
 //!
-//! The obvious design — crop both top corners and pipe each as its own rawvideo
-//! output — does not work and does not fail either. ffmpeg accepts
+//! The obvious design - crop both top corners and pipe each as its own rawvideo
+//! output - does not work and does not fail either. ffmpeg accepts
 //! `-map '[tl]' -f rawvideo - -map '[tr]' -f rawvideo -` and emits an
 //! interleaved, unparseable byte stream. Verified. So the two crops are `hstack`ed
 //! into one frame of known size and split apart here, which is byte-exact.
@@ -617,7 +617,7 @@ fn prepare_references(
 /// The alpha map, not the reference composited over anything. The brand assets are a
 /// pure monochrome shape plus a varying alpha mask: the Black variant is luma 0
 /// everywhere and the White variant luma 255 everywhere, and both carry the *same*
-/// alpha map, peaking at 137 of 255 — so the mark is never more than 54% opaque and
+/// alpha map, peaking at 137 of 255 - so the mark is never more than 54% opaque and
 /// the backdrop always shows through it.
 ///
 /// That makes the composited appearance backdrop-dependent and useless as a
@@ -674,7 +674,7 @@ fn build_template(
         // Uniform: the alpha map already *is* the mark's shape, so there is nothing
         // left for a separate mask to exclude, and the bbox is the mark's own extent
         // rather than a region with footage around it. `weighted_ncc` stays the
-        // primitive so a future mask — glyph strokes only, say — is a one-line change.
+        // primitive so a future mask - glyph strokes only, say - is a one-line change.
         weights: vec![1.0; width * height],
         width,
         height,

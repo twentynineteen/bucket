@@ -141,7 +141,7 @@ fn terminate(child: &mut Child) {
 ///
 /// The frame size is exact and known from the filter graph, so frame boundaries
 /// need no framing metadata: reading `frame_size` bytes is reading one frame. A
-/// trailing partial frame is discarded — it means the process was cut short, and
+/// trailing partial frame is discarded - it means the process was cut short, and
 /// scoring a half-decoded frame would invent a failure.
 pub fn run_frames<F>(
     bin: &str,

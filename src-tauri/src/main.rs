@@ -109,7 +109,7 @@ fn main() {
             // BuildProject: File transfer with progress and cancellation
             transfer_files_with_progress,
             cancel_file_transfer,
-            // Issue #180: Video QC — ffmpeg discovery and the watermark check
+            // Issue #180: Video QC - ffmpeg discovery and the watermark check
             qc_detect_ffmpeg,
             qc_run_watermark_check,
             qc_cancel_run,

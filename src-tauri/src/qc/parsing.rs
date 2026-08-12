@@ -8,7 +8,7 @@
 //!   which on a long GOP is seconds.
 //! - **The alpha bounding box from `bbox`**, which is how a reference's watermark
 //!   region is located. `bbox` logs at *info* level, so `-v error` silently
-//!   suppresses it — the run then succeeds with nothing to parse.
+//!   suppresses it - the run then succeeds with nothing to parse.
 //!
 //! Both filters write to stderr, which is also where an ffmpeg failure explains
 //! itself, so all of this is parsed out of one stream.
@@ -138,7 +138,7 @@ pub fn parse_probe_output(stdout: &str) -> Result<VideoProbe, ProbeProblem> {
             "width" => width = value.parse().ok(),
             "height" => height = value.parse().ok(),
             // "N/A" is what ffprobe prints for a container with no duration, and
-            // it must not become 0.0 — a zero duration would silently check
+            // it must not become 0.0 - a zero duration would silently check
             // nothing and report a pass.
             "duration" => duration = value.parse().ok().filter(|d: &f64| *d > 0.0),
             _ => {}
@@ -251,7 +251,7 @@ frame=3 fps=0.0 q=-0.0 Lsize=N/A time=00:00:05.00";
 
     #[test]
     fn b12_1_reports_no_video_stream_for_an_audio_only_file() {
-        // `-select_streams v:0` selects nothing, so no stream entries are printed —
+        // `-select_streams v:0` selects nothing, so no stream entries are printed -
         // but the container still reports a duration. Judging on the duration would
         // classify this as a dimensions problem and tell the operator to check the
         // wrong thing.

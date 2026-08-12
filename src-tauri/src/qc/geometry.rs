@@ -88,7 +88,7 @@ pub fn corner_of(bbox: &AlphaBbox, reference_width: u32) -> Corner {
 /// The axes scale independently. That distorts a square mark on a video whose
 /// aspect ratio differs from the reference's, which sounds wrong until you note
 /// that the reference itself is scaled to the video's dimensions before being
-/// cropped — so both sides of the comparison are distorted identically and the
+/// cropped - so both sides of the comparison are distorted identically and the
 /// correlation is unaffected (B12.4).
 ///
 /// The result is clamped inside the frame: a reference wider than the video

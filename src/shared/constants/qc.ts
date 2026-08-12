@@ -54,7 +54,7 @@ export type QcThresholdProblem = string | null
  * someone believing they set something they did not, and the next surprising
  * verdict is then unattributable.
  *
- * An empty string is not an error — it means "no override", which is how the
+ * An empty string is not an error - it means "no override", which is how the
  * field is cleared back to the default.
  */
 export function validateMatchConfidence(raw: string): QcThresholdProblem {

@@ -8,7 +8,7 @@
 //! varying alpha mask: the Black variant is luma 0 everywhere, the White variant luma
 //! 255 everywhere, and both carry the same alpha map peaking at 137 of 255. So the
 //! mark is never more than 54% opaque, the backdrop always shows through it, and its
-//! composited appearance depends entirely on the footage behind it — black at 54% over
+//! composited appearance depends entirely on the footage behind it - black at 54% over
 //! dark footage reads strongly, white at 54% over a bright office barely shifts the
 //! luma.
 //!
@@ -37,7 +37,7 @@
 //! `sobel_magnitude` accumulates in `f32` so there is headroom, and it must not be
 //! swapped back for the filter.
 //!
-//! It is also free — the crop is at most a few hundred pixels square — and it puts both
+//! It is also free - the crop is at most a few hundred pixels square - and it puts both
 //! sides of the comparison through the same Rust code, testable against synthetic
 //! arrays with no decoder in the way.
 
@@ -188,8 +188,8 @@ pub fn weighted_ncc(a: &[f32], b: &[f32], weights: &[f32]) -> f32 {
 
 /// Scores one greyscale crop against one template, in `[-1, 1]`.
 ///
-/// **This is the feature extraction seam.** Everything above it — sampling, gap
-/// coalescing, evidence, the IPC shapes — depends only on the number this returns, so
+/// **This is the feature extraction seam.** Everything above it - sampling, gap
+/// coalescing, evidence, the IPC shapes - depends only on the number this returns, so
 /// the scoring can change without any of them moving. It has changed once already:
 /// building the template from the composited reference rather than its alpha map put
 /// measured presence as low as 0.389, and correcting it needed no change anywhere
@@ -261,8 +261,8 @@ mod tests {
 
     /// A reference's alpha map: an outer box, a hole and a centre dot.
     ///
-    /// Structure is the point — a plain filled square correlates with any other plain
-    /// filled square — and it lives in *alpha*, which is where the real assets keep it.
+    /// Structure is the point - a plain filled square correlates with any other plain
+    /// filled square - and it lives in *alpha*, which is where the real assets keep it.
     fn alpha_map() -> Vec<u8> {
         let mut alpha = vec![0u8; REGION * REGION];
         for y in 4..28 {
@@ -566,7 +566,7 @@ mod tests {
     fn b3_5_matches_the_same_mark_in_either_colour_over_either_backdrop() {
         // The behaviour, stated as strongly as the measurements allow. The template is
         // the alpha map's gradient structure, which is invariant to backdrop luma up to
-        // a scale factor that normalised correlation divides out — so a black mark over
+        // a scale factor that normalised correlation divides out - so a black mark over
         // light footage and a white mark over dark footage both match the one template.
         // Measured on real renders at 0.9803 to 0.9973 across exactly this pair of
         // cases.
@@ -666,8 +666,8 @@ mod tests {
 
     #[test]
     fn keeps_two_templates_for_one_corner_when_their_alpha_maps_differ() {
-        // A genuinely different mark in the same corner — a rebrand, or a second
-        // programme's logo — must not be dropped as a duplicate.
+        // A genuinely different mark in the same corner - a rebrand, or a second
+        // programme's logo - must not be dropped as a duplicate.
         let mut other = template(Corner::TopRight, "OtherRight.png");
         other.alpha[0] = 1;
 

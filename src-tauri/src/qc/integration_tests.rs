@@ -51,7 +51,7 @@ const MARK: u32 = 64;
 /// transparent alpha map: the Black variant is luma 0 everywhere and the White
 /// variant luma 255 everywhere, and both carry the same alpha map peaking at 137 of
 /// 255. So the structure lives entirely in alpha, and these fixtures put it there
-/// too — a reference whose alpha is a plain filled square would let the matcher pass
+/// too - a reference whose alpha is a plain filled square would let the matcher pass
 /// on a template it will never see in practice.
 ///
 /// `drawbox` does not touch the alpha plane, so the colour and the mask are drawn
@@ -363,7 +363,7 @@ fn b3_7_fails_naming_the_corner_change_and_when_it_happened() {
     // must still be read as a corner change rather than as a missing watermark.
     // The White variant is used deliberately: `testsrc`'s top-left corner is pure
     // black, and a black mark at 54% opacity over black footage is genuinely
-    // invisible — a real physical limit of a semi-transparent overlay, not something
+    // invisible - a real physical limit of a semi-transparent overlay, not something
     // the matcher can recover.
     let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
     let left = make_black_reference(&ffmpeg, dir.path(), "left.png", 20);

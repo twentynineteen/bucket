@@ -52,7 +52,7 @@ export function asQcError(error: unknown): QcError {
 /**
  * True when a failure is the operator's own cancellation.
  *
- * Cancelling is not a fault, so it must not be shown as one — a red alert after
+ * Cancelling is not a fault, so it must not be shown as one - a red alert after
  * someone deliberately stopped a run reads as a bug in the app.
  */
 export function isCancellation(error: QcError | null): boolean {

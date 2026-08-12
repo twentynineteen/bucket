@@ -92,7 +92,7 @@ export interface WatermarkCheckRequest {
  * Runs the watermark check over one video.
  *
  * Long-running: the promise settles when the analysis finishes, while progress
- * arrives on the `qc-progress` event. Rejects with a `QcError` — including a
+ * arrives on the `qc-progress` event. Rejects with a `QcError` - including a
  * `busy` rejection when a run is already in flight (D19).
  */
 export async function runWatermarkCheck(
