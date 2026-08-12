@@ -72,7 +72,13 @@ where
     // Resolve each binary independently: a directory holding only ffmpeg should
     // not stop us finding ffprobe in the next one, and `missing` has to name
     // exactly which binary the user needs to install.
-    let mut found: Vec<Option<String>> = Vec::with_capacity(REQUIRED_BINARIES.len());
+    let mut found: Vec<(&str, Option<String>)> = Vec::with_capacity(REQUIRED_BINARIES.len());
+
+    // A binary that is present but unrunnable, remembered rather than returned
+    // at once. A broken ffmpeg in Homebrew must not hide a working one in
+    // /usr/local/bin, but if nothing runnable turns up anywhere then this is a
+    // far more useful thing to report than "not found".
+    let mut unrunnable: Option<String> = None;
 
     for binary in REQUIRED_BINARIES {
         let mut resolved: Option<String> = None;
@@ -84,39 +90,57 @@ where
                     resolved = Some(candidate.to_string_lossy().to_string());
                     break;
                 }
-                // Present but unrunnable is a dead end worth reporting at once
-                // rather than skipping past: "install ffmpeg" is the wrong
-                // instruction when the binary is sitting right there.
                 ProbeOutcome::NotExecutable => {
-                    return FfmpegAvailability::NotExecutable {
-                        path: candidate.to_string_lossy().to_string(),
+                    let path = candidate.to_string_lossy().to_string();
+
+                    // A configured directory is authoritative, so a broken
+                    // binary in it is the answer, not a reason to look elsewhere.
+                    if custom_dir.is_some() {
+                        return FfmpegAvailability::NotExecutable { path };
                     }
+
+                    unrunnable.get_or_insert(path);
+                    continue;
                 }
                 ProbeOutcome::Absent => continue,
             }
         }
 
-        found.push(resolved);
+        found.push((binary, resolved));
     }
 
-    let missing: Vec<String> = REQUIRED_BINARIES
+    let missing: Vec<String> = found
         .iter()
-        .zip(found.iter())
         .filter(|(_, resolved)| resolved.is_none())
         .map(|(binary, _)| (*binary).to_string())
         .collect();
 
     if !missing.is_empty() {
+        // "Fix the permissions" beats "install it" whenever a copy is sitting
+        // there, even if the search also came up empty elsewhere.
+        if let Some(path) = unrunnable {
+            return FfmpegAvailability::NotExecutable { path };
+        }
+
         return FfmpegAvailability::NotFound {
             missing,
             searched: search_dirs,
         };
     }
 
+    // Looked up by name rather than by position, so adding a third required
+    // binary cannot silently pair the wrong path with the wrong slot.
+    let path_of = |name: &str| -> String {
+        found
+            .iter()
+            .find(|(binary, _)| *binary == name)
+            .and_then(|(_, resolved)| resolved.clone())
+            .unwrap_or_default()
+    };
+
     FfmpegAvailability::Ready {
-        // Safe: `missing` being empty means every slot resolved.
-        ffmpeg: found[0].clone().expect("ffmpeg resolved"),
-        ffprobe: found[1].clone().expect("ffprobe resolved"),
+        ffmpeg: path_of("ffmpeg"),
+        ffprobe: path_of("ffprobe"),
     }
 }
 
@@ -286,6 +310,48 @@ mod tests {
     }
 
     #[test]
+    fn b1_5_keeps_searching_past_an_unrunnable_binary_in_a_system_dir() {
+        // A broken ffmpeg in Homebrew must not hide a working one in
+        // /usr/local/bin. Reporting NotExecutable here would send the user to
+        // fix a binary they do not need.
+        let probe = probe_from(&[
+            ("/opt/homebrew/bin/ffmpeg", ProbeOutcome::NotExecutable),
+            ("/usr/local/bin/ffmpeg", ProbeOutcome::Executable),
+            ("/usr/local/bin/ffprobe", ProbeOutcome::Executable),
+        ]);
+
+        let result = resolve_ffmpeg_tools(None, probe);
+
+        assert_eq!(
+            result,
+            FfmpegAvailability::Ready {
+                ffmpeg: "/usr/local/bin/ffmpeg".to_string(),
+                ffprobe: "/usr/local/bin/ffprobe".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn b1_5_reports_unrunnable_rather_than_missing_when_no_dir_has_a_working_copy() {
+        // Nothing runnable anywhere, but a binary is plainly sitting there.
+        // "Install ffmpeg" is the wrong instruction, so the permissions problem
+        // must survive the wider search rather than collapsing into NotFound.
+        let probe = probe_from(&[
+            ("/opt/homebrew/bin/ffmpeg", ProbeOutcome::NotExecutable),
+            ("/opt/homebrew/bin/ffprobe", ProbeOutcome::Executable),
+        ]);
+
+        let result = resolve_ffmpeg_tools(None, probe);
+
+        assert_eq!(
+            result,
+            FfmpegAvailability::NotExecutable {
+                path: "/opt/homebrew/bin/ffmpeg".to_string()
+            }
+        );
+    }
+
+    #[test]
     fn b1_5_reports_a_present_but_unrunnable_binary_distinctly() {
         // "Fix the permissions" is a different instruction from "install it",
         // so this must not collapse into NotFound.
@@ -328,8 +394,11 @@ mod tests {
         }
     }
 
+    /// Not a behaviour test: this guards the serde tag against the frontend's
+    /// mirror type in `src/features/QualityControl/types.ts`. It passes on a
+    /// derive alone, and is named so nobody mistakes it for covering B1.4.
     #[test]
-    fn b1_4_serialises_for_the_frontend_with_a_status_tag() {
+    fn serde_tags_match_the_frontend_mirror_type() {
         let json = serde_json::to_string(&FfmpegAvailability::NotFound {
             missing: vec!["ffprobe".to_string()],
             searched: vec!["/opt/homebrew/bin".to_string()],

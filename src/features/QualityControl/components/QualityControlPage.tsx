@@ -16,7 +16,7 @@ import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
 import React from 'react'
 
 import { useQcAvailability } from '../hooks/useQcAvailability'
-import { REFERENCE_POOLS } from '../internal/referencePool'
+import { REFERENCE_POOLS, type ReferencePoolStatus } from '../internal/referencePool'
 
 const QualityControlContent: React.FC = () => {
   useBreadcrumb([
@@ -93,8 +93,12 @@ const QualityControlContent: React.FC = () => {
   )
 }
 
-/** Wording for a pool with no problem to report. */
-function poolReadyLabel(status: string): string {
+/**
+ * Wording for a pool with no reason to report — only `ready`, `loading` and
+ * `unknown` reach here, since every other status carries its own reason. Typed
+ * to the status union so a new status cannot silently render as "Checking…".
+ */
+function poolReadyLabel(status: ReferencePoolStatus): string {
   return status === 'ready' ? 'Ready' : 'Checking…'
 }
 

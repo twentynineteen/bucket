@@ -90,9 +90,16 @@ describe('QualityControl no-bypass', () => {
         }
         if (!/\.tsx?$/.test(entry.name)) continue
         if (entry.name.endsWith('.test.ts') || entry.name.endsWith('.test.tsx')) continue
-        if (full === path.join(FEATURE_DIR, 'api.ts')) continue
+        // By basename, so renaming the I/O module cannot silently turn it into
+        // a false positive against itself.
+        if (entry.name === 'api.ts') continue
 
-        if (/from '@tauri-apps\//.test(fs.readFileSync(full, 'utf8'))) {
+        // Both quote styles and dynamic imports: a static-import-only regex
+        // would wave through `await import("@tauri-apps/...")`, which bypasses
+        // the boundary just as completely.
+        if (
+          /(?:from|import\s*\()\s*["']@tauri-apps\//.test(fs.readFileSync(full, 'utf8'))
+        ) {
           offenders.push(path.relative(FEATURE_DIR, full))
         }
       }
