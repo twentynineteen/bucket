@@ -64,14 +64,101 @@ pub fn resolve_ffmpeg_tools<P>(custom_dir: Option<&str>, probe: P) -> FfmpegAvai
 where
     P: Fn(&Path) -> ProbeOutcome,
 {
-    let _ = (custom_dir, probe);
-    todo!("stage 1 implementation")
+    let search_dirs: Vec<String> = match custom_dir {
+        Some(dir) => vec![dir.to_string()],
+        None => DEFAULT_FFMPEG_DIRS.iter().map(|d| d.to_string()).collect(),
+    };
+
+    // Resolve each binary independently: a directory holding only ffmpeg should
+    // not stop us finding ffprobe in the next one, and `missing` has to name
+    // exactly which binary the user needs to install.
+    let mut found: Vec<Option<String>> = Vec::with_capacity(REQUIRED_BINARIES.len());
+
+    for binary in REQUIRED_BINARIES {
+        let mut resolved: Option<String> = None;
+
+        for dir in &search_dirs {
+            let candidate = candidate_path(dir, binary);
+            match probe(&candidate) {
+                ProbeOutcome::Executable => {
+                    resolved = Some(candidate.to_string_lossy().to_string());
+                    break;
+                }
+                // Present but unrunnable is a dead end worth reporting at once
+                // rather than skipping past: "install ffmpeg" is the wrong
+                // instruction when the binary is sitting right there.
+                ProbeOutcome::NotExecutable => {
+                    return FfmpegAvailability::NotExecutable {
+                        path: candidate.to_string_lossy().to_string(),
+                    }
+                }
+                ProbeOutcome::Absent => continue,
+            }
+        }
+
+        found.push(resolved);
+    }
+
+    let missing: Vec<String> = REQUIRED_BINARIES
+        .iter()
+        .zip(found.iter())
+        .filter(|(_, resolved)| resolved.is_none())
+        .map(|(binary, _)| (*binary).to_string())
+        .collect();
+
+    if !missing.is_empty() {
+        return FfmpegAvailability::NotFound {
+            missing,
+            searched: search_dirs,
+        };
+    }
+
+    FfmpegAvailability::Ready {
+        // Safe: `missing` being empty means every slot resolved.
+        ffmpeg: found[0].clone().expect("ffmpeg resolved"),
+        ffprobe: found[1].clone().expect("ffprobe resolved"),
+    }
 }
 
 /// Probes a real path on disk: present, and executable by us?
+#[cfg(unix)]
 pub fn probe_binary_path(path: &Path) -> ProbeOutcome {
-    let _ = path;
-    todo!("stage 1 implementation")
+    use std::os::unix::fs::PermissionsExt;
+
+    match std::fs::metadata(path) {
+        Ok(meta) => {
+            if !meta.is_file() {
+                return ProbeOutcome::Absent;
+            }
+            // Any execute bit is enough: we do not know which of owner/group/other
+            // we are, and a false "executable" fails later with ffmpeg's own error.
+            if meta.permissions().mode() & 0o111 != 0 {
+                ProbeOutcome::Executable
+            } else {
+                ProbeOutcome::NotExecutable
+            }
+        }
+        Err(_) => ProbeOutcome::Absent,
+    }
+}
+
+/// Probes a real path on disk. Windows has no execute bit, so presence is all
+/// that can be checked; a non-runnable binary surfaces as an ffmpeg error later.
+#[cfg(not(unix))]
+pub fn probe_binary_path(path: &Path) -> ProbeOutcome {
+    match std::fs::metadata(path) {
+        Ok(meta) if meta.is_file() => ProbeOutcome::Executable,
+        _ => ProbeOutcome::Absent,
+    }
+}
+
+/// Reports whether QC can run ffmpeg, and where the binaries are.
+///
+/// `custom_dir` is the directory configured in Settings, when the user has set
+/// one; passing `None` searches the standard locations.
+#[tauri::command]
+pub fn qc_detect_ffmpeg(custom_dir: Option<String>) -> FfmpegAvailability {
+    resolve_ffmpeg_tools(custom_dir.as_deref(), probe_binary_path)
 }
 
 /// Joins a directory and binary name into a candidate path.

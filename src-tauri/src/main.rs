@@ -105,7 +105,9 @@ fn main() {
             open_cep_folder,
             // BuildProject: File transfer with progress and cancellation
             transfer_files_with_progress,
-            cancel_file_transfer
+            cancel_file_transfer,
+            // Issue #180: Video QC — ffmpeg toolchain discovery
+            qc_detect_ffmpeg
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");

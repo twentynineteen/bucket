@@ -81,6 +81,10 @@ const data = {
         {
           title: 'Trello',
           url: '/upload/trello'
+        },
+        {
+          title: 'Quality control',
+          url: '/upload/quality-control'
         }
         // 'Transcription' (/upload/otter) hidden from sidebar — feature currently unused.
         // Route remains registered in AppRouter so it can be re-enabled by restoring this item.

@@ -51,8 +51,13 @@ export interface ReferencePoolState {
 
 /** Keeps only files QC can actually decode as a reference image. */
 export function filterReferenceImages(names: string[]): string[] {
-  void names
-  throw new Error('not implemented')
+  return names.filter((name) => {
+    const dot = name.lastIndexOf('.')
+    // `dot > 0` rather than `!== -1`: a name that is only an extension, like a
+    // bare ".png", is a dotfile with nothing to match against.
+    if (dot <= 0) return false
+    return REFERENCE_IMAGE_EXTENSIONS.has(name.slice(dot).toLowerCase())
+  })
 }
 
 /**
@@ -62,7 +67,15 @@ export function filterReferenceImages(names: string[]): string[] {
  * check that has not finished, and no state is claimed while its own check is
  * still in flight.
  */
-export function resolveReferencePoolState(input: {
+export function resolveReferencePoolState({
+  pool,
+  settingsPending,
+  settingsError,
+  folder,
+  isLoading,
+  isError,
+  listing
+}: {
   pool: ReferencePool
   settingsPending: boolean
   settingsError: boolean
@@ -71,6 +84,43 @@ export function resolveReferencePoolState(input: {
   isError: boolean
   listing: ReferencePoolListing | null
 }): ReferencePoolState {
-  void input
-  throw new Error('not implemented')
+  if (settingsError) {
+    return { status: 'settings-error', reason: REASONS.settingsError }
+  }
+  if (settingsPending) return { status: 'unknown', reason: null }
+  if (!folder) return { status: 'not-configured', reason: REASONS.notConfigured }
+
+  // Before the loading check, because an unexpected rejection leaves `listing`
+  // null and would otherwise be reported as still in flight forever.
+  if (isError) return { status: 'cannot-read', reason: cannotReadReason(folder, pool) }
+  if (isLoading || !listing) return { status: 'loading', reason: null }
+
+  if (listing.status === 'missing' || listing.status === 'unreadable') {
+    // An `unreadable` detail is Tauri error text: logged by the caller, never
+    // shown, because it is not something a user can act on.
+    return { status: 'cannot-read', reason: cannotReadReason(folder, pool) }
+  }
+
+  if (listing.files.length === 0) {
+    return { status: 'empty', reason: emptyReason(pool) }
+  }
+
+  return { status: 'ready', reason: null }
 }
+
+const REASONS = {
+  settingsError: 'Could not read your settings, so the QC reference folder is unknown.',
+  notConfigured: 'No QC reference folder configured. Set one in Settings.'
+} as const
+
+/**
+ * Names the pool, not just "no images": with two pools under one folder, a
+ * reason that omits which one is empty sends the user looking in the wrong
+ * place.
+ */
+const emptyReason = (pool: ReferencePool) =>
+  `The ${pool} folder contains no reference images.`
+
+/** Worded to be true whether the subfolder is absent or merely unreadable. */
+const cannotReadReason = (folder: string, pool: ReferencePool) =>
+  `Cannot read the ${pool} folder: ${folder}/${pool}`
