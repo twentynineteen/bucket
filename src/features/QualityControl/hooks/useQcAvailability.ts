@@ -26,6 +26,13 @@ import {
 export interface UseQcAvailabilityResult extends QcAvailability {
   /** Per-pool state, so Settings can show both at once rather than only the first fault. */
   pools: Record<ReferencePool, ReferencePoolState>
+  /**
+   * The reference files found in each pool.
+   *
+   * The listing already happens here, and a run needs the paths rather than the
+   * summary state, so they are returned rather than listed a second time.
+   */
+  poolFiles: Record<ReferencePool, string[]>
   /** The configured reference folder, or null when unset. */
   referenceFolder: string | null
 }
@@ -60,24 +67,25 @@ export function useQcAvailability(): UseQcAvailabilityResult {
 
   const availability = resolveQcAvailability({
     ffmpeg: ffmpeg ?? null,
-    watermarks,
-    stings
+    watermarks: watermarks.state,
+    stings: stings.state
   })
 
   return {
     ...availability,
-    pools: { watermarks, stings },
+    pools: { watermarks: watermarks.state, stings: stings.state },
+    poolFiles: { watermarks: watermarks.files, stings: stings.files },
     referenceFolder
   }
 }
 
-/** Resolves one pool's listing and state. */
+/** Resolves one pool's listing and state, plus the files it holds. */
 function usePool(
   pool: ReferencePool,
   folder: string | null,
   settingsPending: boolean,
   settingsError: boolean
-): ReferencePoolState {
+): { state: ReferencePoolState; files: string[] } {
   const settingsKnown = !settingsPending && !settingsError
 
   const { data, isLoading, isError } = useQuery({
@@ -99,13 +107,16 @@ function usePool(
     }
   }, [detail, folder, pool])
 
-  return resolveReferencePoolState({
-    pool,
-    settingsPending,
-    settingsError,
-    folder,
-    isLoading,
-    isError,
-    listing: data ?? null
-  })
+  return {
+    state: resolveReferencePoolState({
+      pool,
+      settingsPending,
+      settingsError,
+      folder,
+      isLoading,
+      isError,
+      listing: data ?? null
+    }),
+    files: data?.status === 'ok' ? data.files : []
+  }
 }

@@ -1,0 +1,125 @@
+/**
+ * useWatermarkCheck (issue #180, stage 2, B3, B4, B8, B10, B11)
+ *
+ * Owns one watermark run: starting it, showing its progress, cancelling it, and
+ * holding the report it produced.
+ *
+ * The report is held in memory here and nowhere else (D16). Failure thumbnails
+ * come with it as JPEG bytes and are never written to disk unless the operator
+ * asks (D15), which is why they live in React state rather than a cache with an
+ * eviction policy nobody controls.
+ */
+
+import { useMutation } from '@tanstack/react-query'
+import React from 'react'
+
+import {
+  cancelQcRun,
+  listenQcProgress,
+  runWatermarkCheck,
+  type WatermarkCheckRequest
+} from '../api'
+import { asQcError, isCancellation } from '../internal/qcError'
+import type { QcError, QcProgressEvent, QcWatermarkReport } from '../types'
+
+export interface UseWatermarkCheckResult {
+  /** True while a run is in flight, which is what disables a second start (B8.6). */
+  isRunning: boolean
+  /** The most recent progress event, or null before the first one arrives. */
+  progress: QcProgressEvent | null
+  /** The report from the last completed run, or null. */
+  report: QcWatermarkReport | null
+  /** Why the last run failed, or null. A cancellation is not surfaced here. */
+  error: QcError | null
+  run: (request: WatermarkCheckRequest) => Promise<void>
+  cancel: () => Promise<void>
+  /** Clears the report and any error, releasing the thumbnails held with it. */
+  reset: () => void
+}
+
+export function useWatermarkCheck(): UseWatermarkCheckResult {
+  const [progress, setProgress] = React.useState<QcProgressEvent | null>(null)
+  const [report, setReport] = React.useState<QcWatermarkReport | null>(null)
+  const [error, setError] = React.useState<QcError | null>(null)
+
+  // Subscribed for the page's lifetime rather than per run: `listen` resolves
+  // asynchronously, so subscribing at the moment a run starts races the first
+  // events and loses them.
+  React.useEffect(() => {
+    let unlisten: (() => void) | null = null
+    let cancelled = false
+
+    listenQcProgress((event) => setProgress(event.payload))
+      .then((stop) => {
+        if (cancelled) {
+          stop()
+          return
+        }
+        unlisten = stop
+      })
+      .catch(() => {
+        // No progress events is a degraded page, not a broken one: the run still
+        // completes and still reports.
+      })
+
+    return () => {
+      cancelled = true
+      unlisten?.()
+    }
+  }, [])
+
+  const mutation = useMutation({
+    mutationFn: runWatermarkCheck,
+    // A QC run costs a full decode pass. Retrying one automatically would double
+    // that for a failure that is nearly always a real one.
+    retry: false,
+    onMutate: () => {
+      setProgress(null)
+      setReport(null)
+      setError(null)
+    },
+    onSuccess: (result) => setReport(result),
+    onError: (raised) => {
+      const normalised = asQcError(raised)
+      // A cancellation is the operator's own doing, so it clears the run rather
+      // than showing a failure they would read as a bug.
+      setError(isCancellation(normalised) ? null : normalised)
+    }
+  })
+
+  const run = React.useCallback(
+    async (request: WatermarkCheckRequest) => {
+      try {
+        await mutation.mutateAsync(request)
+      } catch {
+        // Already recorded in `onError`; rethrowing would make every caller
+        // handle a failure the hook has already turned into state.
+      }
+    },
+    [mutation]
+  )
+
+  const cancel = React.useCallback(async () => {
+    try {
+      await cancelQcRun()
+    } catch (raised) {
+      setError(asQcError(raised))
+    }
+  }, [])
+
+  const reset = React.useCallback(() => {
+    setReport(null)
+    setError(null)
+    setProgress(null)
+  }, [])
+
+  return {
+    isRunning: mutation.isPending,
+    progress,
+    report,
+    error,
+    run,
+    cancel,
+    reset
+  }
+}

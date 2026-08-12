@@ -9,8 +9,10 @@
  * Settings is where someone comes to fix it.
  */
 import { useQcAvailability } from '@features/QualityControl'
+import { QC_THRESHOLDS, validateMatchConfidence } from '@shared/constants'
 import { createQueryError, queryKeys } from '@shared/lib'
 import { Button } from '@shared/ui/button'
+import { Input } from '@shared/ui/input'
 import { logger } from '@shared/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
@@ -45,6 +47,12 @@ const QualityControlSection: React.FC<QualityControlSectionProps> = ({
   const [ffmpegDirectory, setFfmpegDirectory] = React.useState<string | null>(
     apiKeys.ffmpegDirectory ?? null
   )
+  // Held as the raw string so an invalid entry can be shown back to the operator
+  // as they typed it, rather than as whatever a number coercion made of it.
+  const [matchThreshold, setMatchThreshold] = React.useState<string>(
+    apiKeys.qcMatchThreshold !== undefined ? String(apiKeys.qcMatchThreshold) : ''
+  )
+  const thresholdProblem = validateMatchConfidence(matchThreshold)
 
   const { reason, available, pending } = useQcAvailability()
 
@@ -192,6 +200,68 @@ const QualityControlSection: React.FC<QualityControlSectionProps> = ({
           <p className="text-muted-foreground mt-1 text-sm">{ffmpegDirectory}</p>
         )}
       </div>
+
+      {/*
+        Advanced, and behind a disclosure, because a mis-set threshold produces
+        confidently wrong verdicts rather than an obvious error. It exists so a
+        badly calibrated default can be worked around without waiting for a
+        release (D18), not as something to tune casually.
+      */}
+      <details>
+        <summary className="cursor-pointer text-sm font-medium">Advanced</summary>
+
+        <div className="mt-3">
+          <label htmlFor="qc-match-threshold" className="mb-2 block text-sm font-medium">
+            Watermark match confidence
+          </label>
+          <p className="text-muted-foreground mb-2 text-xs">
+            Leave empty to use the calibrated default of {QC_THRESHOLDS.matchConfidence}.
+            A genuine match measures about 0.98 and a corner with no watermark about 0.01,
+            so the default sits in a wide empty band. Any run using an override says so in
+            its report.
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              id="qc-match-threshold"
+              type="text"
+              inputMode="decimal"
+              value={matchThreshold}
+              onChange={(event) => setMatchThreshold(event.target.value)}
+              placeholder={String(QC_THRESHOLDS.matchConfidence)}
+              aria-invalid={thresholdProblem !== null}
+              aria-describedby={thresholdProblem ? 'qc-match-threshold-error' : undefined}
+              className="max-w-32"
+            />
+            <Button
+              onClick={() =>
+                save(
+                  {
+                    qcMatchThreshold:
+                      matchThreshold.trim() === '' ? undefined : Number(matchThreshold)
+                  },
+                  'match confidence'
+                )
+              }
+              // Saving a rejected value is what "rejected rather than silently
+              // clamped" has to mean in the UI as well as in the arithmetic (B13.3).
+              disabled={settingsUnavailable || thresholdProblem !== null}
+              className="rounded border px-3 py-1"
+            >
+              Save threshold
+            </Button>
+          </div>
+          {thresholdProblem && (
+            <p
+              id="qc-match-threshold-error"
+              role="alert"
+              className="text-destructive mt-1 flex items-start gap-1.5 text-sm"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>{thresholdProblem}</span>
+            </p>
+          )}
+        </div>
+      </details>
     </section>
   )
 }
