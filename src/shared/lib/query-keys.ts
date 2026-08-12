@@ -111,7 +111,15 @@ export const queryKeys = {
       ['qc', 'ffmpeg', customDir ?? 'default'] as const,
     /** Reference pool listing, keyed on the folder and which pool is being read. */
     referencePool: (folderPath: string | null, pool: string) =>
-      ['qc', 'reference-pool', folderPath ?? 'none', pool] as const
+      ['qc', 'reference-pool', folderPath ?? 'none', pool] as const,
+    /**
+     * Whether the configured QC reference folder is still on disk. Its own key
+     * rather than reusing `settings.backgroundFolderPresent`: two different
+     * folders sharing one cache entry means whichever is checked last decides
+     * what both report.
+     */
+    referenceFolderPresent: (folderPath: string | null) =>
+      ['qc', 'reference-folder-present', folderPath ?? 'none'] as const
   },
 
   // Image/Canvas domain

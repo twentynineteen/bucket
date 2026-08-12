@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   filterReferenceImages,
+  matchesPoolFolder,
   resolveReferencePoolState,
   type ReferencePool,
   type ReferencePoolListing
@@ -134,5 +135,35 @@ describe('filterReferenceImages', () => {
 
   it('B2.5 returns an empty list for an empty folder', () => {
     expect(filterReferenceImages([])).toEqual([])
+  })
+
+  it('B2.5 ignores a Photoshop source file sitting beside the references', () => {
+    // The real Watermarks folder contains "Skype Watermark 720.psd".
+    expect(
+      filterReferenceImages(['Skype Watermark 720.psd', 'WBS_Watermark.png'])
+    ).toEqual(['WBS_Watermark.png'])
+  })
+})
+
+describe('matchesPoolFolder', () => {
+  it('B2.6 matches the capitalised folder names actually used on disk', () => {
+    // The real layout is Mini Templates/Watermarks and Mini Templates/Stings.
+    // APFS is case-insensitive so a lowercase literal happens to work today,
+    // and would break on a case-sensitive volume.
+    expect(matchesPoolFolder('Watermarks', 'watermarks')).toBe(true)
+    expect(matchesPoolFolder('Stings', 'stings')).toBe(true)
+  })
+
+  it('B2.6 matches the lowercase form too', () => {
+    expect(matchesPoolFolder('watermarks', 'watermarks')).toBe(true)
+  })
+
+  it('B2.6 does not match a different folder', () => {
+    expect(matchesPoolFolder('Stings', 'watermarks')).toBe(false)
+    expect(matchesPoolFolder('4K Watermarks', 'watermarks')).toBe(false)
+  })
+
+  it('B2.6 tolerates surrounding whitespace', () => {
+    expect(matchesPoolFolder(' Watermarks ', 'watermarks')).toBe(true)
   })
 })

@@ -49,6 +49,18 @@ export interface ReferencePoolState {
   reason: string | null
 }
 
+/**
+ * True when a directory entry is the given pool's folder.
+ *
+ * Matched case-insensitively because the real folders on disk are `Watermarks`
+ * and `Stings`. APFS is case-insensitive, so a lowercase literal happens to work
+ * on a Mac's boot volume and would fail on a case-sensitive one — including the
+ * external drives this app is pointed at routinely.
+ */
+export function matchesPoolFolder(entryName: string, pool: ReferencePool): boolean {
+  return entryName.trim().toLowerCase() === pool.toLowerCase()
+}
+
 /** Keeps only files QC can actually decode as a reference image. */
 export function filterReferenceImages(names: string[]): string[] {
   return names.filter((name) => {

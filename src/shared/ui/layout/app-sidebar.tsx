@@ -131,6 +131,10 @@ const data = {
         {
           title: 'Trello',
           url: '/settings/general#trello'
+        },
+        {
+          title: 'Quality control',
+          url: '/settings/general#quality-control'
         }
       ]
     }
