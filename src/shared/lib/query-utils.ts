@@ -72,7 +72,12 @@ export interface QueryError {
 export interface RetryConfiguration {
   attempts: number
   delay: (attempt: number) => number
-  condition: (error: Error) => boolean
+  /**
+   * Takes `unknown`, not `Error`. A Tauri command returning `Err(String)`
+   * rejects with a bare string, so a condition typed to `Error` both misses
+   * every backend failure and throws on `error.message.includes(...)` -- #156.
+   */
+  condition: (error: unknown) => boolean
 }
 
 export const QUERY_PROFILES = {
@@ -134,18 +139,25 @@ export function createMutationOptions<
   }
 }
 
+/** True when the error looks like a transport failure worth another attempt. */
+const isTransportError = (error: unknown): boolean =>
+  (error instanceof Error && error.name === 'NetworkError') ||
+  errorMessage(error).toLowerCase().includes('network')
+
 export const retryStrategies: Record<string, RetryConfiguration> = {
   network: {
     attempts: RETRY.DEFAULT_ATTEMPTS,
     delay: (attempt: number) => getBackoffDelay(attempt, RETRY.MAX_DELAY_DEFAULT),
-    condition: (error: Error) =>
-      error.name === 'NetworkError' || error.message.includes('network')
+    condition: isTransportError
   },
   server: {
     attempts: 2,
     delay: (attempt: number) => SECONDS * attempt,
-    condition: (error: Error) =>
-      error.message.includes('5') && error.message.includes('server')
+    condition: (error: unknown) => {
+      const status = httpStatus(error)
+      if (status !== null) return status >= 500
+      return errorMessage(error).toLowerCase().includes('server')
+    }
   },
   validation: {
     attempts: 0,
@@ -155,38 +167,41 @@ export const retryStrategies: Record<string, RetryConfiguration> = {
   system: {
     attempts: 2,
     delay: (attempt: number) => 500 * attempt,
-    condition: (error: Error) =>
-      error.message.includes('system') || error.message.includes('app version')
+    condition: (error: unknown) => {
+      const message = errorMessage(error).toLowerCase()
+      return message.includes('system') || message.includes('app version')
+    }
   },
   auth: {
     attempts: 1,
     delay: () => SECONDS,
-    condition: (error: Error) =>
-      error.message.includes('auth') || error.message.includes('unauthorized')
+    condition: (error: unknown) => errorMessage(error).toLowerCase().includes('auth')
   },
   external: {
     attempts: RETRY.DEFAULT_ATTEMPTS,
     delay: (attempt: number) => getBackoffDelay(attempt, RETRY.MAX_DELAY_MUTATION),
-    condition: (error: Error) =>
-      error.name === 'NetworkError' || error.message.includes('network')
+    condition: isTransportError
   },
   canvas: {
     attempts: 2,
     delay: (attempt: number) => SECONDS * attempt,
-    condition: (error: Error) =>
-      error.message.includes('canvas') || error.message.includes('render')
+    condition: (error: unknown) => {
+      const message = errorMessage(error).toLowerCase()
+      return message.includes('canvas') || message.includes('render')
+    }
   },
   settings: {
     attempts: 1,
     delay: () => 500,
-    condition: (error: Error) =>
-      error.message.includes('read') || error.message.includes('parse')
+    condition: (error: unknown) => {
+      const message = errorMessage(error).toLowerCase()
+      return message.includes('read') || message.includes('parse')
+    }
   },
   trello: {
     attempts: RETRY.DEFAULT_ATTEMPTS,
     delay: (attempt: number) => getBackoffDelay(attempt, RETRY.MAX_DELAY_MUTATION),
-    condition: (error: Error) =>
-      error.name === 'NetworkError' || error.message.includes('network')
+    condition: isTransportError
   }
   // NOTE: there is deliberately no `sprout` strategy. Its only consumer was
   // `prefetchSproutFolders`, removed in #155, and its condition could never
@@ -195,10 +210,13 @@ export const retryStrategies: Record<string, RetryConfiguration> = {
 }
 
 export function shouldRetry(
-  error: Error,
+  error: unknown,
   attempt: number,
   strategy: keyof typeof retryStrategies
 ): boolean {
+  // No strategy may retry these, however its condition is written.
+  if (isRateLimited(error) || isAuthError(error)) return false
+
   const config = retryStrategies[strategy]
   if (!config) {
     logger.warn(`Unknown retry strategy: ${strategy}, using default`)
@@ -236,8 +254,21 @@ function errorMessage(error: unknown): string {
   return ''
 }
 
-/** Extracts an HTTP status code from an error message, if it names one. */
+/**
+ * Extracts an HTTP status code from a rejection, if it carries one.
+ *
+ * Reads a numeric `status` field before the message text: a `PosterFrameError`
+ * rejects with `{ status, message }`, so the code never appears in the message
+ * and a text-only read would misclassify it. Matched as a status code rather
+ * than a substring -- the predicate this replaced tested
+ * `message.includes('4')`, which matched the character in
+ * "timed out after 4 seconds". See #156.
+ */
 function httpStatus(error: unknown): number | null {
+  if (error && typeof error === 'object' && 'status' in error) {
+    const status = (error as { status: unknown }).status
+    if (typeof status === 'number' && Number.isFinite(status)) return status
+  }
   const match = errorMessage(error).match(/\bHTTP (\d{3})\b/i)
   return match ? Number(match[1]) : null
 }
@@ -261,6 +292,39 @@ export function isAuthError(error: unknown): boolean {
   if (status === 401 || status === 403) return true
   const message = errorMessage(error).toLowerCase()
   return message.includes('unauthorized') || message.includes('forbidden')
+}
+
+/**
+ * The app's default retry predicate, for `QueryClient` defaults and any hook
+ * that has no more specific policy.
+ *
+ * Replaces four hand-rolled copies of `error.message.includes('4')`, which
+ * matched the *character* `4` rather than a status code -- blocking retryable
+ * 5xx errors ("HTTP 500 — timed out after 4 seconds") while permitting the 429
+ * retries it was written to prevent, because a Tauri bare-string rejection is
+ * not an `Error` and skipped the guard entirely. See #156.
+ *
+ * A 429 is never retried. Sprout's 200 requests/minute limit is account-wide and
+ * shared with uploads, so retrying spends budget that was just exhausted while
+ * the window is still closed, and can fail a user's in-flight upload. The wait
+ * Sprout reports via `Retry-After` is surfaced in the error message by the Rust
+ * side and drives the cooloff in `Upload/internal/sproutRateBudget.ts`; refusing
+ * the retry here is what keeps that cooloff meaningful.
+ */
+export function shouldRetryRequest(
+  error: unknown,
+  failureCount: number,
+  maxAttempts: number = RETRY.DEFAULT_ATTEMPTS
+): boolean {
+  if (isRateLimited(error)) return false
+  if (isAuthError(error)) return false
+
+  // Any other 4xx is the caller's fault and will fail identically on a retry.
+  const status = httpStatus(error)
+  if (status !== null && status >= 400 && status < 500) return false
+
+  // 5xx, transport failures and unclassifiable errors are worth another attempt.
+  return failureCount < maxAttempts
 }
 
 /**

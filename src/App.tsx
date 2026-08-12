@@ -13,7 +13,11 @@ import { Toaster } from './shared/ui/sonner'
 import { CACHE, getBackoffDelay, RETRY } from '@shared/constants'
 import { AuthProvider } from '@features/Auth'
 import { useWindowState } from '@shared/hooks/useWindowState'
-import { initializePerformanceMonitor, initializePrefetchManager } from '@shared/lib'
+import {
+  initializePerformanceMonitor,
+  initializePrefetchManager,
+  shouldRetryRequest
+} from '@shared/lib'
 import { initializeCacheService } from '@shared/services'
 import { logger } from '@shared/utils'
 
@@ -30,12 +34,11 @@ const queryClient = new QueryClient({
       staleTime: CACHE.SHORT,
       // Default garbage collection time - keep unused data for 5 minutes
       gcTime: CACHE.GC_STANDARD,
-      // Default retry configuration - retry failed requests 3 times with exponential backoff
-      retry: (failureCount, error) => {
-        // Don't retry on 4xx errors (client errors)
-        if (error instanceof Error && error.message.includes('4')) return false
-        return failureCount < RETRY.DEFAULT_ATTEMPTS
-      },
+      // Retry 5xx and transport failures up to 3 times with exponential backoff.
+      // Never retries a 4xx, and never a 429 into a rate-limit window that is
+      // still closed. Handles Tauri's bare-string rejections; see #156.
+      retry: (failureCount, error) =>
+        shouldRetryRequest(error, failureCount, RETRY.DEFAULT_ATTEMPTS),
       // Retry delay with exponential backoff
       retryDelay: (attemptIndex) =>
         getBackoffDelay(attemptIndex, RETRY.MAX_DELAY_DEFAULT),
@@ -47,12 +50,9 @@ const queryClient = new QueryClient({
       networkMode: 'online'
     },
     mutations: {
-      // Default retry configuration for mutations
-      retry: (failureCount, error) => {
-        // Don't retry on 4xx errors (client errors)
-        if (error instanceof Error && error.message.includes('4')) return false
-        return failureCount < 2 // Fewer retries for mutations
-      },
+      // Fewer retries for mutations -- a retry can duplicate an operation.
+      retry: (failureCount, error) =>
+        shouldRetryRequest(error, failureCount, RETRY.MUTATION_ATTEMPTS),
       // Retry delay for mutations
       retryDelay: (attemptIndex) =>
         getBackoffDelay(attemptIndex, RETRY.MAX_DELAY_MUTATION)

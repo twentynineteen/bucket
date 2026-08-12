@@ -2,6 +2,7 @@ import { CACHE, getBackoffDelay, RETRY, SECONDS } from '@shared/constants'
 import { QueryClient } from '@tanstack/react-query'
 import { persistQueryClient } from '@tanstack/react-query-persist-client'
 import { createNamespacedLogger } from '@shared/utils'
+import { shouldRetryRequest } from './query-utils'
 
 // Lazy-load Tauri plugin-store to avoid crashing test environments
 // when the @shared/lib barrel is imported. The module specifier is
@@ -124,21 +125,10 @@ export function createPersistedQueryClient(
         staleTime: CACHE.BRIEF,
         // Default garbage collection time - keep unused data for 5 minutes
         gcTime: CACHE.GC_STANDARD,
-        // Enhanced retry configuration
-        retry: (failureCount, error) => {
-          // Don't retry on 4xx errors (client errors)
-          if (error instanceof Error) {
-            const message = error.message.toLowerCase()
-            if (
-              message.includes('4') ||
-              message.includes('unauthorized') ||
-              message.includes('forbidden')
-            ) {
-              return false
-            }
-          }
-          return failureCount < RETRY.DEFAULT_ATTEMPTS
-        },
+        // Never retries a 4xx -- including a 429 into a closed rate-limit
+        // window. Handles Tauri's bare-string rejections; see #156.
+        retry: (failureCount, error) =>
+          shouldRetryRequest(error, failureCount, RETRY.DEFAULT_ATTEMPTS),
         // Exponential backoff with jitter
         retryDelay: (attemptIndex) => {
           const baseDelay = getBackoffDelay(attemptIndex, RETRY.MAX_DELAY_DEFAULT)
@@ -152,19 +142,8 @@ export function createPersistedQueryClient(
       },
       mutations: {
         // Fewer retries for mutations to avoid duplicate operations
-        retry: (failureCount, error) => {
-          if (error instanceof Error) {
-            const message = error.message.toLowerCase()
-            if (
-              message.includes('4') ||
-              message.includes('unauthorized') ||
-              message.includes('forbidden')
-            ) {
-              return false
-            }
-          }
-          return failureCount < 2
-        },
+        retry: (failureCount, error) =>
+          shouldRetryRequest(error, failureCount, RETRY.MUTATION_ATTEMPTS),
         retryDelay: (attemptIndex) => {
           const baseDelay = getBackoffDelay(attemptIndex, RETRY.MAX_DELAY_MUTATION)
           const jitter = Math.random() * 0.3 * baseDelay

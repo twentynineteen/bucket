@@ -49,7 +49,10 @@ export const RETRY = {
   BASE_DELAY: 1 * SECONDS,
 
   /** Default number of retry attempts */
-  DEFAULT_ATTEMPTS: 3
+  DEFAULT_ATTEMPTS: 3,
+
+  /** Retry attempts for mutations -- fewer, because a retry can duplicate an operation */
+  MUTATION_ATTEMPTS: 2
 } as const
 
 // =============================================================================
