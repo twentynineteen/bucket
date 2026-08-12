@@ -57,6 +57,8 @@ export { createMutationOptions } from './query-utils'
 export { retryStrategies } from './query-utils'
 /** Determine if a failed query should be retried based on error type */
 export { shouldRetry } from './query-utils'
+/** The default retry predicate: never 4xx, never 429, retry 5xx and transport (#156) */
+export { shouldRetryRequest } from './query-utils'
 /** Calculate retry delay with exponential backoff and jitter */
 export { getRetryDelay } from './query-utils'
 /** Classify an error into a domain-specific error type */
