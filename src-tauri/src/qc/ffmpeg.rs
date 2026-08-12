@@ -153,7 +153,6 @@ pub fn run_frames<F>(
 where
     F: FnMut(usize, &[u8]),
 {
-    unimplemented!("red");
     if frame_size == 0 {
         return Err(RunError::Io("A frame cannot be zero bytes".to_string()));
     }
@@ -207,7 +206,6 @@ where
 /// were read. `Read::read` is free to return fewer bytes than asked for on a
 /// pipe, so a single call per frame would mis-frame the stream.
 fn read_exact_or_eof(source: &mut impl Read, buffer: &mut [u8]) -> Result<usize, String> {
-    unimplemented!("red");
     let mut filled = 0usize;
     while filled < buffer.len() {
         match source.read(&mut buffer[filled..]) {
@@ -230,7 +228,6 @@ pub fn run_capture(
     args: &[String],
     cancel: &watch::Receiver<bool>,
 ) -> Result<(Vec<u8>, FfmpegRun), RunError> {
-    unimplemented!("red");
     let mut child = spawn(bin, args)?;
     let stderr_rx = drain_stderr(&mut child);
 

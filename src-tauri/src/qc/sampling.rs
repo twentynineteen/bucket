@@ -45,11 +45,20 @@ impl Sample {
 }
 
 /// A contiguous absence of the watermark, as a real time range.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+///
+/// Carries the best score seen inside it, and which reference produced that score,
+/// so a reviewer can tell a near miss from nothing at all without re-running
+/// anything. On real footage this is the difference between "the threshold is wrong"
+/// and "the watermark is genuinely absent", and the two need different fixes.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Gap {
     pub start_seconds: f64,
     pub end_seconds: f64,
+    /// The highest score any reference reached anywhere inside the gap.
+    pub best_confidence: f32,
+    /// Which reference reached it.
+    pub best_reference: Option<String>,
 }
 
 /// A sample that found the mark in the wrong corner (B3.7).
@@ -90,7 +99,6 @@ impl Span {
 /// `duration - tail_window`, flagged as approximated. Stage 3 wires the measured
 /// dip start into this same argument and the flag turns off (B4.6, B5.10).
 pub fn watermark_span(duration_seconds: f64, dip_start: Option<f64>, tail_window: f64) -> Span {
-    unimplemented!("red");
     if let Some(dip) = dip_start {
         if dip > 0.0 && dip <= duration_seconds {
             return Span {
@@ -126,7 +134,6 @@ pub fn watermark_span(duration_seconds: f64, dip_start: Option<f64>, tail_window
 /// frame that is legitimately mid-fade must never be counted as a watermark
 /// failure (B4.6).
 pub fn sample_times(span: &Span, interval: f64) -> Vec<f64> {
-    unimplemented!("red");
     if interval <= 0.0 || span.duration() <= 0.0 {
         return vec![];
     }
@@ -152,7 +159,6 @@ pub fn refinement_windows(
     coarse_interval: f64,
     span: &Span,
 ) -> Vec<(f64, f64)> {
-    unimplemented!("red");
     let mut windows: Vec<(f64, f64)> = Vec::new();
 
     for sample in samples.iter().filter(|s| !s.matched()) {
@@ -183,39 +189,74 @@ pub fn refinement_windows(
 /// and it is why an isolated coarse miss whose fine neighbours pass reports
 /// nothing (B4.3).
 pub fn coalesce_gaps(samples: &[Sample], min_gap_seconds: f64) -> Vec<Gap> {
-    unimplemented!("red");
     let mut ordered: Vec<&Sample> = samples.iter().collect();
     ordered.sort_by(|a, b| a.time_seconds.total_cmp(&b.time_seconds));
 
     let mut gaps = Vec::new();
-    let mut run: Option<(f64, f64)> = None;
+    let mut run: Option<Run> = None;
 
     for sample in ordered {
         if sample.matched() {
-            if let Some((start, end)) = run.take() {
-                push_gap(&mut gaps, start, end, min_gap_seconds);
+            if let Some(finished) = run.take() {
+                push_gap(&mut gaps, finished, min_gap_seconds);
             }
             continue;
         }
 
         run = match run {
-            Some((start, _)) => Some((start, sample.time_seconds)),
-            None => Some((sample.time_seconds, sample.time_seconds)),
+            Some(mut open) => {
+                open.end = sample.time_seconds;
+                open.observe(sample);
+                Some(open)
+            }
+            None => {
+                let mut open = Run {
+                    start: sample.time_seconds,
+                    end: sample.time_seconds,
+                    best_confidence: f32::NEG_INFINITY,
+                    best_reference: None,
+                };
+                open.observe(sample);
+                Some(open)
+            }
         };
     }
 
-    if let Some((start, end)) = run {
-        push_gap(&mut gaps, start, end, min_gap_seconds);
+    if let Some(finished) = run {
+        push_gap(&mut gaps, finished, min_gap_seconds);
     }
 
     gaps
 }
 
-fn push_gap(gaps: &mut Vec<Gap>, start: f64, end: f64, min_gap_seconds: f64) {
-    if end - start >= min_gap_seconds {
+/// A run of consecutive missing samples, with the best score seen in it.
+struct Run {
+    start: f64,
+    end: f64,
+    best_confidence: f32,
+    best_reference: Option<String>,
+}
+
+impl Run {
+    fn observe(&mut self, sample: &Sample) {
+        if sample.confidence > self.best_confidence {
+            self.best_confidence = sample.confidence;
+            self.best_reference = sample.reference.clone();
+        }
+    }
+}
+
+fn push_gap(gaps: &mut Vec<Gap>, run: Run, min_gap_seconds: f64) {
+    if run.end - run.start >= min_gap_seconds {
         gaps.push(Gap {
-            start_seconds: start,
-            end_seconds: end,
+            start_seconds: run.start,
+            end_seconds: run.end,
+            best_confidence: if run.best_confidence.is_finite() {
+                run.best_confidence
+            } else {
+                0.0
+            },
+            best_reference: run.best_reference,
         });
     }
 }
@@ -227,7 +268,6 @@ fn push_gap(gaps: &mut Vec<Gap>, start: f64, end: f64, min_gap_seconds: f64) {
 /// every later sample is judged against, and turn one bad frame into a
 /// corner-change failure for the whole video.
 pub fn establish_corner(samples: &[Sample], establishing_samples: usize) -> Option<Corner> {
-    unimplemented!("red");
     let mut left = 0usize;
     let mut right = 0usize;
 
@@ -255,7 +295,6 @@ pub fn establish_corner(samples: &[Sample], establishing_samples: usize) -> Opti
 /// failing on: it means a repositioned layer or a render spliced from two
 /// versions (D11).
 pub fn corner_changes(samples: &[Sample], established: Corner) -> Vec<CornerChange> {
-    unimplemented!("red");
     samples
         .iter()
         .filter_map(|sample| match sample.corner {
@@ -314,6 +353,46 @@ mod tests {
         assert_eq!(gaps.len(), 1);
         assert_eq!(gaps[0].start_seconds, 252.0);
         assert_eq!(gaps[0].end_seconds, 271.0);
+    }
+
+    #[test]
+    fn a_gap_carries_the_best_score_seen_inside_it_and_what_produced_it() {
+        // The difference between "the threshold is wrong" and "the watermark is
+        // genuinely absent" is exactly this number, and the two need different fixes.
+        // Two real renders score 0.983 and 0.389 for equally visible watermarks, so a
+        // gap reported without its score is an argument nobody can settle.
+        let samples = vec![
+            hit(0.0),
+            Sample {
+                time_seconds: 1.0,
+                corner: None,
+                confidence: 0.12,
+                reference: Some("WBS_Watermark_BlackRight.png".to_string()),
+            },
+            Sample {
+                time_seconds: 2.0,
+                corner: None,
+                confidence: 0.38,
+                reference: Some("WBS_Watermark_BlackRight_4K.png".to_string()),
+            },
+            Sample {
+                time_seconds: 3.0,
+                corner: None,
+                confidence: 0.04,
+                reference: Some("WBS_Watermark_WhiteLeft.png".to_string()),
+            },
+            hit(4.0),
+        ];
+
+        let gaps = coalesce_gaps(&samples, 1.0);
+
+        assert_eq!(gaps.len(), 1);
+        assert_eq!(gaps[0].best_confidence, 0.38);
+        assert_eq!(
+            gaps[0].best_reference.as_deref(),
+            Some("WBS_Watermark_BlackRight_4K.png"),
+            "the near miss is the one worth naming, not the last sample"
+        );
     }
 
     #[test]
@@ -383,7 +462,10 @@ mod tests {
 
         assert_eq!(span.start_seconds, 0.0);
         assert_eq!(span.end_seconds, 48.0);
-        assert!(!span.approximated, "a measured dip start is not an assumption");
+        assert!(
+            !span.approximated,
+            "a measured dip start is not an assumption"
+        );
     }
 
     #[test]

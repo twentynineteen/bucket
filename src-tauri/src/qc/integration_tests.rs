@@ -45,21 +45,28 @@ const FRAME_WIDTH: u32 = 640;
 const FRAME_HEIGHT: u32 = 360;
 const MARK: u32 = 64;
 
-/// Builds an RGBA reference canvas with a structured mark in one corner.
+/// Builds an RGBA reference canvas shaped like the real brand assets.
 ///
-/// `drawbox` does not touch the alpha plane, so the mark and its mask are drawn
-/// separately and combined with `alphamerge`. The mark has an outer box, a hole and
-/// a centre dot: a plain filled square correlates with any other plain filled
-/// square, so structure is the point.
-fn make_reference(ffmpeg: &str, dir: &Path, name: &str, x: u32) -> PathBuf {
+/// The real assets are a **single flat colour** plus a structured, partly
+/// transparent alpha map: the Black variant is luma 0 everywhere and the White
+/// variant luma 255 everywhere, and both carry the same alpha map peaking at 137 of
+/// 255. So the structure lives entirely in alpha, and these fixtures put it there
+/// too — a reference whose alpha is a plain filled square would let the matcher pass
+/// on a template it will never see in practice.
+///
+/// `drawbox` does not touch the alpha plane, so the colour and the mask are drawn
+/// separately and combined with `alphamerge`.
+fn make_reference(ffmpeg: &str, dir: &Path, name: &str, x: u32, colour: &str) -> PathBuf {
     let path = dir.join(name);
     let y = 20;
 
+    // 0x89 is 137, the peak alpha measured on the real assets: the mark is never
+    // more than 54% opaque, so the backdrop always shows through it.
     let graph = format!(
-        "[0:v]drawbox=x={x}:y={y}:w={MARK}:h={MARK}:color=white:t=fill,\
+        "[0:v]format=gbrp[mark];\
+[1:v]drawbox=x={x}:y={y}:w={MARK}:h={MARK}:color=0x898989:t=fill,\
 drawbox=x={inner_x}:y={inner_y}:w={inner}:h={inner}:color=black:t=fill,\
-drawbox=x={dot_x}:y={dot_y}:w={dot}:h={dot}:color=white:t=fill,format=gbrp[mark];\
-[1:v]drawbox=x={x}:y={y}:w={MARK}:h={MARK}:color=white:t=fill,format=gray[mask];\
+drawbox=x={dot_x}:y={dot_y}:w={dot}:h={dot}:color=0x898989:t=fill,format=gray[mask];\
 [mark][mask]alphamerge,format=rgba[out]",
         inner_x = x + 12,
         inner_y = y + 12,
@@ -76,7 +83,7 @@ drawbox=x={dot_x}:y={dot_y}:w={dot}:h={dot}:color=white:t=fill,format=gbrp[mark]
             "-f",
             "lavfi",
             "-i",
-            &format!("color=c=black:s={FRAME_WIDTH}x{FRAME_HEIGHT}:d=1"),
+            &format!("color=c={colour}:s={FRAME_WIDTH}x{FRAME_HEIGHT}:d=1"),
             "-f",
             "lavfi",
             "-i",
@@ -95,6 +102,11 @@ drawbox=x={dot_x}:y={dot_y}:w={dot}:h={dot}:color=white:t=fill,format=gbrp[mark]
 
     assert!(status.success(), "building the reference failed");
     path
+}
+
+/// The Black variant, which is what most fixtures need.
+fn make_black_reference(ffmpeg: &str, dir: &Path, name: &str, x: u32) -> PathBuf {
+    make_reference(ffmpeg, dir, name, x, "black")
 }
 
 /// Renders a fixture with the given watermark overlays.
@@ -202,7 +214,7 @@ fn b3_1_and_b4_1_passes_a_render_carrying_the_watermark_throughout() {
     let (ffmpeg, ffprobe) = require_ffmpeg!();
     let dir = tempfile::tempdir().unwrap();
 
-    let right = make_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
     let video = make_fixture(&ffmpeg, dir.path(), "present.mp4", 30, &[(&right, "1")]);
 
     let report = run(&ffmpeg, &ffprobe, &video, &[&right]).expect("the run should complete");
@@ -224,7 +236,7 @@ fn b10_1_and_b10_4_writes_nothing_to_disk_and_keeps_evidence_in_memory() {
     let (ffmpeg, ffprobe) = require_ffmpeg!();
     let dir = tempfile::tempdir().unwrap();
 
-    let right = make_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
     // Absent for the whole run, so the report is as evidence-heavy as it gets.
     let video = make_fixture(&ffmpeg, dir.path(), "absent.mp4", 30, &[]);
 
@@ -242,7 +254,10 @@ fn b10_1_and_b10_4_writes_nothing_to_disk_and_keeps_evidence_in_memory() {
         report.thumbnails.len()
     );
     assert!(
-        report.thumbnails.iter().all(|t| t.jpeg.starts_with(&[0xff, 0xd8])),
+        report
+            .thumbnails
+            .iter()
+            .all(|t| t.jpeg.starts_with(&[0xff, 0xd8])),
         "thumbnails should be JPEG bytes held in memory"
     );
     assert_eq!(
@@ -257,8 +272,8 @@ fn b3_3_fails_a_render_with_no_watermark_in_either_corner() {
     let (ffmpeg, ffprobe) = require_ffmpeg!();
     let dir = tempfile::tempdir().unwrap();
 
-    let right = make_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
-    let left = make_reference(&ffmpeg, dir.path(), "left.png", 20);
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let left = make_black_reference(&ffmpeg, dir.path(), "left.png", 20);
     let video = make_fixture(&ffmpeg, dir.path(), "none.mp4", 30, &[]);
 
     let report = run(&ffmpeg, &ffprobe, &video, &[&right, &left]).expect("the run completes");
@@ -272,6 +287,24 @@ fn b3_3_fails_a_render_with_no_watermark_in_either_corner() {
         "one gap covering the span, not one per sample: {:?}",
         report.gaps
     );
+
+    // The score is reported even when nothing matched. On real footage this is how a
+    // wrong-resolution watermark is told apart from no watermark at all: one comes
+    // close, the other does not.
+    assert!(
+        report.best_reference.is_some(),
+        "the closest reference must be named even on a total failure"
+    );
+    assert!(
+        report.gaps[0].best_reference.is_some(),
+        "a gap must name what came closest inside it"
+    );
+    assert!(
+        report.best_confidence >= report.weakest_confidence,
+        "best {} cannot be below weakest {}",
+        report.best_confidence,
+        report.weakest_confidence
+    );
 }
 
 #[test]
@@ -279,7 +312,7 @@ fn b4_2_reports_a_mid_video_gap_as_a_measured_time_range() {
     let (ffmpeg, ffprobe) = require_ffmpeg!();
     let dir = tempfile::tempdir().unwrap();
 
-    let right = make_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
     // 40s, so the approximated span is [0, 28) and coarse samples land at 0, 10 and
     // 20. The absence runs 6s to 17s: longer than the coarse interval, so a coarse
     // sample is certain to fall inside it. An absence shorter than the interval can
@@ -298,7 +331,7 @@ fn b4_2_reports_a_mid_video_gap_as_a_measured_time_range() {
     assert_eq!(report.outcome, WatermarkOutcome::Fail);
     assert_eq!(report.gaps.len(), 1, "got {:?}", report.gaps);
 
-    let gap = report.gaps[0];
+    let gap = &report.gaps[0];
     assert!(
         gap.end_seconds > gap.start_seconds,
         "a gap is a range, not one timestamp: {:?}",
@@ -325,8 +358,17 @@ fn b3_7_fails_naming_the_corner_change_and_when_it_happened() {
     let (ffmpeg, ffprobe) = require_ffmpeg!();
     let dir = tempfile::tempdir().unwrap();
 
-    let right = make_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
-    let left = make_reference(&ffmpeg, dir.path(), "left.png", 20);
+    // The pool holds the Black variants; the render's left-corner mark is the White
+    // one. They carry the same alpha map, so matching is colour-agnostic and this
+    // must still be read as a corner change rather than as a missing watermark.
+    // The White variant is used deliberately: `testsrc`'s top-left corner is pure
+    // black, and a black mark at 54% opacity over black footage is genuinely
+    // invisible — a real physical limit of a semi-transparent overlay, not something
+    // the matcher can recover.
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let left = make_black_reference(&ffmpeg, dir.path(), "left.png", 20);
+    let left_white = make_reference(&ffmpeg, dir.path(), "left-white.png", 20, "white");
+
     // 60s so the approximated span is [0, 48) and coarse samples land either side
     // of the switch at 25s.
     let video = make_fixture(
@@ -334,7 +376,7 @@ fn b3_7_fails_naming_the_corner_change_and_when_it_happened() {
         dir.path(),
         "moved.mp4",
         60,
-        &[(&right, "lt(t,25)"), (&left, "gte(t,25)")],
+        &[(&right, "lt(t,25)"), (&left_white, "gte(t,25)")],
     );
 
     let report = run(&ffmpeg, &ffprobe, &video, &[&right, &left]).expect("the run completes");
@@ -365,7 +407,7 @@ fn b11_1_reports_phases_with_a_percentage_that_never_goes_backwards() {
     let (ffmpeg, ffprobe) = require_ffmpeg!();
     let dir = tempfile::tempdir().unwrap();
 
-    let right = make_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
     let video = make_fixture(
         &ffmpeg,
         dir.path(),
@@ -410,7 +452,7 @@ fn b12_1_reports_a_file_with_no_video_stream_rather_than_analysing_it() {
     let (ffmpeg, ffprobe) = require_ffmpeg!();
     let dir = tempfile::tempdir().unwrap();
 
-    let right = make_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
     let audio = dir.path().join("audio-only.m4a");
     let status = Command::new(&ffmpeg)
         .args([
@@ -491,7 +533,13 @@ fn b11_2_kills_the_child_on_cancellation_and_leaves_no_orphan() {
     let ffmpeg_for_run = ffmpeg.clone();
 
     let handle = std::thread::spawn(move || {
-        run_frames(&ffmpeg_for_run, &args, 1281 * 721, &cancel_for_run, |_, _| {})
+        run_frames(
+            &ffmpeg_for_run,
+            &args,
+            1281 * 721,
+            &cancel_for_run,
+            |_, _| {},
+        )
     });
 
     std::thread::sleep(Duration::from_millis(400));

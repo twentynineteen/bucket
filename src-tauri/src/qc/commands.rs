@@ -44,7 +44,6 @@ impl QcRunState {
     /// held is an operation id, so the worst case of recovering from a panic here
     /// is allowing a run that would otherwise be blocked forever.
     pub fn begin(&self, operation_id: String) -> Result<(), QcError> {
-    unimplemented!("red");
         let mut active = self
             .active
             .lock()
@@ -64,7 +63,6 @@ impl QcRunState {
 
     /// Releases the slot, whatever the run's outcome.
     pub fn finish(&self) {
-    unimplemented!("red");
         let mut active = self
             .active
             .lock()
@@ -74,7 +72,6 @@ impl QcRunState {
 
     /// The operation id of the run in flight, for cancellation.
     pub fn active(&self) -> Option<String> {
-    unimplemented!("red");
         self.active
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -117,19 +114,17 @@ pub async fn qc_run_watermark_check(
     runs: State<'_, QcRunState>,
     request: WatermarkCheckRequest,
 ) -> Result<WatermarkReport, QcError> {
-    let (ffmpeg, ffprobe) = match resolve_ffmpeg_tools(
-        request.ffmpeg_directory.as_deref(),
-        probe_binary_path,
-    ) {
-        FfmpegAvailability::Ready { ffmpeg, ffprobe } => (ffmpeg, ffprobe),
-        // Discovery already knows exactly which binary is missing and where it
-        // looked, so the run refuses with that rather than letting a spawn fail.
-        other => {
-            return Err(QcError::Unavailable {
-                message: describe_unavailable(&other),
-            })
-        }
-    };
+    let (ffmpeg, ffprobe) =
+        match resolve_ffmpeg_tools(request.ffmpeg_directory.as_deref(), probe_binary_path) {
+            FfmpegAvailability::Ready { ffmpeg, ffprobe } => (ffmpeg, ffprobe),
+            // Discovery already knows exactly which binary is missing and where it
+            // looked, so the run refuses with that rather than letting a spawn fail.
+            other => {
+                return Err(QcError::Unavailable {
+                    message: describe_unavailable(&other),
+                })
+            }
+        };
 
     if request.reference_files.is_empty() {
         return Err(QcError::ReferencePool {
@@ -164,17 +159,21 @@ pub async fn qc_run_watermark_check(
     // Blocking: the whole analysis is process spawning and pixel arithmetic, and
     // running it on the async runtime's worker would stall every other command.
     let result = tokio::task::spawn_blocking(move || {
-        analyse(&analysis, &cancel_receiver, &mut |phase, percentage, detail| {
-            let _ = emit_app.emit(
-                QC_PROGRESS_EVENT,
-                QcProgressEvent {
-                    operation_id: emit_id.clone(),
-                    phase,
-                    percentage,
-                    detail: detail.to_string(),
-                },
-            );
-        })
+        analyse(
+            &analysis,
+            &cancel_receiver,
+            &mut |phase, percentage, detail| {
+                let _ = emit_app.emit(
+                    QC_PROGRESS_EVENT,
+                    QcProgressEvent {
+                        operation_id: emit_id.clone(),
+                        phase,
+                        percentage,
+                        detail: detail.to_string(),
+                    },
+                );
+            },
+        )
     })
     .await;
 
@@ -225,7 +224,6 @@ pub fn qc_save_evidence(
 /// Turns unusable discovery into an instruction, matching the wording the QC page
 /// already shows for the same states.
 fn describe_unavailable(availability: &FfmpegAvailability) -> String {
-    unimplemented!("red");
     match availability {
         FfmpegAvailability::NotExecutable { path } => format!(
             "ffmpeg at {} cannot be run. Check the file's permissions.",

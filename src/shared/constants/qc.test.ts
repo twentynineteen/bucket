@@ -2,6 +2,8 @@
  * QC threshold constants (issue #180, B13)
  */
 
+import { readFileSync } from 'node:fs'
+
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -28,8 +30,8 @@ describe('QC match confidence', () => {
   })
 
   it('B13.3 rejects a value below the range', () => {
-    // 0.0115 was measured for a region with no watermark in it, so a threshold
-    // under the floor would pass a completely unbranded video.
+    // Absence was measured as high as 0.0135, so a threshold under the floor would
+    // pass a completely unbranded video.
     expect(validateMatchConfidence('0.05')).toMatch(/must be between/i)
   })
 
@@ -49,10 +51,42 @@ describe('QC match confidence', () => {
     expect(validateMatchConfidence(String(QC_THRESHOLDS.matchConfidenceMax))).toBeNull()
   })
 
-  it('keeps the default inside the measured separation', () => {
-    // Guards the calibration: 0.9826 for a genuine match, 0.0115 for a mark-free
-    // region. A default drifting to either edge of that band is worth failing on.
-    expect(QC_THRESHOLDS.matchConfidence).toBeGreaterThan(0.5)
-    expect(QC_THRESHOLDS.matchConfidence).toBeLessThan(0.98)
+  it('keeps the default inside the measured band', () => {
+    // Guards a retune rather than the value. Above the weakest measured presence it
+    // fails a render whose watermark is plainly visible; below the strongest
+    // measured absence it passes a video with no watermark at all. Both have
+    // happened on real footage.
+    expect(QC_THRESHOLDS.matchConfidence).toBeGreaterThan(
+      QC_THRESHOLDS.measuredStrongestAbsence
+    )
+    expect(QC_THRESHOLDS.matchConfidence).toBeLessThan(
+      QC_THRESHOLDS.measuredWeakestPresence
+    )
+  })
+
+  it('keeps the override range reaching either side of the default', () => {
+    // An override cannot work around a badly chosen default if the default sits at
+    // the edge of what may be entered.
+    expect(QC_THRESHOLDS.matchConfidenceMin).toBeLessThan(QC_THRESHOLDS.matchConfidence)
+    expect(QC_THRESHOLDS.matchConfidenceMax).toBeGreaterThan(
+      QC_THRESHOLDS.matchConfidence
+    )
+  })
+
+  it('agrees with the Rust fallback, which is the other half of one source of truth', () => {
+    // The UI always sends the threshold it shows, but a call that omits it falls back
+    // to the Rust constant. Two different provisional values would produce two
+    // different verdicts for the same render.
+    const rust = readFileSync('src-tauri/src/qc/thresholds.rs', 'utf8')
+
+    expect(rust).toContain(
+      `DEFAULT_MATCH_CONFIDENCE: f32 = ${QC_THRESHOLDS.matchConfidence}`
+    )
+    expect(rust).toContain(
+      `MATCH_CONFIDENCE_MIN: f32 = ${QC_THRESHOLDS.matchConfidenceMin}`
+    )
+    expect(rust).toContain(
+      `MATCH_CONFIDENCE_MAX: f32 = ${QC_THRESHOLDS.matchConfidenceMax}`
+    )
   })
 })

@@ -74,7 +74,6 @@ pub struct CropRegion {
 /// straddles the midpoint is not something the brand produces, and picking the
 /// side its centre falls on is the only sane reading of one if it appears.
 pub fn corner_of(bbox: &AlphaBbox, reference_width: u32) -> Corner {
-    unimplemented!("red");
     let centre = u64::from(bbox.x1) + u64::from(bbox.x2);
     if centre < u64::from(reference_width) {
         Corner::TopLeft
@@ -102,7 +101,6 @@ pub fn scale_bbox(
     video_width: u32,
     video_height: u32,
 ) -> CropRegion {
-    unimplemented!("red");
     if reference_width == 0 || reference_height == 0 || video_width == 0 || video_height == 0 {
         return CropRegion {
             x: 0,
@@ -135,7 +133,6 @@ pub fn scale_bbox(
 /// Keeps a region inside the frame, shrinking it rather than moving it: the mark
 /// is at a fixed position, so sliding the window would sample the wrong pixels.
 pub fn clamp_to_frame(region: CropRegion, video_width: u32, video_height: u32) -> CropRegion {
-    unimplemented!("red");
     let x = region.x.min(video_width.saturating_sub(1));
     let y = region.y.min(video_height.saturating_sub(1));
     CropRegion {
@@ -154,7 +151,6 @@ pub fn clamp_to_frame(region: CropRegion, video_width: u32, video_height: u32) -
 /// x3505 where a doubled 1080p box would be 296x296 at x3502. Inspecting the
 /// union means no reference is ever matched against a region that clips it.
 pub fn union(a: &CropRegion, b: &CropRegion) -> CropRegion {
-    unimplemented!("red");
     let x = a.x.min(b.x);
     let y = a.y.min(b.y);
     let right = (a.x + a.width).max(b.x + b.width);
@@ -185,7 +181,6 @@ pub fn place_region(
     video_width: u32,
     video_height: u32,
 ) -> CropRegion {
-    unimplemented!("red");
     let width = width.min(video_width).max(1);
     let height = height.min(video_height).max(1);
 
@@ -239,6 +234,22 @@ mod tests {
     }
 
     #[test]
+    fn decides_the_corner_on_the_box_centre_not_its_left_edge() {
+        // A box whose left edge is in the left half but whose centre is in the right.
+        // The brand does not produce one, but the rule has to be the documented one:
+        // deciding on the left edge alone gives the opposite answer here, and both
+        // rules agree on every real asset, so nothing else would catch the swap.
+        let straddling = AlphaBbox {
+            x1: 900,
+            y1: 20,
+            x2: 1100,
+            y2: 220,
+        };
+
+        assert_eq!(corner_of(&straddling, 1920), Corner::TopRight);
+    }
+
+    #[test]
     fn b3_6_scales_a_1080p_reference_onto_a_4k_frame() {
         // The 4K asset exists in the pool and was measured at x 3505-3799,
         // y 40-333. Scaling the 1080p box lands within a few pixels of it: the
@@ -266,7 +277,11 @@ mod tests {
     fn b3_6_scales_a_4k_reference_down_onto_a_1080p_frame() {
         let region = scale_bbox(&REF_4K_RIGHT, 3840, 2160, 1920, 1080);
 
-        assert!(region.x.abs_diff(REF_1080_RIGHT.x1) <= 4, "got {:?}", region);
+        assert!(
+            region.x.abs_diff(REF_1080_RIGHT.x1) <= 4,
+            "got {:?}",
+            region
+        );
         assert!(
             region.width.abs_diff(REF_1080_RIGHT.width()) <= 4,
             "got {:?}",
@@ -291,7 +306,10 @@ mod tests {
             "region {:?} must stay inside a 1920-tall frame",
             region
         );
-        assert!(region.x > 540, "a right-corner mark stays on the right half");
+        assert!(
+            region.x > 540,
+            "a right-corner mark stays on the right half"
+        );
     }
 
     #[test]

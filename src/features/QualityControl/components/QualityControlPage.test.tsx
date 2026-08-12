@@ -85,6 +85,8 @@ const PASSING_REPORT: QcWatermarkReport = {
   coarseSamples: 14,
   matchedSamples: 14,
   bestConfidence: 0.9828,
+  weakestConfidence: 0.9826,
+  bestReference: 'WBS_Watermark_BlackRight.png',
   matchedReference: 'WBS_Watermark_BlackRight.png',
   threshold: 0.85,
   thresholdIsDefault: true,
@@ -97,7 +99,14 @@ const PASSING_REPORT: QcWatermarkReport = {
 const FAILING_REPORT: QcWatermarkReport = {
   ...PASSING_REPORT,
   outcome: 'fail',
-  gaps: [{ startSeconds: 252, endSeconds: 271 }],
+  gaps: [
+    {
+      startSeconds: 252,
+      endSeconds: 271,
+      bestConfidence: 0.0135,
+      bestReference: 'WBS_Watermark_BlackRight.png'
+    }
+  ],
   matchedSamples: 12,
   thumbnails: [
     { label: 'watermark-missing-252.0s', atSeconds: 252, jpeg: [255, 216, 255, 217] }
@@ -343,6 +352,41 @@ describe('QualityControlPage report', () => {
 
     expect(screen.getByText(/watermark check failed/i)).toBeInTheDocument()
     expect(screen.getByText(/4:12\.0 to 4:31\.0/)).toBeInTheDocument()
+  })
+
+  it('shows the score range and threshold on a pass, not just a green tick', async () => {
+    // Two real renders with equally visible watermarks score 0.983 and 0.389 through
+    // the same code, so a bare pass or fail turns a threshold argument into an
+    // unanswerable one.
+    await runWith(PASSING_REPORT)
+
+    expect(screen.getByText(/0\.9826 to 0\.9828/)).toBeInTheDocument()
+    expect(screen.getByText(/threshold of 0\.850/)).toBeInTheDocument()
+  })
+
+  it('names the closest reference and its score when nothing matched at all', async () => {
+    // How a wrong-resolution watermark is told apart from a missing one: one comes
+    // close and names an asset, the other does not.
+    await runWith({
+      ...FAILING_REPORT,
+      corner: null,
+      matchedSamples: 0,
+      matchedReference: null,
+      bestReference: 'WBS_Watermark_BlackRight_4K.png',
+      bestConfidence: 0.389,
+      weakestConfidence: -0.1483
+    })
+
+    expect(
+      screen.getByText(/closest reference WBS_Watermark_BlackRight_4K\.png/i)
+    ).toBeInTheDocument()
+    expect(screen.getByText(/-0\.1483 to 0\.3890/)).toBeInTheDocument()
+  })
+
+  it('shows the best score inside each gap, so a near miss is visible', async () => {
+    await runWith(FAILING_REPORT)
+
+    expect(screen.getByText(/best score 0\.0135/)).toBeInTheDocument()
   })
 
   it('B3.7 names the corner change and when it happened', async () => {

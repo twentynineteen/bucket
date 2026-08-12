@@ -17,10 +17,15 @@
 //!
 //! ## Why timestamps come from ffmpeg
 //!
-//! `showinfo` prints the `pts_time` of every frame it passes. Reading those,
-//! rather than assuming a sample landed where the `fps` filter was asked to put
-//! it, is what makes gap boundaries frame-accurate regardless of keyframe
-//! spacing.
+//! `showinfo` prints the `pts_time` of every frame it passes. Reading those, rather
+//! than assuming a sample landed where the `fps` filter was asked to put it, means
+//! every timestamp in a report is a time ffmpeg really decoded a frame at, whatever
+//! the keyframe spacing.
+//!
+//! It does **not** make a gap boundary frame-accurate: the boundary is the first and
+//! last *sampled* frame that missed, so it is accurate to the fine sampling interval
+//! and under-states the absence by up to that much at each end. Conservative in the
+//! right direction, but not the same claim.
 
 use serde::Serialize;
 use tokio::sync::watch;
@@ -29,18 +34,16 @@ use super::error::QcError;
 use super::evidence::cap_evidence;
 use super::ffmpeg::{run_capture, run_frames, RunError};
 use super::geometry::{corner_of, place_region, scale_bbox, union, Corner, CropRegion};
-use super::matching::{evaluate_sample, sobel_magnitude, WatermarkTemplate};
-use super::parsing::{
-    parse_alpha_bbox, parse_probe_output, parse_showinfo_size, VideoProbe,
-};
+use super::matching::{dedupe_by_alpha, evaluate_sample, sobel_magnitude, WatermarkTemplate};
+use super::parsing::{parse_alpha_bbox, parse_probe_output, parse_showinfo_size, VideoProbe};
 use super::sampling::{
     coalesce_gaps, corner_changes, establish_corner, refinement_windows, sample_times,
     watermark_span, CornerChange, Gap, Sample, Span,
 };
 use super::thresholds::{
-    resolve_match_confidence, CORNER_ESTABLISHING_SAMPLES, COARSE_INTERVAL_SECONDS,
-    FINE_INTERVAL_SECONDS, MAX_THUMBNAILS, MIN_GAP_SECONDS, TAIL_WINDOW_SECONDS,
-    THUMBNAIL_WIDTH,
+    resolve_match_confidence, threshold_caveat, COARSE_INTERVAL_SECONDS,
+    CORNER_ESTABLISHING_SAMPLES, FINE_INTERVAL_SECONDS, MAX_THUMBNAILS, MIN_GAP_SECONDS,
+    TAIL_WINDOW_SECONDS, THUMBNAIL_WIDTH,
 };
 
 /// Which stage of a run progress refers to.
@@ -112,7 +115,20 @@ pub struct WatermarkReport {
     pub corner_changes: Vec<CornerChange>,
     pub coarse_samples: usize,
     pub matched_samples: usize,
+    /// The highest score any sample reached, whatever the verdict.
     pub best_confidence: f32,
+    /// The lowest score any sample reached, whatever the verdict.
+    ///
+    /// Reported alongside the best because the pair is the diagnostic: 0.98 down to
+    /// 0.97 is a stable match, 0.98 down to 0.10 is a video that changes part-way,
+    /// and 0.39 down to 0.38 is a threshold argument rather than a missing mark.
+    pub weakest_confidence: f32,
+    /// The reference that scored best anywhere, whether or not it ever passed.
+    ///
+    /// Populated even on a total failure: knowing which asset came closest is what
+    /// distinguishes a wrong-resolution watermark from no watermark at all.
+    pub best_reference: Option<String>,
+    /// The reference that produced a passing match, or `None` if none did.
     pub matched_reference: Option<String>,
     pub threshold: f32,
     /// False when an override was applied, so the report can say so (D18).
@@ -136,7 +152,6 @@ pub struct MonotonicPercentage {
 
 impl MonotonicPercentage {
     pub fn next(&mut self, percentage: f64) -> f64 {
-        unimplemented!("red");
         let clamped = percentage.clamp(0.0, 100.0);
         if clamped > self.highest {
             self.highest = clamped;
@@ -150,7 +165,6 @@ impl MonotonicPercentage {
 /// Row-interleaved, so this walks row by row. The buffer is `2 * width * height`
 /// bytes for two crops of `width x height`.
 pub fn split_hstacked(frame: &[u8], width: usize, height: usize) -> (Vec<u8>, Vec<u8>) {
-    unimplemented!("red");
     let stride = width * 2;
     let mut left = Vec::with_capacity(width * height);
     let mut right = Vec::with_capacity(width * height);
@@ -182,7 +196,6 @@ pub struct PreparedReferences {
 /// One corner needs no `hstack`; two corners must be combined into a single frame
 /// because two rawvideo outputs on one stdout silently interleave.
 pub fn sampling_filtergraph(prepared: &PreparedReferences, fps_expression: &str) -> String {
-    unimplemented!("red");
     let crop = |region: &CropRegion| {
         format!(
             "crop={}:{}:{}:{}",
@@ -208,10 +221,7 @@ pub fn sampling_filtergraph(prepared: &PreparedReferences, fps_expression: &str)
 
 /// Bytes in one frame of a sampling pass.
 pub fn sampling_frame_size(prepared: &PreparedReferences) -> usize {
-    unimplemented!("red");
-    prepared.region_width as usize
-        * prepared.region_height as usize
-        * prepared.regions.len().max(1)
+    prepared.region_width as usize * prepared.region_height as usize * prepared.regions.len().max(1)
 }
 
 /// Runs the whole watermark check.
@@ -223,13 +233,12 @@ pub fn analyse(
     cancel: &watch::Receiver<bool>,
     progress: &mut dyn FnMut(Phase, f64, &str),
 ) -> Result<WatermarkReport, QcError> {
-    unimplemented!("red");
     let mut percentage = MonotonicPercentage::default();
     let report = |progress: &mut dyn FnMut(Phase, f64, &str),
-                      percentage: &mut MonotonicPercentage,
-                      phase: Phase,
-                      value: f64,
-                      detail: &str| {
+                  percentage: &mut MonotonicPercentage,
+                  phase: Phase,
+                  value: f64,
+                  detail: &str| {
         progress(phase, percentage.next(value), detail);
     };
 
@@ -295,6 +304,7 @@ pub fn analyse(
     // the absence's real boundaries rather than the coarse timestamp that failed.
     let windows = refinement_windows(&coarse, COARSE_INTERVAL_SECONDS, &span);
     let mut gaps: Vec<Gap> = Vec::new();
+    let mut refined: Vec<Sample> = Vec::new();
 
     for (index, (start, end)) in windows.iter().enumerate() {
         report(
@@ -320,13 +330,28 @@ pub fn analyse(
         // interval of footage that passed, so merging across them would invent a
         // gap over frames that were never in question.
         gaps.extend(coalesce_gaps(&fine, MIN_GAP_SECONDS));
+        refined.extend(fine);
     }
 
     let matched_samples = coarse.iter().filter(|s| s.matched()).count();
-    let best_confidence = coarse
+
+    // Over every sample from both passes, not just the coarse ones: a refinement
+    // pass is where the interesting near misses show up.
+    let scored: Vec<&Sample> = coarse.iter().chain(refined.iter()).collect();
+    let best_sample = scored
+        .iter()
+        .max_by(|a, b| a.confidence.total_cmp(&b.confidence));
+    let best_confidence = best_sample.map(|s| s.confidence).unwrap_or(0.0);
+    let best_reference = best_sample.and_then(|s| s.reference.clone());
+    let weakest_confidence = scored
         .iter()
         .map(|s| s.confidence)
-        .fold(0.0f32, |best, score| best.max(score));
+        .fold(f32::INFINITY, f32::min);
+    let weakest_confidence = if weakest_confidence.is_finite() {
+        weakest_confidence
+    } else {
+        0.0
+    };
 
     let outcome = if gaps.is_empty() && changes.is_empty() && corner.is_some() {
         WatermarkOutcome::Pass
@@ -361,10 +386,14 @@ pub fn analyse(
             threshold
         ));
     }
+    // Whether or not it was overridden: the shipped default is provisional, and a
+    // verdict reached outside the band real footage has been measured in has to say
+    // so rather than reading as an ordinary verdict.
+    if let Some(caveat) = threshold_caveat(threshold) {
+        notes.push(caveat);
+    }
     if corner.is_none() {
-        notes.push(
-            "The watermark was never found, so no corner could be established.".to_string(),
-        );
+        notes.push("The watermark was never found, so no corner could be established.".to_string());
     }
     if let Some(change) = changes.first() {
         // Named in words as well as in the structured field: a repositioned layer
@@ -388,6 +417,8 @@ pub fn analyse(
         coarse_samples: coarse.len(),
         matched_samples,
         best_confidence,
+        weakest_confidence,
+        best_reference,
         matched_reference: coarse
             .iter()
             .find(|sample| sample.matched())
@@ -529,22 +560,41 @@ fn prepare_references(
         .map(|(corner, region)| {
             (
                 *corner,
-                place_region(region, region_width, region_height, probe.width, probe.height),
+                place_region(
+                    region,
+                    region_width,
+                    region_height,
+                    probe.width,
+                    probe.height,
+                ),
             )
         })
         .collect();
 
     let mut templates = Vec::new();
     for reference in &measured {
-        let Some((_, region)) = regions.iter().find(|(corner, _)| *corner == reference.corner)
+        let Some((_, region)) = regions
+            .iter()
+            .find(|(corner, _)| *corner == reference.corner)
         else {
             continue;
         };
 
-        if let Some(template) = build_template(request, reference.path.clone(), *region, reference.corner, probe, cancel)? {
+        if let Some(template) = build_template(
+            request,
+            reference.path.clone(),
+            *region,
+            reference.corner,
+            probe,
+            cancel,
+        )? {
             templates.push(template);
         }
     }
+
+    // Colour variants carry identical alpha maps, so matching against both costs
+    // twice the correlation for no extra coverage.
+    let templates = dedupe_by_alpha(templates);
 
     if templates.is_empty() {
         return Err(QcError::ReferencePool {
@@ -561,13 +611,24 @@ fn prepare_references(
     })
 }
 
-/// Decodes one reference's luma and alpha over the inspection region.
+/// Decodes one reference's **alpha map** over the inspection region and turns it
+/// into a template.
 ///
-/// Both planes come back from a single call, `hstack`ed, for the same reason the
-/// video's corners are: two rawvideo outputs on one stdout interleave silently.
-/// `format=rgba` is forced before the split because format negotiation propagates
-/// upstream — without it, the greyscale branch talks the whole chain into gray and
-/// `alphaextract` fails with "Requested planes not available".
+/// The alpha map, not the reference composited over anything. The brand assets are a
+/// pure monochrome shape plus a varying alpha mask: the Black variant is luma 0
+/// everywhere and the White variant luma 255 everywhere, and both carry the *same*
+/// alpha map, peaking at 137 of 255 — so the mark is never more than 54% opaque and
+/// the backdrop always shows through it.
+///
+/// That makes the composited appearance backdrop-dependent and useless as a
+/// template: black at 54% over dark footage reads strongly, white at 54% over a
+/// bright office barely shifts the luma at all. The alpha map is the invariant, and
+/// normalised correlation then absorbs the backdrop-dependent difference in signal
+/// strength as a scale factor.
+///
+/// `format=rgba` is forced before `alphaextract` because format negotiation
+/// propagates upstream: without it the chain settles on a format with no alpha plane
+/// and `alphaextract` fails with "Requested planes not available".
 fn build_template(
     request: &AnalysisRequest,
     path: String,
@@ -577,7 +638,7 @@ fn build_template(
     cancel: &watch::Receiver<bool>,
 ) -> Result<Option<WatermarkTemplate>, QcError> {
     let graph = format!(
-        "[0:v]scale={}:{},crop={}:{}:{}:{},format=rgba,split=2[a][b];[a]format=gray[g];[b]alphaextract,format=gray[m];[g][m]hstack=inputs=2[out]",
+        "[0:v]scale={}:{},crop={}:{}:{}:{},format=rgba,alphaextract,format=gray[out]",
         probe.width, probe.height, region.width, region.height, region.x, region.y
     );
 
@@ -601,17 +662,20 @@ fn build_template(
 
     let width = region.width as usize;
     let height = region.height as usize;
-    if !run.exit_ok || stdout.len() < width * height * 2 {
+    if !run.exit_ok || stdout.len() < width * height {
         return Ok(None);
     }
-
-    let (gray, alpha) = split_hstacked(&stdout, width, height);
 
     Ok(Some(WatermarkTemplate {
         name: file_name_of(&path),
         corner,
-        gradient: sobel_magnitude(&gray, width, height),
-        weights: alpha.iter().map(|a| f32::from(*a) / 255.0).collect(),
+        alpha: stdout[..width * height].to_vec(),
+        gradient: sobel_magnitude(&stdout[..width * height], width, height),
+        // Uniform: the alpha map already *is* the mark's shape, so there is nothing
+        // left for a separate mask to exclude, and the bbox is the mark's own extent
+        // rather than a region with footage around it. `weighted_ncc` stays the
+        // primitive so a future mask — glyph strokes only, say — is a one-line change.
+        weights: vec![1.0; width * height],
         width,
         height,
     }))
@@ -809,7 +873,6 @@ fn capture_thumbnails(
 
 /// The file name part of a path, for naming what matched.
 pub fn file_name_of(path: &str) -> String {
-    unimplemented!("red");
     std::path::Path::new(path)
         .file_name()
         .map(|name| name.to_string_lossy().to_string())

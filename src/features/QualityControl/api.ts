@@ -8,6 +8,9 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
+import type { Event } from '@tauri-apps/api/event'
+import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { exists, readDir } from '@tauri-apps/plugin-fs'
 
 import {
@@ -16,7 +19,12 @@ import {
   type ReferencePool,
   type ReferencePoolListing
 } from './internal/referencePool'
-import type { FfmpegAvailability } from './types'
+import type {
+  FfmpegAvailability,
+  QcProgressEvent,
+  QcThumbnail,
+  QcWatermarkReport
+} from './types'
 
 /**
  * Asks the backend where the ffmpeg toolchain is.
@@ -67,6 +75,104 @@ export async function listReferencePool(
   } catch (error) {
     return { status: 'unreadable', detail: String(error) }
   }
+}
+
+/** What to check, and with what. */
+export interface WatermarkCheckRequest {
+  videoPath: string
+  /** The watermark pool's files, from `listReferencePool`. */
+  referenceFiles: string[]
+  /** The Settings ffmpeg directory, when one is configured. */
+  ffmpegDirectory?: string | null
+  /** An advanced override; omit for the calibrated default (B13.1). */
+  matchThreshold?: number
+}
+
+/**
+ * Runs the watermark check over one video.
+ *
+ * Long-running: the promise settles when the analysis finishes, while progress
+ * arrives on the `qc-progress` event. Rejects with a `QcError` — including a
+ * `busy` rejection when a run is already in flight (D19).
+ */
+export async function runWatermarkCheck(
+  request: WatermarkCheckRequest
+): Promise<QcWatermarkReport> {
+  return invoke<QcWatermarkReport>('qc_run_watermark_check', {
+    request: {
+      videoPath: request.videoPath,
+      referenceFiles: request.referenceFiles,
+      ffmpegDirectory: request.ffmpegDirectory ?? null,
+      // Omitted rather than null when there is no override: the Rust side treats
+      // `None` as "use the calibrated default".
+      matchThreshold: request.matchThreshold ?? null
+    }
+  })
+}
+
+/**
+ * Cancels the run in flight, returning whether there was one to cancel.
+ *
+ * No argument: only one run can exist at a time, so asking the caller to track an
+ * operation id would be asking it to hold state that cannot disagree with the
+ * backend's.
+ */
+export async function cancelQcRun(): Promise<boolean> {
+  return invoke<boolean>('qc_cancel_run')
+}
+
+/**
+ * Subscribes to progress for the run in flight. Resolves to an unsubscribe.
+ */
+export async function listenQcProgress(
+  callback: (event: Event<QcProgressEvent>) => void
+): Promise<() => void> {
+  return listen<QcProgressEvent>('qc-progress', callback)
+}
+
+/**
+ * Writes a report's failure thumbnails into a folder, returning the paths written.
+ *
+ * Existing files are never overwritten (B10.3).
+ */
+export async function saveQcEvidence(
+  folder: string,
+  prefix: string,
+  thumbnails: QcThumbnail[]
+): Promise<string[]> {
+  return invoke<string[]>('qc_save_evidence', {
+    folder,
+    prefix,
+    items: thumbnails.map((thumbnail) => ({
+      label: thumbnail.label,
+      jpeg: thumbnail.jpeg
+    }))
+  })
+}
+
+/**
+ * Asks the operator for a video to check.
+ *
+ * No extension allowlist (D17): ffprobe decides what it can decode, and reporting
+ * a precise reason beats guessing from a filename.
+ */
+export async function pickVideoFile(): Promise<string | null> {
+  const selected = await openDialog({
+    directory: false,
+    multiple: false,
+    title: 'Choose a render to check'
+  })
+  return typeof selected === 'string' ? selected : null
+}
+
+/** Asks the operator where to save evidence. */
+export async function pickEvidenceFolder(): Promise<string | null> {
+  const selected = await openDialog({
+    directory: true,
+    multiple: false,
+    title: 'Where should the evidence be saved?'
+  })
+  return typeof selected === 'string' ? selected : null
 }
 
 /**

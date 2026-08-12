@@ -32,6 +32,10 @@ export interface ApiKeys {
    *  location (issue #180). Undefined searches /opt/homebrew/bin, /usr/local/bin
    *  and /usr/bin. */
   ffmpegDirectory?: string
+  /** Advanced override for the QC watermark match confidence (issue #180, D18).
+   *  Undefined uses the calibrated default in `@shared/constants`; a run under an
+   *  override says so in its report. */
+  qcMatchThreshold?: number
 }
 
 const API_KEYS_FILE = 'api_keys.json' // New file for storing API keys as JSON

@@ -36,7 +36,6 @@ pub struct EvidenceItem {
 /// place a video goes wrong is nearly always the one worth looking at, and a later
 /// gap is usually the same fault continuing.
 pub fn cap_evidence<T>(items: Vec<T>, max: usize) -> Vec<T> {
-    unimplemented!("red");
     items.into_iter().take(max).collect()
 }
 
@@ -45,7 +44,6 @@ pub fn cap_evidence<T>(items: Vec<T>, max: usize) -> Vec<T> {
 /// Slashes and colons in particular: a label carries a timestamp, and `04:12` in a
 /// filename is a path separator on some systems and legal on others.
 pub fn evidence_stem(prefix: &str, label: &str) -> String {
-    unimplemented!("red");
     let cleaned: String = label
         .chars()
         .map(|c| match c {
@@ -66,7 +64,6 @@ pub fn save_evidence(
     prefix: &str,
     items: &[EvidenceItem],
 ) -> Result<Vec<String>, QcError> {
-    unimplemented!("red");
     let dir = Path::new(folder);
     if !dir.is_dir() {
         return Err(QcError::Io {

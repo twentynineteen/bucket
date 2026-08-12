@@ -40,7 +40,8 @@ const READY_AVAILABILITY = {
   pools: {
     watermarks: { status: 'ready', reason: null },
     stings: { status: 'ready', reason: null }
-  }
+  },
+  poolFiles: { watermarks: [], stings: [] }
 }
 
 /** Existing credentials a save must never drop. */
@@ -204,6 +205,48 @@ describe('QualityControlSection', () => {
     await waitFor(() => expect(api.saveSettingsApiKeys).toHaveBeenCalled())
     expect(api.saveSettingsApiKeys).toHaveBeenCalledWith(
       expect.objectContaining({ ffmpegDirectory: '/custom/tools' })
+    )
+  })
+
+  it('B13.2 saves a valid match confidence override', async () => {
+    const user = userEvent.setup()
+    renderSection(EXISTING_KEYS)
+
+    await user.type(screen.getByLabelText(/watermark match confidence/i), '0.35')
+    await user.click(screen.getByRole('button', { name: /^save threshold$/i }))
+
+    await waitFor(() => expect(api.saveSettingsApiKeys).toHaveBeenCalled())
+    expect(api.saveSettingsApiKeys).toHaveBeenCalledWith(
+      expect.objectContaining({ qcMatchThreshold: 0.35 })
+    )
+  })
+
+  it('B13.3 refuses to save an out-of-range override rather than clamping it', async () => {
+    const user = userEvent.setup()
+    renderSection(EXISTING_KEYS)
+
+    await user.type(screen.getByLabelText(/watermark match confidence/i), '1.5')
+
+    // Rejected, and visibly so. Silently storing 0.999 would leave someone
+    // believing they had set something they had not.
+    expect(screen.getByRole('alert')).toHaveTextContent(/rejected rather than adjusted/i)
+    expect(screen.getByRole('button', { name: /^save threshold$/i })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: /^save threshold$/i }))
+    expect(api.saveSettingsApiKeys).not.toHaveBeenCalled()
+  })
+
+  it('B13.1 clears the override back to the default when the field is emptied', async () => {
+    const user = userEvent.setup()
+    renderSection({ ...EXISTING_KEYS, qcMatchThreshold: 0.35 })
+
+    await user.clear(screen.getByLabelText(/watermark match confidence/i))
+    await user.click(screen.getByRole('button', { name: /^save threshold$/i }))
+
+    await waitFor(() => expect(api.saveSettingsApiKeys).toHaveBeenCalled())
+    // Undefined rather than 0, which would be an override meaning "pass everything".
+    expect(api.saveSettingsApiKeys).toHaveBeenCalledWith(
+      expect.objectContaining({ qcMatchThreshold: undefined })
     )
   })
 })

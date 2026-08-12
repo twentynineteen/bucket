@@ -22,7 +22,6 @@ use super::geometry::AlphaBbox;
 /// Anything unparseable is skipped rather than defaulting to zero, which would
 /// silently shift every later frame's timestamp.
 pub fn parse_showinfo_times(stderr: &str) -> Vec<f64> {
-    unimplemented!("red");
     stderr
         .lines()
         .filter(|line| line.contains("pts_time:"))
@@ -44,7 +43,6 @@ pub fn parse_showinfo_times(stderr: &str) -> Vec<f64> {
 /// produces. That is a reference QC cannot use, and it must be distinguishable
 /// from a parse failure.
 pub fn parse_alpha_bbox(stderr: &str) -> Option<AlphaBbox> {
-    unimplemented!("red");
     stderr
         .lines()
         .filter(|line| line.contains("x1:") && line.contains("y2:"))
@@ -64,7 +62,6 @@ pub fn parse_alpha_bbox(stderr: &str) -> Option<AlphaBbox> {
 /// Used to learn a reference image's own dimensions from the same call that
 /// measures its alpha bbox, rather than spawning ffprobe again for two numbers.
 pub fn parse_showinfo_size(stderr: &str) -> Option<(u32, u32)> {
-    unimplemented!("red");
     stderr
         .lines()
         .filter(|line| line.contains(" s:"))
@@ -127,7 +124,6 @@ impl ProbeProblem {
 /// The `key=value` form is parsed rather than JSON so no serde shape has to be
 /// maintained for three numbers.
 pub fn parse_probe_output(stdout: &str) -> Result<VideoProbe, ProbeProblem> {
-    unimplemented!("red");
     let mut width: Option<u32> = None;
     let mut height: Option<u32> = None;
     let mut duration: Option<f64> = None;
@@ -247,7 +243,10 @@ frame=3 fps=0.0 q=-0.0 Lsize=N/A time=00:00:05.00";
 
     #[test]
     fn b12_1_reports_no_video_stream_when_ffprobe_printed_nothing() {
-        assert_eq!(parse_probe_output("\n"), Err(ProbeProblem::MissingVideoStream));
+        assert_eq!(
+            parse_probe_output("\n"),
+            Err(ProbeProblem::MissingVideoStream)
+        );
     }
 
     #[test]
@@ -258,14 +257,20 @@ frame=3 fps=0.0 q=-0.0 Lsize=N/A time=00:00:05.00";
         // wrong thing.
         let stdout = "duration=12.000000\n";
 
-        assert_eq!(parse_probe_output(stdout), Err(ProbeProblem::MissingVideoStream));
+        assert_eq!(
+            parse_probe_output(stdout),
+            Err(ProbeProblem::MissingVideoStream)
+        );
     }
 
     #[test]
     fn b12_3_reports_a_missing_duration_distinctly() {
         let stdout = "width=1920\nheight=1080\nduration=N/A\n";
 
-        assert_eq!(parse_probe_output(stdout), Err(ProbeProblem::MissingDuration));
+        assert_eq!(
+            parse_probe_output(stdout),
+            Err(ProbeProblem::MissingDuration)
+        );
     }
 
     #[test]
@@ -274,7 +279,10 @@ frame=3 fps=0.0 q=-0.0 Lsize=N/A time=00:00:05.00";
         // possible outcome for a QC tool.
         let stdout = "width=1920\nheight=1080\nduration=0.000000\n";
 
-        assert_eq!(parse_probe_output(stdout), Err(ProbeProblem::MissingDuration));
+        assert_eq!(
+            parse_probe_output(stdout),
+            Err(ProbeProblem::MissingDuration)
+        );
     }
 
     #[test]
@@ -282,6 +290,9 @@ frame=3 fps=0.0 q=-0.0 Lsize=N/A time=00:00:05.00";
         // A video stream ffprobe could see but not fully describe.
         let stdout = "width=1920\nduration=12.0\n";
 
-        assert_eq!(parse_probe_output(stdout), Err(ProbeProblem::UnreadableDimensions));
+        assert_eq!(
+            parse_probe_output(stdout),
+            Err(ProbeProblem::UnreadableDimensions)
+        );
     }
 }
