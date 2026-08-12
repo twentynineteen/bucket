@@ -106,7 +106,11 @@ impl OperationRegistry {
 
     /// Get the number of currently registered operations.
     ///
-    /// This is primarily useful for debugging and testing purposes.
+    /// Test-only. The application never needs a count - it uses
+    /// `has_operation` to decide whether a cancellation can be signalled.
+    /// The tests use this to prove the registry does not leak operations
+    /// once they complete, which `has_operation` alone cannot show.
+    #[cfg(test)]
     pub async fn operation_count(&self) -> usize {
         let operations = self.operations.read().await;
         operations.len()

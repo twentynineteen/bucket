@@ -187,7 +187,7 @@ pub async fn transfer_files_with_progress(
         let mut files_completed: usize = 0;
         let mut last_progress_update = Instant::now();
 
-        for (_file_index, item) in files.iter().enumerate() {
+        for item in files.iter() {
             // Check cancellation before starting each file using watch receiver
             if OperationRegistry::is_cancelled(&cancel_receiver) {
                 let duration_ms = start_time.elapsed().as_millis() as u64;
