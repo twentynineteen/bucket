@@ -3,6 +3,7 @@
  */
 
 import { readFileSync } from 'node:fs'
+import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
@@ -77,7 +78,12 @@ describe('QC match confidence', () => {
     // The UI always sends the threshold it shows, but a call that omits it falls back
     // to the Rust constant. Two different provisional values would produce two
     // different verdicts for the same render.
-    const rust = readFileSync('src-tauri/src/qc/thresholds.rs', 'utf8')
+    // Resolved from this file rather than the working directory, so the test does
+    // not depend on where the runner was started.
+    const rust = readFileSync(
+      path.resolve(__dirname, '../../../src-tauri/src/qc/thresholds.rs'),
+      'utf8'
+    )
 
     expect(rust).toContain(
       `DEFAULT_MATCH_CONFIDENCE: f32 = ${QC_THRESHOLDS.matchConfidence}`
