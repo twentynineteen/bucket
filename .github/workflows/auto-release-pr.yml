@@ -58,27 +58,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Set up cargo cache
-        uses: actions/cache@v5
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -90,14 +69,15 @@ jobs:
       - name: Run unit tests
         run: bun run test:run
 
-      # deb only: this runs on Linux and no Linux artifact is released, so the
-      # AppImage bundle added a network dependency without an output. See ci.yml.
-      - name: Build
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          PKG_CONFIG_ALLOW_CROSS: 1
-        run: bun run build:tauri -- --bundles deb
+      # No Rust step here on purpose. This workflow fires on a push to master,
+      # and ci.yml runs on every push to master with no path filter, so its
+      # rust-test job already compiles and tests this exact commit - on macOS,
+      # which is the platform actually shipped. Repeating it here would gate the
+      # same commit twice, and the Linux build it replaced never compiled the
+      # cfg(target_os = "macos") code at all (issue #185).
+      #
+      # Dropping it also lets this job shed the apt packages, Rust toolchain and
+      # cargo cache it only needed in order to build.
 
   e2e-tests:
     needs: [check-version-bump, test]

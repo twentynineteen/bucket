@@ -15,17 +15,18 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
+  # Kept, unlike the Linux build in auto-release-pr.yml, because this is the
+  # only thing guarding a Rust dependency bump on a renovate branch before a PR
+  # exists. Moved to macOS because that is where a dependency bump is most
+  # likely to break: libc is a macOS-only dependency, objc2 carries a macOS
+  # profile override, and 19 blocks sit behind cfg(target_os = "macos") - none
+  # of which a Linux build ever compiled (issue #185).
+  rust-test:
+    runs-on: macos-14 # Apple Silicon, matching the aarch64 target publish.yml ships
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -39,7 +40,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
+            src-tauri/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
@@ -51,7 +52,11 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      # deb only: this runs on Linux and no Linux artifact is released, so the
-      # AppImage bundle added a network dependency without an output. See ci.yml.
-      - name: Build
-        run: bun run build:tauri -- --bundles deb
+      # tauri::generate_context! embeds frontendDist at compile time, so cargo
+      # cannot compile at all unless dist/ exists. See ci.yml.
+      - name: Build frontend
+        run: bun run build
+
+      - name: Run Rust tests
+        working-directory: src-tauri
+        run: cargo test
