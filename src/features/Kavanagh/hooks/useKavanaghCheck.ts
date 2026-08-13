@@ -1,8 +1,10 @@
 /**
- * useWatermarkCheck (issue #180, stage 2, B3, B4, B8, B10, B11)
+ * useKavanaghCheck (issue #180, stages 2-3, B3-B8, B10, B11)
  *
- * Owns one watermark run: starting it, showing its progress, cancelling it, and
- * holding the report it produced.
+ * Owns one run: starting it, showing its progress, cancelling it, and holding
+ * the report it produced. One run covers both checks - the watermark and the
+ * closing tail - because the tail has to run first to tell the watermark pass
+ * where to stop (D9).
  *
  * The report is held in memory here and nowhere else (D16). Failure thumbnails
  * come with it as JPEG bytes and are never written to disk unless the operator
@@ -16,34 +18,30 @@ import React from 'react'
 import {
   cancelKavanaghRun,
   listenKavanaghProgress,
-  runWatermarkCheck,
-  type WatermarkCheckRequest
+  runKavanaghCheck,
+  type KavanaghCheckRequest
 } from '../api'
 import { asKavanaghError, isCancellation } from '../internal/kavanaghError'
-import type {
-  KavanaghError,
-  KavanaghProgressEvent,
-  KavanaghWatermarkReport
-} from '../types'
+import type { KavanaghCheckReport, KavanaghError, KavanaghProgressEvent } from '../types'
 
-export interface UseWatermarkCheckResult {
+export interface UseKavanaghCheckResult {
   /** True while a run is in flight, which is what disables a second start (B8.6). */
   isRunning: boolean
   /** The most recent progress event, or null before the first one arrives. */
   progress: KavanaghProgressEvent | null
   /** The report from the last completed run, or null. */
-  report: KavanaghWatermarkReport | null
+  report: KavanaghCheckReport | null
   /** Why the last run failed, or null. A cancellation is not surfaced here. */
   error: KavanaghError | null
-  run: (request: WatermarkCheckRequest) => Promise<void>
+  run: (request: KavanaghCheckRequest) => Promise<void>
   cancel: () => Promise<void>
   /** Clears the report and any error, releasing the thumbnails held with it. */
   reset: () => void
 }
 
-export function useWatermarkCheck(): UseWatermarkCheckResult {
+export function useKavanaghCheck(): UseKavanaghCheckResult {
   const [progress, setProgress] = React.useState<KavanaghProgressEvent | null>(null)
-  const [report, setReport] = React.useState<KavanaghWatermarkReport | null>(null)
+  const [report, setReport] = React.useState<KavanaghCheckReport | null>(null)
   const [error, setError] = React.useState<KavanaghError | null>(null)
 
   // Subscribed for the page's lifetime rather than per run: `listen` resolves
@@ -73,7 +71,7 @@ export function useWatermarkCheck(): UseWatermarkCheckResult {
   }, [])
 
   const mutation = useMutation({
-    mutationFn: runWatermarkCheck,
+    mutationFn: runKavanaghCheck,
     // A QC run costs a full decode pass. Retrying one automatically would double
     // that for a failure that is nearly always a real one.
     retry: false,
@@ -92,7 +90,7 @@ export function useWatermarkCheck(): UseWatermarkCheckResult {
   })
 
   const run = React.useCallback(
-    async (request: WatermarkCheckRequest) => {
+    async (request: KavanaghCheckRequest) => {
       try {
         await mutation.mutateAsync(request)
       } catch {

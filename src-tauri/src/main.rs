@@ -18,8 +18,8 @@ use baker::*;
 use build_project::{transfer_files_with_progress, cancel_file_transfer, OperationRegistry};
 use commands::*;
 use kavanagh::{
-    kavanagh_cancel_run, kavanagh_detect_ffmpeg, kavanagh_run_check, kavanagh_run_watermark_check,
-    kavanagh_save_evidence, KavanaghRunState,
+    kavanagh_cancel_run, kavanagh_detect_ffmpeg, kavanagh_run_check, kavanagh_save_evidence,
+    KavanaghRunState,
 };
 use state::AuthState;
 
@@ -114,7 +114,6 @@ fn main() {
             cancel_file_transfer,
             // Issue #180: Video QC - ffmpeg discovery and the watermark check
             kavanagh_detect_ffmpeg,
-            kavanagh_run_watermark_check,
             kavanagh_run_check,
             kavanagh_cancel_run,
             kavanagh_save_evidence

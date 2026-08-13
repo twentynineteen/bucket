@@ -14,7 +14,13 @@ import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { UseKavanaghAvailabilityResult } from '../hooks/useKavanaghAvailability'
-import type { KavanaghProgressEvent, KavanaghWatermarkReport } from '../types'
+import type {
+  KavanaghCheckReport,
+  KavanaghProgressEvent,
+  KavanaghStingReport,
+  KavanaghTailAnalysis,
+  KavanaghWatermarkReport
+} from '../types'
 
 const mockAvailability = vi.fn<() => UseKavanaghAvailabilityResult>()
 
@@ -24,7 +30,7 @@ vi.mock('../hooks/useKavanaghAvailability', () => ({
 
 // The single I/O boundary. Mocking it and nothing else is what keeps the real page,
 // the real run hook and the real report rendering under test.
-const runWatermarkCheck = vi.fn()
+const runKavanaghCheck = vi.fn()
 const cancelKavanaghRun = vi.fn()
 const saveKavanaghEvidence = vi.fn()
 const pickVideoFile = vi.fn()
@@ -32,7 +38,7 @@ const pickEvidenceFolder = vi.fn()
 let emitProgress: ((event: KavanaghProgressEvent) => void) | null = null
 
 vi.mock('../api', () => ({
-  runWatermarkCheck: (...args: unknown[]) => runWatermarkCheck(...args),
+  runKavanaghCheck: (...args: unknown[]) => runKavanaghCheck(...args),
   cancelKavanaghRun: () => cancelKavanaghRun(),
   saveKavanaghEvidence: (...args: unknown[]) => saveKavanaghEvidence(...args),
   pickVideoFile: () => pickVideoFile(),
@@ -78,7 +84,7 @@ const READY: UseKavanaghAvailabilityResult = {
   }
 }
 
-const PASSING_REPORT: KavanaghWatermarkReport = {
+const PASSING_WATERMARK: KavanaghWatermarkReport = {
   outcome: 'pass',
   corner: 'topRight',
   span: { startSeconds: 0, endSeconds: 132, approximated: true },
@@ -95,11 +101,29 @@ const PASSING_REPORT: KavanaghWatermarkReport = {
   referencesUsed: 4,
   video: { width: 3840, height: 2160, durationSeconds: 144 },
   thumbnails: [],
-  notes: ['The dip to white has not been located, so the watermark was checked over…']
+  notes: []
 }
 
-const FAILING_REPORT: KavanaghWatermarkReport = {
-  ...PASSING_REPORT,
+const SOUND_TAIL: KavanaghTailAnalysis = {
+  peakAtSeconds: 139.0,
+  rampSeconds: 0.4,
+  stingSeconds: 5.0,
+  trailingSeconds: 0.04,
+  problems: []
+}
+
+const MATCHED_STING: KavanaghStingReport = {
+  outcome: 'matched',
+  matchedReference: 'WBS_Sting_2024.jpg',
+  bestReference: 'WBS_Sting_2024.jpg',
+  bestConfidence: 0.9989,
+  freezeMad: 0.0,
+  framesCompared: 9,
+  threshold: 0.95
+}
+
+const FAILING_WATERMARK: KavanaghWatermarkReport = {
+  ...PASSING_WATERMARK,
   outcome: 'fail',
   gaps: [
     {
@@ -114,6 +138,30 @@ const FAILING_REPORT: KavanaghWatermarkReport = {
     { label: 'watermark-missing-252.0s', atSeconds: 252, jpeg: [255, 216, 255, 217] }
   ],
   notes: []
+}
+
+const PASSING_REPORT: KavanaghCheckReport = {
+  verdict: 'pass',
+  watermark: PASSING_WATERMARK,
+  tail: SOUND_TAIL,
+  sting: MATCHED_STING,
+  problemMessages: [],
+  notes: []
+}
+
+const FAILING_REPORT: KavanaghCheckReport = {
+  ...PASSING_REPORT,
+  verdict: 'fail',
+  watermark: FAILING_WATERMARK,
+  problemMessages: []
+}
+
+/** A report whose watermark half differs, the rest held steady. */
+function withWatermark(
+  base: KavanaghCheckReport,
+  overrides: Partial<KavanaghWatermarkReport>
+): KavanaghCheckReport {
+  return { ...base, watermark: { ...base.watermark, ...overrides } }
 }
 
 function renderPage() {
@@ -205,7 +253,7 @@ describe('KavanaghPage watermark run', () => {
 
   it('B8.1 shows progress with its phase, then renders the report', async () => {
     let settle: (report: KavanaghWatermarkReport) => void = () => {}
-    runWatermarkCheck.mockImplementation(
+    runKavanaghCheck.mockImplementation(
       () => new Promise<KavanaghWatermarkReport>((resolve) => (settle = resolve))
     )
 
@@ -213,10 +261,10 @@ describe('KavanaghPage watermark run', () => {
     await userEvent.click(screen.getByRole('button', { name: /choose video/i }))
     await userEvent.click(screen.getByRole('button', { name: /run quality control/i }))
 
-    await waitFor(() => expect(runWatermarkCheck).toHaveBeenCalled())
+    await waitFor(() => expect(runKavanaghCheck).toHaveBeenCalled())
     // The first argument only: React Query hands a mutation context along as a
     // second one, which is not part of the request.
-    expect(runWatermarkCheck.mock.calls[0][0]).toMatchObject({
+    expect(runKavanaghCheck.mock.calls[0][0]).toMatchObject({
       videoPath: '/Volumes/Renders/module.mp4',
       referenceFiles: ['/Volumes/Brand/QC references/Watermarks/right.png']
     })
@@ -236,9 +284,7 @@ describe('KavanaghPage watermark run', () => {
     settle(PASSING_REPORT)
 
     await waitFor(() =>
-      expect(
-        screen.getByText(/watermark present throughout, top-right/i)
-      ).toBeInTheDocument()
+      expect(screen.getByText(/present throughout, top-right/i)).toBeInTheDocument()
     )
     expect(
       screen.getByText(/WBS_Watermark_BlackRight\.png/, { exact: false })
@@ -246,9 +292,7 @@ describe('KavanaghPage watermark run', () => {
   })
 
   it('B8.6 disables a second start while a run is in flight', async () => {
-    runWatermarkCheck.mockImplementation(
-      () => new Promise<KavanaghWatermarkReport>(() => {})
-    )
+    runKavanaghCheck.mockImplementation(() => new Promise<KavanaghCheckReport>(() => {}))
 
     renderPage()
     await userEvent.click(screen.getByRole('button', { name: /choose video/i }))
@@ -257,13 +301,13 @@ describe('KavanaghPage watermark run', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /run quality control/i })).toBeDisabled()
     )
-    expect(runWatermarkCheck).toHaveBeenCalledTimes(1)
+    expect(runKavanaghCheck).toHaveBeenCalledTimes(1)
   })
 
   it('B8.6 surfaces the backend rejection when a run is already in flight', async () => {
     // The page's own guard can be bypassed - a second page, or a run started from
     // the upload flow in stage 4 - so the backend's rejection has to be shown.
-    runWatermarkCheck.mockRejectedValue({
+    runKavanaghCheck.mockRejectedValue({
       kind: 'busy',
       message: 'A quality control run is already in progress.'
     })
@@ -279,7 +323,7 @@ describe('KavanaghPage watermark run', () => {
 
   it('B8.2 cancels the run and returns the page to idle without showing a failure', async () => {
     let reject: (error: unknown) => void = () => {}
-    runWatermarkCheck.mockImplementation(
+    runKavanaghCheck.mockImplementation(
       () => new Promise<KavanaghWatermarkReport>((_, r) => (reject = r))
     )
     cancelKavanaghRun.mockResolvedValue(true)
@@ -302,7 +346,7 @@ describe('KavanaghPage watermark run', () => {
   })
 
   it('B11.3 shows ffmpeg stderr rather than a generic failure', async () => {
-    runWatermarkCheck.mockRejectedValue({
+    runKavanaghCheck.mockRejectedValue({
       kind: 'ffmpeg',
       message: 'ffmpeg could not decode this video for the watermark check.',
       stderr: "Unknown decoder 'hevc'"
@@ -321,7 +365,7 @@ describe('KavanaghPage watermark run', () => {
   })
 
   it('B12.1 shows a probe failure as its own specific reason', async () => {
-    runWatermarkCheck.mockRejectedValue({
+    runKavanaghCheck.mockRejectedValue({
       kind: 'probe',
       message: 'This file has no video stream, so there is nothing to check.'
     })
@@ -334,6 +378,24 @@ describe('KavanaghPage watermark run', () => {
       expect(screen.getByRole('alert')).toHaveTextContent(/no video stream/i)
     )
   })
+
+  it('B7.4 shows a run that could not judge the video as an error, not a failure', async () => {
+    // "Not judged" and "judged bad" send an operator to different places: one is
+    // a file or toolchain to fix, the other is a render to re-export.
+    runKavanaghCheck.mockRejectedValue({
+      kind: 'probe',
+      message: 'This file has no video stream, so there is nothing to check.'
+    })
+
+    renderPage()
+    await userEvent.click(screen.getByRole('button', { name: /choose video/i }))
+    await userEvent.click(screen.getByRole('button', { name: /run quality control/i }))
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    // No verdict at all, rather than a verdict of "failed".
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByText(/^failed\.$/i)).not.toBeInTheDocument()
+  })
 })
 
 describe('KavanaghPage report', () => {
@@ -343,19 +405,84 @@ describe('KavanaghPage report', () => {
     pickVideoFile.mockResolvedValue('/Volumes/Renders/module.mp4')
   })
 
-  async function runWith(report: KavanaghWatermarkReport) {
-    runWatermarkCheck.mockResolvedValue(report)
+  async function runWith(report: KavanaghCheckReport) {
+    runKavanaghCheck.mockResolvedValue(report)
     renderPage()
     await userEvent.click(screen.getByRole('button', { name: /choose video/i }))
     await userEvent.click(screen.getByRole('button', { name: /run quality control/i }))
-    await waitFor(() => expect(screen.getByText(/watermark report/i)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /^report$/i })).toBeInTheDocument()
+    )
   }
 
   it('B4.2 reports a gap as a time range rather than one timestamp', async () => {
     await runWith(FAILING_REPORT)
 
-    expect(screen.getByText(/watermark check failed/i)).toBeInTheDocument()
+    expect(screen.getByText(/missing for part of the render/i)).toBeInTheDocument()
     expect(screen.getByText(/4:12\.0 to 4:31\.0/)).toBeInTheDocument()
+  })
+
+  it('B7.1 leads with a pass covering both checks, not just the watermark', async () => {
+    await runWith(PASSING_REPORT)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /passed\. the watermark and the closing sting are both correct/i
+    )
+  })
+
+  it('B7.3 renders a warning as neither a pass nor a failure', async () => {
+    // An unrecognised sting means the references folder needs a new variant.
+    // Rendering it as a failure is how people learn to ignore failures (D8).
+    await runWith({
+      ...PASSING_REPORT,
+      verdict: 'warning',
+      sting: {
+        ...MATCHED_STING,
+        outcome: 'unrecognised',
+        matchedReference: null,
+        bestConfidence: 0.7869
+      },
+      problemMessages: [
+        'The tail is a held still, but it matches nothing in the stings folder - closest was WBS_Sting_2024.jpg at 0.787, below 0.95. If this is a new sting, add it to the folder.'
+      ]
+    })
+
+    const banner = screen.getByRole('status')
+    expect(banner).toHaveTextContent(/passed with a warning/i)
+    expect(banner).not.toHaveTextContent(/^failed/i)
+    expect(banner).toHaveTextContent(/matches nothing in the stings folder/i)
+  })
+
+  it('B7.2 shows what the tail measured even when the watermark is what failed', async () => {
+    // Fixing one fault only to discover the next is the failure mode D9 exists
+    // to avoid, so both halves are always on screen.
+    await runWith(FAILING_REPORT)
+
+    expect(screen.getByText(/missing for part of the render/i)).toBeInTheDocument()
+    expect(screen.getByText(/peaks at 2:19\.0/)).toBeInTheDocument()
+    expect(screen.getByText(/WBS_Sting_2024\.jpg/)).toBeInTheDocument()
+  })
+
+  it('shows the tail measurements a disputed verdict is argued with', async () => {
+    // The tolerances are tight by design, so a verdict is only answerable next
+    // to the numbers that produced it.
+    await runWith(PASSING_REPORT)
+
+    expect(screen.getByText(/over 0\.40s/)).toBeInTheDocument()
+    expect(screen.getByText(/5\.00s/)).toBeInTheDocument()
+    expect(screen.getByText(/9 frames, mean difference 0\.00/)).toBeInTheDocument()
+  })
+
+  it('names the fault the tail found, with the measurement behind it', async () => {
+    await runWith({
+      ...FAILING_REPORT,
+      tail: { ...SOUND_TAIL, rampSeconds: 0.25 },
+      problemMessages: [
+        'The dip to white takes 0.25s, expected 0.40s (0.32-0.48s). A ramp this short is a hard cut rather than a dissolve.'
+      ]
+    })
+
+    expect(screen.getByRole('status')).toHaveTextContent(/takes 0\.25s, expected 0\.40s/i)
   })
 
   it('shows the score range and threshold on a pass, not just a green tick', async () => {
@@ -371,15 +498,16 @@ describe('KavanaghPage report', () => {
   it('names the closest reference and its score when nothing matched at all', async () => {
     // How a wrong-resolution watermark is told apart from a missing one: one comes
     // close and names an asset, the other does not.
-    await runWith({
-      ...FAILING_REPORT,
-      corner: null,
-      matchedSamples: 0,
-      matchedReference: null,
-      bestReference: 'WBS_Watermark_BlackRight_4K.png',
-      bestConfidence: 0.389,
-      weakestConfidence: -0.1483
-    })
+    await runWith(
+      withWatermark(FAILING_REPORT, {
+        corner: null,
+        matchedSamples: 0,
+        matchedReference: null,
+        bestReference: 'WBS_Watermark_BlackRight_4K.png',
+        bestConfidence: 0.389,
+        weakestConfidence: -0.1483
+      })
+    )
 
     expect(
       screen.getByText(/closest reference WBS_Watermark_BlackRight_4K\.png/i)
@@ -394,28 +522,44 @@ describe('KavanaghPage report', () => {
   })
 
   it('B3.7 names the corner change and when it happened', async () => {
-    await runWith({
-      ...FAILING_REPORT,
-      gaps: [],
-      cornerChanges: [{ atSeconds: 30, expected: 'topRight', found: 'topLeft' }]
-    })
+    await runWith(
+      withWatermark(FAILING_REPORT, {
+        gaps: [],
+        cornerChanges: [{ atSeconds: 30, expected: 'topRight', found: 'topLeft' }]
+      })
+    )
 
     expect(screen.getByText(/expected top-right, found top-left/i)).toBeInTheDocument()
     expect(screen.getByText(/0:30\.0/, { exact: false })).toBeInTheDocument()
   })
 
-  it('B5.10 states that the checked span was approximated', async () => {
-    await runWith(PASSING_REPORT)
+  it('B5.10 states that the checked span was approximated when no dip was found', async () => {
+    // Both faults are reported rather than one hiding the other (D9): the tail
+    // says there is no dip, and the watermark result says its span was a guess.
+    await runWith({
+      ...FAILING_REPORT,
+      tail: {
+        peakAtSeconds: null,
+        rampSeconds: null,
+        stingSeconds: null,
+        trailingSeconds: null,
+        problems: [{ kind: 'noWhitePeak' }]
+      },
+      sting: null,
+      problemMessages: ['No dip to white found in the closing section.'],
+      notes: ['No dip to white was found, so the watermark was checked over the first…']
+    })
 
-    expect(screen.getByText(/dip to white has not been located/i)).toBeInTheDocument()
+    expect(screen.getByText(/no dip to white found/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/the span is approximate|checked over the first/i)
+    ).toBeInTheDocument()
   })
 
   it('B13.2 says when a non-default threshold was applied', async () => {
-    await runWith({
-      ...PASSING_REPORT,
-      threshold: 0.92,
-      thresholdIsDefault: false
-    })
+    await runWith(
+      withWatermark(PASSING_REPORT, { threshold: 0.92, thresholdIsDefault: false })
+    )
 
     expect(screen.getByText(/0\.920 \(overridden\)/)).toBeInTheDocument()
   })
@@ -455,7 +599,7 @@ describe('KavanaghPage report', () => {
       expect(saveKavanaghEvidence).toHaveBeenCalledWith(
         '/Volumes/Evidence',
         'kavanagh-module',
-        FAILING_REPORT.thumbnails
+        FAILING_REPORT.watermark.thumbnails
       )
     )
     expect(toastSuccess).toHaveBeenCalledWith(
@@ -497,7 +641,7 @@ describe('KavanaghPage report', () => {
     await userEvent.click(screen.getByRole('button', { name: /choose video/i }))
 
     await waitFor(() =>
-      expect(screen.queryByText(/watermark report/i)).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: /^report$/i })).not.toBeInTheDocument()
     )
   })
 })

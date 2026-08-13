@@ -224,25 +224,6 @@ pub fn sampling_frame_size(prepared: &PreparedReferences) -> usize {
     prepared.region_width as usize * prepared.region_height as usize * prepared.regions.len().max(1)
 }
 
-/// Runs the whole watermark check.
-///
-/// `progress` is a plain closure rather than an `AppHandle` so the analysis can be
-/// exercised without a Tauri runtime.
-pub fn analyse(
-    request: &AnalysisRequest,
-    cancel: &watch::Receiver<bool>,
-    progress: &mut dyn FnMut(Phase, f64, &str),
-) -> Result<WatermarkReport, KavanaghError> {
-    // Before the probe, not after it: an out-of-range threshold should cost
-    // nothing to find out about, and spawning ffprobe first would report a
-    // missing file to someone whose actual mistake was the threshold (B13.3).
-    resolve_match_confidence(request.match_threshold)
-        .map_err(|message| KavanaghError::Threshold { message })?;
-
-    let probe = probe_video(request, cancel)?;
-    analyse_with_probe(request, &probe, cancel, progress)
-}
-
 /// The watermark check, given a probe someone else already paid for.
 ///
 /// A whole run probes once and both checks need the result, so `check::run_check`

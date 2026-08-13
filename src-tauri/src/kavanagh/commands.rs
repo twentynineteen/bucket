@@ -1,4 +1,4 @@
-//! Tauri commands for the watermark check (issue #180, stage 2).
+//! Tauri commands for a Kavanagh run (issue #180, stages 2-3).
 //!
 //! Progress and cancellation reuse what BuildProject already established rather
 //! than inventing a third mechanism: `OperationRegistry` hands out an operation id
@@ -23,7 +23,7 @@ use super::check::{run_check, CheckReport};
 use super::discovery::{probe_binary_path, resolve_ffmpeg_tools, FfmpegAvailability};
 use super::error::KavanaghError;
 use super::evidence::{save_evidence, EvidenceItem};
-use super::watermark::{analyse, AnalysisRequest, Phase, WatermarkReport};
+use super::watermark::{AnalysisRequest, Phase};
 
 /// Which run, if any, is in flight.
 ///
@@ -110,97 +110,6 @@ pub struct KavanaghProgressEvent {
 
 /// The event name the frontend listens on.
 pub const KAVANAGH_PROGRESS_EVENT: &str = "kavanagh-progress";
-
-/// Runs the watermark check over one video.
-#[tauri::command]
-pub async fn kavanagh_run_watermark_check(
-    app: AppHandle,
-    registry: State<'_, OperationRegistry>,
-    runs: State<'_, KavanaghRunState>,
-    request: WatermarkCheckRequest,
-) -> Result<WatermarkReport, KavanaghError> {
-    let (ffmpeg, ffprobe) =
-        match resolve_ffmpeg_tools(request.ffmpeg_directory.as_deref(), probe_binary_path) {
-            FfmpegAvailability::Ready { ffmpeg, ffprobe } => (ffmpeg, ffprobe),
-            // Discovery already knows exactly which binary is missing and where it
-            // looked, so the run refuses with that rather than letting a spawn fail.
-            other => {
-                return Err(KavanaghError::Unavailable {
-                    message: describe_unavailable(&other),
-                })
-            }
-        };
-
-    if request.reference_files.is_empty() {
-        return Err(KavanaghError::ReferencePool {
-            message: "There are no watermark reference images to compare against.".to_string(),
-        });
-    }
-
-    let (operation_id, cancel_receiver) = registry.register().await;
-
-    // Claimed after registering so the id in the rejection message and the id the
-    // cancel command uses are the same one.
-    if let Err(busy) = runs.begin(operation_id.clone()) {
-        registry.complete(&operation_id).await;
-        return Err(busy);
-    }
-
-    let analysis = AnalysisRequest {
-        video_path: request.video_path.clone(),
-        ffmpeg,
-        ffprobe,
-        reference_files: request.reference_files.clone(),
-        sting_reference_files: Vec::new(),
-        match_threshold: request.match_threshold,
-        // The watermark-only entry point never measures a dip, so the span falls
-        // back to the tail-window approximation, which the report says out loud.
-        // `kavanagh_run_check` is the one that fills this in (B4.6, B5.10).
-        dip_start_seconds: None,
-    };
-
-    let emit_app = app.clone();
-    let emit_id = operation_id.clone();
-
-    // Blocking: the whole analysis is process spawning and pixel arithmetic, and
-    // running it on the async runtime's worker would stall every other command.
-    let result = tokio::task::spawn_blocking(move || {
-        analyse(
-            &analysis,
-            &cancel_receiver,
-            &mut |phase, percentage, detail| {
-                let _ = emit_app.emit(
-                    KAVANAGH_PROGRESS_EVENT,
-                    KavanaghProgressEvent {
-                        operation_id: emit_id.clone(),
-                        phase,
-                        percentage,
-                        detail: detail.to_string(),
-                    },
-                );
-            },
-        )
-    })
-    .await;
-
-    // Released before returning, on every path: leaving the slot claimed after a
-    // panic would need an app restart to run QC again.
-    runs.finish();
-    registry.complete(&operation_id).await;
-
-    match result {
-        Ok(Ok(report)) => Ok(report),
-        Ok(Err(error)) => {
-            // Logged as well as returned: a QC failure the operator screenshots is
-            // much easier to diagnose against a log line naming the same cause.
-            log::warn!("[QC] watermark check failed: {}", error.message());
-            Err(error)
-        }
-        Err(join_error) => Err(KavanaghError::Io {
-            message: format!("The quality control run did not finish: {}", join_error),
-        }),
-    }
-}
 
 /// Runs both checks over one video and returns a single verdict (D9, B7).
 ///

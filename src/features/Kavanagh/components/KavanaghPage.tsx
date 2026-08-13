@@ -1,13 +1,17 @@
 /**
- * Kavanagh page (issue #180, stages 1-2)
+ * Kavanagh page (issue #180, stages 1-3)
  *
- * Stage 1 established the page and its prerequisite reporting. Stage 2 adds the
- * watermark check: pick a render, run it, watch the phases, read the report.
+ * Pick a render, run it, watch the phases, read the report. One run covers both
+ * checks - the watermark throughout, and the closing dip to white into an
+ * approved sting - reduced to a single verdict (B7).
  *
- * The report's failure thumbnails are held in memory and nothing is written to
- * disk unless the operator uses "Save evidence…" (D15). The tail and sting checks
- * arrive in stage 3, which is why the verdict here is about the watermark alone
- * and the report says out loud that the checked span was approximated.
+ * The report leads with that verdict and the sentences behind it, then shows
+ * each check's own measurements underneath. Both halves are always rendered,
+ * whichever one decided the verdict: an operator should learn everything wrong
+ * with a render in one run rather than fixing one fault to discover the next.
+ *
+ * Failure thumbnails are held in memory and nothing is written to disk unless
+ * the operator uses "Save evidence…" (D15).
  */
 
 import { useApiKeys, useBreadcrumb } from '@shared/hooks'
@@ -20,7 +24,7 @@ import { toast } from 'sonner'
 
 import { pickEvidenceFolder, pickVideoFile, saveKavanaghEvidence } from '../api'
 import { useKavanaghAvailability } from '../hooks/useKavanaghAvailability'
-import { useWatermarkCheck } from '../hooks/useWatermarkCheck'
+import { useKavanaghCheck } from '../hooks/useKavanaghCheck'
 import { asKavanaghError } from '../internal/kavanaghError'
 import { REFERENCE_POOLS, type ReferencePoolStatus } from '../internal/referencePool'
 import {
@@ -31,8 +35,11 @@ import {
   phaseLabel
 } from '../internal/reportFormatting'
 import type {
+  KavanaghCheckReport,
   KavanaghError,
   KavanaghProgressEvent,
+  KavanaghStingReport,
+  KavanaghTailAnalysis,
   KavanaghThumbnail,
   KavanaghWatermarkReport
 } from '../types'
@@ -45,7 +52,7 @@ const KavanaghContent: React.FC = () => {
 
   const { available, reason, pending, pools, poolFiles } = useKavanaghAvailability()
   const { data: settings } = useApiKeys()
-  const { isRunning, progress, report, error, run, cancel, reset } = useWatermarkCheck()
+  const { isRunning, progress, report, error, run, cancel, reset } = useKavanaghCheck()
 
   const [videoPath, setVideoPath] = React.useState<string | null>(null)
 
@@ -63,6 +70,7 @@ const KavanaghContent: React.FC = () => {
     void run({
       videoPath,
       referenceFiles: poolFiles.watermarks,
+      stingReferenceFiles: poolFiles.stings,
       ffmpegDirectory: settings?.ffmpegDirectory ?? null,
       matchThreshold: settings?.kavanaghMatchThreshold
     })
@@ -119,7 +127,7 @@ const KavanaghContent: React.FC = () => {
             {error && <RunFailure error={error} />}
           </section>
 
-          {report && <WatermarkReportView report={report} videoPath={videoPath} />}
+          {report && <CheckReportView report={report} videoPath={videoPath} />}
         </div>
       </div>
     </div>
@@ -229,7 +237,137 @@ const RunFailure: React.FC<{ error: KavanaghError }> = ({ error }) => (
   </div>
 )
 
-/** The report for one completed run. */
+/** The report for one completed run: the verdict, then each check underneath. */
+const CheckReportView: React.FC<{
+  report: KavanaghCheckReport
+  videoPath: string | null
+}> = ({ report, videoPath }) => (
+  <section aria-labelledby="kavanagh-report" className="space-y-4">
+    <h2 id="kavanagh-report" className="text-foreground text-sm font-semibold">
+      Report
+    </h2>
+
+    <VerdictBanner verdict={report.verdict} problems={report.problemMessages} />
+
+    <TailSection tail={report.tail} sting={report.sting} />
+
+    <WatermarkReportView report={report.watermark} videoPath={videoPath} />
+
+    {report.notes.length > 0 && (
+      <ul className="text-muted-foreground space-y-1 text-xs">
+        {report.notes.map((note, index) => (
+          <li key={`${index}-${note.slice(0, 24)}`}>{note}</li>
+        ))}
+      </ul>
+    )}
+  </section>
+)
+
+/**
+ * The one line an operator reads first, and the sentences behind it.
+ *
+ * Three renderings, not two. A warning is neither a pass nor a failure: an
+ * unrecognised sting means the references folder needs a new variant, which is
+ * housekeeping, and rendering it as a failure would train people to ignore
+ * failures (D8, B7.3).
+ */
+const VerdictBanner: React.FC<{
+  verdict: KavanaghCheckReport['verdict']
+  problems: string[]
+}> = ({ verdict, problems }) => {
+  const style =
+    verdict === 'pass'
+      ? 'border-emerald-500/40 bg-emerald-500/10'
+      : verdict === 'warning'
+        ? 'border-amber-500/40 bg-amber-500/10'
+        : 'border-destructive/40 bg-destructive/10'
+
+  const headline =
+    verdict === 'pass'
+      ? 'Passed. The watermark and the closing sting are both correct.'
+      : verdict === 'warning'
+        ? 'Passed with a warning.'
+        : 'Failed.'
+
+  return (
+    <div
+      role="status"
+      className={`flex items-start gap-2 rounded-md border p-3 text-sm ${style}`}
+    >
+      {verdict === 'pass' ? (
+        <CheckCircle2
+          className="mt-0.5 size-4 shrink-0 text-emerald-500"
+          aria-hidden="true"
+        />
+      ) : verdict === 'warning' ? (
+        <AlertTriangle
+          className="mt-0.5 size-4 shrink-0 text-amber-500"
+          aria-hidden="true"
+        />
+      ) : (
+        <XCircle className="text-destructive mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      )}
+      <div className="text-foreground">
+        <p className="font-medium">{headline}</p>
+        {problems.length > 0 && (
+          <ul className="text-muted-foreground mt-1 space-y-1 text-xs">
+            {problems.map((problem, index) => (
+              <li key={`${index}-${problem.slice(0, 24)}`}>{problem}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * What the closing tail measured, whatever the verdict.
+ *
+ * The measurements are shown on a pass as well as a failure. The whole point of
+ * the tolerances is that they are tight enough to catch preset drift, so an
+ * operator arguing with a verdict needs the number that produced it - "ramp
+ * 0.25s" is a diagnosis, "the ramp is wrong" is an argument.
+ */
+const TailSection: React.FC<{
+  tail: KavanaghTailAnalysis
+  sting: KavanaghStingReport | null
+}> = ({ tail, sting }) => (
+  <div>
+    <h3 className="text-foreground mb-1 text-xs font-semibold">Closing tail</h3>
+    <dl className="text-muted-foreground grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+      <dt>Dip to white</dt>
+      <dd>
+        {tail.peakAtSeconds === null
+          ? 'not found'
+          : `peaks at ${formatTime(tail.peakAtSeconds)}`}
+        {tail.rampSeconds !== null && `, over ${tail.rampSeconds.toFixed(2)}s`}
+      </dd>
+
+      <dt>Sting</dt>
+      <dd>
+        {tail.stingSeconds === null ? 'not measured' : `${tail.stingSeconds.toFixed(2)}s`}
+        {sting?.matchedReference
+          ? `, matching ${sting.matchedReference}`
+          : sting?.bestReference
+            ? `, closest ${sting.bestReference}`
+            : ''}
+        {sting && ` at ${sting.bestConfidence.toFixed(4)}`}
+      </dd>
+
+      {sting !== null && sting.freezeMad !== null && (
+        <>
+          <dt>Held steady</dt>
+          <dd>
+            {sting.framesCompared} frames, mean difference {sting.freezeMad.toFixed(2)}
+          </dd>
+        </>
+      )}
+    </dl>
+  </div>
+)
+
+/** What the watermark check measured. */
 const WatermarkReportView: React.FC<{
   report: KavanaghWatermarkReport
   videoPath: string | null
@@ -237,34 +375,14 @@ const WatermarkReportView: React.FC<{
   const passed = report.outcome === 'pass'
 
   return (
-    <section aria-labelledby="kavanagh-report" className="space-y-4">
-      <h2 id="kavanagh-report" className="text-foreground text-sm font-semibold">
-        Watermark report
-      </h2>
-
-      <div
-        className={`flex items-start gap-2 rounded-md border p-3 text-sm ${
-          passed
-            ? 'border-emerald-500/40 bg-emerald-500/10'
-            : 'border-destructive/40 bg-destructive/10'
-        }`}
-      >
-        {passed ? (
-          <CheckCircle2
-            className="mt-0.5 size-4 shrink-0 text-emerald-500"
-            aria-hidden="true"
-          />
-        ) : (
-          <XCircle
-            className="text-destructive mt-0.5 size-4 shrink-0"
-            aria-hidden="true"
-          />
-        )}
-        <div className="text-foreground">
-          <p className="font-medium">
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-foreground mb-1 text-xs font-semibold">Watermark</h3>
+        <div className="text-foreground text-sm">
+          <p>
             {passed
-              ? `Watermark present throughout, ${cornerLabel(report.corner)}.`
-              : 'Watermark check failed.'}
+              ? `Present throughout, ${cornerLabel(report.corner)}.`
+              : 'Missing for part of the render.'}
           </p>
           {/*
             The scores are shown whatever the verdict. Two real renders with equally
@@ -339,7 +457,7 @@ const WatermarkReportView: React.FC<{
       {report.thumbnails.length > 0 && (
         <EvidenceView thumbnails={report.thumbnails} videoPath={videoPath} />
       )}
-    </section>
+    </div>
   )
 }
 

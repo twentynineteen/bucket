@@ -32,7 +32,7 @@ pub mod watermark;
 mod integration_tests;
 
 pub use commands::{
-    kavanagh_cancel_run, kavanagh_run_check, kavanagh_run_watermark_check, kavanagh_save_evidence,
+    kavanagh_cancel_run, kavanagh_run_check, kavanagh_save_evidence,
     KavanaghRunState,
 };
 pub use discovery::kavanagh_detect_ffmpeg;
