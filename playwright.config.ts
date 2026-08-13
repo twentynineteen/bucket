@@ -77,6 +77,11 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] }
     },
     {
+      name: 'folder-picker-dialog-scroll',
+      testMatch: /folder-picker-dialog-scroll\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] }
+    },
+    {
       // Every project here uses an explicit testMatch, so a spec that matches
       // none of them never runs at all. Issue #166.
       name: 'posterframe-backgrounds',
