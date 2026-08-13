@@ -109,6 +109,125 @@ pub const THUMBNAIL_WIDTH: u32 = 480;
 /// end (B11.3).
 pub const MAX_STDERR_BYTES: usize = 8 * 1024;
 
+// ---------------------------------------------------------------------------
+// Tail and sting (stage 3, B5-B7)
+//
+// These are not hand-tuned tolerances around observed footage. The tail is
+// produced by two Premiere preferences - Video Transition Default Duration
+// 1.00s and Still Image Default Duration 5.00s - so the structure is a
+// deterministic consequence of software defaults (A6):
+//
+//   T-5.5s ─── T-5.0s ─── T-4.5s ──────────── T-0s
+//      │          │          │                   │
+//    ramp up   FULL WHITE  settled              end
+//    (0.5s)    (the cut)   └── 4.5s static ──────┘
+//
+// A 1.00s transition applied Center at Cut ramps up for 0.5s, so the peak is
+// the cut, and the 5.00s still begins there. Catching preset drift is the
+// stated purpose of the check, so the tolerances are deliberately tight:
+// loose ones would pass the very drift this exists to find.
+// ---------------------------------------------------------------------------
+
+/// Mean luma at or above which a frame may be the white peak (D5).
+///
+/// Cleared by limited-range white at 235 and full-range at 255, so no ffprobe
+/// `color_range` is consulted - it reads `unknown` on ordinary encodes. Both
+/// measured renders peaked at exactly 235.00.
+pub const WHITE_PEAK_YAVG_MIN: f64 = 232.0;
+
+/// Minimum luma the peak frame's darkest pixel must also reach (D5).
+///
+/// Without this a bright-but-partial frame passes on YAVG alone - a white
+/// title card over dark footage, or a lighting flash. Both measured peaks had
+/// YMIN 235, i.e. the whole frame was white; a frame retaining any genuinely
+/// dark content sits far below this (B5.4).
+pub const WHITE_PEAK_YMIN_MIN: f64 = 200.0;
+
+/// Fractions of the rise used to measure the ramp.
+///
+/// The ramp is measured as a **10-90% rise time**, settled in A7 after three
+/// candidate definitions were compared on two renders: 10-90% measured exactly
+/// 0.400s on both, where baseline-departure varied (0.460 vs 0.480) and
+/// mid-to-peak is a half-measure of a symmetric ramp.
+pub const RAMP_RISE_LOW_FRACTION: f64 = 0.10;
+pub const RAMP_RISE_HIGH_FRACTION: f64 = 0.90;
+
+/// Expected 10-90% rise time, in seconds.
+///
+/// Mathematically exact for a linear dissolve rather than observed: 80% of a
+/// 0.500s half-transition. Measured 0.400s on both renders, variance zero.
+pub const RAMP_NOMINAL_SECONDS: f64 = 0.400;
+
+/// Tolerance either side of the nominal ramp.
+///
+/// Frame quantisation is 0.02s at 50fps and 0.04s at 25fps, so this is several
+/// frames of slack against a measurement that did not vary at all. The window
+/// [0.32, 0.48] still catches every drift worth catching: a hard cut is about
+/// one frame, a 2.00s transition gives 0.8s, and a 0.50s one gives 0.2s.
+pub const RAMP_TOLERANCE_SECONDS: f64 = 0.08;
+
+/// Expected sting duration, from Still Image Default Duration (A6).
+pub const STING_NOMINAL_SECONDS: f64 = 5.00;
+
+/// Tolerance on the sting duration.
+///
+/// Wider than the ramp's because the end of the video is a harder edge to
+/// measure: the container may carry a partial final frame, and a render can be
+/// trimmed a frame or two short. Still far tighter than the failure it exists
+/// to catch, which is a sting of 2s or of 10s (B5.6).
+pub const STING_TOLERANCE_SECONDS: f64 = 0.25;
+
+/// Content allowed after the sting before the video is judged not to end on it.
+///
+/// A stray black frame or two is an artefact of export, not a defect (B5.8).
+/// Two frames is 0.04s at 50fps, so this is generous without admitting a whole
+/// extra shot after the logo.
+pub const TRAILING_TOLERANCE_SECONDS: f64 = 0.20;
+
+/// How long after the peak the sting is considered settled.
+///
+/// The still's opening 0.5s sits underneath the fade from white, so identity
+/// must be matched against what comes after it. Derived rather than intuited:
+/// it is the second half of the 1.00s centred transition (A6). Matching the
+/// first post-peak frame would compare a half-white frame against the JPG.
+pub const STING_SETTLED_OFFSET_SECONDS: f64 = 0.5;
+
+/// Correlation a settled sting frame must reach to identify a reference (D7).
+///
+/// Strict, because the reference *is* the source asset: nothing is composited
+/// over the sting, so only encode and scaling differences are tolerated. The
+/// band is wide despite the strictness - a correct render matched its
+/// reference at 0.9989, while the wrong-resolution variant of the same asset
+/// reached only 0.7869, and two renders' sting frames correlated at 1.0000.
+pub const STING_MATCH_CONFIDENCE: f32 = 0.95;
+
+/// Size both the sting frames and the reference JPGs are scaled to before
+/// being compared.
+///
+/// A fixed size on both sides is what makes the comparison resolution-agnostic,
+/// which matters in practice: both calibration renders carry the *1080p* sting
+/// asset on a UHD timeline, and matched their 1080p reference at 0.9989 while
+/// the 4K variant of the same asset reached only 0.7869 (A5). Small because the
+/// sting is a large flat logo - the identity is in its layout, not its detail -
+/// and 320x180 keeps a full pool comparison to a few million operations.
+pub const STING_COMPARISON_WIDTH: u32 = 320;
+pub const STING_COMPARISON_HEIGHT: u32 = 180;
+
+/// Frames per second sampled across the settled sting.
+///
+/// The hold is ~4.5s, so this takes roughly nine frames: enough for the freeze
+/// check to have something to compare and for identity to be carried by the
+/// worst of several frames rather than one lucky one (B6.7).
+pub const STING_SAMPLE_FPS: f64 = 2.0;
+
+/// Largest mean absolute luma difference across settled sting frames that
+/// still counts as frozen (D7).
+///
+/// A held JPG measured 0.00 on both renders, and 0.01 across renders, so this
+/// is entirely encode noise headroom. Motion, a stray cut inside the hold, or
+/// a wrong layer left visible all move this by tens (B6.5, B6.6).
+pub const STING_FREEZE_MAX_MAD: f64 = 2.0;
+
 /// Validates an operator's match confidence override.
 ///
 /// Rejected rather than clamped (B13.3). Silently clamping 8.5 to 0.999 leaves

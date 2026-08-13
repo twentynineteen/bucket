@@ -47,14 +47,12 @@ use super::thresholds::{
 };
 
 /// Which stage of a run progress refers to.
-///
-/// Stage 3's tail analysis adds a `Tail` variant when it starts emitting one. It
-/// is not declared here in advance: an unconstructed variant is dead code, and the
-/// frontend's union has to grow at the same time anyway.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Phase {
     Probe,
+    /// The closing dip, sting identity and the freeze check (stage 3).
+    Tail,
     Watermark,
     Refine,
 }
@@ -67,6 +65,8 @@ pub struct AnalysisRequest {
     pub ffprobe: String,
     /// Absolute paths of the watermark reference pool, listed by the frontend.
     pub reference_files: Vec<String>,
+    /// Absolute paths of the sting reference pool, listed by the frontend.
+    pub sting_reference_files: Vec<String>,
     /// An operator's advanced override, or `None` for the calibrated default.
     pub match_threshold: Option<f32>,
     /// Where the dip to white begins, once stage 3 can measure it. `None` today.
@@ -233,6 +233,27 @@ pub fn analyse(
     cancel: &watch::Receiver<bool>,
     progress: &mut dyn FnMut(Phase, f64, &str),
 ) -> Result<WatermarkReport, KavanaghError> {
+    // Before the probe, not after it: an out-of-range threshold should cost
+    // nothing to find out about, and spawning ffprobe first would report a
+    // missing file to someone whose actual mistake was the threshold (B13.3).
+    resolve_match_confidence(request.match_threshold)
+        .map_err(|message| KavanaghError::Threshold { message })?;
+
+    let probe = probe_video(request, cancel)?;
+    analyse_with_probe(request, &probe, cancel, progress)
+}
+
+/// The watermark check, given a probe someone else already paid for.
+///
+/// A whole run probes once and both checks need the result, so `check::run_check`
+/// calls this rather than `analyse` - an ffprobe per check is cheap but it is
+/// still a second process spawn for an answer already in hand.
+pub fn analyse_with_probe(
+    request: &AnalysisRequest,
+    probe: &VideoProbe,
+    cancel: &watch::Receiver<bool>,
+    progress: &mut dyn FnMut(Phase, f64, &str),
+) -> Result<WatermarkReport, KavanaghError> {
     let mut percentage = MonotonicPercentage::default();
     let report = |progress: &mut dyn FnMut(Phase, f64, &str),
                   percentage: &mut MonotonicPercentage,
@@ -251,19 +272,10 @@ pub fn analyse(
         progress,
         &mut percentage,
         Phase::Probe,
-        2.0,
-        "Reading the video",
-    );
-    let probe = probe_video(request, cancel)?;
-
-    report(
-        progress,
-        &mut percentage,
-        Phase::Probe,
         8.0,
         "Preparing reference watermarks",
     );
-    let prepared = prepare_references(request, &probe, cancel)?;
+    let prepared = prepare_references(request, probe, cancel)?;
 
     let span = watermark_span(
         probe.duration_seconds,
@@ -437,7 +449,7 @@ pub fn analyse(
 }
 
 /// Asks ffprobe for the dimensions and duration the whole check depends on.
-fn probe_video(
+pub fn probe_video(
     request: &AnalysisRequest,
     cancel: &watch::Receiver<bool>,
 ) -> Result<VideoProbe, KavanaghError> {
@@ -447,7 +459,10 @@ fn probe_video(
         "-select_streams".to_string(),
         "v:0".to_string(),
         "-show_entries".to_string(),
-        "stream=width,height".to_string(),
+        // nb_frames and r_frame_rate are what the true end is derived from, in
+        // preference to the container's duration field (A7). Both are optional:
+        // a stream that cannot report them falls back to the duration.
+        "stream=width,height,nb_frames,r_frame_rate".to_string(),
         "-show_entries".to_string(),
         "format=duration".to_string(),
         "-of".to_string(),
@@ -880,7 +895,7 @@ pub fn file_name_of(path: &str) -> String {
 }
 
 /// Turns a process failure into the error the frontend renders.
-fn run_error(error: RunError) -> KavanaghError {
+pub fn run_error(error: RunError) -> KavanaghError {
     match error {
         RunError::Cancelled => KavanaghError::Cancelled {
             message: "The quality control run was cancelled.".to_string(),

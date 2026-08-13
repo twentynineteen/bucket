@@ -197,6 +197,7 @@ fn run(
             video_path: video.to_string_lossy().to_string(),
             ffmpeg: ffmpeg.to_string(),
             ffprobe: ffprobe.to_string(),
+            sting_reference_files: Vec::new(),
             reference_files: references
                 .iter()
                 .map(|p| p.to_string_lossy().to_string())
@@ -458,6 +459,7 @@ fn b11_1_reports_phases_with_a_percentage_that_never_goes_backwards() {
             ffmpeg: ffmpeg.clone(),
             ffprobe: ffprobe.clone(),
             reference_files: vec![right.to_string_lossy().to_string()],
+            sting_reference_files: Vec::new(),
             match_threshold: None,
             dip_start_seconds: None,
         },
@@ -527,6 +529,7 @@ fn b13_3_refuses_an_out_of_range_threshold_before_spawning_anything() {
             ffmpeg,
             ffprobe,
             reference_files: vec![],
+            sting_reference_files: Vec::new(),
             match_threshold: Some(4.2),
             dip_start_seconds: None,
         },

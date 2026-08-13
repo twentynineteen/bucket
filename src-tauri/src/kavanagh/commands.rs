@@ -19,6 +19,7 @@ use tauri::{AppHandle, Emitter, State};
 // app uses. Nothing in `build_project/transfer.rs` is touched.
 use crate::build_project::OperationRegistry;
 
+use super::check::{run_check, CheckReport};
 use super::discovery::{probe_binary_path, resolve_ffmpeg_tools, FfmpegAvailability};
 use super::error::KavanaghError;
 use super::evidence::{save_evidence, EvidenceItem};
@@ -86,6 +87,10 @@ pub struct WatermarkCheckRequest {
     pub video_path: String,
     /// The watermark pool's files, as listed by the frontend's pool resolution.
     pub reference_files: Vec<String>,
+    /// The sting pool's files. Defaulted so the watermark-only command, which
+    /// has no use for them, does not have to send an empty array.
+    #[serde(default)]
+    pub sting_reference_files: Vec<String>,
     /// The Settings ffmpeg directory, when one is configured.
     pub ffmpeg_directory: Option<String>,
     /// An advanced override; omitted means the calibrated default (B13.1).
@@ -146,10 +151,11 @@ pub async fn kavanagh_run_watermark_check(
         ffmpeg,
         ffprobe,
         reference_files: request.reference_files.clone(),
+        sting_reference_files: Vec::new(),
         match_threshold: request.match_threshold,
-        // Stage 2 has no tail analysis, so the dip start is never known and the
-        // span falls back to the tail-window approximation, which the report says
-        // out loud. Stage 3 fills this in (B4.6, B5.10).
+        // The watermark-only entry point never measures a dip, so the span falls
+        // back to the tail-window approximation, which the report says out loud.
+        // `kavanagh_run_check` is the one that fills this in (B4.6, B5.10).
         dip_start_seconds: None,
     };
 
@@ -193,6 +199,99 @@ pub async fn kavanagh_run_watermark_check(
         Err(join_error) => Err(KavanaghError::Io {
             message: format!("The quality control run did not finish: {}", join_error),
         }),
+    }
+}
+
+/// Runs both checks over one video and returns a single verdict (D9, B7).
+///
+/// The tail is measured first so the watermark pass knows where to stop, which
+/// is why this is one command rather than the frontend calling two and stitching
+/// the results together.
+#[tauri::command]
+pub async fn kavanagh_run_check(
+    app: AppHandle,
+    registry: State<'_, OperationRegistry>,
+    runs: State<'_, KavanaghRunState>,
+    request: WatermarkCheckRequest,
+) -> Result<CheckReport, KavanaghError> {
+    let (ffmpeg, ffprobe) =
+        match resolve_ffmpeg_tools(request.ffmpeg_directory.as_deref(), probe_binary_path) {
+            FfmpegAvailability::Ready { ffmpeg, ffprobe } => (ffmpeg, ffprobe),
+            other => {
+                return Err(KavanaghError::Unavailable {
+                    message: describe_unavailable(&other),
+                })
+            }
+        };
+
+    if request.reference_files.is_empty() {
+        return Err(KavanaghError::ReferencePool {
+            message: "There are no watermark reference images to compare against.".to_string(),
+        });
+    }
+
+    // An empty sting pool is deliberately not refused here: the sting check
+    // reports it as an unavailable pool and the tail is still worth measuring,
+    // which is what B6.4 asks for.
+
+    let (operation_id, cancel_receiver) = registry.register().await;
+
+    if let Err(busy) = runs.begin(operation_id.clone()) {
+        registry.complete(&operation_id).await;
+        return Err(busy);
+    }
+
+    let analysis = AnalysisRequest {
+        video_path: request.video_path.clone(),
+        ffmpeg,
+        ffprobe,
+        reference_files: request.reference_files.clone(),
+        sting_reference_files: request.sting_reference_files.clone(),
+        match_threshold: request.match_threshold,
+        // Measured by the run itself rather than supplied.
+        dip_start_seconds: None,
+    };
+
+    let mut emit = progress_emitter(app.clone(), operation_id.clone());
+
+    let result = tokio::task::spawn_blocking(move || {
+        run_check(&analysis, &cancel_receiver, &mut emit)
+    })
+    .await;
+
+    runs.finish();
+    registry.complete(&operation_id).await;
+
+    match result {
+        Ok(Ok(report)) => Ok(report),
+        Ok(Err(error)) => {
+            log::warn!("[Kavanagh] check failed: {}", error.message());
+            Err(error)
+        }
+        Err(join_error) => Err(KavanaghError::Io {
+            message: format!("The quality control run did not finish: {}", join_error),
+        }),
+    }
+}
+
+/// Builds the progress closure both entry points hand to the analysis.
+///
+/// Owned rather than borrowed because the analysis runs on a blocking thread and
+/// outlives the command's stack frame.
+fn progress_emitter(
+    app: AppHandle,
+    operation_id: String,
+) -> impl FnMut(Phase, f64, &str) + Send + 'static {
+    move |phase, percentage, detail| {
+        let _ = app.emit(
+            KAVANAGH_PROGRESS_EVENT,
+            KavanaghProgressEvent {
+                operation_id: operation_id.clone(),
+                phase,
+                percentage,
+                detail: detail.to_string(),
+            },
+        );
     }
 }
 
