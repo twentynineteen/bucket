@@ -635,12 +635,16 @@ describe('usePosterFrameForUpload - rebrand template (#189)', () => {
 
     const { result } = renderPosterFrameHook()
     await waitFor(() => expect(result.current.backgrounds).toEqual(REBRAND_FILES))
+    await waitFor(() => expect(result.current.selectedBackground).toBe(REBRAND_FILES[0]))
 
     act(() => {
       result.current.setTemplate('classic')
     })
 
     await waitFor(() => expect(result.current.backgrounds).toEqual(BACKGROUNDS))
+    // B3.8 (amendment): the preview repopulates with the new folder's first
+    // background rather than sitting empty after the switch.
+    await waitFor(() => expect(result.current.selectedBackground).toBe(BACKGROUNDS[0]))
   })
 
   it('b5_3_makes_no_sprout_request_when_the_floor_is_still_too_large', async () => {

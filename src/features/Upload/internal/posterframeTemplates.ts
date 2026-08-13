@@ -32,7 +32,11 @@ export const POSTERFRAME_TEMPLATES: Record<PosterframeTemplateId, PosterframeTem
   classic: {
     id: 'classic',
     label: 'Classic',
-    reference: { width: 1280, height: 720 },
+    // The production classic backgrounds are 1920x1080; the pre-template code
+    // drew these coordinates unscaled onto them, so 1080p is the size at
+    // which output must stay pixel-identical. (An earlier 1280x720 assumption
+    // shipped text at 1.5x on every real background - #189 field report.)
+    reference: { width: 1920, height: 1080 },
     box: { x: 292, width: 380 },
     anchor: { firstBaselineY: 467 },
     fontSize: 37,

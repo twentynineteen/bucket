@@ -5,6 +5,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -25,6 +26,7 @@ function panelState(
     selectedBackground: BACKGROUNDS[0],
     onBackgroundChange: vi.fn(),
     template: 'rebrand',
+    onTemplateChange: vi.fn(),
     offAspect: false,
     text: 'Managing Change',
     onTextChange: vi.fn(),
@@ -325,18 +327,36 @@ describe('SetPosterFrameDialog - request in flight and failure', () => {
   })
 })
 
-describe('SetPosterFrameDialog - template visibility and aspect warning (#189)', () => {
-  it('b3_2_names_the_active_template_even_without_a_selector', () => {
-    // This dialog deliberately has no selector - it follows the shared
-    // last-used choice - so the user must at least see which template will
-    // render before sending a frame to Sprout (review round, finding 4).
+describe('SetPosterFrameDialog - template choice and aspect warning (#189)', () => {
+  it('b3_2_offers_the_template_choice_showing_the_shared_last_used_value', () => {
+    // Amendment (issue #189): this surface gets its own selector rather than
+    // silently following the shared choice.
     render(
       <SetPosterFrameDialog
         {...baseProps({ posterFrame: panelState({ template: 'rebrand' }) })}
       />
     )
 
-    expect(screen.getByText(/rebrand/i)).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /template/i })).toHaveTextContent(
+      /rebrand/i
+    )
+  })
+
+  it('b3_2_choosing_a_template_reaches_the_handler', async () => {
+    const user = userEvent.setup()
+    const onTemplateChange = vi.fn()
+    render(
+      <SetPosterFrameDialog
+        {...baseProps({
+          posterFrame: panelState({ template: 'rebrand', onTemplateChange })
+        })}
+      />
+    )
+
+    await user.click(screen.getByRole('combobox', { name: /template/i }))
+    await user.click(await screen.findByRole('option', { name: /classic/i }))
+
+    expect(onTemplateChange).toHaveBeenCalledWith('classic')
   })
 
   it('b4_2_warns_when_the_background_is_off_aspect', () => {

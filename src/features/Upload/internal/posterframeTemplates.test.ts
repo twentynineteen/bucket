@@ -37,8 +37,12 @@ function fixedWidthFont(advance = 500, unitsPerEm = 1000) {
 }
 
 describe('resolvePosterframeLayout - reference resolutions (#189)', () => {
-  it('b1_1_classic_at_1280x720_yields_exactly_todays_values', () => {
-    const layout = resolvePosterframeLayout('classic', 1280, 720, METRICS)
+  it('b1_1_classic_at_1920x1080_yields_exactly_todays_values', () => {
+    // The production classic backgrounds are 1920x1080 (confirmed against
+    // the real folder after the first build placed text at 1.5x); the old
+    // hard-coded coordinates were designed for that size, so THAT is the
+    // reference where output must be pixel-identical.
+    const layout = resolvePosterframeLayout('classic', 1920, 1080, METRICS)
 
     expect(layout.x).toBe(292)
     expect(layout.maxWidth).toBe(380)
@@ -69,8 +73,8 @@ describe('resolvePosterframeLayout - reference resolutions (#189)', () => {
 
 describe('resolvePosterframeLayout - uniform scaling (#189)', () => {
   it('b1_3_scales_every_classic_value_by_the_height_ratio', () => {
-    const layout = resolvePosterframeLayout('classic', 1920, 1080, METRICS)
-    const scale = 1080 / 720
+    const layout = resolvePosterframeLayout('classic', 1280, 720, METRICS)
+    const scale = 720 / 1080
 
     expect(layout.x).toBeCloseTo(292 * scale, 5)
     expect(layout.maxWidth).toBeCloseTo(380 * scale, 5)
@@ -93,12 +97,12 @@ describe('resolvePosterframeLayout - uniform scaling (#189)', () => {
   })
 
   it('b1_3_uses_the_height_ratio_even_when_the_width_ratio_differs', () => {
-    // A 4:3 image: width would give x1.0, height gives x1.5. Height must win
-    // for both axes, or wrap decisions become resolution-dependent.
-    const layout = resolvePosterframeLayout('classic', 1280, 1080, METRICS)
+    // Width ratio here is 1.0 while height is 0.5. Height must win for both
+    // axes, or wrap decisions become resolution-dependent.
+    const layout = resolvePosterframeLayout('classic', 1920, 540, METRICS)
 
-    expect(layout.fontSize).toBeCloseTo(37 * 1.5, 5)
-    expect(layout.x).toBeCloseTo(292 * 1.5, 5)
+    expect(layout.fontSize).toBeCloseTo(37 * 0.5, 5)
+    expect(layout.x).toBeCloseTo(292 * 0.5, 5)
   })
 })
 
@@ -123,7 +127,7 @@ describe('wrapPosterframeTitle (#189)', () => {
     // space and adds letterSpacing per glyph. Reproduce a known wrap from
     // those rules so a "tidier" rewrite that shifts Classic line breaks fails.
     const font = fixedWidthFont(400)
-    const layout = resolvePosterframeLayout('classic', 1280, 720, METRICS)
+    const layout = resolvePosterframeLayout('classic', 1920, 1080, METRICS)
     // glyph width = 400/1000 * 37 = 14.8px + 1.5 spacing = 16.3px per glyph.
     // 'Strategic Thinking ' = 19 glyphs = 309.7px (fits 380);
     // 'Strategic Thinking Now ' = 23 glyphs = 374.9px (still fits);
@@ -140,7 +144,7 @@ describe('wrapPosterframeTitle (#189)', () => {
     // on one line and shift every existing Classic thumbnail's breaks
     // (review round, finding 6).
     const font = fixedWidthFont(400)
-    const layout = resolvePosterframeLayout('classic', 1280, 720, METRICS)
+    const layout = resolvePosterframeLayout('classic', 1920, 1080, METRICS)
 
     const lines = wrapPosterframeTitle(font, 'Strategic Thinking Nowz', layout)
 

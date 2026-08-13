@@ -42,11 +42,12 @@ export interface SetPosterFramePanelState {
   selectedBackground: string | null
   onBackgroundChange: (path: string) => void
   /**
-   * Which branding template lays the frame out (issue #189). Shown, not
-   * chosen: this dialog follows the shared last-used choice, and the user
-   * must at least see which template will render before sending to Sprout.
+   * Which branding template lays the frame out (issue #189, amended). The
+   * value is the shared last-used choice; changing it here changes it for
+   * every surface, same as the other selectors.
    */
   template: PosterframeTemplateId
+  onTemplateChange: (template: PosterframeTemplateId) => void
   /** The previewed background deviates from 16:9, so text may sit oddly. */
   offAspect: boolean
   text: string
@@ -118,14 +119,23 @@ export function SetPosterFrameDialog({
             </Alert>
           ) : (
             <>
-              {/* Shown, not chosen: the shared last-used template applies here
-                  (issue #189); switch it from the Posterframe page or the
-                  upload dialog. */}
-              <div className="space-y-1">
-                <Label>Template</Label>
-                <p className="text-muted-foreground text-sm">
-                  {posterFrame.template === 'rebrand' ? 'Rebrand' : 'Classic'}
-                </p>
+              <div className="space-y-2">
+                <Label htmlFor="card-poster-frame-template">Template</Label>
+                <Select
+                  value={posterFrame.template}
+                  onValueChange={(value) =>
+                    posterFrame.onTemplateChange(value as PosterframeTemplateId)
+                  }
+                  disabled={working}
+                >
+                  <SelectTrigger id="card-poster-frame-template" className="w-full">
+                    <SelectValue placeholder="Select a template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="classic">Classic</SelectItem>
+                    <SelectItem value="rebrand">Rebrand</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

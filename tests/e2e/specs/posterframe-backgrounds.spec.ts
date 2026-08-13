@@ -28,7 +28,7 @@ test.describe('Posterframe page', () => {
     await page.goto(POSTERFRAME_ROUTE)
 
     await expect(
-      page.getByText(`Cannot read background folder: ${DEFAULT_FOLDER}`)
+      page.getByText(`Cannot read Classic background folder: ${DEFAULT_FOLDER}`)
     ).toBeVisible()
     await expect(
       page.getByRole('button', { name: /select background folder/i })
@@ -42,7 +42,7 @@ test.describe('Posterframe page', () => {
     await page.goto(POSTERFRAME_ROUTE)
 
     await expect(
-      page.getByText(`Cannot read background folder: ${DEFAULT_FOLDER}`)
+      page.getByText(`Cannot read Classic background folder: ${DEFAULT_FOLDER}`)
     ).toBeVisible()
     // The os error detail belongs in the log, not on screen.
     await expect(page.getByText(/os error 13/i)).toBeHidden()
@@ -59,7 +59,7 @@ test.describe('Posterframe page', () => {
     await installBackgroundMocks(page, { configured: false })
     await page.goto(POSTERFRAME_ROUTE)
 
-    await expect(page.getByText(/no default background folder configured/i)).toBeVisible()
+    await expect(page.getByText(/no classic background folder configured/i)).toBeVisible()
     // Nothing to list, so nothing should have been attempted.
     expect(await attemptedListings(page)).toEqual([])
   })
@@ -70,7 +70,7 @@ test.describe('Posterframe page', () => {
 
     await expect(page.getByText(/could not read your settings/i)).toBeVisible()
     // Must not claim nothing is configured: that is the contradiction #166 fixed.
-    await expect(page.getByText(/no default background folder configured/i)).toBeHidden()
+    await expect(page.getByText(/no classic background folder configured/i)).toBeHidden()
   })
 
   test('recovers for the session via the picker, leaving the default alone', async ({
@@ -80,7 +80,7 @@ test.describe('Posterframe page', () => {
     await page.goto(POSTERFRAME_ROUTE)
 
     await expect(
-      page.getByText(`Cannot read background folder: ${DEFAULT_FOLDER}`)
+      page.getByText(`Cannot read Classic background folder: ${DEFAULT_FOLDER}`)
     ).toBeVisible()
     await page.getByRole('button', { name: /select background folder/i }).click()
 
@@ -113,7 +113,7 @@ test.describe('Posterframe page', () => {
     await page.goto(POSTERFRAME_ROUTE)
 
     await expect(
-      page.getByText(`Cannot read background folder: ${DEFAULT_FOLDER}`)
+      page.getByText(`Cannot read Classic background folder: ${DEFAULT_FOLDER}`)
     ).toBeVisible()
     await expect(page.getByText(/select a background to preview/i)).toBeVisible()
     await expect(page.getByRole('button', { name: /generate thumbnail/i })).toBeDisabled()

@@ -257,7 +257,9 @@ describe('usePosterframeCanvas - classic paint geometry (#189 B4.1, B1.5)', () =
     const { font, getPathCalls } = paintRecordingFont()
     // @ts-expect-error - partial Font stub is enough for the paint pass
     vi.mocked(loadFont).mockResolvedValue(font)
-    mockImageSize = { width: 1280, height: 720 }
+    // Classic's reference resolution: the size the production backgrounds
+    // actually are, where output must be pixel-identical to the old code.
+    mockImageSize = { width: 1920, height: 1080 }
 
     const { result } = renderHook(() => usePosterframeCanvas())
     const canvas = document.createElement('canvas')
@@ -275,7 +277,7 @@ describe('usePosterframeCanvas - classic paint geometry (#189 B4.1, B1.5)', () =
     return { rect: ctx.rect, getPathCalls }
   }
 
-  test('b4_1_classic_clip_rect_and_first_baseline_are_unchanged_at_1280x720', async () => {
+  test('b4_1_classic_clip_rect_and_first_baseline_are_unchanged_at_1920x1080', async () => {
     // 'Title ' = 6 glyphs = 97.8px, one line. The historic clip rect is
     // (x=292, top=baseline-fontSize=430, w=380, h=lines*45) and the first
     // glyph paints at the 467px baseline with the 37px font. Deriving the

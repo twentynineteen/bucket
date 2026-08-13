@@ -247,6 +247,7 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
           selectedBackground: cardPosterFrame.selectedBackground,
           onBackgroundChange: cardPosterFrame.setSelectedBackground,
           template: cardPosterFrame.template,
+          onTemplateChange: cardPosterFrame.setTemplate,
           offAspect: cardPosterFrame.offAspect,
           text: cardPosterFrame.text,
           onTextChange: cardPosterFrame.setText,
