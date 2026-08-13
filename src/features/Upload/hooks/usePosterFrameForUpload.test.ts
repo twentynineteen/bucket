@@ -51,11 +51,16 @@ vi.mock('../internal/posterFrame', async (importOriginal) => {
   return {
     ...actual,
     exportCanvasJpeg: vi.fn().mockResolvedValue(new Uint8Array([9, 9, 9, 9])),
+    exportCanvasJpegUnder: vi.fn().mockResolvedValue(new Uint8Array([9, 9, 9, 9])),
     posterFrameDelay: vi.fn().mockResolvedValue(undefined)
   }
 })
 
-import { exportCanvasJpeg, posterFrameDelay } from '../internal/posterFrame'
+import {
+  exportCanvasJpeg,
+  exportCanvasJpegUnder,
+  posterFrameDelay
+} from '../internal/posterFrame'
 
 const BACKGROUNDS = ['/backgrounds/wbs-blue.jpg', '/backgrounds/wbs-red.png']
 const PROJECT_PATH = '/projects/demo'
@@ -104,7 +109,11 @@ beforeAll(() => {
 
 beforeEach(() => {
   localStorage.clear()
-  useAppStore.setState({ defaultBackgroundFolder: '/backgrounds' })
+  useAppStore.setState({
+    defaultBackgroundFolder: '/backgrounds',
+    rebrandBackgroundFolder: null,
+    posterframeTemplateChoice: null
+  })
   vi.mocked(api.listDirectory).mockResolvedValue({ status: 'ok', files: BACKGROUNDS })
   vi.mocked(api.posterFrameFontAvailable).mockResolvedValue(true)
   vi.mocked(api.setSproutPosterFrame).mockResolvedValue(undefined)
@@ -119,6 +128,7 @@ beforeEach(() => {
     assets: { poster_frames: ['https://sproutvideo.com/custom-poster.jpg'] }
   })
   vi.mocked(exportCanvasJpeg).mockResolvedValue(new Uint8Array([9, 9, 9, 9]))
+  vi.mocked(exportCanvasJpegUnder).mockResolvedValue(new Uint8Array([9, 9, 9, 9]))
   vi.mocked(posterFrameDelay).mockResolvedValue(undefined)
 })
 
@@ -173,7 +183,7 @@ describe('usePosterFrameForUpload - accurate unavailable reasons (#166)', () => 
 
     await waitFor(() =>
       expect(result.current.unavailableReason).toBe(
-        'Cannot read background folder: /backgrounds'
+        'Cannot read Classic background folder: /backgrounds'
       )
     )
     expect(result.current.unavailableReason).not.toMatch(/no image/i)
@@ -190,7 +200,7 @@ describe('usePosterFrameForUpload - accurate unavailable reasons (#166)', () => 
 
     await waitFor(() =>
       expect(result.current.unavailableReason).toBe(
-        'Cannot read background folder: /backgrounds'
+        'Cannot read Classic background folder: /backgrounds'
       )
     )
     // The detail belongs in the log, not in front of the user.
@@ -217,7 +227,7 @@ describe('usePosterFrameForUpload - accurate unavailable reasons (#166)', () => 
 
     await waitFor(() =>
       expect(result.current.unavailableReason).toBe(
-        'The background folder contains no image files.'
+        'The Classic background folder contains no image files.'
       )
     )
   })
@@ -361,7 +371,8 @@ describe('usePosterFrameForUpload - Sprout upload', () => {
       await result.current.run('vid1', 'sprout-key')
     })
 
-    expect(exportCanvasJpeg).toHaveBeenCalled()
+    // Issue #189: the export goes through the size-limited pipeline.
+    expect(exportCanvasJpegUnder).toHaveBeenCalled()
     expect(api.setSproutPosterFrame).toHaveBeenCalledWith(
       'vid1',
       'sprout-key',
@@ -587,5 +598,93 @@ describe('usePosterFrameForUpload - optional local copy', () => {
     })
 
     expect(api.savePosterFrameCopy).not.toHaveBeenCalled()
+  })
+})
+
+describe('usePosterFrameForUpload - rebrand template (#189)', () => {
+  const REBRAND_FOLDER = '/backgrounds/rebrand'
+  const REBRAND_FILES = ['/backgrounds/rebrand/panel.jpg']
+
+  it('b3_2_exposes_the_template_and_a_way_to_change_it', async () => {
+    const { result } = renderPosterFrameHook()
+
+    expect(result.current.template).toBe('classic')
+    expect(typeof result.current.setTemplate).toBe('function')
+  })
+
+  it('b3_5_starts_on_rebrand_once_its_folder_is_configured', async () => {
+    useAppStore.setState({ rebrandBackgroundFolder: REBRAND_FOLDER })
+    vi.mocked(api.listDirectory).mockResolvedValue({
+      status: 'ok',
+      files: REBRAND_FILES
+    })
+
+    const { result } = renderPosterFrameHook()
+
+    expect(result.current.template).toBe('rebrand')
+    await waitFor(() => expect(api.listDirectory).toHaveBeenCalledWith(REBRAND_FOLDER))
+  })
+
+  it('b3_1_switching_template_switches_the_background_folder', async () => {
+    useAppStore.setState({ rebrandBackgroundFolder: REBRAND_FOLDER })
+    vi.mocked(api.listDirectory).mockImplementation(async (folder: string) =>
+      folder === REBRAND_FOLDER
+        ? { status: 'ok', files: REBRAND_FILES }
+        : { status: 'ok', files: BACKGROUNDS }
+    )
+
+    const { result } = renderPosterFrameHook()
+    await waitFor(() => expect(result.current.backgrounds).toEqual(REBRAND_FILES))
+    await waitFor(() => expect(result.current.selectedBackground).toBe(REBRAND_FILES[0]))
+
+    act(() => {
+      result.current.setTemplate('classic')
+    })
+
+    await waitFor(() => expect(result.current.backgrounds).toEqual(BACKGROUNDS))
+    // B3.8 (amendment): the preview repopulates with the new folder's first
+    // background rather than sitting empty after the switch.
+    await waitFor(() => expect(result.current.selectedBackground).toBe(BACKGROUNDS[0]))
+  })
+
+  it('b5_3_makes_no_sprout_request_when_the_floor_is_still_too_large', async () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ enabled: true, saveCopy: false }))
+    vi.mocked(exportCanvasJpegUnder).mockRejectedValue(
+      new Error('Poster frame is 600 KB even at quality 0.5 - the limit is 500 KB')
+    )
+
+    const rendered = renderPosterFrameHook()
+    await waitFor(() => expect(rendered.result.current.available).toBe(true))
+    rendered.result.current.canvasRef.current = document.createElement('canvas')
+
+    let outcome: Awaited<ReturnType<typeof rendered.result.current.run>> | undefined
+    await act(async () => {
+      outcome = await rendered.result.current.run('vid1', 'sprout-key')
+    })
+
+    expect(outcome?.ok).toBe(false)
+    expect(rendered.result.current.status).toBe('error')
+    expect(api.setSproutPosterFrame).not.toHaveBeenCalled()
+  })
+
+  it('b5_2_uploads_the_bytes_the_compression_pipeline_produced', async () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ enabled: true, saveCopy: false }))
+    const compressed = new Uint8Array([7, 7, 7])
+    vi.mocked(exportCanvasJpegUnder).mockResolvedValue(compressed)
+
+    const rendered = renderPosterFrameHook()
+    await waitFor(() => expect(rendered.result.current.available).toBe(true))
+    rendered.result.current.canvasRef.current = document.createElement('canvas')
+
+    await act(async () => {
+      await rendered.result.current.run('vid1', 'sprout-key')
+    })
+
+    expect(api.setSproutPosterFrame).toHaveBeenCalledWith(
+      'vid1',
+      'sprout-key',
+      compressed,
+      'posterframe-Managing_Change.jpg'
+    )
   })
 })

@@ -8,25 +8,43 @@
  * first-run app.
  */
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import Posterframe from './Posterframe'
 import { useBackgroundFolder } from '../hooks/useBackgroundFolder'
 import { useFileSelection } from '../hooks/useFileSelection'
+import { usePosterframeTemplate } from '../hooks/usePosterframeTemplate'
+import { PosterFrameTooLargeError, exportCanvasJpegUnder } from '../internal/posterFrame'
+import { openFolderDialog, saveFile } from '../api'
+import { toast } from 'sonner'
 
 vi.mock('../hooks/useBackgroundFolder', () => ({ useBackgroundFolder: vi.fn() }))
 vi.mock('../hooks/useFileSelection', () => ({ useFileSelection: vi.fn() }))
+vi.mock('../hooks/usePosterframeTemplate', () => ({ usePosterframeTemplate: vi.fn() }))
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
+
+// The JPEG pipeline touches canvas.toBlob, which jsdom does not implement;
+// the page's routing through the SHARED pipeline is what is under test (#189
+// B5.4), not the encoding itself.
+vi.mock('../internal/posterFrame', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../internal/posterFrame')>()
+  return { ...actual, exportCanvasJpegUnder: vi.fn() }
+})
 
 // Canvas work cannot run in jsdom; the page's rendering decisions are what
-// these tests are about.
+// these tests are about. Mutable so individual tests can hand the page a
+// "ready" canvas or an off-aspect background.
+const canvasHook = vi.hoisted(() => ({
+  canvasRef: { current: null as HTMLCanvasElement | null },
+  draw: vi.fn().mockResolvedValue(undefined),
+  fontStatus: 'available',
+  offAspect: false
+}))
 vi.mock('../hooks/usePosterframeCanvas', () => ({
-  usePosterframeCanvas: () => ({
-    canvasRef: { current: null },
-    draw: vi.fn(),
-    fontStatus: 'available'
-  })
+  usePosterframeCanvas: () => canvasHook
 }))
 vi.mock('../hooks/usePosterframeAutoRedraw', () => ({
   usePosterframeAutoRedraw: vi.fn()
@@ -79,9 +97,21 @@ function selectionState(selectedFilePath: string | null = null) {
   } as unknown as ReturnType<typeof useFileSelection>
 }
 
-function renderPage(state: FolderState = {}, selected: string | null = null) {
+function templateState(
+  template: 'classic' | 'rebrand' = 'classic',
+  setTemplate = vi.fn()
+) {
+  return { template, setTemplate } as ReturnType<typeof usePosterframeTemplate>
+}
+
+function renderPage(
+  state: FolderState = {},
+  selected: string | null = null,
+  template: 'classic' | 'rebrand' = 'classic'
+) {
   vi.mocked(useBackgroundFolder).mockReturnValue(folderState(state))
   vi.mocked(useFileSelection).mockReturnValue(selectionState(selected))
+  vi.mocked(usePosterframeTemplate).mockReturnValue(templateState(template))
   return render(<Posterframe />)
 }
 
@@ -207,11 +237,128 @@ describe('Posterframe page - selection coherence (#166)', () => {
       ...selectionState('/backgrounds/wbs/gone.jpg'),
       clearSelection
     } as unknown as ReturnType<typeof useFileSelection>)
+    vi.mocked(usePosterframeTemplate).mockReturnValue(templateState())
 
     render(<Posterframe />)
 
     // Rendering a preview from a folder the page is simultaneously warning it
     // cannot read is exactly the mixed message this issue exists to remove.
     expect(clearSelection).toHaveBeenCalled()
+  })
+})
+
+describe('Posterframe page - rebrand template (#189)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    canvasHook.canvasRef.current = null
+    canvasHook.offAspect = false
+    canvasHook.draw.mockResolvedValue(undefined)
+  })
+
+  it('b3_1_offers_the_template_choice', () => {
+    renderPage({ status: 'ready', files: ['/backgrounds/wbs/a.jpg'] })
+
+    expect(screen.getByRole('combobox', { name: /template/i })).toBeInTheDocument()
+  })
+
+  it('b3_1_choosing_a_template_reaches_the_shared_setter', async () => {
+    // The full chain: open the Radix select, pick Rebrand, and the shared
+    // setter is called. Asserting only the displayed value left the
+    // onValueChange wiring unverified (review round, finding 9).
+    const user = userEvent.setup()
+    const setTemplate = vi.fn()
+    vi.mocked(useBackgroundFolder).mockReturnValue(
+      folderState({ status: 'ready', files: ['/backgrounds/wbs/a.jpg'] })
+    )
+    vi.mocked(useFileSelection).mockReturnValue(selectionState(null))
+    vi.mocked(usePosterframeTemplate).mockReturnValue(
+      templateState('classic', setTemplate)
+    )
+    render(<Posterframe />)
+
+    await user.click(screen.getByRole('combobox', { name: /template/i }))
+    await user.click(await screen.findByRole('option', { name: /rebrand/i }))
+
+    expect(setTemplate).toHaveBeenCalledWith('rebrand')
+  })
+
+  it('b3_1_hands_the_selected_template_to_the_folder_hook', () => {
+    renderPage(
+      { status: 'ready', files: ['/backgrounds/rebrand/a.jpg'] },
+      null,
+      'rebrand'
+    )
+
+    expect(vi.mocked(useBackgroundFolder)).toHaveBeenCalledWith('rebrand')
+    expect(screen.getByRole('combobox', { name: /template/i })).toHaveTextContent(
+      /rebrand/i
+    )
+  })
+
+  it('b4_2_warns_when_the_background_is_off_aspect', () => {
+    canvasHook.offAspect = true
+
+    renderPage(
+      { status: 'ready', files: ['/backgrounds/wbs/odd.jpg'] },
+      '/backgrounds/wbs/odd.jpg'
+    )
+
+    expect(screen.getByText(/16:9/)).toBeInTheDocument()
+  })
+
+  it('b4_2_shows_no_aspect_warning_for_a_16_9_background', () => {
+    renderPage(
+      { status: 'ready', files: ['/backgrounds/wbs/a.jpg'] },
+      '/backgrounds/wbs/a.jpg'
+    )
+
+    expect(screen.queryByText(/16:9/)).not.toBeInTheDocument()
+  })
+
+  it('b5_4_saves_through_the_shared_compression_pipeline', async () => {
+    const user = userEvent.setup()
+    const bytes = new Uint8Array([1, 2, 3])
+    canvasHook.canvasRef.current = {} as HTMLCanvasElement
+    vi.mocked(exportCanvasJpegUnder).mockResolvedValue(bytes)
+    vi.mocked(openFolderDialog).mockResolvedValue('/exports')
+
+    renderPage(
+      { status: 'ready', files: ['/backgrounds/wbs/a.jpg'] },
+      '/backgrounds/wbs/a.jpg'
+    )
+
+    await user.type(screen.getByPlaceholderText(/enter video title/i), 'Managing Change')
+    await user.click(screen.getByRole('button', { name: /choose save path/i }))
+    await user.click(screen.getByRole('button', { name: /generate thumbnail/i }))
+
+    await waitFor(() => expect(saveFile).toHaveBeenCalled())
+    expect(exportCanvasJpegUnder).toHaveBeenCalled()
+    expect(vi.mocked(saveFile).mock.calls[0][1]).toBe(bytes)
+  })
+
+  it('b5_3_writes_no_file_when_even_the_quality_floor_is_too_large', async () => {
+    const user = userEvent.setup()
+    canvasHook.canvasRef.current = {} as HTMLCanvasElement
+    // The real error class, so this exercises the specific-message branch
+    // rather than the generic fallback toast (review round, finding 7).
+    vi.mocked(exportCanvasJpegUnder).mockRejectedValue(
+      new PosterFrameTooLargeError(600 * 1024, 500 * 1024)
+    )
+    vi.mocked(openFolderDialog).mockResolvedValue('/exports')
+
+    renderPage(
+      { status: 'ready', files: ['/backgrounds/wbs/a.jpg'] },
+      '/backgrounds/wbs/a.jpg'
+    )
+
+    await user.type(screen.getByPlaceholderText(/enter video title/i), 'Managing Change')
+    await user.click(screen.getByRole('button', { name: /choose save path/i }))
+    await user.click(screen.getByRole('button', { name: /generate thumbnail/i }))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    // The specific size/limit message reaches the user, not the generic
+    // "could not render" fallback.
+    expect(vi.mocked(toast.error).mock.calls[0][0]).toMatch(/600 KB/)
+    expect(saveFile).not.toHaveBeenCalled()
   })
 })

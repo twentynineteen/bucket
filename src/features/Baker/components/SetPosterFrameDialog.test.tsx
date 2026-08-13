@@ -5,6 +5,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -24,6 +25,9 @@ function panelState(
     backgrounds: BACKGROUNDS,
     selectedBackground: BACKGROUNDS[0],
     onBackgroundChange: vi.fn(),
+    template: 'rebrand',
+    onTemplateChange: vi.fn(),
+    offAspect: false,
     text: 'Managing Change',
     onTextChange: vi.fn(),
     previewImageUrl: 'blob:preview',
@@ -320,5 +324,58 @@ describe('SetPosterFrameDialog - request in flight and failure', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /retry/i }))
     expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('SetPosterFrameDialog - template choice and aspect warning (#189)', () => {
+  it('b3_2_offers_the_template_choice_showing_the_shared_last_used_value', () => {
+    // Amendment (issue #189): this surface gets its own selector rather than
+    // silently following the shared choice.
+    render(
+      <SetPosterFrameDialog
+        {...baseProps({ posterFrame: panelState({ template: 'rebrand' }) })}
+      />
+    )
+
+    expect(screen.getByRole('combobox', { name: /template/i })).toHaveTextContent(
+      /rebrand/i
+    )
+  })
+
+  it('b3_2_choosing_a_template_reaches_the_handler', async () => {
+    const user = userEvent.setup()
+    const onTemplateChange = vi.fn()
+    render(
+      <SetPosterFrameDialog
+        {...baseProps({
+          posterFrame: panelState({ template: 'rebrand', onTemplateChange })
+        })}
+      />
+    )
+
+    await user.click(screen.getByRole('combobox', { name: /template/i }))
+    await user.click(await screen.findByRole('option', { name: /classic/i }))
+
+    expect(onTemplateChange).toHaveBeenCalledWith('classic')
+  })
+
+  it('b4_2_warns_when_the_background_is_off_aspect', () => {
+    render(
+      <SetPosterFrameDialog
+        {...baseProps({ posterFrame: panelState({ offAspect: true }) })}
+      />
+    )
+
+    expect(screen.getByText(/16:9/)).toBeInTheDocument()
+  })
+
+  it('b4_2_shows_no_aspect_warning_for_a_16_9_background', () => {
+    render(
+      <SetPosterFrameDialog
+        {...baseProps({ posterFrame: panelState({ offAspect: false }) })}
+      />
+    )
+
+    expect(screen.queryByText(/16:9/)).not.toBeInTheDocument()
   })
 })

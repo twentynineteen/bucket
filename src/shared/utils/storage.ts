@@ -19,6 +19,9 @@ export interface ApiKeys {
   trelloBoardId?: string // DEBT-014: Configurable Trello board ID
   // Add more services as needed.
   defaultBackgroundFolder?: string
+  /** Backgrounds for the Rebrand posterframe template (issue #189). The
+   * pre-existing defaultBackgroundFolder key serves the Classic template. */
+  rebrandBackgroundFolder?: string
   /** Default Sprout upload folder id (issue #155). Undefined means root. */
   sproutDefaultFolderId?: string
   /** Human-readable label for the default folder, so the UI can render it
@@ -44,9 +47,13 @@ const API_KEYS_FILE = 'api_keys.json' // New file for storing API keys as JSON
  *  (issue #167). */
 const LEGACY_API_KEY_FILE = 'api_key.txt'
 
-// default background folder state
-const setDefaultBackgroundFolder = (path: string) =>
-  appStore.getState().setDefaultBackgroundFolder(path)
+// Background folder state. Normalised to null: a settings file written
+// before a key existed hydrates `undefined`, which any `!== null` check
+// reads as "configured" (issue #189, review round finding 1).
+const setDefaultBackgroundFolder = (path: string | undefined) =>
+  appStore.getState().setDefaultBackgroundFolder(path ?? null)
+const setRebrandBackgroundFolder = (path: string | undefined) =>
+  appStore.getState().setRebrandBackgroundFolder(path ?? null)
 
 // Get full path for storing API keys.
 //
@@ -66,6 +73,7 @@ export const saveApiKeys = async (apiKeys: ApiKeys): Promise<void> => {
     setTrelloApiToken(apiKeys.trelloToken)
     if (apiKeys.trelloBoardId !== undefined) setTrelloBoardId(apiKeys.trelloBoardId)
     setDefaultBackgroundFolder(apiKeys.defaultBackgroundFolder)
+    setRebrandBackgroundFolder(apiKeys.rebrandBackgroundFolder)
     if (apiKeys.ollamaUrl) setOllamaUrl(apiKeys.ollamaUrl)
 
     const filePath = await getFilePath()
@@ -93,6 +101,7 @@ export const loadApiKeys = async (): Promise<ApiKeys> => {
     setTrelloApiToken(result.trelloToken)
     if (result.trelloBoardId !== undefined) setTrelloBoardId(result.trelloBoardId)
     setDefaultBackgroundFolder(result.defaultBackgroundFolder)
+    setRebrandBackgroundFolder(result.rebrandBackgroundFolder)
     if (result.ollamaUrl) setOllamaUrl(result.ollamaUrl)
 
     return result

@@ -33,7 +33,7 @@ import {
   type BackgroundMockOptions
 } from '../fixtures/posterframe-backgrounds.fixture'
 
-const CANNOT_READ = `Cannot read background folder: ${DEFAULT_FOLDER}`
+const CANNOT_READ = `Cannot read Classic background folder: ${DEFAULT_FOLDER}`
 
 /**
  * Walk Baker as far as the selected project's detail panel.
@@ -105,7 +105,7 @@ test.describe('Baker > Add Video dialog', () => {
     await openUploadTabWithFile(page)
 
     await expect(page.getByText(/contains no image files/i)).toBeVisible()
-    await expect(page.getByText(/cannot read background folder/i)).toBeHidden()
+    await expect(page.getByText(/cannot read classic background folder/i)).toBeHidden()
   })
 
   // Regression guard: passes before this change too (B6.4 unchanged).
@@ -118,7 +118,7 @@ test.describe('Baker > Add Video dialog', () => {
     await openUploadTabWithFile(page)
 
     await expect(page.getByText(/requires Cabrito\.otf/i)).toBeVisible()
-    await expect(page.getByText(/cannot read background folder/i)).toBeHidden()
+    await expect(page.getByText(/cannot read classic background folder/i)).toBeHidden()
   })
 
   // Regression guard: the happy path must survive the new gating.
@@ -133,7 +133,7 @@ test.describe('Baker > Add Video dialog', () => {
     await expect(
       page.getByRole('checkbox', { name: /create branded poster frame/i })
     ).toBeEnabled()
-    await expect(page.getByText(/cannot read background folder/i)).toBeHidden()
+    await expect(page.getByText(/cannot read classic background folder/i)).toBeHidden()
     await expect(page.getByText(/contains no image files/i)).toBeHidden()
   })
 })
@@ -165,7 +165,7 @@ test.describe('Baker > Set poster frame dialog', () => {
     await expect(dialog.getByText(/could not read your settings/i)).toBeVisible()
     // Must not send the user to Settings to re-enter a path that is already set.
     await expect(
-      dialog.getByText(/no default background folder configured/i)
+      dialog.getByText(/no classic background folder configured/i)
     ).toBeHidden()
   })
 })

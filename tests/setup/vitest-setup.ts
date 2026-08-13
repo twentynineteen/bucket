@@ -270,6 +270,18 @@ const mockBrowserApis = () => {
     Element.prototype.scrollTo = vi.fn()
   }
 
+  // Radix Select calls these on open/highlight; jsdom implements neither.
+  // Without them a click on a Select trigger throws and the option list
+  // never opens, so select wiring was untestable (issue #189, review round).
+  if (typeof Element.prototype.hasPointerCapture === 'undefined') {
+    Element.prototype.hasPointerCapture = vi.fn(() => false)
+    Element.prototype.setPointerCapture = vi.fn()
+    Element.prototype.releasePointerCapture = vi.fn()
+  }
+  if (typeof Element.prototype.scrollIntoView === 'undefined') {
+    Element.prototype.scrollIntoView = vi.fn()
+  }
+
   // Mock fetch if not available
   if (typeof global.fetch === 'undefined') {
     global.fetch = vi.fn()

@@ -20,7 +20,17 @@ import { useBreadcrumb } from '@shared/hooks'
 import { useFileSelection } from '../hooks/useFileSelection'
 import { usePosterframeAutoRedraw } from '../hooks/usePosterframeAutoRedraw'
 import { usePosterframeCanvas } from '../hooks/usePosterframeCanvas'
+import { usePosterframeTemplate } from '../hooks/usePosterframeTemplate'
 import { useZoomPan } from '../hooks/useZoomPan'
+import {
+  POSTERFRAME_TEMPLATES,
+  POSTERFRAME_TEMPLATE_IDS
+} from '../internal/posterframeTemplates'
+import {
+  POSTER_FRAME_MAX_BYTES,
+  PosterFrameTooLargeError,
+  exportCanvasJpegUnder
+} from '../internal/posterFrame'
 import { openFolder, openFolderDialog, saveFile } from '../api'
 import {
   AlertTriangle,
@@ -38,10 +48,32 @@ import { toast } from 'sonner'
 
 import { logger } from '@shared/utils'
 
+/**
+ * Off-aspect notice for the live preview (issue #189 B4.2). A warning, not a
+ * block: the layout scales by height and still renders, but the design
+ * assumes 16:9. Owns its visibility so the page component stays simple.
+ */
+const AspectWarning: React.FC<{ offAspect: boolean; hasPreview: boolean }> = ({
+  offAspect,
+  hasPreview
+}) => {
+  if (!offAspect || !hasPreview) return null
+  return (
+    <p role="alert" className="text-warning mb-3 flex items-start gap-1.5 text-xs">
+      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span>
+        This background is not 16:9, so the title text may sit oddly on the final
+        thumbnail.
+      </span>
+    </p>
+  )
+}
+
 const PosterframeContent: React.FC = () => {
   const [videoTitle, setVideoTitle] = useState('')
   const [savePath, setSavePath] = useState<string | null>(null)
 
+  const { template, setTemplate } = usePosterframeTemplate()
   const {
     files: backgroundFiles,
     loadFolder,
@@ -51,10 +83,10 @@ const PosterframeContent: React.FC = () => {
     folderInUse,
     defaultFolder,
     isSessionOverride
-  } = useBackgroundFolder()
+  } = useBackgroundFolder(template)
   const { selectedFilePath, selectedFileBlob, selectFile, clearSelection } =
     useFileSelection()
-  const { canvasRef, draw, fontStatus } = usePosterframeCanvas()
+  const { canvasRef, draw, fontStatus, offAspect } = usePosterframeCanvas()
   // Toast exactly once when we first discover the font isn't installed —
   // otherwise the user gets a blank thumbnail with no explanation and no
   // diagnostic, exactly the silent-failure mode this fix is closing.
@@ -76,11 +108,12 @@ const PosterframeContent: React.FC = () => {
     { label: 'Posterframe' }
   ])
 
-  // Auto-redraw canvas when image or title changes
+  // Auto-redraw canvas when image, title or template changes
   usePosterframeAutoRedraw({
     draw,
     imageUrl: selectedFileBlob,
-    title: videoTitle
+    title: videoTitle,
+    templateId: template
   })
 
   // Auto-select first file when background files load
@@ -116,39 +149,38 @@ const PosterframeContent: React.FC = () => {
 
     // Force a synchronous-relative-to-this-handler redraw before snapshotting.
     // The auto-redraw hook debounces by 300ms, so a quick "type-then-save"
-    // sequence can leave a pending redraw in flight when toBlob fires. Awaiting
-    // a fresh draw here guarantees the canvas reflects the current image+title
-    // when we capture it.
+    // sequence can leave a pending redraw in flight when the export fires.
+    // Awaiting a fresh draw here guarantees the canvas reflects the current
+    // image+title+template when we capture it.
+    const canvas = canvasRef.current
+    let bytes: Uint8Array
     try {
-      await draw(selectedFileBlob, videoTitle)
+      await draw(selectedFileBlob, videoTitle, template)
+      // The shared pipeline compresses down to Sprout's 500KB limit, so a
+      // file saved here is guaranteed uploadable later; nothing is written
+      // when even the quality floor cannot fit it (issue #189 B5.3, B5.4).
+      bytes = await exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES)
     } catch (err) {
-      logger.error('Pre-save draw failed:', err)
-      toast.error('Could not render the thumbnail. Please try again.')
+      logger.error('Thumbnail export failed:', err)
+      toast.error(
+        err instanceof PosterFrameTooLargeError
+          ? err.message
+          : 'Could not render the thumbnail. Please try again.'
+      )
       return
     }
 
-    const canvas = canvasRef.current
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        toast.error('Failed to generate thumbnail')
-        return
-      }
+    const fileName = `posterframe-${videoTitle.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`
+    const fullPath = `${savePath}/${fileName}`
 
-      const arrayBuffer = await blob.arrayBuffer()
-      const uint8Array = new Uint8Array(arrayBuffer)
-
-      const fileName = `posterframe-${videoTitle.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`
-      const fullPath = `${savePath}/${fileName}`
-
-      try {
-        await saveFile(fullPath, uint8Array)
-        toast.success(`Thumbnail saved at: ${fullPath}`)
-        openFolder(savePath)
-      } catch (err) {
-        logger.error('Save failed:', err)
-        toast.error('Error saving file. Please check permissions and try again.')
-      }
-    }, 'image/jpeg')
+    try {
+      await saveFile(fullPath, bytes)
+      toast.success(`Thumbnail saved at: ${fullPath}`)
+      openFolder(savePath)
+    } catch (err) {
+      logger.error('Save failed:', err)
+      toast.error('Error saving file. Please check permissions and try again.')
+    }
   }
 
   // Canvas zoom and drag logic
@@ -201,6 +233,24 @@ const PosterframeContent: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
+                  {/* The rebrand transition runs both brands side by side, so
+                      the template is a per-thumbnail choice (issue #189). */}
+                  <Select
+                    value={template}
+                    onValueChange={(value) => setTemplate(value as typeof template)}
+                  >
+                    <SelectTrigger className="w-full" aria-label="Template">
+                      <SelectValue placeholder="Select a template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {POSTERFRAME_TEMPLATE_IDS.map((id) => (
+                        <SelectItem key={id} value={id}>
+                          {POSTERFRAME_TEMPLATES[id].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                   {/*
                     Which folder is in use was never shown before, so a dead
                     configured path was indistinguishable from no configuration
@@ -368,6 +418,11 @@ const PosterframeContent: React.FC = () => {
                         Preview your posterframe with zoom and pan controls
                       </p>
                     </div>
+
+                    <AspectWarning
+                      offAspect={offAspect}
+                      hasPreview={!!selectedFileBlob}
+                    />
 
                     {selectedFileBlob ? (
                       <div

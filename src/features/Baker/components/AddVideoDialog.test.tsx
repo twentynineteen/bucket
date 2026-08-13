@@ -4,6 +4,7 @@
  */
 
 import { fireEvent, render as baseRender, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -40,6 +41,8 @@ function posterFrameState(
     backgrounds: BACKGROUNDS,
     selectedBackground: BACKGROUNDS[0],
     onBackgroundChange: vi.fn(),
+    template: 'classic',
+    onTemplateChange: vi.fn(),
     text: 'Managing Change',
     onTextChange: vi.fn(),
     previewImageUrl: 'blob:preview',
@@ -479,5 +482,75 @@ describe('AddVideoDialog - upload message severity (UPLOAD-02)', () => {
     render(<AddVideoDialog {...messageProps({ text, severity: 'error' })} />)
 
     expect(screen.getByRole('alert')).not.toHaveTextContent('[object Object]')
+  })
+})
+
+describe('AddVideoDialog - poster frame template (#189)', () => {
+  it('b3_2_offers_the_template_choice_once_the_option_is_enabled', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          posterFrame: posterFrameState({ enabled: true, template: 'rebrand' })
+        })}
+      />
+    )
+
+    expect(screen.getByRole('combobox', { name: /template/i })).toHaveTextContent(
+      /rebrand/i
+    )
+  })
+
+  it('b3_2_choosing_a_template_reaches_the_handler', async () => {
+    // Full chain through the Radix select (review round, finding 9).
+    const user = userEvent.setup()
+    const onTemplateChange = vi.fn()
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          posterFrame: posterFrameState({ enabled: true, onTemplateChange })
+        })}
+      />
+    )
+
+    await user.click(screen.getByRole('combobox', { name: /template/i }))
+    await user.click(await screen.findByRole('option', { name: /rebrand/i }))
+
+    expect(onTemplateChange).toHaveBeenCalledWith('rebrand')
+  })
+
+  it('b3_2_shows_no_template_choice_while_the_option_is_off', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({ posterFrame: posterFrameState({ enabled: false }) })}
+      />
+    )
+
+    expect(screen.queryByRole('combobox', { name: /template/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('AddVideoDialog - poster frame aspect warning (#189)', () => {
+  it('b4_2_warns_when_the_background_is_off_aspect', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          posterFrame: posterFrameState({ enabled: true, offAspect: true })
+        })}
+      />
+    )
+
+    expect(screen.getByText(/16:9/)).toBeInTheDocument()
+  })
+
+  it('b4_2_shows_no_aspect_warning_for_a_16_9_background', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          posterFrame: posterFrameState({ enabled: true, offAspect: false })
+        })}
+      />
+    )
+
+    expect(screen.queryByText(/16:9/)).not.toBeInTheDocument()
   })
 })

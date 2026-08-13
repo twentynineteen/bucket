@@ -55,6 +55,7 @@ vi.mock('@shared/store/useAppStore', () => ({
       setTrelloApiToken: vi.fn(),
       setTrelloBoardId: vi.fn(),
       setDefaultBackgroundFolder: vi.fn(),
+      setRebrandBackgroundFolder: vi.fn(),
       setOllamaUrl: vi.fn()
     }))
   }
