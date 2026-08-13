@@ -1,0 +1,125 @@
+/**
+ * useKavanaghAvailability (issue #180, stage 1)
+ *
+ * Owns the three prerequisite checks QC needs before it can run — the ffmpeg
+ * toolchain, the watermark pool and the sting pool — and reduces them to one
+ * verdict the page can render.
+ *
+ * The composition itself lives in `internal/availability.ts` as a pure function,
+ * so the priority rules are tested without React or Tauri in the way.
+ */
+
+import { useApiKeys } from '@shared/hooks'
+import { queryKeys } from '@shared/lib'
+import { logger } from '@shared/utils'
+import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+
+import { detectFfmpeg, listReferencePool } from '../api'
+import {
+  resolveKavanaghAvailability,
+  type KavanaghAvailability
+} from '../internal/availability'
+import {
+  resolveReferencePoolState,
+  type ReferencePool,
+  type ReferencePoolState
+} from '../internal/referencePool'
+
+export interface UseKavanaghAvailabilityResult extends KavanaghAvailability {
+  /** Per-pool state, so Settings can show both at once rather than only the first fault. */
+  pools: Record<ReferencePool, ReferencePoolState>
+  /**
+   * The reference files found in each pool.
+   *
+   * The listing already happens here, and a run needs the paths rather than the
+   * summary state, so they are returned rather than listed a second time.
+   */
+  poolFiles: Record<ReferencePool, string[]>
+  /** The configured reference folder, or null when unset. */
+  referenceFolder: string | null
+}
+
+export function useKavanaghAvailability(): UseKavanaghAvailabilityResult {
+  const {
+    data: settings,
+    isPending: settingsPending,
+    isError: settingsError
+  } = useApiKeys()
+
+  const referenceFolder = settings?.kavanaghReferenceFolder ?? null
+  const ffmpegDirectory = settings?.ffmpegDirectory ?? null
+  const settingsKnown = !settingsPending && !settingsError
+
+  const { data: ffmpeg } = useQuery({
+    queryKey: queryKeys.kavanagh.ffmpeg(ffmpegDirectory),
+    queryFn: () => detectFfmpeg(ffmpegDirectory),
+    enabled: settingsKnown,
+    // A binary that is not installed will not appear within a retry window, and
+    // the shared default would spend ~7s of backoff before saying anything.
+    retry: false
+  })
+
+  const watermarks = usePool(
+    'watermarks',
+    referenceFolder,
+    settingsPending,
+    settingsError
+  )
+  const stings = usePool('stings', referenceFolder, settingsPending, settingsError)
+
+  const availability = resolveKavanaghAvailability({
+    ffmpeg: ffmpeg ?? null,
+    watermarks: watermarks.state,
+    stings: stings.state
+  })
+
+  return {
+    ...availability,
+    pools: { watermarks: watermarks.state, stings: stings.state },
+    poolFiles: { watermarks: watermarks.files, stings: stings.files },
+    referenceFolder
+  }
+}
+
+/** Resolves one pool's listing and state, plus the files it holds. */
+function usePool(
+  pool: ReferencePool,
+  folder: string | null,
+  settingsPending: boolean,
+  settingsError: boolean
+): { state: ReferencePoolState; files: string[] } {
+  const settingsKnown = !settingsPending && !settingsError
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: queryKeys.kavanagh.referencePool(folder, pool),
+    queryFn: async () => {
+      if (!folder) return null
+      return listReferencePool(folder, pool)
+    },
+    enabled: settingsKnown && !!folder,
+    retry: false
+  })
+
+  // In an effect, not the render body: an unrelated re-render would otherwise
+  // log the same failure again and bury the first occurrence.
+  const detail = data?.status === 'unreadable' ? data.detail : null
+  useEffect(() => {
+    if (detail !== null) {
+      logger.error(`QC ${pool} pool unreadable (${folder}): ${detail}`)
+    }
+  }, [detail, folder, pool])
+
+  return {
+    state: resolveReferencePoolState({
+      pool,
+      settingsPending,
+      settingsError,
+      folder,
+      isLoading,
+      isError,
+      listing: data ?? null
+    }),
+    files: data?.status === 'ok' ? data.files : []
+  }
+}

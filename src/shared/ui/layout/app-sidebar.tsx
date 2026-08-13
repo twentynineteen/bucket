@@ -83,8 +83,8 @@ const data = {
           url: '/upload/trello'
         },
         {
-          title: 'Quality control',
-          url: '/upload/quality-control'
+          title: 'Kavanagh',
+          url: '/upload/kavanagh'
         }
         // 'Transcription' (/upload/otter) hidden from sidebar — feature currently unused.
         // Route remains registered in AppRouter so it can be re-enabled by restoring this item.
@@ -133,8 +133,8 @@ const data = {
           url: '/settings/general#trello'
         },
         {
-          title: 'Quality control',
-          url: '/settings/general#quality-control'
+          title: 'Kavanagh',
+          url: '/settings/general#kavanagh'
         }
       ]
     }
