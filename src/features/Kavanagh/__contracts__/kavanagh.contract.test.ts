@@ -29,10 +29,10 @@ describe('Kavanagh barrel shape', () => {
     expect(typeof barrel.useKavanaghAvailability).toBe('function')
   })
 
-  it('exports the watermark run hook the upload flow will consume in stage 4', async () => {
+  it('exports the run hook the upload flow will consume in stage 4', async () => {
     const barrel = await import('../index')
 
-    expect(typeof barrel.useWatermarkCheck).toBe('function')
+    expect(typeof barrel.useKavanaghCheck).toBe('function')
   })
 
   it('does not leak internal helpers through the barrel', async () => {
@@ -82,22 +82,26 @@ describe('Kavanagh I/O boundary', () => {
     expect(calls[0].args).toMatchObject({ customDir: null })
   })
 
-  it('routes a watermark run through the kavanagh_run_watermark_check command', async () => {
+  it('routes a run through the kavanagh_run_check command, with both pools', async () => {
     const calls = captureInvokes()
-    const { runWatermarkCheck } = await import('../api')
+    const { runKavanaghCheck } = await import('../api')
 
-    await runWatermarkCheck({
+    await runKavanaghCheck({
       videoPath: '/Volumes/Renders/module.mp4',
       referenceFiles: ['/refs/Watermarks/right.png'],
+      stingReferenceFiles: ['/refs/Stings/current.jpg'],
       ffmpegDirectory: null,
       matchThreshold: 0.92
     })
 
-    expect(calls[0].cmd).toBe('kavanagh_run_watermark_check')
+    expect(calls[0].cmd).toBe('kavanagh_run_check')
+    // Both pools travel in one request: the tail has to run before the watermark
+    // pass to tell it where to stop, so they cannot be two calls (D9).
     expect(calls[0].args).toMatchObject({
       request: {
         videoPath: '/Volumes/Renders/module.mp4',
         referenceFiles: ['/refs/Watermarks/right.png'],
+        stingReferenceFiles: ['/refs/Stings/current.jpg'],
         ffmpegDirectory: null,
         matchThreshold: 0.92
       }
@@ -106,11 +110,12 @@ describe('Kavanagh I/O boundary', () => {
 
   it('sends a null threshold rather than omitting it, so the default applies', async () => {
     const calls = captureInvokes()
-    const { runWatermarkCheck } = await import('../api')
+    const { runKavanaghCheck } = await import('../api')
 
-    await runWatermarkCheck({
+    await runKavanaghCheck({
       videoPath: '/a.mp4',
-      referenceFiles: ['/refs/right.png']
+      referenceFiles: ['/refs/right.png'],
+      stingReferenceFiles: []
     })
 
     // An omitted key would arrive as a missing argument rather than an explicit

@@ -90,6 +90,115 @@ pub struct VideoProbe {
     pub width: u32,
     pub height: u32,
     pub duration_seconds: f64,
+    /// Frames in the stream, when ffprobe could count them.
+    pub frame_count: Option<u64>,
+    /// Frames per second, parsed from the `num/den` ffprobe prints.
+    pub frame_rate: Option<f64>,
+}
+
+impl VideoProbe {
+    /// Where the video actually ends, preferring `nb_frames / fps` over the
+    /// container's duration field (A7).
+    ///
+    /// Not pedantry. One measured render reports a container duration of
+    /// 166.633991s while its true end is 166.620s - 8331 frames at 50fps. The
+    /// tail is measured backwards from the end, so a 14ms error is a systematic
+    /// bias applied to every structural measurement: it puts a peak that is
+    /// exactly at T-5.000s at T-5.014s instead. Falls back to the container
+    /// value when either field is missing, which is the pre-A7 behaviour.
+    pub fn end_seconds(&self) -> f64 {
+        match (self.frame_count, self.frame_rate) {
+            (Some(frames), Some(fps)) if frames > 0 && fps > 0.0 => frames as f64 / fps,
+            _ => self.duration_seconds,
+        }
+    }
+}
+
+/// One frame's luma statistics, as `signalstats` reported them.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LumaSample {
+    pub at_seconds: f64,
+    /// Mean luma over the frame.
+    pub yavg: f64,
+    /// Darkest pixel in the frame.
+    pub ymin: f64,
+}
+
+/// Parses a `signalstats,metadata=print` stream into per-frame luma samples.
+///
+/// The filter prints a frame header and then one `key=value` line per metadata
+/// entry, so values are accumulated until the next header closes the frame:
+///
+/// ```text
+/// frame:0    pts:0       pts_time:0
+/// lavfi.signalstats.YAVG=16.5
+/// lavfi.signalstats.YMIN=0
+/// ```
+///
+/// A frame missing either statistic is dropped rather than defaulted. Zero is a
+/// meaningful luma, so defaulting would invent a black frame, and a run of
+/// invented black frames is exactly the shape of a dip to white's approach.
+pub fn parse_signalstats(stdout: &str) -> Vec<LumaSample> {
+    let mut samples = Vec::new();
+    let mut at: Option<f64> = None;
+    let mut yavg: Option<f64> = None;
+    let mut ymin: Option<f64> = None;
+
+    // Closes the frame currently being accumulated, if it is complete.
+    fn flush(
+        samples: &mut Vec<LumaSample>,
+        at: Option<f64>,
+        yavg: Option<f64>,
+        ymin: Option<f64>,
+    ) {
+        if let (Some(at_seconds), Some(yavg), Some(ymin)) = (at, yavg, ymin) {
+            samples.push(LumaSample {
+                at_seconds,
+                yavg,
+                ymin,
+            });
+        }
+    }
+
+    for line in stdout.lines() {
+        let line = line.trim();
+
+        if let Some(rest) = line.strip_prefix("frame:") {
+            flush(&mut samples, at, yavg, ymin);
+            at = rest
+                .split_whitespace()
+                .find_map(|token| token.strip_prefix("pts_time:"))
+                .and_then(|value| value.parse::<f64>().ok());
+            yavg = None;
+            ymin = None;
+            continue;
+        }
+
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+
+        match key.trim() {
+            "lavfi.signalstats.YAVG" => yavg = value.trim().parse().ok(),
+            "lavfi.signalstats.YMIN" => ymin = value.trim().parse().ok(),
+            _ => {}
+        }
+    }
+
+    flush(&mut samples, at, yavg, ymin);
+    samples
+}
+
+/// Parses the `num/den` form ffprobe prints for a frame rate.
+///
+/// `0/0` appears for streams with no meaningful rate and must not become a
+/// division by zero or an fps of zero.
+fn parse_frame_rate(value: &str) -> Option<f64> {
+    let (num, den) = value.split_once('/')?;
+    let num: f64 = num.trim().parse().ok()?;
+    let den: f64 = den.trim().parse().ok()?;
+
+    (den > 0.0 && num > 0.0).then_some(num / den)
 }
 
 /// Why a file cannot be analysed, in the operator's terms.
@@ -127,6 +236,8 @@ pub fn parse_probe_output(stdout: &str) -> Result<VideoProbe, ProbeProblem> {
     let mut width: Option<u32> = None;
     let mut height: Option<u32> = None;
     let mut duration: Option<f64> = None;
+    let mut frame_count: Option<u64> = None;
+    let mut frame_rate: Option<f64> = None;
 
     for line in stdout.lines() {
         let Some((key, value)) = line.split_once('=') else {
@@ -141,6 +252,12 @@ pub fn parse_probe_output(stdout: &str) -> Result<VideoProbe, ProbeProblem> {
             // it must not become 0.0 - a zero duration would silently check
             // nothing and report a pass.
             "duration" => duration = value.parse().ok().filter(|d: &f64| *d > 0.0),
+            // Both optional: a stream that cannot report them still gets checked,
+            // just with the container duration as the end (see end_seconds).
+            "nb_frames" => frame_count = value.parse().ok().filter(|f: &u64| *f > 0),
+            "r_frame_rate" | "avg_frame_rate" => {
+                frame_rate = frame_rate.or_else(|| parse_frame_rate(value))
+            }
             _ => {}
         }
     }
@@ -157,6 +274,8 @@ pub fn parse_probe_output(stdout: &str) -> Result<VideoProbe, ProbeProblem> {
             width: w,
             height: h,
             duration_seconds: d,
+            frame_count,
+            frame_rate,
         }),
         (_, _, None) => Err(ProbeProblem::MissingDuration),
         _ => Err(ProbeProblem::UnreadableDimensions),
@@ -236,7 +355,9 @@ frame=3 fps=0.0 q=-0.0 Lsize=N/A time=00:00:05.00";
             Ok(VideoProbe {
                 width: 1080,
                 height: 1920,
-                duration_seconds: 144.0
+                duration_seconds: 144.0,
+                frame_count: None,
+                frame_rate: None
             })
         );
     }
@@ -294,5 +415,110 @@ frame=3 fps=0.0 q=-0.0 Lsize=N/A time=00:00:05.00";
             parse_probe_output(stdout),
             Err(ProbeProblem::UnreadableDimensions)
         );
+    }
+
+    #[test]
+    fn reads_luma_statistics_per_frame_from_real_metadata_output() {
+        // Verbatim from `signalstats,metadata=print:file=-`, with the entries
+        // this does not read left in: the parser must skip them rather than be
+        // confused by them.
+        let stdout = "\
+frame:0    pts:179200  pts_time:14
+lavfi.signalstats.YMIN=8
+lavfi.signalstats.YLOW=41
+lavfi.signalstats.YAVG=125.865
+lavfi.signalstats.YHIGH=209
+frame:1    pts:179712  pts_time:14.04
+lavfi.signalstats.YMIN=235
+lavfi.signalstats.YAVG=235
+";
+
+        assert_eq!(
+            parse_signalstats(stdout),
+            vec![
+                LumaSample {
+                    at_seconds: 14.0,
+                    yavg: 125.865,
+                    ymin: 8.0
+                },
+                LumaSample {
+                    at_seconds: 14.04,
+                    yavg: 235.0,
+                    ymin: 235.0
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn drops_a_frame_missing_a_statistic_rather_than_calling_it_black() {
+        // Defaulting to 0 would invent a black frame, and a run of invented
+        // black frames is the shape of a dip's approach.
+        let stdout = "\
+frame:0    pts:0  pts_time:1
+lavfi.signalstats.YMIN=8
+frame:1    pts:1  pts_time:2
+lavfi.signalstats.YMIN=9
+lavfi.signalstats.YAVG=100
+";
+
+        assert_eq!(
+            parse_signalstats(stdout),
+            vec![LumaSample {
+                at_seconds: 2.0,
+                yavg: 100.0,
+                ymin: 9.0
+            }]
+        );
+    }
+
+    #[test]
+    fn a7_prefers_the_frame_count_over_the_containers_duration() {
+        // The measured case: a container claiming 166.633991s where 8331 frames
+        // at 50fps put the true end at 166.62s. The tail is measured backwards
+        // from the end, so the 14ms difference is a bias on every structural
+        // measurement - it moves a peak that is exactly at T-5.000s to T-5.014s.
+        let probe = VideoProbe {
+            width: 3840,
+            height: 2160,
+            duration_seconds: 166.633991,
+            frame_count: Some(8331),
+            frame_rate: Some(50.0),
+        };
+
+        assert!((probe.end_seconds() - 166.62).abs() < 1e-9);
+    }
+
+    #[test]
+    fn falls_back_to_the_container_duration_when_frames_cannot_be_counted() {
+        let probe = VideoProbe {
+            width: 1920,
+            height: 1080,
+            duration_seconds: 144.0,
+            frame_count: None,
+            frame_rate: Some(25.0),
+        };
+
+        assert_eq!(probe.end_seconds(), 144.0);
+    }
+
+    #[test]
+    fn reads_the_frame_rate_ffprobe_prints_as_a_fraction() {
+        let stdout =
+            "width=1920\nheight=1080\nnb_frames=8331\nr_frame_rate=50/1\nduration=166.633991\n";
+        let probe = parse_probe_output(stdout).expect("a probe");
+
+        assert_eq!(probe.frame_rate, Some(50.0));
+        assert_eq!(probe.frame_count, Some(8331));
+    }
+
+    #[test]
+    fn a_zero_frame_rate_is_not_a_frame_rate() {
+        // `0/0` is what ffprobe prints for a stream with no meaningful rate.
+        let stdout = "width=1920\nheight=1080\nr_frame_rate=0/0\nduration=10.0\n";
+        let probe = parse_probe_output(stdout).expect("a probe");
+
+        assert_eq!(probe.frame_rate, None);
+        assert_eq!(probe.end_seconds(), 10.0);
     }
 }

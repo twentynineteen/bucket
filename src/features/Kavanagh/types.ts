@@ -18,12 +18,8 @@ export type FfmpegAvailability =
 /** Which top corner a watermark occupies. */
 export type KavanaghCorner = 'topLeft' | 'topRight'
 
-/**
- * Which stage of a run progress refers to.
- *
- * Stage 3 adds `tail` when the tail analysis starts emitting one.
- */
-export type KavanaghPhase = 'probe' | 'watermark' | 'refine'
+/** Which stage of a run progress refers to. */
+export type KavanaghPhase = 'probe' | 'tail' | 'watermark' | 'refine'
 
 /**
  * A contiguous absence of the watermark, as a measured time range.
@@ -89,6 +85,85 @@ export interface KavanaghWatermarkReport {
   video: { width: number; height: number; durationSeconds: number }
   thumbnails: KavanaghThumbnail[]
   /** Caveats worth stating alongside the verdict. */
+  notes: string[]
+}
+
+/**
+ * What is wrong with a render's closing tail (B5).
+ *
+ * Mirrors the `#[serde(tag = "kind")]` enum in `src-tauri/src/kavanagh/tail.rs`.
+ * Each variant carries what was measured; the sentence to show an operator comes
+ * from `problemMessages` on the report, written on the Rust side where the
+ * tolerances live.
+ */
+export type KavanaghTailProblem =
+  | { kind: 'videoTooShort'; durationSeconds: number }
+  | { kind: 'noWhitePeak' }
+  | { kind: 'rampTooShort'; measuredSeconds: number }
+  | { kind: 'rampTooLong'; measuredSeconds: number }
+  | { kind: 'stingTooShort'; measuredSeconds: number }
+  | { kind: 'stingTooLong'; measuredSeconds: number }
+  | { kind: 'doesNotEndOnSting'; trailingSeconds: number }
+
+/** What the closing tail's structure turned out to be. */
+export interface KavanaghTailAnalysis {
+  /** Where the dip reaches white, which is the cut the sting starts at. */
+  peakAtSeconds: number | null
+  /** Measured 10-90% rise time into the peak. */
+  rampSeconds: number | null
+  /** Content after the peak. */
+  stingSeconds: number | null
+  /** Content after the sting stops being on screen. */
+  trailingSeconds: number | null
+  problems: KavanaghTailProblem[]
+}
+
+/**
+ * What the sting check concluded (B6).
+ *
+ * `unrecognised` is a warning rather than a failure: it normally means a new
+ * variant needs adding to the references folder (D8). `notFrozen` is a failure -
+ * a tail that is not a held still is wrong whatever it correlates with.
+ */
+export type KavanaghStingOutcome =
+  | 'matched'
+  | 'unrecognised'
+  | 'notFrozen'
+  | 'poolUnavailable'
+
+/** Everything the sting check measured. */
+export interface KavanaghStingReport {
+  outcome: KavanaghStingOutcome
+  matchedReference: string | null
+  /** The closest reference, whether or not it passed. */
+  bestReference: string | null
+  bestConfidence: number
+  /** Mean absolute luma difference across the hold; ~0 for a held still. */
+  freezeMad: number | null
+  framesCompared: number
+  threshold: number
+}
+
+/**
+ * What a whole run concluded.
+ *
+ * Four states to the Rust enum's three. A run that could not judge the video at
+ * all rejects rather than returning a report, so `error` is reached through the
+ * catch rather than off the wire - but it is a distinct state to render, because
+ * "not judged" and "judged bad" send an operator to different places (B7.4).
+ */
+export type KavanaghVerdict = 'pass' | 'warning' | 'fail' | 'error'
+
+/** Everything one run concluded, with each check's own result intact (B7.2). */
+export interface KavanaghCheckReport {
+  verdict: Exclude<KavanaghVerdict, 'error'>
+  watermark: KavanaghWatermarkReport
+  tail: KavanaghTailAnalysis
+  /** Null when no white peak was found, so no sting could be located. */
+  sting: KavanaghStingReport | null
+  /** One sentence per fault, ready to render, written where the tolerances are. */
+  problemMessages: string[]
+  /** Caveats about the run as a whole, as opposed to either check. */
   notes: string[]
 }
 

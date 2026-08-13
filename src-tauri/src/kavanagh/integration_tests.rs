@@ -18,7 +18,9 @@ use super::discovery::{probe_binary_path, resolve_ffmpeg_tools, FfmpegAvailabili
 use super::error::KavanaghError;
 use super::ffmpeg::{run_frames, RunError};
 use super::geometry::Corner;
-use super::watermark::{analyse, AnalysisRequest, Phase, WatermarkOutcome, WatermarkReport};
+use super::watermark::{
+    analyse_with_probe, probe_video, AnalysisRequest, Phase, WatermarkOutcome, WatermarkReport,
+};
 
 /// The toolchain, or `None` when this machine has no ffmpeg.
 fn tools() -> Option<(String, String)> {
@@ -192,21 +194,24 @@ fn run(
 ) -> Result<WatermarkReport, KavanaghError> {
     let (_tx, cancel) = watch::channel(false);
 
-    analyse(
-        &AnalysisRequest {
+    let request = AnalysisRequest {
             video_path: video.to_string_lossy().to_string(),
             ffmpeg: ffmpeg.to_string(),
             ffprobe: ffprobe.to_string(),
+            sting_reference_files: Vec::new(),
             reference_files: references
                 .iter()
                 .map(|p| p.to_string_lossy().to_string())
                 .collect(),
             match_threshold: None,
             dip_start_seconds: None,
-        },
-        &cancel,
-        &mut |_, _, _| {},
-    )
+    };
+
+    // Probed here rather than calling a wrapper that probes: these fixtures are
+    // watermark test cards with no closing tail, so they are checked through the
+    // watermark half directly. `check::run_check` covers the whole run.
+    let probe = probe_video(&request, &cancel)?;
+    analyse_with_probe(&request, &probe, &cancel, &mut |_, _, _| {})
 }
 
 #[test]
@@ -452,12 +457,15 @@ fn b11_1_reports_phases_with_a_percentage_that_never_goes_backwards() {
     let (_tx, cancel) = watch::channel(false);
     let mut seen: Vec<(Phase, f64)> = Vec::new();
 
-    analyse(
+    // The whole run, not just the watermark half: this is the one test that
+    // asserts what an operator actually sees a run do (B11.1).
+    crate::kavanagh::check::run_check(
         &AnalysisRequest {
             video_path: video.to_string_lossy().to_string(),
             ffmpeg: ffmpeg.clone(),
             ffprobe: ffprobe.clone(),
             reference_files: vec![right.to_string_lossy().to_string()],
+            sting_reference_files: Vec::new(),
             match_threshold: None,
             dip_start_seconds: None,
         },
@@ -467,6 +475,10 @@ fn b11_1_reports_phases_with_a_percentage_that_never_goes_backwards() {
     .expect("the run completes");
 
     assert!(seen.iter().any(|(phase, _)| *phase == Phase::Probe));
+    assert!(
+        seen.iter().any(|(phase, _)| *phase == Phase::Tail),
+        "the tail is analysed before the watermark, so its phase must be reported"
+    );
     assert!(seen.iter().any(|(phase, _)| *phase == Phase::Watermark));
     assert!(
         seen.iter().any(|(phase, _)| *phase == Phase::Refine),
@@ -519,7 +531,7 @@ fn b13_3_refuses_an_out_of_range_threshold_before_spawning_anything() {
     let (ffmpeg, ffprobe) = require_ffmpeg!();
     let (_tx, cancel) = watch::channel(false);
 
-    let result = analyse(
+    let result = crate::kavanagh::check::run_check(
         &AnalysisRequest {
             // Deliberately not a real file: validation must happen first, so this
             // never gets as far as being opened.
@@ -527,6 +539,7 @@ fn b13_3_refuses_an_out_of_range_threshold_before_spawning_anything() {
             ffmpeg,
             ffprobe,
             reference_files: vec![],
+            sting_reference_files: Vec::new(),
             match_threshold: Some(4.2),
             dip_start_seconds: None,
         },

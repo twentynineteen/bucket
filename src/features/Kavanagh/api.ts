@@ -21,9 +21,9 @@ import {
 } from './internal/referencePool'
 import type {
   FfmpegAvailability,
+  KavanaghCheckReport,
   KavanaghProgressEvent,
-  KavanaghThumbnail,
-  KavanaghWatermarkReport
+  KavanaghThumbnail
 } from './types'
 
 /**
@@ -78,10 +78,18 @@ export async function listReferencePool(
 }
 
 /** What to check, and with what. */
-export interface WatermarkCheckRequest {
+export interface KavanaghCheckRequest {
   videoPath: string
   /** The watermark pool's files, from `listReferencePool`. */
   referenceFiles: string[]
+  /**
+   * The sting pool's files, from `listReferencePool`.
+   *
+   * An empty pool is not refused: the tail is still worth measuring, and the
+   * sting check reports the pool as unavailable rather than failing the run
+   * (B6.4).
+   */
+  stingReferenceFiles: string[]
   /** The Settings ffmpeg directory, when one is configured. */
   ffmpegDirectory?: string | null
   /** An advanced override; omit for the calibrated default (B13.1). */
@@ -89,21 +97,26 @@ export interface WatermarkCheckRequest {
 }
 
 /**
- * Runs the watermark check over one video.
+ * Runs both checks over one video and returns a single verdict.
+ *
+ * One command rather than two, because the order matters: the watermark is not
+ * expected over the closing dip, and the dip is found by the tail analysis, so
+ * the tail must run first and hand the watermark pass its end point (D9).
  *
  * Long-running: the promise settles when the analysis finishes, while progress
- * arrives on the `kavanagh-progress` event. Rejects with a `KavanaghError` - including a
- * `busy` rejection when a run is already in flight (D19).
+ * arrives on the `kavanagh-progress` event. Rejects with a `KavanaghError` -
+ * including a `busy` rejection when a run is already in flight (D19).
  */
-export async function runWatermarkCheck(
-  request: WatermarkCheckRequest
-): Promise<KavanaghWatermarkReport> {
-  return invoke<KavanaghWatermarkReport>('kavanagh_run_watermark_check', {
+export async function runKavanaghCheck(
+  request: KavanaghCheckRequest
+): Promise<KavanaghCheckReport> {
+  return invoke<KavanaghCheckReport>('kavanagh_run_check', {
     request: {
       videoPath: request.videoPath,
       referenceFiles: request.referenceFiles,
+      stingReferenceFiles: request.stingReferenceFiles,
       ffmpegDirectory: request.ffmpegDirectory ?? null,
-      // Omitted rather than null when there is no override: the Rust side treats
+      // Null rather than omitted when there is no override: the Rust side treats
       // `None` as "use the calibrated default".
       matchThreshold: request.matchThreshold ?? null
     }
