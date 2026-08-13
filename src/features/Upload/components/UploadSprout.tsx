@@ -14,6 +14,8 @@ import { useSproutVideoApiKey } from '@shared/hooks'
 import { useBreadcrumb } from '@shared/hooks'
 import { fileNameToTitle } from '@shared/utils'
 import { useFileUpload } from '../hooks/useFileUpload'
+import { useKavanaghForUpload } from '../hooks/useKavanaghForUpload'
+import { KavanaghBlockDialog, KavanaghGateControls } from './KavanaghUploadGate'
 import { useSproutFolderSelection } from '../hooks/useSproutFolderSelection'
 import { SproutFolderPicker } from './SproutFolderPicker'
 import { useImageRefresh } from '../hooks/useImageRefresh'
@@ -23,6 +25,24 @@ import ExternalLink from '@shared/ui/ExternalLink'
 import FormattedDate from '@shared/ui/FormattedDate'
 import { AlertTriangle, RefreshCw, Sprout } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
+
+/**
+ * What the upload button says, given everything that can be happening to it.
+ *
+ * A function rather than nested ternaries in the tree: the page is already at
+ * the complexity the repo lints for, and this is the part of it that reads
+ * worst inline.
+ */
+function uploadButtonLabel(state: {
+  checking: boolean
+  uploading: boolean
+  apiKeyLoading: boolean
+}): string {
+  if (state.checking) return 'Checking with Kavanagh...'
+  if (state.uploading) return 'Uploading...'
+  if (state.apiKeyLoading) return 'Loading...'
+  return 'Upload Video'
+}
 
 const UploadSproutContent: React.FC = () => {
   // Custom hooks
@@ -36,6 +56,7 @@ const UploadSproutContent: React.FC = () => {
   const { thumbnailLoaded, refreshTimestamp, setThumbnailLoaded } =
     useImageRefresh(response)
   const [title, setTitle] = useState('')
+  const kavanagh = useKavanaghForUpload()
 
   // Page label - shadcn breadcrumb component (memoized to prevent infinite re-renders)
   const breadcrumbItems = useMemo(
@@ -52,11 +73,13 @@ const UploadSproutContent: React.FC = () => {
     const file = await selectFile()
     if (file) {
       setTitle(fileNameToTitle(file))
+      // A previous render's verdict must not linger beside a different file.
+      kavanagh.reset()
     }
   }
 
-  // Handle upload with API key
-  const handleUpload = async () => {
+  // The upload itself, once anything gating it has let it through.
+  const performUpload = async () => {
     // Reset progress and message before starting upload
     setProgress(0)
     setMessage(null)
@@ -66,6 +89,21 @@ const UploadSproutContent: React.FC = () => {
     await uploadFile(apiKey, title, selectedFolder)
     // Only remember a folder an upload actually used.
     commitFolder(selectedFolder)
+  }
+
+  // Handle upload with API key
+  const handleUpload = async () => {
+    // Checked before anything reaches Sprout, not after (B9.3). A failure holds
+    // the upload here and opens the override dialog; a warning does not (D14).
+    if (selectedFile && !(await kavanagh.gate(selectedFile))) return
+    await performUpload()
+  }
+
+  // Proceeding past a failure is a deliberate act, so it runs the upload the
+  // block interrupted rather than asking the operator to press Upload again.
+  const handleOverride = async () => {
+    kavanagh.override()
+    await performUpload()
   }
 
   return (
@@ -157,16 +195,24 @@ const UploadSproutContent: React.FC = () => {
                   <Progress value={progress} />
                 </div>
               )}
+              <KavanaghGateControls kavanagh={kavanagh} uploading={uploading} />
+
               <Button
                 onClick={handleUpload}
                 className="w-full"
-                disabled={!selectedFile || !apiKey || uploading || apiKeyLoading}
+                disabled={
+                  !selectedFile ||
+                  !apiKey ||
+                  uploading ||
+                  apiKeyLoading ||
+                  kavanagh.checking
+                }
               >
-                {uploading
-                  ? 'Uploading...'
-                  : apiKeyLoading
-                    ? 'Loading...'
-                    : 'Upload Video'}
+                {uploadButtonLabel({
+                  checking: kavanagh.checking,
+                  uploading,
+                  apiKeyLoading
+                })}
               </Button>
 
               {message && (
@@ -243,6 +289,8 @@ const UploadSproutContent: React.FC = () => {
           )}
         </div>
       </div>
+
+      <KavanaghBlockDialog kavanagh={kavanagh} onOverride={() => void handleOverride()} />
     </div>
   )
 }

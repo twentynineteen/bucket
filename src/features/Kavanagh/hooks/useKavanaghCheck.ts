@@ -33,7 +33,15 @@ export interface UseKavanaghCheckResult {
   report: KavanaghCheckReport | null
   /** Why the last run failed, or null. A cancellation is not surfaced here. */
   error: KavanaghError | null
-  run: (request: KavanaghCheckRequest) => Promise<void>
+  /**
+   * Starts a run. Resolves to the report, or null when the run failed or was
+   * cancelled.
+   *
+   * The report is returned as well as held in state because a caller that has
+   * to *decide* something on it - the upload gate - cannot read the state it
+   * just set within the same tick.
+   */
+  run: (request: KavanaghCheckRequest) => Promise<KavanaghCheckReport | null>
   cancel: () => Promise<void>
   /** Clears the report and any error, releasing the thumbnails held with it. */
   reset: () => void
@@ -92,10 +100,11 @@ export function useKavanaghCheck(): UseKavanaghCheckResult {
   const run = React.useCallback(
     async (request: KavanaghCheckRequest) => {
       try {
-        await mutation.mutateAsync(request)
+        return await mutation.mutateAsync(request)
       } catch {
         // Already recorded in `onError`; rethrowing would make every caller
         // handle a failure the hook has already turned into state.
+        return null
       }
     },
     [mutation]

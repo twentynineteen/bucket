@@ -14,7 +14,7 @@
 import '@testing-library/jest-dom'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -83,6 +83,30 @@ vi.mock('../hooks/useUploadEvents', () => ({
   useUploadEvents: vi.fn(() => mockUploadEventsState)
 }))
 
+// The Kavanagh gate is this page's other I/O boundary. Mocked here so the page's
+// own behaviour is under test; the policy it implements has its own tests in
+// useKavanaghForUpload.test.ts.
+const mockGate = vi.fn()
+const mockOverride = vi.fn()
+const mockDismiss = vi.fn()
+let mockKavanagh = {
+  enabled: false,
+  setEnabled: vi.fn(),
+  checking: false,
+  report: null as unknown,
+  block: null as unknown,
+  available: true,
+  unavailableReason: null as string | null,
+  gate: mockGate,
+  override: mockOverride,
+  dismiss: mockDismiss,
+  reset: vi.fn()
+}
+
+vi.mock('../hooks/useKavanaghForUpload', () => ({
+  useKavanaghForUpload: () => mockKavanagh
+}))
+
 vi.mock('../hooks/useImageRefresh', () => ({
   useImageRefresh: vi.fn(() => mockImageRefreshState)
 }))
@@ -110,6 +134,22 @@ describe('UploadSprout Page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset to default states
+    // The gate lets everything through unless a test says otherwise, which is
+    // what a switched-off check does (B9.1).
+    mockGate.mockResolvedValue(true)
+    mockKavanagh = {
+      enabled: false,
+      setEnabled: vi.fn(),
+      checking: false,
+      report: null,
+      block: null,
+      available: true,
+      unavailableReason: null,
+      gate: mockGate,
+      override: mockOverride,
+      dismiss: mockDismiss,
+      reset: vi.fn()
+    }
     mockApiKeyState = { apiKey: 'test-api-key', isLoading: false }
     mockFileUploadState = {
       selectedFile: null,
@@ -294,7 +334,82 @@ describe('UploadSprout Page', () => {
       expect(uploadButton).not.toBeDisabled()
     })
 
-    it('should call uploadFile when Upload Video button is clicked', () => {
+    it('B9.3 does not upload when the gate holds the render back', async () => {
+      mockGate.mockResolvedValue(false)
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /Upload Video/i }))
+
+      await waitFor(() => expect(mockGate).toHaveBeenCalled())
+      // Nothing reaches Sprout: the check runs before the upload, not beside it.
+      expect(mockUploadFile).not.toHaveBeenCalled()
+    })
+
+    it('B9.3 shows what failed, so the decision is an informed one', async () => {
+      mockKavanagh.block = {
+        report: {
+          verdict: 'fail',
+          problemMessages: ['The watermark is missing from 4:12 to 4:31.']
+        },
+        error: null
+      }
+      renderUploadSprout()
+
+      expect(screen.getByRole('alertdialog')).toHaveTextContent(/failed its checks/i)
+      expect(screen.getByText(/missing from 4:12 to 4:31/i)).toBeInTheDocument()
+    })
+
+    it('B9.4 uploads the render the block interrupted when overridden', async () => {
+      mockKavanagh.block = {
+        report: { verdict: 'fail', problemMessages: ['Something is wrong.'] },
+        error: null
+      }
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /upload anyway/i }))
+
+      // Overriding uploads, rather than only closing the dialog and asking the
+      // operator to press Upload a second time.
+      expect(mockOverride).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(mockUploadFile).toHaveBeenCalledWith('test-api-key', '', null)
+      )
+    })
+
+    it('B9.5 uploads nothing when the block is dismissed', async () => {
+      mockKavanagh.block = {
+        report: { verdict: 'fail', problemMessages: ['Something is wrong.'] },
+        error: null
+      }
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /do not upload/i }))
+
+      expect(mockDismiss).toHaveBeenCalled()
+      expect(mockUploadFile).not.toHaveBeenCalled()
+    })
+
+    it('B9.6 shows a warning without ever asking to confirm', async () => {
+      mockKavanagh.report = {
+        verdict: 'warning',
+        problemMessages: ['The sting matches nothing in the folder.']
+      }
+      renderUploadSprout()
+
+      expect(screen.getByRole('status')).toHaveTextContent(/uploaded with a warning/i)
+      // No dialog at all: a warning is housekeeping, not a decision (D14).
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+
+    it('says why the check cannot run rather than offering it silently', async () => {
+      mockKavanagh.available = false
+      mockKavanagh.unavailableReason = 'Kavanagh needs ffprobe, which could not be found.'
+      renderUploadSprout()
+
+      expect(screen.getByText(/needs ffprobe/i)).toBeInTheDocument()
+    })
+
+    it('should call uploadFile when Upload Video button is clicked', async () => {
       renderUploadSprout()
 
       const uploadButton = screen.getByRole('button', { name: /Upload Video/i })
@@ -302,7 +417,11 @@ describe('UploadSprout Page', () => {
 
       // The destination is passed explicitly (issue #155) -- null is the account
       // root, which is what a fresh session with no default resolves to.
-      expect(mockUploadFile).toHaveBeenCalledWith('test-api-key', '', null)
+      // Awaited because the upload now passes the Kavanagh gate first, which is
+      // a promise even when the check is switched off.
+      await waitFor(() =>
+        expect(mockUploadFile).toHaveBeenCalledWith('test-api-key', '', null)
+      )
     })
   })
 
