@@ -13,8 +13,15 @@
  *
  * Two details are load-bearing and look cosmetic if you skim them:
  *
- * 1. `modal={false}` — the menu renders inside AddVideoDialog, and a modal
- *    dropdown nested in a modal dialog leaves `pointer-events: none` on the body.
+ * 1. The menu is MODAL (Radix's default - no `modal` prop). Inside
+ *    AddVideoDialog, the dialog's scroll lock cancels wheel events over
+ *    anything portalled outside its subtree; a modal menu mounts its own
+ *    scroll lock above the dialog's, which is the only thing that lets the
+ *    folder list scroll there (issue #191). An earlier `modal={false}`
+ *    workaround - for a Radix bug that left `pointer-events: none` on the
+ *    body after nested modals closed - made every folder below the fold
+ *    unreachable; that bug no longer reproduces on the current Radix version,
+ *    and folder-picker-dialog-scroll.spec.ts guards both behaviours.
  * 2. The filter input stops its own keydown from bubbling. Radix fires typeahead
  *    for any single character typed anywhere inside menu content and moves DOM
  *    focus onto the matching item, so without this the box takes exactly one
@@ -439,7 +446,7 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
   }
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={close} modal={false}>
+    <DropdownMenu open={isOpen} onOpenChange={close}>
       {/*
         Styled directly rather than `asChild` + <Button>. `@shared/ui/button` is
         a Framer Motion component, and composing a motion element through Radix's
