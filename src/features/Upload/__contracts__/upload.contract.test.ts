@@ -380,13 +380,18 @@ describe('usePosterFrameForUpload - Behavior', () => {
       'error',
       'run',
       'retry',
-      'reset'
+      'reset',
+      // Issue #189: the Classic/Rebrand template choice, consumed by Baker's
+      // AddVideoDialog through this interface.
+      'template',
+      'setTemplate'
     ]) {
       expect(result.current).toHaveProperty(key)
     }
     expect(typeof result.current.run).toBe('function')
     expect(typeof result.current.retry).toBe('function')
     expect(typeof result.current.reset).toBe('function')
+    expect(typeof result.current.setTemplate).toBe('function')
   })
 
   it('starts idle with the option unticked', () => {

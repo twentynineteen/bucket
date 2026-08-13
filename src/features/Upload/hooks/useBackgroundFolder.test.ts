@@ -79,7 +79,7 @@ describe('useBackgroundFolder - state classification (#166)', () => {
       error: null
     } as never)
 
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     expect(result.current.status).toBe('unknown')
     expect(result.current.reason).toBeNull()
@@ -93,7 +93,7 @@ describe('useBackgroundFolder - state classification (#166)', () => {
       error: new Error('unparseable')
     } as never)
 
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     expect(result.current.status).toBe('settings-error')
     expect(result.current.reason).toBe(
@@ -104,11 +104,12 @@ describe('useBackgroundFolder - state classification (#166)', () => {
   it('b2_3_explains_that_no_folder_is_configured_once_settings_have_loaded', async () => {
     useAppStore.setState({ defaultBackgroundFolder: null })
 
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     expect(result.current.status).toBe('not-configured')
+    // Issue #189 B3.6: the reason names the active template.
     expect(result.current.reason).toBe(
-      'No default background folder configured. Set one in Settings.'
+      'No Classic background folder configured. Set one in Settings.'
     )
     expect(api.listDirectory).not.toHaveBeenCalled()
   })
@@ -116,7 +117,7 @@ describe('useBackgroundFolder - state classification (#166)', () => {
   it('b2_4_reports_no_reason_while_the_listing_is_in_flight', async () => {
     vi.mocked(api.listDirectory).mockReturnValue(new Promise(() => {}) as never)
 
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     expect(result.current.status).toBe('loading')
     expect(result.current.reason).toBeNull()
@@ -125,10 +126,10 @@ describe('useBackgroundFolder - state classification (#166)', () => {
   it('b2_5_names_the_path_when_the_folder_is_missing', async () => {
     vi.mocked(api.listDirectory).mockResolvedValue({ status: 'missing' })
 
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     await waitFor(() => expect(result.current.status).toBe('cannot-read'))
-    expect(result.current.reason).toBe(`Cannot read background folder: ${DEFAULT_FOLDER}`)
+    expect(result.current.reason).toBe(`Cannot read Classic background folder: ${DEFAULT_FOLDER}`)
   })
 
   it('b2_5_gives_the_same_message_when_the_folder_is_unreadable', async () => {
@@ -137,10 +138,10 @@ describe('useBackgroundFolder - state classification (#166)', () => {
       detail: 'os error 13'
     })
 
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     await waitFor(() => expect(result.current.status).toBe('cannot-read'))
-    expect(result.current.reason).toBe(`Cannot read background folder: ${DEFAULT_FOLDER}`)
+    expect(result.current.reason).toBe(`Cannot read Classic background folder: ${DEFAULT_FOLDER}`)
   })
 
   it('b2_6_logs_the_unreadable_detail_and_keeps_it_out_of_the_reason', async () => {
@@ -149,7 +150,7 @@ describe('useBackgroundFolder - state classification (#166)', () => {
       detail: 'os error 13'
     })
 
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     await waitFor(() => expect(result.current.status).toBe('cannot-read'))
     expect(result.current.reason).not.toContain('os error 13')
@@ -161,10 +162,12 @@ describe('useBackgroundFolder - state classification (#166)', () => {
   it('b2_7_explains_an_empty_folder', async () => {
     vi.mocked(api.listDirectory).mockResolvedValue({ status: 'ok', files: [] })
 
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     await waitFor(() => expect(result.current.status).toBe('empty'))
-    expect(result.current.reason).toBe('The background folder contains no image files.')
+    expect(result.current.reason).toBe(
+      'The Classic background folder contains no image files.'
+    )
   })
 
   it('b2_8_reports_ready_with_the_files_when_the_folder_has_images', async () => {
@@ -173,7 +176,7 @@ describe('useBackgroundFolder - state classification (#166)', () => {
       files: ['/backgrounds/a.jpg']
     })
 
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     await waitFor(() => expect(result.current.status).toBe('ready'))
     expect(result.current.reason).toBeNull()
@@ -186,7 +189,7 @@ describe('useBackgroundFolder - state classification (#166)', () => {
     // Deliberately a client that DOES retry: with `retry: false` in the wrapper
     // defaults this assertion could not fail, because nothing would retry even
     // without the query's own override.
-    const { result } = renderHook(() => useBackgroundFolder(), {
+    const { result } = renderHook(() => useBackgroundFolder('classic'), {
       wrapper: retryingWrapper
     })
 
@@ -208,7 +211,7 @@ describe('useBackgroundFolder - session override (#166)', () => {
   })
 
   it('b3_1_uses_a_picked_folder_for_the_session_without_touching_the_default', async () => {
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     await act(async () => {
       await result.current.loadFolder(SESSION_FOLDER)
@@ -219,7 +222,7 @@ describe('useBackgroundFolder - session override (#166)', () => {
   })
 
   it('b3_2_exposes_the_override_and_the_default_separately', async () => {
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     await act(async () => {
       await result.current.loadFolder(SESSION_FOLDER)
@@ -230,7 +233,7 @@ describe('useBackgroundFolder - session override (#166)', () => {
   })
 
   it('b3_3_returns_to_the_default_when_the_override_is_reset', async () => {
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     await act(async () => {
       await result.current.loadFolder(SESSION_FOLDER)
@@ -244,9 +247,81 @@ describe('useBackgroundFolder - session override (#166)', () => {
   })
 
   it('b3_4_reports_no_override_before_any_folder_is_picked', async () => {
-    const { result } = renderHook(() => useBackgroundFolder(), { wrapper })
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     expect(result.current.isSessionOverride).toBe(false)
     expect(result.current.folderInUse).toBe(DEFAULT_FOLDER)
+  })
+})
+
+describe('useBackgroundFolder - per-template folders (#189)', () => {
+  const CLASSIC_FOLDER = '/backgrounds/classic'
+  const REBRAND_FOLDER = '/backgrounds/rebrand'
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useAppStore.setState({
+      defaultBackgroundFolder: CLASSIC_FOLDER,
+      rebrandBackgroundFolder: REBRAND_FOLDER
+    })
+    settingsLoaded()
+    vi.mocked(api.listDirectory).mockResolvedValue({
+      status: 'ok',
+      files: ['/x/a.jpg']
+    })
+  })
+
+  it('b3_1_reads_the_classic_folder_for_the_classic_template', async () => {
+    const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
+
+    expect(result.current.folderInUse).toBe(CLASSIC_FOLDER)
+    await waitFor(() => expect(api.listDirectory).toHaveBeenCalledWith(CLASSIC_FOLDER))
+  })
+
+  it('b3_1_reads_the_rebrand_folder_for_the_rebrand_template', async () => {
+    const { result } = renderHook(() => useBackgroundFolder('rebrand'), { wrapper })
+
+    expect(result.current.folderInUse).toBe(REBRAND_FOLDER)
+    await waitFor(() => expect(api.listDirectory).toHaveBeenCalledWith(REBRAND_FOLDER))
+  })
+
+  it('b3_6_names_the_rebrand_template_when_its_folder_is_not_configured', async () => {
+    useAppStore.setState({ rebrandBackgroundFolder: null })
+
+    const { result } = renderHook(() => useBackgroundFolder('rebrand'), { wrapper })
+
+    expect(result.current.status).toBe('not-configured')
+    expect(result.current.reason).toBe(
+      'No Rebrand background folder configured. Set one in Settings.'
+    )
+  })
+
+  it('b3_6_names_the_rebrand_template_when_its_folder_cannot_be_read', async () => {
+    vi.mocked(api.listDirectory).mockResolvedValue({ status: 'missing' })
+
+    const { result } = renderHook(() => useBackgroundFolder('rebrand'), { wrapper })
+
+    await waitFor(() => expect(result.current.status).toBe('cannot-read'))
+    expect(result.current.reason).toBe(
+      `Cannot read Rebrand background folder: ${REBRAND_FOLDER}`
+    )
+  })
+
+  it('b3_3_drops_the_session_override_when_the_template_changes', async () => {
+    const { result, rerender } = renderHook(
+      (props: { template: 'classic' | 'rebrand' }) =>
+        useBackgroundFolder(props.template),
+      { initialProps: { template: 'classic' as 'classic' | 'rebrand' }, wrapper }
+    )
+
+    await act(async () => {
+      await result.current.loadFolder(SESSION_FOLDER)
+    })
+    expect(result.current.folderInUse).toBe(SESSION_FOLDER)
+
+    rerender({ template: 'rebrand' })
+
+    await waitFor(() => expect(result.current.isSessionOverride).toBe(false))
+    expect(result.current.folderInUse).toBe(REBRAND_FOLDER)
   })
 })

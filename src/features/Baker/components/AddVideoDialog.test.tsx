@@ -40,6 +40,8 @@ function posterFrameState(
     backgrounds: BACKGROUNDS,
     selectedBackground: BACKGROUNDS[0],
     onBackgroundChange: vi.fn(),
+    template: 'classic',
+    onTemplateChange: vi.fn(),
     text: 'Managing Change',
     onTextChange: vi.fn(),
     previewImageUrl: 'blob:preview',
@@ -479,5 +481,31 @@ describe('AddVideoDialog - upload message severity (UPLOAD-02)', () => {
     render(<AddVideoDialog {...messageProps({ text, severity: 'error' })} />)
 
     expect(screen.getByRole('alert')).not.toHaveTextContent('[object Object]')
+  })
+})
+
+describe('AddVideoDialog - poster frame template (#189)', () => {
+  it('b3_2_offers_the_template_choice_once_the_option_is_enabled', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          posterFrame: posterFrameState({ enabled: true, template: 'rebrand' })
+        })}
+      />
+    )
+
+    expect(screen.getByRole('combobox', { name: /template/i })).toHaveTextContent(
+      /rebrand/i
+    )
+  })
+
+  it('b3_2_shows_no_template_choice_while_the_option_is_off', () => {
+    render(
+      <AddVideoDialog {...baseProps({ posterFrame: posterFrameState({ enabled: false }) })} />
+    )
+
+    expect(
+      screen.queryByRole('combobox', { name: /template/i })
+    ).not.toBeInTheDocument()
   })
 })

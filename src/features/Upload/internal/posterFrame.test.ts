@@ -1,15 +1,17 @@
 /**
- * Tests for the poster frame internals — filename derivation and Sprout
- * error classification.
- * Issue #140 (B5.4, B5.5, B7.2)
+ * Tests for the poster frame internals — filename derivation, Sprout
+ * error classification, and the 500KB compression pipeline.
+ * Issue #140 (B5.4, B5.5, B7.2) and issue #189 (B5.1-B5.3, B5.5)
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   POSTER_FRAME_MAX_BYTES,
   POSTER_FRAME_RETRY_DELAYS_MS,
+  PosterFrameTooLargeError,
   describePosterFrameError,
+  exportCanvasJpegUnder,
   isTransientPosterFrameError,
   posterFrameFileStem
 } from './posterFrame'
@@ -81,6 +83,19 @@ describe('describePosterFrameError', () => {
     expect(message).toMatch(/500 KB/)
   })
 
+  it('b5_5_no_longer_blames_the_background_image_for_a_413', () => {
+    // With auto-compression in front of the upload (issue #189), a 413 means
+    // compression itself could not fit the frame - "use a lighter background
+    // image" is now wrong advice.
+    const message = describePosterFrameError(
+      { status: 413, message: 'Request Entity Too Large' },
+      812_345
+    )
+
+    expect(message).not.toMatch(/lighter background/i)
+    expect(message).toMatch(/compress/i)
+  })
+
   it('passes through the backend message for other failures', () => {
     const message = describePosterFrameError(
       { status: 401, message: 'Unauthorised' },
@@ -89,6 +104,71 @@ describe('describePosterFrameError', () => {
 
     expect(message).toMatch(/Unauthorised/)
     expect(message).not.toMatch(/500 KB/)
+  })
+})
+
+describe('exportCanvasJpegUnder (#189)', () => {
+  const canvas = {} as HTMLCanvasElement
+
+  function bytes(length: number) {
+    return new Uint8Array(length)
+  }
+
+  it('b5_1_returns_the_default_quality_export_untouched_when_it_fits', async () => {
+    const underLimit = bytes(400 * 1024)
+    const encode = vi.fn().mockResolvedValue(underLimit)
+
+    const result = await exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES, encode)
+
+    // Exactly one encode, with NO quality argument: under-limit output must be
+    // byte-identical to the single-shot export the app produced before.
+    expect(encode).toHaveBeenCalledTimes(1)
+    expect(encode).toHaveBeenCalledWith(canvas, undefined)
+    expect(result).toBe(underLimit)
+  })
+
+  it('b5_2_steps_the_quality_down_until_the_export_fits', async () => {
+    const tooBig = bytes(700 * 1024)
+    const fits = bytes(450 * 1024)
+    const encode = vi
+      .fn()
+      .mockResolvedValueOnce(tooBig) // default quality
+      .mockResolvedValueOnce(tooBig) // 0.9
+      .mockResolvedValueOnce(fits) // 0.8
+
+    const result = await exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES, encode)
+
+    expect(result).toBe(fits)
+    expect(encode.mock.calls.map((call) => call[1])).toEqual([undefined, 0.9, 0.8])
+  })
+
+  it('b5_3_fails_clearly_when_even_the_quality_floor_is_over_the_limit', async () => {
+    const encode = vi.fn().mockResolvedValue(bytes(600 * 1024))
+
+    await expect(
+      exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES, encode)
+    ).rejects.toBeInstanceOf(PosterFrameTooLargeError)
+
+    // Descends to the 0.5 floor and no further.
+    expect(encode.mock.calls.map((call) => call[1])).toEqual([
+      undefined,
+      0.9,
+      0.8,
+      0.7,
+      0.6,
+      0.5
+    ])
+  })
+
+  it('b5_3_names_the_size_and_the_limit_in_the_failure', async () => {
+    const encode = vi.fn().mockResolvedValue(bytes(600 * 1024))
+
+    await expect(
+      exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES, encode)
+    ).rejects.toThrow(/600 KB/)
+    await expect(
+      exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES, encode)
+    ).rejects.toThrow(/500 KB/)
   })
 })
 
