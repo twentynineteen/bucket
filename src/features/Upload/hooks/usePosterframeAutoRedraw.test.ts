@@ -111,6 +111,23 @@ describe('usePosterframeAutoRedraw - initial draw', () => {
     expect(draw).toHaveBeenCalledWith(IMAGE, '', 'classic')
   })
 
+  it('does not draw immediately while the debounce is pending', () => {
+    // The one assertion proving the debounce debounces - carried over from
+    // the legacy test file (review round, finding 10).
+    renderHook(
+      () =>
+        usePosterframeAutoRedraw({
+          draw,
+          imageUrl: IMAGE,
+          title: TITLE,
+          templateId: 'classic'
+        }),
+      { wrapper }
+    )
+
+    expect(draw).not.toHaveBeenCalled()
+  })
+
   it('draws nothing without an image', () => {
     renderHook(
       () =>

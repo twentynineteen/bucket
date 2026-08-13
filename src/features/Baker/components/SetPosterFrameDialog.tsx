@@ -11,6 +11,8 @@
 import { AlertCircle, Image as ImageIcon, Loader2 } from 'lucide-react'
 import type { RefObject } from 'react'
 
+import type { PosterframeTemplateId } from '@features/Upload'
+
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
 import { Checkbox } from '@shared/ui/checkbox'
@@ -39,6 +41,14 @@ export interface SetPosterFramePanelState {
   backgrounds: string[]
   selectedBackground: string | null
   onBackgroundChange: (path: string) => void
+  /**
+   * Which branding template lays the frame out (issue #189). Shown, not
+   * chosen: this dialog follows the shared last-used choice, and the user
+   * must at least see which template will render before sending to Sprout.
+   */
+  template: PosterframeTemplateId
+  /** The previewed background deviates from 16:9, so text may sit oddly. */
+  offAspect: boolean
   text: string
   onTextChange: (text: string) => void
   previewImageUrl: string | null
@@ -108,6 +118,16 @@ export function SetPosterFrameDialog({
             </Alert>
           ) : (
             <>
+              {/* Shown, not chosen: the shared last-used template applies here
+                  (issue #189); switch it from the Posterframe page or the
+                  upload dialog. */}
+              <div className="space-y-1">
+                <Label>Template</Label>
+                <p className="text-muted-foreground text-sm">
+                  {posterFrame.template === 'rebrand' ? 'Rebrand' : 'Classic'}
+                </p>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="card-poster-frame-background">Background</Label>
                 <Select
@@ -158,6 +178,15 @@ export function SetPosterFrameDialog({
                     className="aspect-video w-full"
                   />
                 </div>
+              )}
+
+              {/* A warning, not a block: the layout scales by height and still
+                  renders, but the design assumes 16:9 (issue #189 B4.2). */}
+              {posterFrame.offAspect && (
+                <p role="alert" className="text-warning text-xs">
+                  This background is not 16:9, so the title text may sit oddly on the
+                  final thumbnail.
+                </p>
               )}
 
               <div className="flex items-start gap-2">

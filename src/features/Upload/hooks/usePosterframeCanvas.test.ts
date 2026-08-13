@@ -38,6 +38,9 @@ interface PendingImage {
 }
 
 let pendingImages: PendingImage[] = []
+// Dimensions the next MockImage reports; tests needing a specific canvas size
+// (e.g. the Classic reference resolution) set this before drawing.
+let mockImageSize = { width: 1024, height: 768 }
 
 function installImageMock() {
   // Replace the global Image constructor with a version that captures each
@@ -45,8 +48,8 @@ function installImageMock() {
   class MockImage {
     onload: (() => void) | null = null
     onerror: (() => void) | null = null
-    width = 1024
-    height = 768
+    width = mockImageSize.width
+    height = mockImageSize.height
     private _src = ''
     get src(): string {
       return this._src
@@ -89,6 +92,7 @@ function installCanvas2dStub(canvas: HTMLCanvasElement) {
 describe('usePosterframeCanvas', () => {
   beforeEach(() => {
     pendingImages = []
+    mockImageSize = { width: 1024, height: 768 }
     installImageMock()
     vi.clearAllMocks()
   })
@@ -217,5 +221,78 @@ describe('usePosterframeCanvas', () => {
     })
 
     expect(result.current.offAspect).toBe(true)
+  })
+})
+
+describe('usePosterframeCanvas - classic paint geometry (#189 B4.1, B1.5)', () => {
+  beforeEach(() => {
+    pendingImages = []
+    installImageMock()
+    vi.clearAllMocks()
+  })
+
+  /**
+   * A font whose every glyph advances 400 units at 1000/em with a recordable
+   * getPath, so the paint coordinates are a pure function of the layout.
+   * Glyph width at 37px classic = 400/1000*37 + 1.5 spacing = 16.3px.
+   */
+  function paintRecordingFont() {
+    const getPathCalls: [number, number, number][] = []
+    const font = {
+      unitsPerEm: 1000,
+      ascender: 800,
+      stringToGlyphs: (text: string) =>
+        Array.from(text, () => ({
+          advanceWidth: 400,
+          getPath: (x: number, y: number, size: number) => {
+            getPathCalls.push([x, y, size])
+            return { fill: null, stroke: null, draw: vi.fn() }
+          }
+        }))
+    }
+    return { font, getPathCalls }
+  }
+
+  async function drawClassic(title: string) {
+    const { font, getPathCalls } = paintRecordingFont()
+    // @ts-expect-error - partial Font stub is enough for the paint pass
+    vi.mocked(loadFont).mockResolvedValue(font)
+    mockImageSize = { width: 1280, height: 720 }
+
+    const { result } = renderHook(() => usePosterframeCanvas())
+    const canvas = document.createElement('canvas')
+    installCanvas2dStub(canvas)
+    // @ts-expect-error - assigning to RefObject.current in a test
+    result.current.canvasRef.current = canvas
+    const ctx = canvas.getContext('2d') as unknown as { rect: ReturnType<typeof vi.fn> }
+
+    await act(async () => {
+      const p = result.current.draw('/image.jpg', title, 'classic')
+      pendingImages[0].fireOnload()
+      await p
+    })
+
+    return { rect: ctx.rect, getPathCalls }
+  }
+
+  test('b4_1_classic_clip_rect_and_first_baseline_are_unchanged_at_1280x720', async () => {
+    // 'Title ' = 6 glyphs = 97.8px, one line. The historic clip rect is
+    // (x=292, top=baseline-fontSize=430, w=380, h=lines*45) and the first
+    // glyph paints at the 467px baseline with the 37px font. Deriving the
+    // clip top from font metrics instead (ascent = 29.6 -> top 437.4) fails
+    // this test - exactly the drift the review round flagged.
+    const { rect, getPathCalls } = await drawClassic('Title')
+
+    expect(rect).toHaveBeenCalledWith(292, 430, 380, 45)
+    expect(getPathCalls[0]).toEqual([292, 467, 37])
+  })
+
+  test('b1_5_the_clip_region_grows_with_the_wrapped_line_count', async () => {
+    // Four 10-glyph words wrap into two lines at 380px (22 glyphs = 358.6px
+    // per line) - the clip height must follow the content, not the design
+    // box.
+    const { rect } = await drawClassic('Aaaaaaaaaa Bbbbbbbbbb Cccccccccc Dddddddddd')
+
+    expect(rect).toHaveBeenCalledWith(292, 430, 380, 90)
   })
 })

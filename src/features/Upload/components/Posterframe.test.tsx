@@ -17,7 +17,7 @@ import Posterframe from './Posterframe'
 import { useBackgroundFolder } from '../hooks/useBackgroundFolder'
 import { useFileSelection } from '../hooks/useFileSelection'
 import { usePosterframeTemplate } from '../hooks/usePosterframeTemplate'
-import { exportCanvasJpegUnder } from '../internal/posterFrame'
+import { PosterFrameTooLargeError, exportCanvasJpegUnder } from '../internal/posterFrame'
 import { openFolderDialog, saveFile } from '../api'
 import { toast } from 'sonner'
 
@@ -261,6 +261,27 @@ describe('Posterframe page - rebrand template (#189)', () => {
     expect(screen.getByRole('combobox', { name: /template/i })).toBeInTheDocument()
   })
 
+  it('b3_1_choosing_a_template_reaches_the_shared_setter', async () => {
+    // The full chain: open the Radix select, pick Rebrand, and the shared
+    // setter is called. Asserting only the displayed value left the
+    // onValueChange wiring unverified (review round, finding 9).
+    const user = userEvent.setup()
+    const setTemplate = vi.fn()
+    vi.mocked(useBackgroundFolder).mockReturnValue(
+      folderState({ status: 'ready', files: ['/backgrounds/wbs/a.jpg'] })
+    )
+    vi.mocked(useFileSelection).mockReturnValue(selectionState(null))
+    vi.mocked(usePosterframeTemplate).mockReturnValue(
+      templateState('classic', setTemplate)
+    )
+    render(<Posterframe />)
+
+    await user.click(screen.getByRole('combobox', { name: /template/i }))
+    await user.click(await screen.findByRole('option', { name: /rebrand/i }))
+
+    expect(setTemplate).toHaveBeenCalledWith('rebrand')
+  })
+
   it('b3_1_hands_the_selected_template_to_the_folder_hook', () => {
     renderPage(
       { status: 'ready', files: ['/backgrounds/rebrand/a.jpg'] },
@@ -318,8 +339,10 @@ describe('Posterframe page - rebrand template (#189)', () => {
   it('b5_3_writes_no_file_when_even_the_quality_floor_is_too_large', async () => {
     const user = userEvent.setup()
     canvasHook.canvasRef.current = {} as HTMLCanvasElement
+    // The real error class, so this exercises the specific-message branch
+    // rather than the generic fallback toast (review round, finding 7).
     vi.mocked(exportCanvasJpegUnder).mockRejectedValue(
-      new Error('Poster frame is 600 KB even at the lowest quality')
+      new PosterFrameTooLargeError(600 * 1024, 500 * 1024)
     )
     vi.mocked(openFolderDialog).mockResolvedValue('/exports')
 
@@ -333,6 +356,9 @@ describe('Posterframe page - rebrand template (#189)', () => {
     await user.click(screen.getByRole('button', { name: /generate thumbnail/i }))
 
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    // The specific size/limit message reaches the user, not the generic
+    // "could not render" fallback.
+    expect(vi.mocked(toast.error).mock.calls[0][0]).toMatch(/600 KB/)
     expect(saveFile).not.toHaveBeenCalled()
   })
 })

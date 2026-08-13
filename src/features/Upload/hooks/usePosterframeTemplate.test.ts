@@ -17,11 +17,25 @@ describe('usePosterframeTemplate (#189)', () => {
     localStorage.clear()
     useAppStore.setState({
       defaultBackgroundFolder: '/backgrounds/classic',
-      rebrandBackgroundFolder: null
+      rebrandBackgroundFolder: null,
+      posterframeTemplateChoice: null
     })
   })
 
   it('b3_5_starts_on_classic_while_no_rebrand_folder_is_configured', () => {
+    const { result } = renderHook(() => usePosterframeTemplate())
+
+    expect(result.current.template).toBe('classic')
+  })
+
+  it('b3_5_treats_an_undefined_folder_as_not_configured', () => {
+    // What the store actually holds when a pre-#189 settings file hydrates
+    // without normalisation (review round, finding 1). Only null-checking
+    // here turned every existing install's default to Rebrand.
+    useAppStore.setState({
+      rebrandBackgroundFolder: undefined as unknown as string | null
+    })
+
     const { result } = renderHook(() => usePosterframeTemplate())
 
     expect(result.current.template).toBe('classic')
@@ -45,6 +59,22 @@ describe('usePosterframeTemplate (#189)', () => {
 
     expect(result.current.template).toBe('classic')
     expect(localStorage.getItem(POSTERFRAME_TEMPLATE_STORAGE_KEY)).toBe('classic')
+  })
+
+  it('b3_4_simultaneously_mounted_surfaces_share_one_choice_live', () => {
+    // The AddVideo dialog and the card poster frame dialog are mounted in the
+    // same tree at the same time; a choice made in one must be visible in the
+    // other without a remount (review round, finding 4).
+    useAppStore.setState({ rebrandBackgroundFolder: '/backgrounds/rebrand' })
+    const first = renderHook(() => usePosterframeTemplate())
+    const second = renderHook(() => usePosterframeTemplate())
+    expect(second.result.current.template).toBe('rebrand')
+
+    act(() => {
+      first.result.current.setTemplate('classic')
+    })
+
+    expect(second.result.current.template).toBe('classic')
   })
 
   it('b3_4_a_second_surface_starts_on_the_stored_choice', () => {

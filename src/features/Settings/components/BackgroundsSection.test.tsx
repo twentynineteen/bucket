@@ -15,6 +15,7 @@ import { useAppStore } from '@shared/store'
 
 import BackgroundsSection from './BackgroundsSection'
 import * as api from '../api'
+import type { ApiKeys } from '../api'
 
 vi.mock('../api', () => ({
   openFolderPicker: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock('../api', () => ({
 const FOLDER = '/backgrounds/wbs'
 
 function renderSection(
-  apiKeys = { defaultBackgroundFolder: FOLDER },
+  apiKeys: ApiKeys = { defaultBackgroundFolder: FOLDER },
   settingsUnavailable = false
 ) {
   const queryClient = new QueryClient({

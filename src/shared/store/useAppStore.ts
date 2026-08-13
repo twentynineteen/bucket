@@ -19,6 +19,16 @@ interface AppState {
    * Classic template keeps the original defaultBackgroundFolder key. */
   rebrandBackgroundFolder: string | null
   setRebrandBackgroundFolder: (path: string | null) => void
+  /**
+   * The posterframe template chosen this session (issue #189). Held here, not
+   * in each hook instance: the AddVideo dialog and the card poster frame
+   * dialog mount the choice twice in one tree and must agree live. Kept as a
+   * raw string - the template registry lives in the Upload feature, and
+   * shared/ never imports features. null means "no choice made yet"; the
+   * durable copy is localStorage, owned by usePosterframeTemplate.
+   */
+  posterframeTemplateChoice: string | null
+  setPosterframeTemplateChoice: (template: string | null) => void
   latestSproutUpload: SproutUploadResponse | null
   setLatestSproutUpload: (upload: SproutUploadResponse | null) => void
   ollamaUrl: string
@@ -52,6 +62,9 @@ export const useAppStore = create<AppState>((set) => ({
   setDefaultBackgroundFolder: (path) => set({ defaultBackgroundFolder: path }),
   rebrandBackgroundFolder: null,
   setRebrandBackgroundFolder: (path) => set({ rebrandBackgroundFolder: path }),
+  posterframeTemplateChoice: null,
+  setPosterframeTemplateChoice: (template) =>
+    set({ posterframeTemplateChoice: template }),
   latestSproutUpload: null,
   setLatestSproutUpload: (upload) => set({ latestSproutUpload: upload }),
   ollamaUrl: 'http://localhost:11434',

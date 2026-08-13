@@ -92,6 +92,21 @@ describe('saveApiKeys', () => {
 })
 
 describe('loadApiKeys', () => {
+  it('b3_5_a_settings_file_without_the_rebrand_key_hydrates_null_not_undefined', async () => {
+    // Every install predating #189 lacks the key. `undefined` in the store
+    // reads as "configured" to any `!== null` check, silently defaulting
+    // every existing user onto an unusable Rebrand template (review round,
+    // finding 1).
+    useAppStore.setState({ rebrandBackgroundFolder: '/stale' })
+    existsMock.mockResolvedValue(true)
+    readTextFileMock.mockResolvedValue(JSON.stringify({ sproutVideo: 'key' }))
+
+    await loadApiKeys()
+
+    expect(useAppStore.getState().rebrandBackgroundFolder).toBeNull()
+    expect(useAppStore.getState().rebrandBackgroundFolder).not.toBeUndefined()
+  })
+
   it('b2_1_hydrates_both_background_folders_into_the_store_on_launch', async () => {
     // Issue #189: loadApiKeys hand-syncs each field; a key missing from this
     // list silently never hydrates, and the folder reports not-configured

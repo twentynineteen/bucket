@@ -14,7 +14,11 @@ import {
 } from 'lucide-react'
 import type { RefObject } from 'react'
 
-import type { SelectedSproutFolder, UploadMessage } from '@features/Upload'
+import type {
+  PosterframeTemplateId,
+  SelectedSproutFolder,
+  UploadMessage
+} from '@features/Upload'
 import { SproutFolderPicker } from '@features/Upload'
 
 import { Alert, AlertDescription } from '@shared/ui/alert'
@@ -109,8 +113,10 @@ export interface PosterFrameDialogState {
   selectedBackground: string | null
   onBackgroundChange: (path: string) => void
   /** Which branding template lays the thumbnail out (issue #189). */
-  template: 'classic' | 'rebrand'
-  onTemplateChange: (template: 'classic' | 'rebrand') => void
+  template: PosterframeTemplateId
+  onTemplateChange: (template: PosterframeTemplateId) => void
+  /** The previewed background deviates from 16:9, so text may sit oddly. */
+  offAspect: boolean
   text: string
   onTextChange: (text: string) => void
   previewImageUrl: string | null
@@ -396,7 +402,7 @@ function PosterFrameContent({
             <Select
               value={posterFrame.template}
               onValueChange={(value) =>
-                posterFrame.onTemplateChange(value as 'classic' | 'rebrand')
+                posterFrame.onTemplateChange(value as PosterframeTemplateId)
               }
             >
               <SelectTrigger id="poster-frame-template" className="w-full">
@@ -458,6 +464,15 @@ function PosterFrameContent({
                 className="aspect-video w-full"
               />
             </div>
+          )}
+
+          {/* A warning, not a block: the layout scales by height and still
+              renders, but the design assumes 16:9 (issue #189 B4.2). */}
+          {posterFrame.offAspect && (
+            <p role="alert" className="text-warning text-xs">
+              This background is not 16:9, so the title text may sit oddly on the final
+              thumbnail.
+            </p>
           )}
 
           <div className="flex items-start gap-2">

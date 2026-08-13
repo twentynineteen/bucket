@@ -49,6 +49,8 @@ export type { SproutFolder } from './types'
 export type { SproutVideoDetails } from './types'
 /** Outcome of setting a branded poster frame on an uploaded Sprout video */
 export type { PosterFrameRunResult } from './types'
+/** Which branding template lays a poster frame out - Classic or Rebrand (issue #189) */
+export type { PosterframeTemplateId } from './types'
 /** Progress of the poster frame step within an upload */
 export type { PosterFrameStatus } from './types'
 /** Severity of an upload status message -- info, success, or error */

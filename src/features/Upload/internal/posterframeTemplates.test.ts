@@ -133,6 +133,20 @@ describe('wrapPosterframeTitle (#189)', () => {
     expect(lines).toEqual(['Strategic Thinking Now', 'Please'])
   })
 
+  it('b1_4_the_trailing_space_quirk_is_load_bearing', () => {
+    // 'Strategic Thinking Nowz' is 23 glyphs = 374.9px WITHOUT the trailing
+    // space (fits 380) but 24 glyphs = 391.2px WITH it (wraps). A rewrite
+    // that measured the candidate without its trailing space would keep this
+    // on one line and shift every existing Classic thumbnail's breaks
+    // (review round, finding 6).
+    const font = fixedWidthFont(400)
+    const layout = resolvePosterframeLayout('classic', 1280, 720, METRICS)
+
+    const lines = wrapPosterframeTitle(font, 'Strategic Thinking Nowz', layout)
+
+    expect(lines).toEqual(['Strategic Thinking', 'Nowz'])
+  })
+
   it('b1_5_never_caps_the_line_count_at_the_design_box_height', () => {
     const font = fixedWidthFont(900)
     const layout = resolvePosterframeLayout('rebrand', 1920, 1080, METRICS)

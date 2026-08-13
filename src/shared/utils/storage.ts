@@ -47,11 +47,13 @@ const API_KEYS_FILE = 'api_keys.json' // New file for storing API keys as JSON
  *  (issue #167). */
 const LEGACY_API_KEY_FILE = 'api_key.txt'
 
-// default background folder state
-const setDefaultBackgroundFolder = (path: string) =>
-  appStore.getState().setDefaultBackgroundFolder(path)
-const setRebrandBackgroundFolder = (path: string) =>
-  appStore.getState().setRebrandBackgroundFolder(path)
+// Background folder state. Normalised to null: a settings file written
+// before a key existed hydrates `undefined`, which any `!== null` check
+// reads as "configured" (issue #189, review round finding 1).
+const setDefaultBackgroundFolder = (path: string | undefined) =>
+  appStore.getState().setDefaultBackgroundFolder(path ?? null)
+const setRebrandBackgroundFolder = (path: string | undefined) =>
+  appStore.getState().setRebrandBackgroundFolder(path ?? null)
 
 // Get full path for storing API keys.
 //

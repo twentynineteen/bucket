@@ -26,7 +26,11 @@ import {
   POSTERFRAME_TEMPLATES,
   POSTERFRAME_TEMPLATE_IDS
 } from '../internal/posterframeTemplates'
-import { POSTER_FRAME_MAX_BYTES, exportCanvasJpegUnder } from '../internal/posterFrame'
+import {
+  POSTER_FRAME_MAX_BYTES,
+  PosterFrameTooLargeError,
+  exportCanvasJpegUnder
+} from '../internal/posterFrame'
 import { openFolder, openFolderDialog, saveFile } from '../api'
 import {
   AlertTriangle,
@@ -159,7 +163,7 @@ const PosterframeContent: React.FC = () => {
     } catch (err) {
       logger.error('Thumbnail export failed:', err)
       toast.error(
-        err instanceof Error && err.name === 'PosterFrameTooLargeError'
+        err instanceof PosterFrameTooLargeError
           ? err.message
           : 'Could not render the thumbnail. Please try again.'
       )

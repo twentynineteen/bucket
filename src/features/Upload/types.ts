@@ -10,6 +10,8 @@ export type {
   SproutVideoDetails
 } from '@shared/types'
 
+export type { PosterframeTemplateId } from './internal/posterframeTemplates'
+
 /**
  * A folder chosen as an upload destination.
  *

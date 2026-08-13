@@ -109,7 +109,11 @@ beforeAll(() => {
 
 beforeEach(() => {
   localStorage.clear()
-  useAppStore.setState({ defaultBackgroundFolder: '/backgrounds' })
+  useAppStore.setState({
+    defaultBackgroundFolder: '/backgrounds',
+    rebrandBackgroundFolder: null,
+    posterframeTemplateChoice: null
+  })
   vi.mocked(api.listDirectory).mockResolvedValue({ status: 'ok', files: BACKGROUNDS })
   vi.mocked(api.posterFrameFontAvailable).mockResolvedValue(true)
   vi.mocked(api.setSproutPosterFrame).mockResolvedValue(undefined)
