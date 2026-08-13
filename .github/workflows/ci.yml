@@ -52,18 +52,22 @@ jobs:
       - name: Run unit tests
         run: bun run test:run
 
-  build:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
+  # Gates Rust on macOS, the only platform shipped (publish.yml releases DMGs
+  # and nothing else). This replaced a Linux release build, which was blind to
+  # the code it claimed to guard: 19 blocks are behind cfg(target_os = "macos"),
+  # including utils/macos_copyfile.rs, the native copyfile(3) transfer path that
+  # BuildProject depends on. None of it compiled on Linux, so a break there
+  # reached the release branch unnoticed (issue #185).
+  #
+  # macOS minutes bill ~10x, so this deliberately runs the tests and no bundle.
+  # Full DMG bundling stays on release pushes in build-macos below.
+  rust-test:
+    runs-on: macos-14 # Apple Silicon, matching the aarch64 target publish.yml ships
+    timeout-minutes: 30
     needs: [lint, test]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -77,7 +81,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
+            src-tauri/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
@@ -87,14 +91,20 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Build
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: bun run build:tauri
+      # Required, not incidental: tauri::generate_context! embeds frontendDist
+      # at compile time, so cargo fails with "the frontendDist configuration is
+      # set to ../dist but this path doesn't exist" if the frontend was never
+      # built. It also keeps a production `vite build` in CI - the e2e job runs
+      # the dev server, so nothing else would catch a production-only break.
+      - name: Build frontend
+        run: bun run build
+
+      - name: Run Rust tests
+        working-directory: src-tauri
+        run: cargo test
 
   # macOS build is expensive (10x Linux cost) - only run on release branch pushes
-  # For PRs, the Linux build validates the code compiles correctly
+  # For PRs, rust-test above compiles the same macOS code paths without bundling
   build-macos:
     runs-on: macos-latest
     timeout-minutes: 30
