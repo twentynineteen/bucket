@@ -108,6 +108,9 @@ export interface PosterFrameDialogState {
   backgrounds: string[]
   selectedBackground: string | null
   onBackgroundChange: (path: string) => void
+  /** Which branding template lays the thumbnail out (issue #189). */
+  template: 'classic' | 'rebrand'
+  onTemplateChange: (template: 'classic' | 'rebrand') => void
   text: string
   onTextChange: (text: string) => void
   previewImageUrl: string | null
@@ -388,6 +391,24 @@ function PosterFrameContent({
 
       {posterFrame.enabled && (
         <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="poster-frame-template">Template</Label>
+            <Select
+              value={posterFrame.template}
+              onValueChange={(value) =>
+                posterFrame.onTemplateChange(value as 'classic' | 'rebrand')
+              }
+            >
+              <SelectTrigger id="poster-frame-template" className="w-full">
+                <SelectValue placeholder="Select a template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="classic">Classic</SelectItem>
+                <SelectItem value="rebrand">Rebrand</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="poster-frame-background">Background</Label>
             <Select

@@ -124,6 +124,7 @@ beforeEach(() => {
     assets: { poster_frames: ['https://sproutvideo.com/custom-poster.jpg'] }
   })
   vi.mocked(exportCanvasJpeg).mockResolvedValue(new Uint8Array([9, 9, 9, 9]))
+  vi.mocked(exportCanvasJpegUnder).mockResolvedValue(new Uint8Array([9, 9, 9, 9]))
   vi.mocked(posterFrameDelay).mockResolvedValue(undefined)
 })
 
@@ -366,7 +367,8 @@ describe('usePosterFrameForUpload - Sprout upload', () => {
       await result.current.run('vid1', 'sprout-key')
     })
 
-    expect(exportCanvasJpeg).toHaveBeenCalled()
+    // Issue #189: the export goes through the size-limited pipeline.
+    expect(exportCanvasJpegUnder).toHaveBeenCalled()
     expect(api.setSproutPosterFrame).toHaveBeenCalledWith(
       'vid1',
       'sprout-key',
@@ -616,9 +618,7 @@ describe('usePosterFrameForUpload - rebrand template (#189)', () => {
     const { result } = renderPosterFrameHook()
 
     expect(result.current.template).toBe('rebrand')
-    await waitFor(() =>
-      expect(api.listDirectory).toHaveBeenCalledWith(REBRAND_FOLDER)
-    )
+    await waitFor(() => expect(api.listDirectory).toHaveBeenCalledWith(REBRAND_FOLDER))
   })
 
   it('b3_1_switching_template_switches_the_background_folder', async () => {
@@ -649,9 +649,7 @@ describe('usePosterFrameForUpload - rebrand template (#189)', () => {
     await waitFor(() => expect(rendered.result.current.available).toBe(true))
     rendered.result.current.canvasRef.current = document.createElement('canvas')
 
-    let outcome:
-      | Awaited<ReturnType<typeof rendered.result.current.run>>
-      | undefined
+    let outcome: Awaited<ReturnType<typeof rendered.result.current.run>> | undefined
     await act(async () => {
       outcome = await rendered.result.current.run('vid1', 'sprout-key')
     })

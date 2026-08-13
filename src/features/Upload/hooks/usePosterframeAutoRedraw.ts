@@ -4,10 +4,17 @@ import { useQuery } from '@tanstack/react-query'
 import { debounce } from '@shared/utils'
 import { useEffect, useMemo, useRef } from 'react'
 
+import type { PosterframeTemplateId } from '../internal/posterframeTemplates'
+
 interface AutoRedrawProps {
-  draw: (imageUrl: string, title: string) => Promise<void>
+  draw: (
+    imageUrl: string,
+    title: string,
+    templateId: PosterframeTemplateId
+  ) => Promise<void>
   imageUrl: string | null
   title: string
+  templateId: PosterframeTemplateId
   debounceMs?: number
 }
 
@@ -15,12 +22,15 @@ export function usePosterframeAutoRedraw({
   draw,
   imageUrl,
   title,
+  templateId,
   debounceMs = 300
 }: AutoRedrawProps) {
-  // Create stable keys for the drawing operation
+  // Create stable keys for the drawing operation. The template is part of the
+  // key: both templates can resolve to the same background file, and a
+  // template switch must repaint even then (issue #189 B3.7).
   const drawKey = useMemo(
-    () => (imageUrl && title.trim() ? `${imageUrl}-${title.trim()}` : null),
-    [imageUrl, title]
+    () => (imageUrl && title.trim() ? `${templateId}-${imageUrl}-${title.trim()}` : null),
+    [imageUrl, title, templateId]
   )
 
   // Use React Query to manage the debounced drawing operation
@@ -31,10 +41,11 @@ export function usePosterframeAutoRedraw({
         if (!imageUrl || !title.trim()) return null
 
         try {
-          await draw(imageUrl, title)
+          await draw(imageUrl, title, templateId)
           return {
             imageUrl,
             title,
+            templateId,
             drawnAt: new Date().toISOString()
           }
         } catch (error) {
@@ -73,11 +84,12 @@ export function usePosterframeAutoRedraw({
   useEffect(() => {
     if (imageUrl && !title.trim()) {
       // Draw just the background image immediately when image is selected
-      draw(imageUrl, '')
+      draw(imageUrl, '', templateId)
     }
-  }, [imageUrl, title, draw])
+  }, [imageUrl, title, templateId, draw])
 
-  // Trigger debounced redraw when dependencies change
+  // Trigger debounced redraw when dependencies change - the template
+  // included, or switching it with the same image and title paints nothing.
   useEffect(() => {
     if (imageUrl && title.trim()) {
       debouncedTriggerRef.current()
@@ -90,5 +102,5 @@ export function usePosterframeAutoRedraw({
     return () => {
       debouncedTriggerRef.current.cancel?.()
     }
-  }, [imageUrl, title])
+  }, [imageUrl, title, templateId])
 }

@@ -262,7 +262,11 @@ describe('Posterframe page - rebrand template (#189)', () => {
   })
 
   it('b3_1_hands_the_selected_template_to_the_folder_hook', () => {
-    renderPage({ status: 'ready', files: ['/backgrounds/rebrand/a.jpg'] }, null, 'rebrand')
+    renderPage(
+      { status: 'ready', files: ['/backgrounds/rebrand/a.jpg'] },
+      null,
+      'rebrand'
+    )
 
     expect(vi.mocked(useBackgroundFolder)).toHaveBeenCalledWith('rebrand')
     expect(screen.getByRole('combobox', { name: /template/i })).toHaveTextContent(

@@ -185,6 +185,8 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
             backgrounds: posterFrame.backgrounds,
             selectedBackground: posterFrame.selectedBackground,
             onBackgroundChange: posterFrame.setSelectedBackground,
+            template: posterFrame.template,
+            onTemplateChange: posterFrame.setTemplate,
             text: posterFrame.text,
             onTextChange: posterFrame.setText,
             previewImageUrl: posterFrame.previewImageUrl,

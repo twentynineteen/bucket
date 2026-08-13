@@ -501,11 +501,11 @@ describe('AddVideoDialog - poster frame template (#189)', () => {
 
   it('b3_2_shows_no_template_choice_while_the_option_is_off', () => {
     render(
-      <AddVideoDialog {...baseProps({ posterFrame: posterFrameState({ enabled: false }) })} />
+      <AddVideoDialog
+        {...baseProps({ posterFrame: posterFrameState({ enabled: false }) })}
+      />
     )
 
-    expect(
-      screen.queryByRole('combobox', { name: /template/i })
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: /template/i })).not.toBeInTheDocument()
   })
 })

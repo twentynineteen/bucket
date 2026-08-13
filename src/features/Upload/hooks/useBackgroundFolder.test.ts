@@ -129,7 +129,9 @@ describe('useBackgroundFolder - state classification (#166)', () => {
     const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     await waitFor(() => expect(result.current.status).toBe('cannot-read'))
-    expect(result.current.reason).toBe(`Cannot read Classic background folder: ${DEFAULT_FOLDER}`)
+    expect(result.current.reason).toBe(
+      `Cannot read Classic background folder: ${DEFAULT_FOLDER}`
+    )
   })
 
   it('b2_5_gives_the_same_message_when_the_folder_is_unreadable', async () => {
@@ -141,7 +143,9 @@ describe('useBackgroundFolder - state classification (#166)', () => {
     const { result } = renderHook(() => useBackgroundFolder('classic'), { wrapper })
 
     await waitFor(() => expect(result.current.status).toBe('cannot-read'))
-    expect(result.current.reason).toBe(`Cannot read Classic background folder: ${DEFAULT_FOLDER}`)
+    expect(result.current.reason).toBe(
+      `Cannot read Classic background folder: ${DEFAULT_FOLDER}`
+    )
   })
 
   it('b2_6_logs_the_unreadable_detail_and_keeps_it_out_of_the_reason', async () => {
@@ -309,8 +313,7 @@ describe('useBackgroundFolder - per-template folders (#189)', () => {
 
   it('b3_3_drops_the_session_override_when_the_template_changes', async () => {
     const { result, rerender } = renderHook(
-      (props: { template: 'classic' | 'rebrand' }) =>
-        useBackgroundFolder(props.template),
+      (props: { template: 'classic' | 'rebrand' }) => useBackgroundFolder(props.template),
       { initialProps: { template: 'classic' as 'classic' | 'rebrand' }, wrapper }
     )
 

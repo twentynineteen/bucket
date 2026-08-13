@@ -32,8 +32,7 @@ const METRICS = { ascender: 800, unitsPerEm: 1000 }
 function fixedWidthFont(advance = 500, unitsPerEm = 1000) {
   return {
     unitsPerEm,
-    stringToGlyphs: (text: string) =>
-      Array.from(text, () => ({ advanceWidth: advance }))
+    stringToGlyphs: (text: string) => Array.from(text, () => ({ advanceWidth: advance }))
   }
 }
 

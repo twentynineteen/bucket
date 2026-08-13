@@ -14,9 +14,10 @@ import { logger, titleToPosterFrameText } from '@shared/utils'
 
 import type { PosterFrameRunResult, PosterFrameStatus } from '../types'
 import {
+  POSTER_FRAME_MAX_BYTES,
   POSTER_FRAME_RETRY_DELAYS_MS,
   describePosterFrameError,
-  exportCanvasJpeg,
+  exportCanvasJpegUnder,
   isTransientPosterFrameError,
   posterFrameDelay,
   posterFrameFileStem
@@ -31,6 +32,7 @@ import { useBackgroundFolder } from './useBackgroundFolder'
 import { useFileSelection } from './useFileSelection'
 import { usePosterframeAutoRedraw } from './usePosterframeAutoRedraw'
 import { usePosterframeCanvas } from './usePosterframeCanvas'
+import { usePosterframeTemplate } from './usePosterframeTemplate'
 
 const PREFS_KEY = 'posterframe-upload-preferences'
 
@@ -87,12 +89,15 @@ export function usePosterFrameForUpload({
 
   const text = ownText ?? titleToPosterFrameText(videoTitle)
 
+  // The Classic/Rebrand choice, shared with the Posterframe page (#189).
+  const { template, setTemplate } = usePosterframeTemplate()
+
   // The folder path itself is no longer needed here: the hook reports its own
   // reason, already worded with the path in it (issue #166 B6.1).
-  const { files: backgrounds, reason: folderReason } = useBackgroundFolder()
+  const { files: backgrounds, reason: folderReason } = useBackgroundFolder(template)
   const { selectedFilePath, selectedFileBlob, selectFile, clearSelection } =
     useFileSelection()
-  const { canvasRef, draw } = usePosterframeCanvas()
+  const { canvasRef, draw, offAspect } = usePosterframeCanvas()
 
   const {
     data: fontAvailable,
@@ -107,8 +112,13 @@ export function usePosterFrameForUpload({
     retry: false
   })
 
-  // Keep the preview in step with the chosen background and text (B4.2).
-  usePosterframeAutoRedraw({ draw, imageUrl: selectedFileBlob, title: text })
+  // Keep the preview in step with the chosen background, text and template.
+  usePosterframeAutoRedraw({
+    draw,
+    imageUrl: selectedFileBlob,
+    title: text,
+    templateId: template
+  })
 
   // Default to the first background in the folder (B2.2).
   useEffect(() => {
@@ -199,9 +209,11 @@ export function usePosterFrameForUpload({
       let bytes: Uint8Array
       try {
         // The preview redraw is debounced, so repaint before snapshotting to
-        // be certain the export matches what the user just typed.
-        await draw(selectedFileBlob, text)
-        bytes = await exportCanvasJpeg(canvas)
+        // be certain the export matches what the user just typed. The export
+        // compresses down to Sprout's limit and throws before any request is
+        // made if even the quality floor cannot fit it (#189 B5.2, B5.3).
+        await draw(selectedFileBlob, text, template)
+        bytes = await exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES)
       } catch (renderError) {
         const message =
           renderError instanceof Error
@@ -259,7 +271,7 @@ export function usePosterFrameForUpload({
       // Unreachable: the loop either returns or exhausts its retries above.
       return { ok: false, posterFrameUrl: null, error: 'Poster frame upload failed' }
     },
-    [canvasRef, draw, preferences.saveCopy, projectPath, selectedFileBlob, text]
+    [canvasRef, draw, preferences.saveCopy, projectPath, selectedFileBlob, template, text]
   )
 
   const retry = useCallback(async (): Promise<PosterFrameRunResult> => {
@@ -278,6 +290,9 @@ export function usePosterFrameForUpload({
     backgrounds,
     selectedBackground: selectedFilePath,
     setSelectedBackground,
+    template,
+    setTemplate,
+    offAspect,
     text,
     setText,
     previewImageUrl: selectedFileBlob,

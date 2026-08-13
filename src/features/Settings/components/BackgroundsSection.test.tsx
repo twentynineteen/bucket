@@ -7,8 +7,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -120,7 +119,6 @@ describe('BackgroundsSection - two template folders (#189)', () => {
   })
 
   it('b2_2_saving_preserves_the_other_folder_and_the_remaining_keys', async () => {
-    const user = userEvent.setup()
     const picked = '/Volumes/Design/rebrand-backgrounds'
     vi.mocked(api.openFolderPicker).mockResolvedValue(picked)
 
@@ -129,8 +127,11 @@ describe('BackgroundsSection - two template folders (#189)', () => {
       sproutVideo: 'sprout-key'
     })
 
-    await user.click(screen.getByRole('button', { name: /choose rebrand folder/i }))
-    await user.click(screen.getByRole('button', { name: /^save$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /choose rebrand folder/i }))
+    // The picker resolves asynchronously; the path rendering proves the pick
+    // has landed before Save reads it.
+    expect(await screen.findByText(picked)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
 
     await waitFor(() => expect(api.saveSettingsApiKeys).toHaveBeenCalled())
     expect(api.saveSettingsApiKeys).toHaveBeenCalledWith(

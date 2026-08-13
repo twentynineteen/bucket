@@ -6,6 +6,10 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 
 import { listDirectory } from '../api'
+import {
+  POSTERFRAME_TEMPLATES,
+  type PosterframeTemplateId
+} from '../internal/posterframeTemplates'
 
 /**
  * Why the background folder cannot be used, or `ready` when it can.
@@ -50,18 +54,43 @@ interface BackgroundFolderData {
   currentFolder: string | null
 }
 
-const REASONS = {
-  settingsError: 'Could not read your settings, so the background folder is unknown.',
-  notConfigured: 'No default background folder configured. Set one in Settings.',
-  empty: 'The background folder contains no image files.'
-} as const
+/**
+ * Reasons name the active template (issue #189 B3.6): with two folders in
+ * Settings, "the background folder" no longer identifies which one is wrong.
+ */
+const settingsErrorReason =
+  'Could not read your settings, so the background folder is unknown.'
+const notConfiguredReason = (label: string) =>
+  `No ${label} background folder configured. Set one in Settings.`
+const emptyReason = (label: string) =>
+  `The ${label} background folder contains no image files.`
 
 /** Worded to be true whether the folder is absent or merely unreadable. */
-const cannotReadReason = (path: string) => `Cannot read background folder: ${path}`
+const cannotReadReason = (label: string, path: string) =>
+  `Cannot read ${label} background folder: ${path}`
 
-export function useBackgroundFolder(): BackgroundFolderData {
-  const defaultFolder = useAppStore((state) => state.defaultBackgroundFolder)
-  const [sessionFolder, setSessionFolder] = useState<string | null>(null)
+export function useBackgroundFolder(
+  templateId: PosterframeTemplateId
+): BackgroundFolderData {
+  const defaultFolder = useAppStore((state) =>
+    templateId === 'rebrand'
+      ? state.rebrandBackgroundFolder
+      : state.defaultBackgroundFolder
+  )
+  // A session pick belongs to the template it was made under: carrying it
+  // across a switch would pair one brand's backgrounds with the other's text
+  // layout (issue #189 B3.3). Tagging the override with its template and
+  // clearing on mismatch during render is React's adjust-state-on-prop-change
+  // pattern - an effect here would commit a frame with the stale pairing.
+  const [override, setOverride] = useState<{
+    templateId: PosterframeTemplateId
+    folder: string
+  } | null>(null)
+  if (override && override.templateId !== templateId) {
+    setOverride(null)
+  }
+  const sessionFolder =
+    override && override.templateId === templateId ? override.folder : null
 
   // The store's folder is only ever hydrated as a side effect of loadApiKeys, so
   // a null value alone cannot distinguish "not configured" from "not loaded yet"
@@ -94,6 +123,7 @@ export function useBackgroundFolder(): BackgroundFolderData {
   }, [unreadableDetail, folderInUse])
 
   const { status, reason } = resolveState({
+    templateLabel: POSTERFRAME_TEMPLATES[templateId].label,
     settingsPending,
     settingsError,
     folderInUse,
@@ -102,14 +132,17 @@ export function useBackgroundFolder(): BackgroundFolderData {
     result: data ?? null
   })
 
-  const loadFolder = useCallback(async (folderPath: string) => {
-    // The query key is derived from this, so changing it refetches. The old
-    // refetch() call here was a no-op against the previous key (#166).
-    setSessionFolder(folderPath)
-  }, [])
+  const loadFolder = useCallback(
+    async (folderPath: string) => {
+      // The query key is derived from this, so changing it refetches. The old
+      // refetch() call here was a no-op against the previous key (#166).
+      setOverride({ templateId, folder: folderPath })
+    },
+    [templateId]
+  )
 
   const useDefaultFolder = useCallback(() => {
-    setSessionFolder(null)
+    setOverride(null)
   }, [])
 
   return {
@@ -132,6 +165,7 @@ export function useBackgroundFolder(): BackgroundFolderData {
  * still in flight.
  */
 function resolveState({
+  templateLabel,
   settingsPending,
   settingsError,
   folderInUse,
@@ -139,6 +173,7 @@ function resolveState({
   isError,
   result
 }: {
+  templateLabel: string
   settingsPending: boolean
   settingsError: boolean
   folderInUse: string | null
@@ -146,20 +181,29 @@ function resolveState({
   isError: boolean
   result: Awaited<ReturnType<typeof listDirectory>> | null
 }): { status: BackgroundFolderStatus; reason: string | null } {
-  if (settingsError) return { status: 'settings-error', reason: REASONS.settingsError }
+  if (settingsError) return { status: 'settings-error', reason: settingsErrorReason }
   if (settingsPending) return { status: 'unknown', reason: null }
-  if (!folderInUse) return { status: 'not-configured', reason: REASONS.notConfigured }
+  if (!folderInUse)
+    return { status: 'not-configured', reason: notConfiguredReason(templateLabel) }
 
   // An unexpected rejection is still a folder we cannot read.
-  if (isError) return { status: 'cannot-read', reason: cannotReadReason(folderInUse) }
+  if (isError)
+    return {
+      status: 'cannot-read',
+      reason: cannotReadReason(templateLabel, folderInUse)
+    }
   if (isLoading || !result) return { status: 'loading', reason: null }
 
   if (result.status === 'missing' || result.status === 'unreadable') {
     // The detail from `unreadable` is logged above, never shown: it is Tauri
     // error text, not something a user can act on.
-    return { status: 'cannot-read', reason: cannotReadReason(folderInUse) }
+    return {
+      status: 'cannot-read',
+      reason: cannotReadReason(templateLabel, folderInUse)
+    }
   }
 
-  if (result.files.length === 0) return { status: 'empty', reason: REASONS.empty }
+  if (result.files.length === 0)
+    return { status: 'empty', reason: emptyReason(templateLabel) }
   return { status: 'ready', reason: null }
 }

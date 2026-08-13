@@ -13,16 +13,19 @@
  * 2. `fontStatus` must transition to `'missing'` when `loadFont()` returns
  *    null, so the page component can surface the silent-failure path
  *    (Cabrito.otf not present on the user's machine) to the user.
+ *
+ * Moved here from tests/unit/hooks/ per the testing policy (colocated units),
+ * updated for the template parameter (issue #189).
  */
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { usePosterframeCanvas } from '@features/Upload/hooks/usePosterframeCanvas'
+import { usePosterframeCanvas } from './usePosterframeCanvas'
 
-vi.mock('@features/Upload/internal/loadFont', () => ({
+vi.mock('../internal/loadFont', () => ({
   loadFont: vi.fn()
 }))
-import { loadFont } from '@features/Upload/internal/loadFont'
+import { loadFont } from '../internal/loadFont'
 
 // ============================================================================
 // Image + Canvas2D mocks
@@ -106,7 +109,7 @@ describe('usePosterframeCanvas', () => {
     result.current.canvasRef.current = canvas
 
     let resolved = false
-    const drawPromise = result.current.draw('/some-image.jpg', 'Title')
+    const drawPromise = result.current.draw('/some-image.jpg', 'Title', 'classic')
     drawPromise.then(() => {
       resolved = true
     })
@@ -137,7 +140,7 @@ describe('usePosterframeCanvas', () => {
     // @ts-expect-error - assigning to RefObject.current in a test
     result.current.canvasRef.current = canvas
 
-    const drawPromise = result.current.draw('/bad-image.jpg', 'Title')
+    const drawPromise = result.current.draw('/bad-image.jpg', 'Title', 'classic')
     // Catch upfront so an unhandled rejection doesn't bubble in the test.
     const caught = drawPromise.catch((e: Error) => e)
 
@@ -159,7 +162,7 @@ describe('usePosterframeCanvas', () => {
     result.current.canvasRef.current = canvas
 
     await act(async () => {
-      const p = result.current.draw('/image.jpg', 'Title')
+      const p = result.current.draw('/image.jpg', 'Title', 'classic')
       pendingImages[0].fireOnload()
       await p
     })
@@ -168,10 +171,11 @@ describe('usePosterframeCanvas', () => {
   })
 
   test("fontStatus transitions to 'loaded' when loadFont returns a font", async () => {
-    // Minimal opentype.Font stub — we only need stringToGlyphs to not throw
-    // and unitsPerEm to be defined for the layout pass.
+    // Minimal opentype.Font stub — stringToGlyphs, unitsPerEm and ascender
+    // are all the layout pass touches.
     const fakeFont = {
       unitsPerEm: 1000,
+      ascender: 800,
       stringToGlyphs: vi.fn(() => [])
     }
     // @ts-expect-error - partial Font stub is enough for the loaded branch
@@ -186,11 +190,32 @@ describe('usePosterframeCanvas', () => {
     result.current.canvasRef.current = canvas
 
     await act(async () => {
-      const p = result.current.draw('/image.jpg', 'Title')
+      const p = result.current.draw('/image.jpg', 'Title', 'classic')
       pendingImages[0].fireOnload()
       await p
     })
 
     expect(result.current.fontStatus).toBe('loaded')
+  })
+
+  test('reports a non-16:9 background through offAspect (#189 B4.2)', async () => {
+    // The mock Image is 1024x768 - 4:3, comfortably outside the tolerance.
+    vi.mocked(loadFont).mockResolvedValue(null)
+
+    const { result } = renderHook(() => usePosterframeCanvas())
+    const canvas = document.createElement('canvas')
+    installCanvas2dStub(canvas)
+    // @ts-expect-error - assigning to RefObject.current in a test
+    result.current.canvasRef.current = canvas
+
+    expect(result.current.offAspect).toBe(false)
+
+    await act(async () => {
+      const p = result.current.draw('/image.jpg', '', 'classic')
+      pendingImages[0].fireOnload()
+      await p
+    })
+
+    expect(result.current.offAspect).toBe(true)
   })
 })

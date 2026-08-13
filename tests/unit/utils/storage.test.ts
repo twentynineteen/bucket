@@ -39,7 +39,7 @@ vi.mock('@shared/store/useAppStore', () => ({
       setTrelloApiKey: vi.fn(),
       setTrelloApiToken: vi.fn(),
       setTrelloBoardId: vi.fn(), // NEW: For DEBT-014
-      setDefaultBackgroundFolder: vi.fn(),
+      setDefaultBackgroundFolder: vi.fn(),      setRebrandBackgroundFolder: vi.fn(),
       setOllamaUrl: vi.fn()
     }))
   }
@@ -103,7 +103,7 @@ describe('storage utility', () => {
         setTrelloApiKey: vi.fn(),
         setTrelloApiToken: vi.fn(),
         setTrelloBoardId: mockSetTrelloBoardId,
-        setDefaultBackgroundFolder: vi.fn(),
+        setDefaultBackgroundFolder: vi.fn(),        setRebrandBackgroundFolder: vi.fn(),
         setOllamaUrl: vi.fn()
       } as any)
 
@@ -176,7 +176,7 @@ describe('storage utility', () => {
         setTrelloApiKey: vi.fn(),
         setTrelloApiToken: vi.fn(),
         setTrelloBoardId: mockSetTrelloBoardId,
-        setDefaultBackgroundFolder: vi.fn(),
+        setDefaultBackgroundFolder: vi.fn(),        setRebrandBackgroundFolder: vi.fn(),
         setOllamaUrl: vi.fn()
       } as any)
 

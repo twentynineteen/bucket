@@ -56,7 +56,10 @@ export function describePosterFrameError(error: unknown, byteLength: number): st
   if (status === 413) {
     const actual = Math.round(byteLength / 1024)
     const limit = Math.round(POSTER_FRAME_MAX_BYTES / 1024)
-    return `Poster frame is ${actual} KB — Sprout Video allows up to ${limit} KB. Use a lighter background image.`
+    // Compression already ran before the upload (issue #189), so a 413 here
+    // means even the quality floor could not fit the frame - advising a
+    // lighter background would be misdirection.
+    return `Poster frame is ${actual} KB — Sprout Video allows up to ${limit} KB, and compressing further would degrade it too much.`
   }
 
   return status ? `${message} (HTTP ${status})` : message
@@ -72,19 +75,77 @@ export function posterFrameDelay(ms: number): Promise<void> {
  * exactly (native canvas size, default quality) so both paths produce the
  * same image.
  */
-export function exportCanvasJpeg(canvas: HTMLCanvasElement): Promise<Uint8Array> {
+export function exportCanvasJpeg(
+  canvas: HTMLCanvasElement,
+  quality?: number
+): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        reject(new Error('Could not render the poster frame from the canvas'))
-        return
-      }
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) {
+          reject(new Error('Could not render the poster frame from the canvas'))
+          return
+        }
 
-      try {
-        resolve(new Uint8Array(await blob.arrayBuffer()))
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error(String(error)))
-      }
-    }, 'image/jpeg')
+        try {
+          resolve(new Uint8Array(await blob.arrayBuffer()))
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error(String(error)))
+        }
+      },
+      'image/jpeg',
+      quality
+    )
   })
+}
+
+/**
+ * Quality steps tried when the default-quality export is over the limit.
+ * 0.5 is the floor: below that a 1080p frame looks worse than the
+ * auto-generated still it replaces.
+ */
+export const POSTER_FRAME_QUALITY_STEPS = [0.9, 0.8, 0.7, 0.6, 0.5]
+
+/** The export could not be brought under the limit, even at the floor. */
+export class PosterFrameTooLargeError extends Error {
+  readonly byteLength: number
+
+  constructor(byteLength: number, maxBytes: number) {
+    const actual = Math.round(byteLength / 1024)
+    const limit = Math.round(maxBytes / 1024)
+    super(
+      `Poster frame is ${actual} KB even at the lowest quality — the limit is ${limit} KB. Use a simpler background image.`
+    )
+    this.name = 'PosterFrameTooLargeError'
+    this.byteLength = byteLength
+  }
+}
+
+export type CanvasJpegEncoder = (
+  canvas: HTMLCanvasElement,
+  quality?: number
+) => Promise<Uint8Array>
+
+/**
+ * Exports a canvas as JPEG at or under `maxBytes` (issue #189 B5.1-B5.3).
+ *
+ * The first attempt passes no quality at all, so an export that already fits
+ * is byte-identical to the single-shot export both surfaces used before. Only
+ * an oversized frame pays for re-encoding, stepping the quality down to the
+ * floor and throwing {@link PosterFrameTooLargeError} if even that is over.
+ */
+export async function exportCanvasJpegUnder(
+  canvas: HTMLCanvasElement,
+  maxBytes: number,
+  encode: CanvasJpegEncoder = exportCanvasJpeg
+): Promise<Uint8Array> {
+  let bytes = await encode(canvas, undefined)
+  if (bytes.byteLength <= maxBytes) return bytes
+
+  for (const quality of POSTER_FRAME_QUALITY_STEPS) {
+    bytes = await encode(canvas, quality)
+    if (bytes.byteLength <= maxBytes) return bytes
+  }
+
+  throw new PosterFrameTooLargeError(bytes.byteLength, maxBytes)
 }

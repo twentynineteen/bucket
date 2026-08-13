@@ -15,6 +15,10 @@ interface AppState {
   setBreadcrumbs: (breadcrumb: Breadcrumb) => void
   defaultBackgroundFolder: string | null
   setDefaultBackgroundFolder: (path: string | null) => void
+  /** Backgrounds for the Rebrand posterframe template (issue #189). The
+   * Classic template keeps the original defaultBackgroundFolder key. */
+  rebrandBackgroundFolder: string | null
+  setRebrandBackgroundFolder: (path: string | null) => void
   latestSproutUpload: SproutUploadResponse | null
   setLatestSproutUpload: (upload: SproutUploadResponse | null) => void
   ollamaUrl: string
@@ -46,6 +50,8 @@ export const useAppStore = create<AppState>((set) => ({
   setBreadcrumbs: (breadcrumb) => set({ breadcrumbs: breadcrumb }),
   defaultBackgroundFolder: null,
   setDefaultBackgroundFolder: (path) => set({ defaultBackgroundFolder: path }),
+  rebrandBackgroundFolder: null,
+  setRebrandBackgroundFolder: (path) => set({ rebrandBackgroundFolder: path }),
   latestSproutUpload: null,
   setLatestSproutUpload: (upload) => set({ latestSproutUpload: upload }),
   ollamaUrl: 'http://localhost:11434',
