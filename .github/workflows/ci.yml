@@ -87,11 +87,17 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      # Only the deb bundle. Nothing Linux is ever released - publish.yml ships
+      # macOS DMGs alone - so this job exists to prove the code compiles and the
+      # bundle config resolves. Building the AppImage as well downloaded four
+      # files at bundle time, two of them from a mutable upstream `master`, and
+      # an outage there failed every branch at once (issue #185). deb bundling
+      # is pure Rust and touches the network not at all.
       - name: Build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: bun run build:tauri
+        run: bun run build:tauri -- --bundles deb
 
   # macOS build is expensive (10x Linux cost) - only run on release branch pushes
   # For PRs, the Linux build validates the code compiles correctly

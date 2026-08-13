@@ -90,12 +90,14 @@ jobs:
       - name: Run unit tests
         run: bun run test:run
 
+      # deb only: this runs on Linux and no Linux artifact is released, so the
+      # AppImage bundle added a network dependency without an output. See ci.yml.
       - name: Build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           PKG_CONFIG_ALLOW_CROSS: 1
-        run: bun run build:tauri
+        run: bun run build:tauri -- --bundles deb
 
   e2e-tests:
     needs: [check-version-bump, test]
