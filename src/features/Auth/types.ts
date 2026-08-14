@@ -1,11 +1,4 @@
 export interface AuthContextType {
-  isAuthenticated: boolean
-  username: string | null
-  login: (token: string, username: string) => void
+  /** Clears any credentials left in localStorage by an earlier build. */
   logout: () => void
-}
-
-export interface AuthCheckResult {
-  isAuthenticated: boolean
-  username: string | null
 }

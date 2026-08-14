@@ -136,28 +136,3 @@ export const createMockApiKeys = (overrides = {}) => {
     ...overrides
   }
 }
-
-/**
- * Create mock user profile
- */
-export const createMockUserProfile = (overrides = {}) => {
-  return {
-    id: 'user-123',
-    username: 'testuser',
-    email: 'test@example.com',
-    createdAt: new Date().toISOString(),
-    ...overrides
-  }
-}
-
-/**
- * Create mock authentication state
- */
-export const createMockAuthState = (overrides = {}) => {
-  return {
-    isAuthenticated: true,
-    user: createMockUserProfile(),
-    token: 'mock-jwt-token',
-    ...overrides
-  }
-}

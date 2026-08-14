@@ -30,7 +30,5 @@ export {
   createMockVideoLink,
   createMockFile,
   createMockFootageFile,
-  createMockApiKeys,
-  createMockUserProfile,
-  createMockAuthState
+  createMockApiKeys
 } from './mockDataFactories'

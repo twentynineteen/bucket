@@ -5,13 +5,11 @@ mod baker;
 mod build_project;
 mod commands;
 mod kavanagh;
-mod state;
 mod utils;
 
 // Imports
 use log::info;
 use simple_logger::SimpleLogger;
-use std::sync::Mutex;
 
 // Re-exports from modules
 use baker::*;
@@ -21,7 +19,6 @@ use kavanagh::{
     kavanagh_cancel_run, kavanagh_detect_ffmpeg, kavanagh_run_check, kavanagh_save_evidence,
     KavanaghRunState,
 };
-use state::AuthState;
 
 fn main() {
     SimpleLogger::new().init().unwrap();
@@ -37,9 +34,6 @@ fn main() {
 
             Ok(())
         })
-        .manage(AuthState {
-            tokens: Mutex::new(vec![]),
-        })
         .manage(baker::ScanState::new())
         .manage(OperationRegistry::new())
         .manage(KavanaghRunState::new())
@@ -51,8 +45,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_folders,
             upload_video,
-            check_auth,
-            add_token,
             copy_premiere_project,
             show_confirmation_dialog,
             open_resource_file,

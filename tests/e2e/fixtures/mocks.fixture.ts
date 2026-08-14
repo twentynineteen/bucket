@@ -173,8 +173,6 @@ export async function setupTauriMocks(page: Page): Promise<void> {
           case 'plugin:path|resolve_directory':
             // No trailing separator, matching the real API.
             return '/tmp/bucket-test/data'
-          case 'check_auth':
-            return { authenticated: true, user: 'test@example.com' }
           case 'get_preferences':
             return {
               defaultPath: '/Users/test',

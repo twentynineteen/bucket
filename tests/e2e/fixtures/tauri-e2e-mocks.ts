@@ -484,11 +484,6 @@ export class TauriE2EMock {
             return 'test-user'
           }
 
-          if (cmd === 'check_authentication') {
-            console.log('[E2E Mock] Mocking check_authentication')
-            return { authenticated: true, user: 'test-user' }
-          }
-
           // Path plugin commands
           if (cmd === 'plugin:path|resolve_directory') {
             console.log('[E2E Mock] Mocking resolve_directory')

@@ -1,12 +1,6 @@
-/** React context provider for authentication state and token management */
+/** React context provider supplying the app's logout action */
 export { AuthProvider } from './AuthProvider'
-/** Hook for accessing auth context -- login, logout, token, and user state */
+/** Hook for accessing the auth context -- exposes logout */
 export { useAuth } from './hooks/useAuth'
-/** Hook for verifying authentication status on mount -- redirects if unauthenticated */
-export { useAuthCheck } from './hooks/useAuthCheck'
-/** Login page component with email/password form and error handling */
-export { default as Login } from './components/Login'
-/** Registration page component for new user account creation */
-export { default as Register } from './components/Register'
-/** Auth context shape -- user, token, login/logout/register methods */
+/** Auth context shape -- the logout action */
 export type { AuthContextType } from './types'

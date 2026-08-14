@@ -1,37 +1,17 @@
-import { useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 
-import { logger } from '@shared/utils'
-
 import { AuthContext } from './AuthContext'
-import { addToken, clearStoredCredentials, setStoredCredentials } from './api'
-import { useAuthCheck } from './hooks/useAuthCheck'
+import { clearStoredCredentials } from './api'
 
+/**
+ * Supplies the logout action consumed by the dashboard sidebar.
+ *
+ * The app has no authentication, so there is no session to establish or
+ * verify here. `logout` clears the credential keys an earlier build could
+ * have written to localStorage, and nothing else.
+ */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const queryClient = useQueryClient()
-  const { data: authData } = useAuthCheck()
+  const value = React.useMemo(() => ({ logout: clearStoredCredentials }), [])
 
-  const isAuthenticated = authData?.isAuthenticated ?? false
-  const username = authData?.username ?? null
-
-  const login = async (token: string, username: string) => {
-    try {
-      await addToken(token)
-      setStoredCredentials(token, username)
-      queryClient.invalidateQueries({ queryKey: ['authCheck'] })
-    } catch (error) {
-      logger.error('Login failed:', error)
-    }
-  }
-
-  const logout = () => {
-    clearStoredCredentials()
-    queryClient.invalidateQueries({ queryKey: ['authCheck'] })
-  }
-
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, username, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
