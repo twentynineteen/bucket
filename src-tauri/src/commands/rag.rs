@@ -617,7 +617,7 @@ pub async fn get_all_examples_with_metadata(
 // ============================================================================
 
 /// Validate example title
-fn validate_title(title: &str) -> Result<(), String> {
+pub(crate) fn validate_title(title: &str) -> Result<(), String> {
     let trimmed = title.trim();
     if trimmed.is_empty() {
         return Err("Title cannot be empty".to_string());
@@ -632,7 +632,7 @@ fn validate_title(title: &str) -> Result<(), String> {
 }
 
 /// Validate category enum
-fn validate_category(category: &str) -> Result<(), String> {
+pub(crate) fn validate_category(category: &str) -> Result<(), String> {
     const VALID_CATEGORIES: &[&str] = &[
         "educational",
         "business",
@@ -653,7 +653,7 @@ fn validate_category(category: &str) -> Result<(), String> {
 }
 
 /// Validate text content length
-fn validate_text_content(text: &str, field_name: &str) -> Result<(), String> {
+pub(crate) fn validate_text_content(text: &str, field_name: &str) -> Result<(), String> {
     let trimmed = text.trim();
     if trimmed.len() < 50 {
         return Err(format!(
@@ -673,7 +673,7 @@ fn validate_text_content(text: &str, field_name: &str) -> Result<(), String> {
 }
 
 /// Validate embedding dimensions
-fn validate_embedding_dimensions(embedding: &[f32]) -> Result<(), String> {
+pub(crate) fn validate_embedding_dimensions(embedding: &[f32]) -> Result<(), String> {
     // Support both all-MiniLM-L6-v2 (384) and nomic-embed-text (768)
     const VALID_DIMENSIONS: &[usize] = &[384, 768];
     if !VALID_DIMENSIONS.contains(&embedding.len()) {
@@ -688,7 +688,7 @@ fn validate_embedding_dimensions(embedding: &[f32]) -> Result<(), String> {
 }
 
 /// Calculate word count
-fn calculate_word_count(text: &str) -> i32 {
+pub(crate) fn calculate_word_count(text: &str) -> i32 {
     text.split_whitespace().count() as i32
 }
 
