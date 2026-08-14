@@ -15,12 +15,10 @@ import { logger, titleToPosterFrameText } from '@shared/utils'
 import type { PosterFrameRunResult, PosterFrameStatus } from '../types'
 import {
   POSTER_FRAME_MAX_BYTES,
-  POSTER_FRAME_RETRY_DELAYS_MS,
-  describePosterFrameError,
   exportCanvasJpegUnder,
-  isTransientPosterFrameError,
   posterFrameDelay,
-  posterFrameFileStem
+  posterFrameFileStem,
+  sendPosterFrameWithRetry
 } from '../internal/posterFrame'
 import {
   fetchSproutVideoDetails,
@@ -227,49 +225,41 @@ export function usePosterFrameForUpload({
 
       const fileStem = posterFrameFileStem(text)
 
-      for (let attempt = 0; attempt <= POSTER_FRAME_RETRY_DELAYS_MS.length; attempt++) {
+      // The retry policy itself lives in internal/posterFrame so this flow and
+      // the Posterframe page's upload action share one copy of it (#142).
+      const outcome = await sendPosterFrameWithRetry(
+        bytes,
+        (payload) => setSproutPosterFrame(videoId, apiKey, payload, `${fileStem}.jpg`),
+        posterFrameDelay
+      )
+
+      if (!outcome.ok) {
+        logger.error('Poster frame upload failed:', outcome.error)
+        setStatus('error')
+        setError(outcome.error)
+        return { ok: false, posterFrameUrl: null, error: outcome.error }
+      }
+
+      // A failed local copy must not sink an accepted poster frame (B7.5).
+      if (preferences.saveCopy) {
         try {
-          await setSproutPosterFrame(videoId, apiKey, bytes, `${fileStem}.jpg`)
-
-          // A failed local copy must not sink an accepted poster frame (B7.5).
-          if (preferences.saveCopy) {
-            try {
-              await savePosterFrameCopy(projectPath, fileStem, bytes)
-            } catch (copyError) {
-              logger.warn('Could not save the local poster frame copy:', copyError)
-            }
-          }
-
-          let posterFrameUrl: string | null = null
-          try {
-            const details = await fetchSproutVideoDetails(videoId, apiKey)
-            posterFrameUrl = details.assets?.poster_frames?.[0] || null
-          } catch (detailsError) {
-            logger.warn('Could not re-read the Sprout poster frame URL:', detailsError)
-          }
-
-          setStatus('success')
-          setError(null)
-          return { ok: true, posterFrameUrl, error: null }
-        } catch (requestError) {
-          const message = describePosterFrameError(requestError, bytes.byteLength)
-          const canRetry =
-            isTransientPosterFrameError(requestError) &&
-            attempt < POSTER_FRAME_RETRY_DELAYS_MS.length
-
-          if (!canRetry) {
-            logger.error('Poster frame upload failed:', requestError)
-            setStatus('error')
-            setError(message)
-            return { ok: false, posterFrameUrl: null, error: message }
-          }
-
-          await posterFrameDelay(POSTER_FRAME_RETRY_DELAYS_MS[attempt])
+          await savePosterFrameCopy(projectPath, fileStem, bytes)
+        } catch (copyError) {
+          logger.warn('Could not save the local poster frame copy:', copyError)
         }
       }
 
-      // Unreachable: the loop either returns or exhausts its retries above.
-      return { ok: false, posterFrameUrl: null, error: 'Poster frame upload failed' }
+      let posterFrameUrl: string | null = null
+      try {
+        const details = await fetchSproutVideoDetails(videoId, apiKey)
+        posterFrameUrl = details.assets?.poster_frames?.[0] || null
+      } catch (detailsError) {
+        logger.warn('Could not re-read the Sprout poster frame URL:', detailsError)
+      }
+
+      setStatus('success')
+      setError(null)
+      return { ok: true, posterFrameUrl, error: null }
     },
     [canvasRef, draw, preferences.saveCopy, projectPath, selectedFileBlob, template, text]
   )
