@@ -16,14 +16,23 @@
  *
  * Unit tests cannot catch this -- they mock `invoke`, so they only ever pin one
  * side of the contract. This test reads both sides off disk and compares them.
+ *
+ * It says nothing about whether an invoked command EXISTS: a name it cannot find
+ * in `commands/` is skipped as somebody else's business. That skip is why it was
+ * blind to a whole class of runtime failure, which `invoked-commands-exist`
+ * (#222) now covers. The tree walk and the invoke scanner are shared with it via
+ * `internal/tauri-command-surface`.
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const REPO_ROOT = resolve(__dirname, '../../../..')
-const SRC_DIR = join(REPO_ROOT, 'src')
-const RUST_COMMANDS_DIR = join(REPO_ROOT, 'src-tauri/src/commands')
+import {
+  REPO_ROOT,
+  RUST_COMMANDS_DIR,
+  invokeSites as scanInvokeSites,
+  walkFiles
+} from './internal/tauri-command-surface'
 
 /**
  * Parameter types Tauri injects itself -- they never appear in the JS payload.
@@ -31,16 +40,6 @@ const RUST_COMMANDS_DIR = join(REPO_ROOT, 'src-tauri/src/commands')
  */
 const INJECTED_TYPE =
   /^(?:tauri::)?(?:AppHandle|Window|WebviewWindow|State\s*<|Channel\s*<|ipc::)/
-
-function walk(dir: string, match: RegExp): string[] {
-  const found: string[] = []
-  for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry)
-    if (statSync(full).isDirectory()) found.push(...walk(full, match))
-    else if (match.test(entry)) found.push(full)
-  }
-  return found
-}
 
 function toLowerCamelCase(snake: string): string {
   // Mirrors heck's to_lower_camel_case, which is what tauri-macros applies.
@@ -78,7 +77,7 @@ interface RustCommand {
 function parseRustCommands(): Map<string, RustCommand> {
   const commands = new Map<string, RustCommand>()
 
-  for (const file of walk(RUST_COMMANDS_DIR, /\.rs$/)) {
+  for (const file of walkFiles(RUST_COMMANDS_DIR, /\.rs$/)) {
     const source = readFileSync(file, 'utf8')
     const pattern =
       /#\[(?:tauri::)?command\][\s\S]{0,200}?\bfn\s+([a-z_][a-z0-9_]*)\s*\(([\s\S]*?)\)\s*(?:->|\{)/g
@@ -201,36 +200,28 @@ function readObjectKeys(source: string, start: number): string[] | null {
 
 function parseInvokeSites(): InvokeSite[] {
   const sites: InvokeSite[] = []
-  const pattern =
-    /(?:^|[^\w.])(?:core\.)?invoke\s*(?:<[\s\S]{0,120}?>)?\s*\(\s*['"`]([a-z_][a-z0-9_]*)['"`]\s*(,?)/g
 
-  for (const file of walk(SRC_DIR, /\.tsx?$/)) {
-    if (/\.test\.tsx?$|__contracts__|__mocks__/.test(file)) continue
-    const source = readFileSync(file, 'utf8')
+  for (const site of scanInvokeSites()) {
+    // A plugin-routed name has no signature in `commands/`, and a runtime-built
+    // one has no name to look up. `invoked-commands-exist` fails on the latter,
+    // so dropping it here does not leave it unwatched.
+    if (site.kind !== 'static') continue
 
-    let match: RegExpExecArray | null
-    pattern.lastIndex = 0
-    while ((match = pattern.exec(source)) !== null) {
-      const [, command, comma] = match
-      const rel = relative(REPO_ROOT, file)
+    const { command, file, payloadStart, source } = site
 
-      if (!comma) {
-        sites.push({ command, keys: [], opaque: false, file: rel })
-        continue
-      }
-
-      let cursor = match.index + match[0].length
-      while (/\s/.test(source[cursor])) cursor++
-
-      if (source[cursor] !== '{') {
-        sites.push({ command, keys: [], opaque: true, file: rel })
-        continue
-      }
-
-      const keys = readObjectKeys(source, cursor)
-      if (keys === null) sites.push({ command, keys: [], opaque: true, file: rel })
-      else sites.push({ command, keys, opaque: false, file: rel })
+    if (payloadStart === null) {
+      sites.push({ command, keys: [], opaque: false, file })
+      continue
     }
+
+    if (source[payloadStart] !== '{') {
+      sites.push({ command, keys: [], opaque: true, file })
+      continue
+    }
+
+    const keys = readObjectKeys(source, payloadStart)
+    if (keys === null) sites.push({ command, keys: [], opaque: true, file })
+    else sites.push({ command, keys, opaque: false, file })
   }
 
   return sites
