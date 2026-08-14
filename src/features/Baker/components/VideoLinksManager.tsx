@@ -5,9 +5,10 @@
  */
 
 import { useVideoLinksManager } from '@features/Trello'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 
-import { Alert, AlertDescription } from '@shared/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert'
+import { Button } from '@shared/ui/button'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
 } from '@shared/ui/alert-dialog'
 
 import { TrelloCardUpdateDialog } from '@features/Trello'
+import { describeVideoLinksError } from '../internal/videoLinksError'
 import { VideoLinkCard } from './VideoLinkCard'
 import { AddVideoDialog } from './AddVideoDialog'
 import { SetPosterFrameDialog } from './SetPosterFrameDialog'
@@ -34,6 +36,7 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
     videoLinks,
     isLoading,
     error,
+    refetchVideoLinks,
     addError,
     trelloCards,
 
@@ -114,14 +117,36 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
     )
   }
 
-  // Error state
+  // Error state. What failed here is reading this project's local breadcrumbs
+  // file, not anything on Sprout Video, so lead with a headline naming the real
+  // cause and a remedy the user can act on. The backend's own words stay
+  // reachable in the disclosure below, and are logged by the query (issue #226).
   if (error) {
+    const failure = describeVideoLinksError(error)
+
     return (
-      <Alert variant="destructive">
+      <Alert variant="destructive" data-test="video-links-error">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load video links:{' '}
-          {error instanceof Error ? error.message : String(error)}
+        <AlertTitle>{failure.title}</AlertTitle>
+        <AlertDescription className="mt-2 space-y-3">
+          <p>{failure.description}</p>
+
+          <details className="bg-muted/50 border-border rounded-md border p-3 text-left text-xs">
+            <summary className="text-foreground cursor-pointer font-medium">
+              Technical Details
+            </summary>
+            <p className="text-muted-foreground mt-2 break-words">{failure.detail}</p>
+          </details>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => refetchVideoLinks()}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
         </AlertDescription>
       </Alert>
     )

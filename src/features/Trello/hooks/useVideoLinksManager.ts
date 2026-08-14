@@ -57,6 +57,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     videoLinks,
     isLoading,
     error,
+    refetch: refetchVideoLinks,
     addVideoLink,
     removeVideoLink,
     reorderVideoLinks,
@@ -402,6 +403,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     videoLinks,
     isLoading,
     error,
+    refetchVideoLinks,
     addError,
     trelloCards,
 
