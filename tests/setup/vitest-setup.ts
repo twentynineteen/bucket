@@ -138,7 +138,12 @@ const createMockWindow = () => ({
 })
 
 vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: vi.fn(() => createMockWindow())
+  getCurrentWindow: vi.fn(() => createMockWindow()),
+  // useMacOSEffects maps effect names through these enums. Without them in the
+  // mock the lookup throws and the hook's catch swallows it, which is how the
+  // wrong effect casing survived in the first place (#178).
+  Effect: { Sidebar: 'sidebar' },
+  EffectState: { Active: 'active', Inactive: 'inactive' }
 }))
 
 // Mock Tauri APIs

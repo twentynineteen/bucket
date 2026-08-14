@@ -18,6 +18,7 @@ import { UpdateDialog } from '@shared/ui/layout/UpdateDialog'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock framer-motion to avoid animation issues in tests
@@ -46,8 +47,8 @@ vi.mock('react-markdown', () => ({
 }))
 
 describe('UpdateDialog Component', () => {
-  let mockOnUpdate: ReturnType<typeof vi.fn>
-  let mockOnCancel: ReturnType<typeof vi.fn>
+  let mockOnUpdate: Mock
+  let mockOnCancel: Mock
 
   const defaultProps = {
     open: true,

@@ -1,4 +1,6 @@
 // types.ts
+import type { TrelloCard, VideoLink } from './media'
+
 /**
  * A SproutVideo folder. `parent_id` is null for a root folder.
  *
@@ -42,6 +44,14 @@ export interface Breadcrumb {
   creationDateTime?: string
   folderSizeBytes?: number
   trelloCardUrl?: string
+  /**
+   * Present on a breadcrumbs.json written since Phase 004, matching
+   * BreadcrumbsFile. Declared here because generateBreadcrumbsBlock already
+   * reads both when stamping a Trello card description, and without them the
+   * Videos and Trello Cards sections were unreachable to the type checker.
+   */
+  videoLinks?: VideoLink[]
+  trelloCards?: TrelloCard[]
 }
 
 // Interface representing the JSON response from SproutVideo upload

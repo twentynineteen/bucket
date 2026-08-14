@@ -100,7 +100,12 @@ export async function writeDocxFile(path: string, data: Uint8Array): Promise<voi
   return writeFile(path, data)
 }
 
-export async function readDocxFile(path: string): Promise<Uint8Array> {
+/**
+ * The ArrayBuffer parameter is load-bearing: bare `Uint8Array` widens to
+ * `ArrayBufferLike`, which lib.dom excludes from BlobPart, so callers could
+ * not pass the bytes to `new File([...])`.
+ */
+export async function readDocxFile(path: string): Promise<Uint8Array<ArrayBuffer>> {
   return readFile(path)
 }
 

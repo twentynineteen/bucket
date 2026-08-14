@@ -18,6 +18,7 @@ import { BatchActions } from '../../../src/features/Baker/components/BatchAction
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock framer-motion to avoid animation issues in tests
@@ -40,9 +41,9 @@ vi.mock('framer-motion', () => ({
 
 describe('BatchActions Component', () => {
   // Mock functions for callbacks
-  let mockOnSelectAll: ReturnType<typeof vi.fn>
-  let mockOnClearSelection: ReturnType<typeof vi.fn>
-  let mockOnApplyChanges: ReturnType<typeof vi.fn>
+  let mockOnSelectAll: Mock
+  let mockOnClearSelection: Mock
+  let mockOnApplyChanges: Mock
 
   beforeEach(() => {
     vi.clearAllMocks()

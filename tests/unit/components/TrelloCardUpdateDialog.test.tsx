@@ -19,6 +19,7 @@ import { TrelloCardUpdateDialog } from '@features/Trello'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock framer-motion to avoid animation issues in tests
@@ -41,9 +42,9 @@ vi.mock('framer-motion', () => ({
 
 describe('TrelloCardUpdateDialog Component', () => {
   // Mock functions for callbacks
-  let mockOnOpenChange: ReturnType<typeof vi.fn>
-  let mockOnUpdate: ReturnType<typeof vi.fn>
-  let mockOnAddTrelloCard: ReturnType<typeof vi.fn>
+  let mockOnOpenChange: Mock
+  let mockOnUpdate: Mock
+  let mockOnAddTrelloCard: Mock
 
   // Mock data
   const mockTrelloCards: TrelloCard[] = [

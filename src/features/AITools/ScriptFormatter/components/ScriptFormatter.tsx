@@ -158,7 +158,11 @@ const ScriptFormatterContent: React.FC = () => {
               isGenerating={isGenerating}
               generateError={generateError}
               onModifiedChange={handleModifiedChange}
-              onDownload={handleDownload}
+              // handleDownload takes (document, markdownText). Passing it
+              // straight to a click handler gave it the MouseEvent as the
+              // document and nothing as the text, so it warned and returned
+              // and the Download button did nothing (#178).
+              onDownload={() => handleDownload(document, modifiedText)}
               onOpenSaveDialog={() => setShowSaveDialog(true)}
             />
           )}

@@ -18,6 +18,7 @@
  * updated for the template parameter (issue #189).
  */
 import { act, renderHook } from '@testing-library/react'
+import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { usePosterframeCanvas } from './usePosterframeCanvas'
@@ -266,7 +267,7 @@ describe('usePosterframeCanvas - classic paint geometry (#189 B4.1, B1.5)', () =
     installCanvas2dStub(canvas)
     // @ts-expect-error - assigning to RefObject.current in a test
     result.current.canvasRef.current = canvas
-    const ctx = canvas.getContext('2d') as unknown as { rect: ReturnType<typeof vi.fn> }
+    const ctx = canvas.getContext('2d') as unknown as { rect: Mock }
 
     await act(async () => {
       const p = result.current.draw('/image.jpg', title, 'classic')

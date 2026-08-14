@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { Mock } from 'vitest'
 import { describe, test, expect, beforeEach, vi } from 'vitest'
 import { useTrelloCardDetails } from '@features/Trello'
 import type { ReactNode } from 'react'
@@ -38,7 +39,7 @@ describe('useTrelloCardDetails', () => {
         ]
       }
 
-      ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(global.fetch as Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => mockCard
       })
@@ -73,7 +74,7 @@ describe('useTrelloCardDetails', () => {
         members: []
       }
 
-      ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(global.fetch as Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => mockCard
       })
@@ -103,7 +104,7 @@ describe('useTrelloCardDetails', () => {
         ]
       }
 
-      ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(global.fetch as Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => mockCard
       })
@@ -123,7 +124,7 @@ describe('useTrelloCardDetails', () => {
 
   describe('error handling', () => {
     test('should handle API error gracefully', async () => {
-      ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(global.fetch as Mock).mockResolvedValueOnce({
         ok: false,
         status: 404
       })
@@ -142,7 +143,7 @@ describe('useTrelloCardDetails', () => {
     })
 
     test('should handle network error', async () => {
-      ;(global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      ;(global.fetch as Mock).mockRejectedValueOnce(
         new Error('Network error')
       )
 
@@ -186,7 +187,7 @@ describe('useTrelloCardDetails', () => {
     })
 
     test('should show loading state initially', () => {
-      ;(global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
+      ;(global.fetch as Mock).mockImplementation(
         () => new Promise(() => {}) // Never resolves
       )
 
@@ -209,7 +210,7 @@ describe('useTrelloCardDetails', () => {
         members: []
       }
 
-      ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(global.fetch as Mock).mockResolvedValue({
         ok: true,
         json: async () => mockCard
       })
@@ -246,7 +247,7 @@ describe('useTrelloCardDetails', () => {
         members: [{ id: 'm1', fullName: 'New Member', username: 'newmember' }]
       }
 
-      ;(global.fetch as ReturnType<typeof vi.fn>)
+      ;(global.fetch as Mock)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockCard1
@@ -283,7 +284,7 @@ describe('useTrelloCardDetails', () => {
         members: []
       }
 
-      ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(global.fetch as Mock).mockResolvedValue({
         ok: true,
         json: async () => mockCard
       })
@@ -297,7 +298,7 @@ describe('useTrelloCardDetails', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      const fetchCallCount = (global.fetch as ReturnType<typeof vi.fn>).mock
+      const fetchCallCount = (global.fetch as Mock).mock
         .calls.length
 
       // Rerender should use cached data
@@ -308,7 +309,7 @@ describe('useTrelloCardDetails', () => {
       expect(result.current.members).toEqual([])
 
       // Should not make another API call on rerender
-      expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      expect((global.fetch as Mock).mock.calls.length).toBe(
         fetchCallCount
       )
     })

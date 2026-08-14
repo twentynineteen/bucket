@@ -20,6 +20,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock Tauri opener
@@ -65,8 +66,8 @@ vi.mock('framer-motion', () => ({
 
 describe('TrelloCardItem Component', () => {
   // Mock functions for callbacks
-  let mockOnRemove: ReturnType<typeof vi.fn>
-  let mockOnRefresh: ReturnType<typeof vi.fn>
+  let mockOnRemove: Mock
+  let mockOnRefresh: Mock
 
   // Mock data
   const baseTrelloCard: TrelloCard = {
