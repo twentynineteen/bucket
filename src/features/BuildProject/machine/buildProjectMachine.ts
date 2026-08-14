@@ -7,27 +7,29 @@
  *
  * Uses XState v5 actor pattern with fromPromise for async operations.
  */
-import { invoke } from '@tauri-apps/api/core'
-import { confirm } from '@tauri-apps/plugin-dialog'
-import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 import { assign, fromPromise, setup } from 'xstate'
 
+import {
+  confirmDialog,
+  copyPremiereProject,
+  createDirectory,
+  pathExists,
+  removePath,
+  writeTextFileContents
+} from '../api'
 import { createTransferItems, fileTransferActor } from '../stages/fileTransfer'
+import type { FootageFile } from '../types'
 
 // =============================================================================
 // Types
 // =============================================================================
 
 /**
- * File representation for footage files with camera assignment
+ * File representation for footage files with camera assignment. Defined once in
+ * `types/project.ts` — the page's components and the machine must agree on this
+ * shape. Re-exported because consumers have always imported it from here.
  */
-export interface FootageFile {
-  file: {
-    path: string
-    name: string
-  }
-  camera: number
-}
+export type { FootageFile }
 
 /**
  * Breadcrumb data structure for project metadata
@@ -160,7 +162,7 @@ const validateInput = fromPromise<string, ValidateInputParams>(async ({ input })
 
   // Warn about empty files (non-blocking with user confirmation)
   if (files.length === 0) {
-    const confirmNoFiles = await confirm(
+    const confirmNoFiles = await confirmDialog(
       'No files have been added to the drag and drop section. Are you sure you want to create the project?'
     )
     if (!confirmNoFiles) {
@@ -171,14 +173,14 @@ const validateInput = fromPromise<string, ValidateInputParams>(async ({ input })
   const projectFolder = `${destinationPath}/${projectName.trim()}`
 
   // Check if folder exists
-  if (await exists(projectFolder)) {
-    const overwrite = await confirm(
+  if (await pathExists(projectFolder)) {
+    const overwrite = await confirmDialog(
       `The folder "${projectFolder}" already exists. Do you want to overwrite it?`
     )
     if (!overwrite) {
       throw new Error('Project creation cancelled by user.')
     }
-    await remove(projectFolder, { recursive: true })
+    await removePath(projectFolder, { recursive: true })
   }
 
   return projectFolder
@@ -191,19 +193,19 @@ const createFolders = fromPromise<void, CreateFoldersParams>(async ({ input }) =
   const { projectFolder, numCameras } = input
 
   // Create main project folder
-  await mkdir(projectFolder, { recursive: true })
+  await createDirectory(projectFolder, { recursive: true })
 
   // Create camera folders sequentially
   for (let cam = 1; cam <= numCameras; cam++) {
-    await mkdir(`${projectFolder}/Footage/Camera ${cam}`, { recursive: true })
+    await createDirectory(`${projectFolder}/Footage/Camera ${cam}`, { recursive: true })
   }
 
   // Create other folders in parallel
   await Promise.all([
-    mkdir(`${projectFolder}/Graphics`, { recursive: true }),
-    mkdir(`${projectFolder}/Renders`, { recursive: true }),
-    mkdir(`${projectFolder}/Projects`, { recursive: true }),
-    mkdir(`${projectFolder}/Scripts`, { recursive: true })
+    createDirectory(`${projectFolder}/Graphics`, { recursive: true }),
+    createDirectory(`${projectFolder}/Renders`, { recursive: true }),
+    createDirectory(`${projectFolder}/Projects`, { recursive: true }),
+    createDirectory(`${projectFolder}/Scripts`, { recursive: true })
   ])
 })
 
@@ -214,10 +216,7 @@ const copyTemplate = fromPromise<void, CopyTemplateParams>(async ({ input }) => 
   const { projectFolder, projectName } = input
   const filePath = `${projectFolder}/Projects/`
 
-  await invoke('copy_premiere_project', {
-    destinationFolder: filePath,
-    newTitle: projectName
-  })
+  await copyPremiereProject(filePath, projectName)
 })
 
 /**
@@ -226,7 +225,7 @@ const copyTemplate = fromPromise<void, CopyTemplateParams>(async ({ input }) => 
 const saveBreadcrumbs = fromPromise<void, SaveBreadcrumbsParams>(async ({ input }) => {
   const { projectFolder, breadcrumbs } = input
 
-  await writeTextFile(
+  await writeTextFileContents(
     `${projectFolder}/breadcrumbs.json`,
     JSON.stringify(breadcrumbs, null, 2)
   )

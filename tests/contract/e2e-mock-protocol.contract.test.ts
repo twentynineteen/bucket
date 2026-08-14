@@ -76,7 +76,7 @@ describe('e2e mock protocol — B2.2 mock speaks the current protocol', () => {
     expect(
       mockSource.includes(eventName),
       `tests/e2e/fixtures/tauri-e2e-mocks.ts never emits "${eventName}" — ` +
-        'the app listens for this event (src/features/build-project/stages/fileTransfer.ts)'
+        'the app listens for this event (src/features/BuildProject/api.ts)'
     ).toBe(true)
   })
 })

@@ -65,7 +65,7 @@ src/
 +-- features/
 |   +-- AITools/       # ScriptFormatter + ExampleEmbeddings (api.ts, 2 barrel exports)
 |   +-- Baker/         # Drive scanning, breadcrumbs management (api.ts, 24 barrel exports)
-|   +-- BuildProject/  # File ingest, camera assignment, XState (api.ts, 4 barrel exports)
+|   +-- BuildProject/  # File ingest, camera assignment, XState machine + stages (api.ts)
 |   +-- Premiere/      # Adobe Premiere plugin management (api.ts, 1 barrel export)
 |   +-- Settings/      # App configuration with per-domain tabs (api.ts, 3 barrel exports)
 |   +-- Trello/        # Trello card management, video links (api.ts, 29 barrel exports)
@@ -133,6 +133,13 @@ Each feature module in `src/features/<Name>/` follows this structure:
 +-- hooks/              # React hooks
 +-- internal/           # Internal utilities (NOT exported from barrel)
 ```
+
+A feature may add subdirectories of its own beneath this -- `BuildProject/` has `machine/`
+(its XState machine), `stages/` (the workflow stage functions) and a `types/` directory in
+place of `types.ts`. What it may **not** do is become a second top-level module: one feature,
+one directory under `src/features/`, PascalCase, with a single `api.ts` at its root. A feature
+spread over two modules puts half of itself outside the reach of its own contract tests, which
+is exactly how a module with seven direct `@tauri-apps` imports went unnoticed (#208).
 
 ### Import Rules
 
@@ -306,8 +313,14 @@ in this section.
 
 1. **File Selection**: Multi-select files via Tauri dialog (through `@features/BuildProject` api.ts)
 2. **Camera Assignment**: Validate and assign camera numbers to footage
-3. **Project Creation**: Generate folder structure + Adobe Premiere integration (XState machine)
-4. **Progress Tracking**: Real-time progress during file operations
+3. **Project Creation**: Generate folder structure + Adobe Premiere integration, orchestrated by
+   the XState machine in `BuildProject/machine/buildProjectMachine.ts` over the stage functions
+   in `BuildProject/stages/`
+4. **Progress Tracking**: Real-time progress during file operations, via the throttled
+   `transfer_files_with_progress` command and its `file-transfer-*` events
+
+The page composes the machine through `useBuildProject`; the machine and stages reach Tauri
+only through `BuildProject/api.ts`.
 
 ### Baker Workflow
 

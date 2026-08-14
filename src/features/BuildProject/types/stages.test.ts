@@ -22,7 +22,7 @@ import {
   isBuildProjectError,
   isRecoverableError,
   isStageError
-} from '../types/errors'
+} from './errors'
 import {
   createInitialStageState,
   createStageFailure,
@@ -30,7 +30,7 @@ import {
   DEFAULT_STAGE_CONFIGS,
   type StageConfig,
   type StageResult
-} from '../types/stages'
+} from './stages'
 
 describe('Stage Types and Helpers', () => {
   // ============================================================================

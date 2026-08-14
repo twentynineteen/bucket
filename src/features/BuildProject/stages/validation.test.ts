@@ -16,7 +16,7 @@ import {
   validateInputs,
   type ValidationInput,
   validationStageConfig
-} from '../stages/validation'
+} from './validation'
 
 // Mock Tauri plugin-fs
 vi.mock('@tauri-apps/plugin-fs', () => ({

@@ -6,12 +6,16 @@
  *
  * Compatible with XState v5 fromPromise actors and the Tauri event system.
  */
-import { invoke } from '@tauri-apps/api/core'
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { fromPromise } from 'xstate'
 
+import {
+  cancelFileTransfer,
+  listenFileTransferComplete,
+  listenFileTransferProgress,
+  transferFilesWithProgress
+} from '../api'
 import type {
-  FileTransferProgress,
+  FileTransferItem,
   FileTransferProgressHandler,
   FileTransferStageData,
   StageConfig,
@@ -30,36 +34,14 @@ import {
 // =============================================================================
 
 /**
- * File transfer item structure matching Rust backend
+ * Transfer payload shapes live with the other event types, next to the
+ * `FileTransferProgress` payload they arrive with. Re-exported here because
+ * this module's public surface has always included them.
  */
-export interface FileTransferItem {
-  /** Source file path */
-  source: string
-  /** Destination file path */
-  destination: string
-}
+export type { FileTransferItem, TransferCompleteEvent, TransferRequest } from '../types'
 
-/**
- * Request structure for file transfer operations
- */
-export interface TransferRequest {
-  /** List of files to transfer */
-  files: FileTransferItem[]
-}
-
-/**
- * Transfer complete event payload from Rust backend
- */
-export interface TransferCompleteEvent {
-  /** Unique operation identifier */
-  operationId: string
-  /** Whether the transfer completed successfully */
-  success: boolean
-  /** Number of files successfully transferred */
-  filesTransferred: number
-  /** Error message if the transfer failed */
-  error: string | null
-}
+/** An unlisten handle, as returned by the api.ts event wrappers. */
+type UnlistenFn = () => void
 
 /**
  * Options for the transferFiles function
@@ -90,10 +72,6 @@ export interface TransferOperationHandle {
 // =============================================================================
 // Constants
 // =============================================================================
-
-/** Tauri event names for file transfer */
-const FILE_TRANSFER_PROGRESS_EVENT = 'file-transfer-progress'
-const FILE_TRANSFER_COMPLETE_EVENT = 'file-transfer-complete'
 
 /** Default timeout for stall detection (30 seconds with no progress) */
 const DEFAULT_STALL_TIMEOUT_MS = 30000
@@ -243,9 +221,7 @@ export async function transferFiles(
 
   try {
     // Initiate the transfer - returns operation ID immediately
-    operationId = await invoke<string>('transfer_files_with_progress', {
-      request: { files } as TransferRequest
-    })
+    operationId = await transferFilesWithProgress({ files })
 
     // Create a promise that resolves when transfer completes
     const completionPromise = new Promise<StageResult<FileTransferStageData>>(
@@ -255,7 +231,7 @@ export async function transferFiles(
           const timeSinceLastProgress = Date.now() - lastProgressTime
           if (timeSinceLastProgress > DEFAULT_STALL_TIMEOUT_MS) {
             // Stall detected - attempt to cancel and reject
-            invoke('cancel_file_transfer', { operationId }).catch(() => {
+            cancelFileTransfer(operationId).catch(() => {
               // Ignore cancellation errors during stall handling
             })
             resolve(
@@ -273,7 +249,7 @@ export async function transferFiles(
         stallTimeoutId = setTimeout(checkStall, 5000)
 
         // Listen for progress events
-        listen<FileTransferProgress>(FILE_TRANSFER_PROGRESS_EVENT, (event) => {
+        listenFileTransferProgress((event) => {
           if (event.payload.operationId === operationId) {
             lastProgressTime = Date.now()
             onProgress?.(event.payload)
@@ -285,7 +261,7 @@ export async function transferFiles(
           .catch(reject)
 
         // Listen for completion event
-        listen<TransferCompleteEvent>(FILE_TRANSFER_COMPLETE_EVENT, (event) => {
+        listenFileTransferComplete((event) => {
           if (event.payload.operationId === operationId) {
             const duration = performance.now() - startTime
 
@@ -318,7 +294,7 @@ export async function transferFiles(
         // Handle abort signal
         if (signal) {
           const abortHandler = () => {
-            invoke('cancel_file_transfer', { operationId })
+            cancelFileTransfer(operationId)
               .then(() => {
                 resolve(
                   createStageFailure(
@@ -351,7 +327,7 @@ export async function transferFiles(
         // Apply timeout if configured
         if (mergedConfig.timeout > 0) {
           setTimeout(() => {
-            invoke('cancel_file_transfer', { operationId }).catch(() => {
+            cancelFileTransfer(operationId).catch(() => {
               // Ignore cancellation errors during timeout handling
             })
             resolve(
@@ -441,9 +417,7 @@ export async function startTransfer(
   }
 
   // Initiate the transfer
-  const operationId = await invoke<string>('transfer_files_with_progress', {
-    request: { files } as TransferRequest
-  })
+  const operationId = await transferFilesWithProgress({ files })
 
   let progressUnlisten: UnlistenFn | null = null
   let completeUnlisten: UnlistenFn | null = null
@@ -472,7 +446,7 @@ export async function startTransfer(
       if (resolved) return
       const timeSinceLastProgress = Date.now() - lastProgressTime
       if (timeSinceLastProgress > DEFAULT_STALL_TIMEOUT_MS) {
-        invoke('cancel_file_transfer', { operationId }).catch(() => {})
+        cancelFileTransfer(operationId).catch(() => {})
         resolveOnce(
           createStageFailure(
             ErrorKind.Timeout,
@@ -488,7 +462,7 @@ export async function startTransfer(
     stallTimeoutId = setTimeout(checkStall, 5000)
 
     // Progress listener
-    listen<FileTransferProgress>(FILE_TRANSFER_PROGRESS_EVENT, (event) => {
+    listenFileTransferProgress((event) => {
       if (event.payload.operationId === operationId) {
         lastProgressTime = Date.now()
         onProgress?.(event.payload)
@@ -509,7 +483,7 @@ export async function startTransfer(
       })
 
     // Completion listener
-    listen<TransferCompleteEvent>(FILE_TRANSFER_COMPLETE_EVENT, (event) => {
+    listenFileTransferComplete((event) => {
       if (event.payload.operationId === operationId) {
         const duration = performance.now() - startTime
 
@@ -549,7 +523,7 @@ export async function startTransfer(
     // Timeout handling
     if (mergedConfig.timeout > 0) {
       setTimeout(() => {
-        invoke('cancel_file_transfer', { operationId }).catch(() => {})
+        cancelFileTransfer(operationId).catch(() => {})
         resolveOnce(
           createStageFailure(
             ErrorKind.Timeout,
@@ -565,7 +539,7 @@ export async function startTransfer(
   // Cancel function
   const cancel = async (): Promise<boolean> => {
     try {
-      return await invoke<boolean>('cancel_file_transfer', { operationId })
+      return await cancelFileTransfer(operationId)
     } catch {
       return false
     }
@@ -586,7 +560,7 @@ export async function startTransfer(
  */
 export async function cancelTransfer(operationId: string): Promise<boolean> {
   try {
-    return await invoke<boolean>('cancel_file_transfer', { operationId })
+    return await cancelFileTransfer(operationId)
   } catch {
     return false
   }

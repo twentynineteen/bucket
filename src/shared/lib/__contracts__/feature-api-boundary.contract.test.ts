@@ -5,17 +5,27 @@
  * The rule that all feature I/O goes through the module's own `api.ts` was
  * enforced by nine hand-written per-module contract tests, one per feature. A
  * registry that has to be updated by hand exempts whatever nobody added to it,
- * and one module had been exempt for its whole life: `src/features/build-project`
- * has no api.ts and imports `@tauri-apps` directly from four source files.
+ * and one module was exempt for its whole life: `src/features/build-project` had
+ * no api.ts and imported `@tauri-apps` directly from four source files. It has
+ * since been merged into `BuildProject/` with its I/O routed through api.ts.
  *
  * So this walks the filesystem instead of a list. A new feature module is
  * covered the moment its directory exists, with no change to this file.
  *
- * The known exceptions below are asserted in BOTH directions: the tests fail if
- * a new violator appears, and equally if a listed violator has been fixed but
- * not delisted. A one-directional skip rots into a permanent hole.
+ * The exception sets below are asserted in BOTH directions: the tests fail if a
+ * new violator appears, and equally if a listed violator has been fixed but not
+ * delisted. A one-directional skip rots into a permanent hole. Both sets are now
+ * empty — every feature module has an api.ts and none reaches Tauri around it.
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -23,20 +33,18 @@ const REPO_ROOT = resolve(__dirname, '../../../..')
 const FEATURES_DIR = join(REPO_ROOT, 'src/features')
 
 /**
- * Modules with no api.ts yet.
- *
- * `build-project` predates the convention and is tracked by #208, which cannot
- * land until the typecheck gate in #178 is in place because the move touches
- * 2,224 lines of test. **Delete the entry, not the assertion, when #208 lands** -
- * the second test below will tell you to.
+ * Modules with no api.ts yet. Empty, and it should stay that way: a new feature
+ * module gets its I/O boundary before it gets a second file. If you are about to
+ * add an entry here, add the api.ts instead.
  */
-const WITHOUT_API_BOUNDARY = new Set(['build-project'])
+const WITHOUT_API_BOUNDARY = new Set<string>([])
 
 /**
- * Modules that still import `@tauri-apps` outside their api.ts. Same story and
- * same instruction as above: tracked by #208, delete the entry when it lands.
+ * Modules that still import `@tauri-apps` outside their api.ts. Empty. Adding an
+ * entry exempts a whole module from the repo's central architectural rule, which
+ * is how `build-project` stayed exempt for its entire life (#208).
  */
-const WITH_DIRECT_TAURI_IMPORTS = new Set(['build-project'])
+const WITH_DIRECT_TAURI_IMPORTS = new Set<string>([])
 
 /** A direct dependency on Tauri: static import, type-only import, or dynamic. */
 const TAURI_IMPORT = /(?:from\s*|import\s*\(\s*)['"]@tauri-apps\//
@@ -78,14 +86,15 @@ function hasApiBoundary(module: string): boolean {
   }
 }
 
+/** The matcher itself, over any list of files. Shared with the fixture below. */
+function filesWithTauriImport(files: string[]): string[] {
+  return files.filter((file) => TAURI_IMPORT.test(readFileSync(file, 'utf8')))
+}
+
 function directTauriImports(module: string): string[] {
-  const offenders: string[] = []
-  for (const file of featureSourceFiles(module)) {
-    if (TAURI_IMPORT.test(readFileSync(file, 'utf8'))) {
-      offenders.push(relative(REPO_ROOT, file))
-    }
-  }
-  return offenders
+  return filesWithTauriImport(featureSourceFiles(module)).map((file) =>
+    relative(REPO_ROOT, file)
+  )
 }
 
 describe('feature modules keep their Tauri I/O behind api.ts', () => {
@@ -96,12 +105,48 @@ describe('feature modules keep their Tauri I/O behind api.ts', () => {
     // scanning nothing at all.
     expect(modules).toContain('Baker')
     expect(modules).toContain('Upload')
-    expect(modules.length).toBeGreaterThanOrEqual(9)
+    // Deliberately not a census. Naming two known modules above already proves the
+    // scan reached the tree; a hardcoded total additionally fails every time a module
+    // is legitimately merged away, which is the export-count antipattern the testing
+    // policy forbids. It bit immediately: this PR removes `build-project` and #206
+    // removes `Auth`, each leaving 9 and passing alone, but 8 once both land. The
+    // floor stays only as something a broken path could not clear.
+    expect(modules.length).toBeGreaterThan(3)
     expect(featureSourceFiles('Baker').length).toBeGreaterThan(10)
+  })
 
-    // Proves the pattern still matches a real import. build-project is the only
-    // module that has one to find, which is the whole point of #208.
-    expect(directTauriImports('build-project').length).toBeGreaterThan(0)
+  it('matches a real @tauri-apps import, in every form (guards a vacuous pass)', () => {
+    // This used to assert that `build-project` had a stray import, which meant
+    // fixing the module broke the guard (#207, #208). The pattern is proved
+    // against a fixture instead, so it depends on no module being broken.
+    const dir = mkdtempSync(join(tmpdir(), 'feature-api-boundary-'))
+    const write = (name: string, source: string) => {
+      const file = join(dir, name)
+      writeFileSync(file, source)
+      return file
+    }
+
+    try {
+      const staticImport = write(
+        'static.ts',
+        "import { invoke } from '@tauri-apps/api/core'\n"
+      )
+      const typeImport = write(
+        'type.ts',
+        "import type { Event } from '@tauri-apps/api/event'\n"
+      )
+      const dynamicImport = write('dynamic.ts', "await import('@tauri-apps/plugin-fs')\n")
+      const throughApi = write('clean.ts', "import { pathExists } from './api'\n")
+
+      expect(filesWithTauriImport([staticImport, typeImport, dynamicImport])).toEqual([
+        staticImport,
+        typeImport,
+        dynamicImport
+      ])
+      expect(filesWithTauriImport([throughApi])).toEqual([])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it('every feature module has an api.ts', () => {
