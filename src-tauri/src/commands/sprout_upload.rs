@@ -324,11 +324,69 @@ pub fn classify_response(status: reqwest::StatusCode, body: &str) -> Result<Valu
     }
 }
 
+/// The pre-flight size gate.
+///
+/// It lives in its own module so `CheckedUploadSize`'s field is unreachable from
+/// the rest of this file: the only way to obtain one is `check_upload_size`. That
+/// makes the rejection impossible to skip or reorder rather than merely
+/// conventional, because `ProgressReader` cannot be built without one and so no
+/// `upload_progress` event can be emitted for a file Sprout would refuse.
+/// See issue #154 (UP-09a).
+mod size_gate {
+    /// Sprout's documented API upload ceiling. Their browser uploader allows
+    /// 10 GB, but `POST /v1/videos` is capped at 5 GB and an oversized body is
+    /// rejected by their edge with an HTML 413. See issue #150.
+    const SPROUT_MAX_UPLOAD_BYTES: u64 = 5 * 1024 * 1024 * 1024;
+
+    /// A file size that has passed `check_upload_size`.
+    #[derive(Clone, Copy)]
+    pub struct CheckedUploadSize(u64);
+
+    impl CheckedUploadSize {
+        /// The size in bytes, for the multipart content length and the progress
+        /// percentage.
+        pub fn bytes(&self) -> u64 {
+            self.0
+        }
+    }
+
+    /// Renders a byte count in decimal gigabytes, the unit macOS reports file
+    /// sizes in, so the figure in the message matches what the user sees in
+    /// Finder.
+    fn format_gigabytes(bytes: u64) -> String {
+        format!("{:.2} GB", bytes as f64 / 1_000_000_000.0)
+    }
+
+    /// Rejects files Sprout's API cannot accept, before any bytes are streamed.
+    ///
+    /// The limit is inclusive: a file of exactly 5 GiB is at the ceiling, not over
+    /// it. The message quotes the limit as "5 GB" because that is how Sprout
+    /// documents it; anything rejected here is over 5.36 decimal GB, so the two
+    /// figures never read as contradictory.
+    pub fn check_upload_size(file_size: u64) -> Result<CheckedUploadSize, String> {
+        if file_size > SPROUT_MAX_UPLOAD_BYTES {
+            return Err(format!(
+                "This file is {}. Sprout Video's API accepts uploads up to 5 GB. \
+                 Re-export at a lower bitrate, or upload it through the Sprout web \
+                 uploader and paste the link into the \"Enter URL\" tab.",
+                format_gigabytes(file_size)
+            ));
+        }
+
+        Ok(CheckedUploadSize(file_size))
+    }
+}
+
+pub use size_gate::{check_upload_size, CheckedUploadSize};
+
 // Async Progress Tracking Reader using Tokio's AsyncRead API (with ReadBuf)
 pub struct ProgressReader<R> {
     inner: R,
     progress: Arc<Mutex<u64>>,
-    total_size: u64,
+    /// A gated size, not a bare `u64`. This is what stops a reader - and the
+    /// `upload_progress` events it emits - ever existing for a file Sprout's API
+    /// would refuse. See `size_gate` and issue #154.
+    total_size: CheckedUploadSize,
     app_handle: AppHandle,
 }
 
@@ -351,7 +409,8 @@ impl<R: AsyncRead + Unpin> AsyncRead for ProgressReader<R> {
                 match self.progress.try_lock() {
                     Ok(mut progress_guard) => {
                         *progress_guard += bytes_read as u64;
-                        let percentage = (*progress_guard as f64 / self.total_size as f64) * 100.0;
+                        let percentage =
+                            (*progress_guard as f64 / self.total_size.bytes() as f64) * 100.0;
                         println!("Upload progress: {:.2}%", percentage);
 
                         // Emit progress event to frontend
@@ -383,6 +442,17 @@ async fn upload_video_task(
     let file = File::open(&file_path).map_err(|e| e.to_string())?;
     let file_size = file.metadata().map_err(|e| e.to_string())?.len();
 
+    // Refuse what Sprout's API cannot accept before a single byte is streamed. A
+    // 12.72 GB render used to transfer for a long time only to earn an HTML 413,
+    // and the size was knowable here in milliseconds. See issue #154.
+    let checked_size = match check_upload_size(file_size) {
+        Ok(checked) => checked,
+        Err(message) => {
+            let _ = app_handle.emit("upload_error", message.clone());
+            return Err(message);
+        }
+    };
+
     // Convert the file into an async Tokio file and wrap it in a BufReader
     let file = tokio::fs::File::from_std(file);
     let reader = BufReader::new(file);
@@ -392,7 +462,7 @@ async fn upload_video_task(
     let progress_reader = ProgressReader {
         inner: reader,
         progress: progress.clone(),
-        total_size: file_size,
+        total_size: checked_size,
         app_handle: app_handle.clone(),
     };
 
@@ -430,7 +500,7 @@ async fn upload_video_task(
     // Wrap the stream into a reqwest Body.
     let body = Body::wrap_stream(stream);
 
-    let part = multipart::Part::stream_with_length(body, file_size)
+    let part = multipart::Part::stream_with_length(body, checked_size.bytes())
         .file_name(file_name.clone())
         .mime_str("video/mp4")
         .map_err(|e| e.to_string())?;

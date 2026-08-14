@@ -267,3 +267,96 @@ fn a_2xx_with_a_non_json_body_reports_the_status() {
         .expect_err("an HTML body must not be treated as an empty folder list");
     assert!(err.contains("200"), "got: {err}");
 }
+
+// --- Pre-flight upload size gate (issue #154) ---
+//
+// A 12.72 GB render streamed for a long time before Sprout's edge answered with an
+// HTML 413. The size is knowable from `metadata().len()` in milliseconds, so an
+// upload that could never succeed is now refused before any bytes move.
+
+use crate::commands::sprout_upload::check_upload_size;
+
+/// One binary gigabyte. Sprout's limit is expressed in these, not in decimal GB.
+const GIB: u64 = 1024 * 1024 * 1024;
+
+#[test]
+fn a_file_of_exactly_the_limit_is_accepted() {
+    // UP-09b: the limit is inclusive. `>=` in place of `>` would refuse a file
+    // Sprout's API accepts, so this case must pass.
+    let checked = check_upload_size(5 * GIB)
+        .expect("exactly 5 GiB is at Sprout's limit, not over it, so it must be accepted");
+    assert_eq!(
+        checked.bytes(),
+        5 * GIB,
+        "the checked size must carry the real byte count through to the content length"
+    );
+}
+
+#[test]
+fn a_file_one_byte_under_the_limit_is_accepted() {
+    check_upload_size(5 * GIB - 1).expect("a file under the limit must be accepted");
+}
+
+#[test]
+fn a_file_one_byte_over_the_limit_is_rejected() {
+    check_upload_size(5 * GIB + 1)
+        .err()
+        .expect("one byte over the limit is over the limit");
+}
+
+#[test]
+fn the_rejection_names_the_size_the_limit_and_both_ways_forward() {
+    // UP-09: the size that produced the original 413.
+    let err = check_upload_size(12_720_000_000)
+        .err()
+        .expect("a 12.72 GB file cannot be uploaded through Sprout's API");
+
+    assert!(
+        err.contains("12.72 GB"),
+        "the message must name the file's actual size, got: {err}"
+    );
+    assert!(
+        err.contains("5 GB"),
+        "the message must name the limit the file breached, got: {err}"
+    );
+    assert!(
+        err.to_lowercase().contains("bitrate"),
+        "the message must offer re-exporting smaller as a way forward, got: {err}"
+    );
+    assert!(
+        err.contains("Enter URL"),
+        "the message must point at the web uploader plus the \"Enter URL\" tab as the \
+         other way forward, got: {err}"
+    );
+}
+
+#[test]
+fn the_size_check_runs_before_any_streaming_or_network_work() {
+    // UP-09a. `ProgressReader` holds a `CheckedUploadSize`, which only
+    // `check_upload_size` can mint, so the compiler already stops a progress
+    // reporting reader - and therefore any `upload_progress` event - existing for
+    // an unchecked file. What the compiler cannot stop is new work being added
+    // above the gate, so pin the order of the statements in `upload_video_task`.
+    let source = include_str!("../sprout_upload.rs");
+
+    let gate = source
+        .find("check_upload_size(file_size)")
+        .expect("upload_video_task must gate on the file size it just read");
+    let reader = source
+        .find("ProgressReader {")
+        .expect("upload_video_task must still build a ProgressReader");
+    let request = source
+        .find("post(\"https://api.sproutvideo.com/v1/videos\")")
+        .expect("upload_video_task must still POST to Sprout");
+
+    assert!(
+        gate < reader,
+        "the size gate must precede the ProgressReader, or an oversized file emits \
+         upload_progress before it is refused"
+    );
+    assert!(
+        gate < request,
+        "the size gate must precede the request, or the user waits on a transfer that \
+         cannot succeed"
+    );
+}
