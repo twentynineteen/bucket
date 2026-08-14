@@ -226,8 +226,6 @@ export async function setupTauriMocks(
           return '0.0.0-e2e'
         case 'get_username':
           return 'Test User'
-        case 'check_auth':
-          return { authenticated: true, user: 'test@example.com' }
         case 'get_preferences':
           return { defaultPath: '/Users/test', theme: 'system' }
 

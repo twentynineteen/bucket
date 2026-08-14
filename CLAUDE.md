@@ -64,7 +64,7 @@ npx npm-check-updates -u             # Update all dependencies to latest
 src/
 +-- features/
 |   +-- AITools/       # ScriptFormatter + ExampleEmbeddings (api.ts, 2 barrel exports)
-|   +-- Auth/          # Login, registration, token management (api.ts, 6 barrel exports)
+|   +-- Auth/          # Logout action for the sidebar only -- no authentication (api.ts)
 |   +-- Baker/         # Drive scanning, breadcrumbs management (api.ts, 24 barrel exports)
 |   +-- BuildProject/  # File ingest, camera assignment, XState (api.ts, 4 barrel exports)
 |   +-- Premiere/      # Adobe Premiere plugin management (api.ts, 1 barrel export)
@@ -84,7 +84,7 @@ src/
 
 src-tauri/
 +-- src/               # Rust backend with file operations, API integrations
-+-- Cargo.toml         # Rust dependencies (tokio, reqwest, serde, argon2, etc.)
++-- Cargo.toml         # Rust dependencies (tauri, tokio, reqwest, serde, etc.)
 +-- tauri.conf.json    # Tauri app configuration
 ```
 
@@ -328,6 +328,11 @@ in this section.
 - **Main Branch**: `master` (use for PRs)
 - **Package Manager**: Bun (used for all development and CI, replaces npm entirely)
 - **Platform**: Cross-platform desktop app, primary development on macOS
-- **Security**: Uses argon2 for password hashing, JWT for auth, Tauri stronghold for secure storage
+- **Security**: The app has **no authentication**. It is a single-user local desktop tool, there is
+  no login, no user account and no password anywhere in the codebase. Third-party credentials
+  (Sprout, Trello, AI providers) are stored **unencrypted** in `api_keys.json` in the app data
+  directory, protected only by the OS file permissions of the user's account. Do not assume
+  hashing, token signing or an encrypted keystore exists -- none does. Anything that needs one has
+  to add it.
 - **Themes**: 13 themes available (System, Light, Dark, Dracula, Tokyo Night, Catppuccin variants, Solarized Light, GitHub Light, Nord Light, One Light) via `@shared/ui/theme/`
 - **Window**: Native macOS title bar with traffic lights, vibrancy effects, window state persistence

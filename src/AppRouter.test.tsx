@@ -1,7 +1,15 @@
-import { AppRouter } from '../../src/AppRouter'
+import { AppRouter } from './AppRouter'
 import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+// The updater's Update type is a class with private fields, so a plain object
+// literal is not assignable to it. `as never` stands in for the full instance
+// without reaching for `any`.
+type DownloadEvent = {
+  event: 'Started' | 'Progress' | 'Finished'
+  data?: { contentLength?: number; chunkLength?: number }
+}
 
 // Mock Tauri plugins
 vi.mock('@tauri-apps/plugin-process', () => ({
@@ -13,18 +21,13 @@ vi.mock('@tauri-apps/plugin-updater', () => ({
 }))
 
 // Mock all page components
-vi.mock('../../src/app/dashboard/page', () => ({
+vi.mock('./app/dashboard/page', () => ({
   default: () => <div data-testid="page-layout">Page Layout</div>
 }))
 
 vi.mock('@features/AITools', () => ({
   ExampleEmbeddings: () => <div>Example Embeddings</div>,
   ScriptFormatter: () => <div>Script Formatter</div>
-}))
-
-vi.mock('@features/Auth', () => ({
-  Login: () => <div data-testid="login-page">Login Page</div>,
-  Register: () => <div data-testid="register-page">Register Page</div>
 }))
 
 vi.mock('@features/Premiere', () => ({
@@ -61,7 +64,7 @@ describe('AppRouter', () => {
   })
 
   describe('routing behavior', () => {
-    it('should redirect to /ingest/build when authenticated and accessing root', async () => {
+    it('should redirect to /ingest/build when accessing root', async () => {
       render(
         <BrowserRouter>
           <AppRouter />
@@ -107,7 +110,7 @@ describe('AppRouter', () => {
     it('should check for updates in production mode', async () => {
       process.env.NODE_ENV = 'production'
       const { check } = await import('@tauri-apps/plugin-updater')
-      vi.mocked(check).mockResolvedValue(null as any)
+      vi.mocked(check).mockResolvedValue(null)
 
       render(
         <BrowserRouter>
@@ -125,7 +128,7 @@ describe('AppRouter', () => {
       const { check } = await import('@tauri-apps/plugin-updater')
       const { relaunch } = await import('@tauri-apps/plugin-process')
 
-      const mockDownloadAndInstall = vi.fn(async callback => {
+      const mockDownloadAndInstall = vi.fn(async (callback) => {
         // Simulate download events
         callback({ event: 'Started', data: { contentLength: 1000 } })
         callback({ event: 'Progress', data: { chunkLength: 500 } })
@@ -136,7 +139,7 @@ describe('AppRouter', () => {
       vi.mocked(check).mockResolvedValue({
         version: '1.2.3',
         downloadAndInstall: mockDownloadAndInstall
-      } as any)
+      } as never)
 
       render(
         <BrowserRouter>
@@ -178,7 +181,7 @@ describe('AppRouter', () => {
       const { check } = await import('@tauri-apps/plugin-updater')
       const { relaunch } = await import('@tauri-apps/plugin-process')
 
-      vi.mocked(check).mockResolvedValue({} as any) // No version means no update
+      vi.mocked(check).mockResolvedValue({} as never) // No version means no update
 
       render(
         <BrowserRouter>
@@ -198,9 +201,9 @@ describe('AppRouter', () => {
       process.env.NODE_ENV = 'production'
       const { check } = await import('@tauri-apps/plugin-updater')
 
-      let progressCallback: any
+      let progressCallback: ((event: DownloadEvent) => void) | undefined
 
-      const mockDownloadAndInstall = vi.fn(async callback => {
+      const mockDownloadAndInstall = vi.fn(async (callback) => {
         progressCallback = callback
         callback({ event: 'Started', data: { contentLength: 1000 } })
         callback({ event: 'Progress', data: { chunkLength: 250 } })
@@ -213,7 +216,7 @@ describe('AppRouter', () => {
       vi.mocked(check).mockResolvedValue({
         version: '1.2.3',
         downloadAndInstall: mockDownloadAndInstall
-      } as any)
+      } as never)
 
       render(
         <BrowserRouter>
