@@ -30,14 +30,14 @@ describe('CacheInvalidationService', () => {
   // ============================================================================
 
   describe('invalidateUserData', () => {
-    it('should invalidate user profile and authentication queries', async () => {
+    it('should invalidate user profile and username queries', async () => {
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       await service.invalidateUserData()
 
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.user.profile() })
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: queryKeys.user.authentication()
+        queryKey: queryKeys.user.username()
       })
     })
   })

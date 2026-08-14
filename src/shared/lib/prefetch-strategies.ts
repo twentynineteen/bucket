@@ -45,7 +45,7 @@ export class QueryPrefetchManager {
   }
 
   /**
-   * Prefetch user-specific data after authentication
+   * Prefetch the data the chrome needs: the OS username and the stored API keys.
    */
   async prefetchUserData() {
     return Promise.allSettled([this.prefetchUsername(), this.prefetchApiKeys()])
@@ -81,7 +81,7 @@ export class QueryPrefetchManager {
   async prefetchUsername() {
     return this.queryClient.prefetchQuery({
       ...createQueryOptions(
-        queryKeys.user.authentication(),
+        queryKeys.user.username(),
         async () => {
           try {
             return await core.invoke<string>('get_username')
