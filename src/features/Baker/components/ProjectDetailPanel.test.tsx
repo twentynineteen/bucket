@@ -1,14 +1,19 @@
 /**
- * ProjectDetailPanel tests - issue #168
+ * ProjectDetailPanel tests
  *
- * Paths read out of breadcrumbs.json were rendered as current state behind a
- * string-truthiness gate, with no check that they still resolve. Because
- * breadcrumbs round-trip through Trello card descriptions they are routinely
- * authored on another machine, so they are often not merely stale but
- * structurally meaningless locally.
+ * The single test file for this component. `ProjectDetailPanel.animations.test.tsx`
+ * was merged in here under issue #205: it sat in the legacy `tests/unit/` tree,
+ * duplicated this file's subject, and spent a third of its assertions restating
+ * the contents of `BAKER_ANIMATIONS` - a constants object this component does not
+ * import. Those went. Its assertions on rendered output live in the
+ * "panel states and structure" block below.
  *
- * Covers B2 (recorded location in the header), B3 (copy to clipboard) and
- * B4 (footage file paths).
+ * Issue #168 covers the rest: paths read out of breadcrumbs.json were rendered as
+ * current state behind a string-truthiness gate, with no check that they still
+ * resolve. Because breadcrumbs round-trip through Trello card descriptions they
+ * are routinely authored on another machine, so they are often not merely stale
+ * but structurally meaningless locally. Covered as B2 (recorded location in the
+ * header), B3 (copy to clipboard) and B4 (footage file paths).
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -19,7 +24,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from 'sonner'
 import React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as bakerApi from '../api'
 import type { BreadcrumbsFile, ProjectFolder } from '../types'
@@ -103,24 +108,41 @@ const stubClipboard = () => {
   })
 }
 
-const renderPanel = () => {
+type PanelProps = React.ComponentProps<typeof ProjectDetailPanel>
+
+const baseProps: PanelProps = {
+  selectedProject: PROJECT_PATH,
+  project,
+  breadcrumbs,
+  isLoadingBreadcrumbs: false,
+  breadcrumbsError: null,
+  preview: null,
+  isGeneratingPreview: false,
+  onGeneratePreview: vi.fn()
+}
+
+/**
+ * Every render of this component goes through here. The header resolves the
+ * recorded location against the filesystem through a query, so a bare `render`
+ * without the provider throws - which is how the two tests repaired in #168 came
+ * to be broken in the first place. `renderWith` re-renders inside the same
+ * provider and client, for the tests that change props after mount.
+ */
+const renderPanel = (overrides: Partial<PanelProps> = {}) => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } }
   })
-  return render(
-    <QueryClientProvider client={client}>
-      <ProjectDetailPanel
-        selectedProject={PROJECT_PATH}
-        project={project}
-        breadcrumbs={breadcrumbs}
-        isLoadingBreadcrumbs={false}
-        breadcrumbsError={null}
-        preview={null}
-        isGeneratingPreview={false}
-        onGeneratePreview={vi.fn()}
-      />
-    </QueryClientProvider>
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
+  const view = render(<ProjectDetailPanel {...baseProps} {...overrides} />, {
+    wrapper: Wrapper
+  })
+  return {
+    ...view,
+    renderWith: (next: Partial<PanelProps>) =>
+      view.rerender(<ProjectDetailPanel {...baseProps} {...next} />)
+  }
 }
 
 /** Resolve the probe by answering `present` for each path it is handed. */
@@ -133,6 +155,86 @@ const answerProbe = (present: (path: string) => boolean) => {
 const openFilesTab = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('tab', { name: /Files/ }))
 }
+
+/**
+ * Merged from the legacy animations file (issue #205). What survived is what a
+ * user can observe: the heading, the tabs, the file list, and the three states
+ * the panel can be in other than "showing a project". What did not survive was
+ * either an assertion about `BAKER_ANIMATIONS`, an assertion about a Tailwind
+ * class literal, or a second copy of one of the assertions below.
+ */
+describe('panel states and structure', () => {
+  // The header probes as soon as it mounts. Answering `true` keeps these tests
+  // about structure rather than about resolution, which is B2's and B4's job.
+  beforeEach(() => answerProbe(() => true))
+
+  it('renders the recorded project title as the panel heading', () => {
+    renderPanel({ breadcrumbs: { ...breadcrumbs, projectTitle: 'Wolfson Lecture 3' } })
+
+    expect(screen.getByRole('heading', { name: 'Wolfson Lecture 3' })).toBeInTheDocument()
+  })
+
+  it('renders a tab for each section of the panel', () => {
+    renderPanel()
+
+    for (const name of [/Overview/, /Files/, /Videos/, /Trello/]) {
+      expect(screen.getByRole('tab', { name })).toBeInTheDocument()
+    }
+  })
+
+  it('counts the recorded files on the Files tab', () => {
+    renderPanel()
+
+    expect(screen.getByRole('tab', { name: /Files/ })).toHaveTextContent('3')
+  })
+
+  it('lists every recorded file when the Files tab is opened', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+    await openFilesTab(user)
+
+    expect(await screen.findByText('A001.mov')).toBeInTheDocument()
+    expect(screen.getByText('A002.mov')).toBeInTheDocument()
+    expect(screen.getByText('B001.mov')).toBeInTheDocument()
+  })
+
+  it('falls back to the empty state once the project is deselected', () => {
+    const { renderWith } = renderPanel()
+    expect(screen.queryByText('Select a project to view details')).not.toBeInTheDocument()
+
+    renderWith({ selectedProject: null })
+
+    expect(screen.getByText('Select a project to view details')).toBeInTheDocument()
+  })
+
+  it('says so while the breadcrumbs are still loading', () => {
+    renderPanel({ breadcrumbs: null, isLoadingBreadcrumbs: true })
+
+    expect(screen.getByText('Loading breadcrumbs...')).toBeInTheDocument()
+  })
+
+  it('shows the reason the breadcrumbs could not be read', () => {
+    renderPanel({ breadcrumbs: null, breadcrumbsError: 'Failed to load breadcrumbs' })
+
+    expect(screen.getByText('Failed to load breadcrumbs')).toBeInTheDocument()
+  })
+
+  it('follows the selection through successive project changes', () => {
+    const { renderWith } = renderPanel()
+
+    renderWith({
+      selectedProject: '/Volumes/Media/Shoots/Project B',
+      breadcrumbs: { ...breadcrumbs, projectTitle: 'Project B' }
+    })
+    renderWith({
+      selectedProject: '/Volumes/Media/Shoots/Project C',
+      breadcrumbs: { ...breadcrumbs, projectTitle: 'Project C' }
+    })
+
+    expect(screen.getByRole('heading', { name: 'Project C' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Project B' })).not.toBeInTheDocument()
+  })
+})
 
 describe('B2 - recorded location in the detail header', () => {
   it('B2.1 renders the recorded location unmarked when it resolves', async () => {
