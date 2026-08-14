@@ -68,9 +68,12 @@ const getFilePath = async () => {
 // Save API keys to a local file as JSON.
 export const saveApiKeys = async (apiKeys: ApiKeys): Promise<void> => {
   try {
-    setSproutVideoApiKey(apiKeys.sproutVideo)
-    setTrelloApiKey(apiKeys.trello)
-    setTrelloApiToken(apiKeys.trelloToken)
+    // The store declares these three as `string` and starts them at ''. An
+    // ApiKeys with the key absent used to put `undefined` in a slot the store's
+    // own type promises is a string (#210).
+    setSproutVideoApiKey(apiKeys.sproutVideo ?? '')
+    setTrelloApiKey(apiKeys.trello ?? '')
+    setTrelloApiToken(apiKeys.trelloToken ?? '')
     if (apiKeys.trelloBoardId !== undefined) setTrelloBoardId(apiKeys.trelloBoardId)
     setDefaultBackgroundFolder(apiKeys.defaultBackgroundFolder)
     setRebrandBackgroundFolder(apiKeys.rebrandBackgroundFolder)
@@ -96,9 +99,9 @@ export const loadApiKeys = async (): Promise<ApiKeys> => {
     const data = await readTextFile(filePath)
     const result = JSON.parse(data)
 
-    setSproutVideoApiKey(result.sproutVideo)
-    setTrelloApiKey(result.trello)
-    setTrelloApiToken(result.trelloToken)
+    setSproutVideoApiKey(result.sproutVideo ?? '')
+    setTrelloApiKey(result.trello ?? '')
+    setTrelloApiToken(result.trelloToken ?? '')
     if (result.trelloBoardId !== undefined) setTrelloBoardId(result.trelloBoardId)
     setDefaultBackgroundFolder(result.defaultBackgroundFolder)
     setRebrandBackgroundFolder(result.rebrandBackgroundFolder)

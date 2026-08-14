@@ -112,9 +112,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        // Use explicit comparison - strictNullChecks is off, so truthiness
-        // checks do not narrow the StageResult discriminated union.
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('At least one file must be selected')
           expect(result.error.recoverable).toBe(true)
         }
@@ -133,7 +131,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('At least one file')
         }
       })
@@ -153,7 +151,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain(
             'Project name is required and cannot be empty'
           )
@@ -173,7 +171,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('Project name is required')
         }
       })
@@ -191,7 +189,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('invalid characters')
         }
       })
@@ -210,7 +208,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('200 characters or less')
         }
       })
@@ -228,7 +226,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('reserved name')
         }
       })
@@ -246,7 +244,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('cannot start or end with spaces')
         }
       })
@@ -264,7 +262,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('cannot end with a period')
         }
       })
@@ -284,7 +282,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('Invalid camera assignments')
           expect(result.error.message).toContain('video.mp4')
         }
@@ -303,7 +301,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('Invalid camera assignments')
           expect(result.error.message).toContain('between 1 and 3')
         }
@@ -326,7 +324,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('video1.mp4')
           expect(result.error.message).toContain('video2.mp4')
           expect(result.error.message).not.toContain('video3.mp4')
@@ -366,7 +364,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message.toLowerCase()).toContain('camera')
         }
       })
@@ -384,7 +382,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('At least one file')
         }
       })
@@ -402,7 +400,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('Output path is required')
         }
       })
@@ -420,7 +418,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('Output path does not exist')
         }
       })
@@ -438,7 +436,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           expect(result.error.message).toContain('Unable to access output path')
         }
       })
@@ -458,7 +456,7 @@ describe('Validation Stage', () => {
         const result = await validateInputs(input)
 
         expect(result.ok).toBe(false)
-        if (result.ok === false) {
+        if (!result.ok) {
           // Should contain multiple error messages joined
           expect(result.error.message).toContain('At least one file')
           expect(result.error.message).toContain('Project name is required')

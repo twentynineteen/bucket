@@ -67,9 +67,7 @@ describe('US-03 — File Transfer Progress', () => {
     const result = await transferFiles({ files: [] })
 
     expect(result.ok).toBe(false)
-    // Use explicit comparison - strictNullChecks is off, so truthiness
-    // checks do not narrow the StageResult discriminated union.
-    if (result.ok === false) {
+    if (!result.ok) {
       expect(result.error.kind).toBe('Validation')
       expect(result.error.message).toContain('No files provided')
     }

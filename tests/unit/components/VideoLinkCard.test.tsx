@@ -117,13 +117,12 @@ describe('VideoLinkCard Component', () => {
 
     test('renders without optional fields', () => {
       // Arrange
+      // The optional fields are omitted, not null. The Rust structs behind
+      // VideoLink use skip_serializing_if = "Option::is_none", so an absent
+      // field never reaches the frontend as null (#210).
       const minimalVideoLink: VideoLink = {
         url: 'https://sproutvideo.com/videos/xyz789',
-        title: 'Minimal Video',
-        sproutVideoId: null,
-        uploadDate: null,
-        thumbnailUrl: null,
-        sourceRenderFile: null
+        title: 'Minimal Video'
       }
 
       // Act
@@ -177,7 +176,7 @@ describe('VideoLinkCard Component', () => {
       // Arrange
       const videoWithoutThumbnail: VideoLink = {
         ...baseVideoLink,
-        thumbnailUrl: null
+        thumbnailUrl: undefined
       }
 
       // Act
@@ -399,7 +398,7 @@ describe('VideoLinkCard Component', () => {
         <VideoLinkCard
           videoLink={{
             ...baseVideoLink,
-            sproutVideoId: null,
+            sproutVideoId: undefined,
             url: 'https://example.com/x'
           }}
           onRemove={mockOnRemove}

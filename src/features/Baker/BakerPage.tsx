@@ -84,7 +84,12 @@ const BakerPageContent: React.FC = () => {
 
   // Trello integration - now properly separated
   const boardId = '55a504d70bed2bd21008dc5a'
-  const { apiKey, token } = useTrelloBoard(boardId)
+  const { apiKey: apiKeyOrNull, token: tokenOrNull } = useTrelloBoard(boardId)
+  // useTrelloBoard normalises absent credentials to `null`; everything below
+  // models absence as an omitted optional prop. Convert once here rather than
+  // at each of the four sites that consume them (#210).
+  const apiKey = apiKeyOrNull ?? undefined
+  const token = tokenOrNull ?? undefined
   const { updateTrelloCards } = useBakerTrelloIntegration({ apiKey, token })
 
   const selectedProjectData = useMemo(

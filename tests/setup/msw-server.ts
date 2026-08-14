@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, type JsonBodyType } from 'msw'
 import { setupServer } from 'msw/node'
 import { sproutHandlers } from './sprout-handlers'
 import { trelloHandlers } from './trello-handlers'
@@ -176,7 +176,9 @@ export const simulateServerError = (
 
 export const mockApiResponse = (
   endpoint: string,
-  responseData: unknown,
+  // JsonBodyType, not unknown: HttpResponse.json only accepts something it can
+  // serialise, and `unknown` let a Map or a function through unchallenged (#210).
+  responseData: JsonBodyType,
   status: number = 200
 ) => {
   server.use(

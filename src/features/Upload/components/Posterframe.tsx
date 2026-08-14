@@ -511,9 +511,9 @@ const PosterframeContent: React.FC = () => {
 
                   <Button
                     onClick={() =>
-                      openFolderDialog().then(
-                        (path) => typeof path === 'string' && loadFolder(path)
-                      )
+                      openFolderDialog().then((path) => {
+                        if (typeof path === 'string') loadFolder(path)
+                      })
                     }
                     variant="outline"
                     size="sm"

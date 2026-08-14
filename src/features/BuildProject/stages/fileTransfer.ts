@@ -214,8 +214,11 @@ export async function transferFiles(
   }
 
   let operationId: string
-  let progressUnlisten: UnlistenFn | null = null
-  let completeUnlisten: UnlistenFn | null = null
+  // Collected rather than held in two `let`s: the assignments happen inside
+  // `.then()` callbacks, so on the linear path to the `finally` block below
+  // TypeScript still has the variables as `null` and the calls are unreachable
+  // by its reckoning. An array the closures push into has no such seam (#210).
+  const unlisteners: UnlistenFn[] = []
   let stallTimeoutId: ReturnType<typeof setTimeout> | null = null
   let lastProgressTime = Date.now()
 
@@ -256,7 +259,7 @@ export async function transferFiles(
           }
         })
           .then((unlisten) => {
-            progressUnlisten = unlisten
+            unlisteners.push(unlisten)
           })
           .catch(reject)
 
@@ -287,7 +290,7 @@ export async function transferFiles(
           }
         })
           .then((unlisten) => {
-            completeUnlisten = unlisten
+            unlisteners.push(unlisten)
           })
           .catch(reject)
 
@@ -364,8 +367,9 @@ export async function transferFiles(
     if (stallTimeoutId) {
       clearTimeout(stallTimeoutId)
     }
-    progressUnlisten?.()
-    completeUnlisten?.()
+    for (const unlisten of unlisteners) {
+      unlisten()
+    }
   }
 }
 

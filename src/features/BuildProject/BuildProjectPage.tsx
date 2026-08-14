@@ -65,7 +65,11 @@ const BuildProject: React.FC = () => {
   useBreadcrumb(breadcrumbItems)
 
   const username = useUsername()
-  const { apiKey, apiToken } = useTrelloApiKeys()
+  // useTrelloApiKeys normalises absent credentials to `null`; SuccessSection and
+  // everything under it model absence as an omitted optional prop (#210).
+  const { apiKey: apiKeyOrNull, apiToken: apiTokenOrNull } = useTrelloApiKeys()
+  const apiKey = apiKeyOrNull ?? undefined
+  const apiToken = apiTokenOrNull ?? undefined
 
   // Auto-remap camera assignments when numCameras changes
   useCameraAutoRemap(files, numCameras, setFiles)

@@ -54,14 +54,15 @@ export interface StageFailure {
 /**
  * Discriminated union for stage execution results.
  *
- * Narrow with an explicit `result.ok === true` / `=== false`, not with
- * truthiness. strictNullChecks is off repo-wide, and without it TypeScript
- * will not narrow a union by a boolean discriminant's truthiness, so
- * `if (result.ok)` leaves the type unnarrowed and reading `.data` fails.
+ * Narrow on `ok` however reads best - truthiness included. This comment used to
+ * insist on an explicit `result.ok === true` / `=== false`, because with
+ * strictNullChecks off TypeScript would not narrow a union by a boolean
+ * discriminant's truthiness and `if (result.ok)` left `.data` unreachable. The
+ * flag is on as of #210, so the trap this comment described (and taught) is gone.
  *
  * @example
  * const result: StageResult<string> = await runStage()
- * if (result.ok === true) {
+ * if (result.ok) {
  *   console.log(result.data) // string
  * } else {
  *   console.error(result.error.message)

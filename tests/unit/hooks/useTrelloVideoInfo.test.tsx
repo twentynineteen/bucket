@@ -258,9 +258,12 @@ describe('useTrelloVideoInfo', () => {
     })
 
     test('handles card without video info block', () => {
+      // null, not '': useVideoInfoBlock returns null for both fields when the
+      // description has no VIDEO_INFO block, and a non-empty string plus data
+      // when it has one. '' was a third shape the hook cannot produce (#210).
       vi.mocked(useVideoInfoBlock).mockReturnValue({
         videoInfoData: null,
-        videoInfoBlock: ''
+        videoInfoBlock: null
       })
 
       const { result } = renderHook(() =>
@@ -268,7 +271,7 @@ describe('useTrelloVideoInfo', () => {
       )
 
       expect(result.current.videoInfoData).toBeNull()
-      expect(result.current.videoInfoBlock).toBe('')
+      expect(result.current.videoInfoBlock).toBeNull()
     })
 
     test('handles multiple rapid append calls', async () => {

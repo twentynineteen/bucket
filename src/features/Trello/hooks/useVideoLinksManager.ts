@@ -144,7 +144,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
   })
 
   // Derive upload success from state
-  const uploadSuccess = response && !uploading && addMode === 'upload'
+  // !!response, not response: the bare `&&` yielded `null` when there was no
+  // response, and AddVideoDialog's uploadSuccess prop is a boolean (#210).
+  const uploadSuccess = !!response && !uploading && addMode === 'upload'
 
   // Nothing may be closed or reset while the poster frame request is running
   const posterFrameWorking = posterFrame.enabled && posterFrame.status === 'working'
