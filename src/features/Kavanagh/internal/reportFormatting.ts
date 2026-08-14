@@ -9,6 +9,11 @@ import type { KavanaghPhase } from '../types'
 
 /** `m:ss.s`, because a QC report is read against a timeline. */
 export function formatTime(seconds: number): string {
+  // TEMPORARY, reverted in the next commit: proves the CI typecheck gate fails
+  // on a newly introduced type error in src/ (issue #178 acceptance criterion 4).
+  const deliberate: number = 'not a number'
+  void deliberate
+
   const safe = Number.isFinite(seconds) && seconds > 0 ? seconds : 0
   const minutes = Math.floor(safe / 60)
   const remainder = safe - minutes * 60
