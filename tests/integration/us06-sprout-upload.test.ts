@@ -20,11 +20,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // Mock the Upload api.ts layer (single I/O boundary for Upload module)
 vi.mock('../../src/features/Upload/api', () => ({
   openFileDialog: vi.fn().mockResolvedValue('/videos/test-video.mp4'),
-  uploadVideo: vi.fn().mockResolvedValue(undefined),
+  uploadVideo: vi.fn().mockResolvedValue('op-1'),
+  cancelUpload: vi.fn().mockResolvedValue(true),
   getVideoDuration: vi.fn().mockResolvedValue(90),
   listenUploadComplete: vi.fn().mockResolvedValue(vi.fn()),
   listenUploadError: vi.fn().mockResolvedValue(vi.fn()),
   listenUploadProgress: vi.fn().mockResolvedValue(vi.fn()),
+  listenUploadCancelled: vi.fn().mockResolvedValue(vi.fn()),
+  listenUploadStallWarning: vi.fn().mockResolvedValue(vi.fn()),
   getFolders: vi.fn().mockResolvedValue({ folders: [] }),
   fetchSproutVideoDetails: vi.fn().mockResolvedValue(null),
   openFolderDialog: vi.fn().mockResolvedValue(null),
@@ -92,10 +95,12 @@ describe('US-06 — Sprout Video: File Upload (useFileUpload)', () => {
     const { appStore } = await import('@shared/store')
 
     vi.mocked(api.openFileDialog).mockResolvedValue('/videos/test-video.mp4')
-    vi.mocked(api.uploadVideo).mockResolvedValue(undefined)
+    vi.mocked(api.uploadVideo).mockResolvedValue('op-1')
     vi.mocked(api.getVideoDuration).mockResolvedValue(90)
     vi.mocked(api.listenUploadComplete).mockResolvedValue(vi.fn())
     vi.mocked(api.listenUploadError).mockResolvedValue(vi.fn())
+    vi.mocked(api.listenUploadCancelled).mockResolvedValue(vi.fn())
+    vi.mocked(api.listenUploadStallWarning).mockResolvedValue(vi.fn())
     vi.mocked(appStore.getState).mockReturnValue({
       setLatestSproutUpload: vi.fn(),
       latestSproutUpload: null
@@ -186,7 +191,7 @@ describe('US-06 — Sprout Video: File Upload (useFileUpload)', () => {
     // Fire completion event to avoid hanging
     await act(async () => {
       handlers['upload_complete']?.({
-        payload: { id: 'video-123', title: 'Done' }
+        payload: { operationId: 'op-1', video: { id: 'video-123', title: 'Done' } }
       })
     })
 
@@ -220,7 +225,9 @@ describe('US-06 — Sprout Video: File Upload (useFileUpload)', () => {
 
     // Clean up
     await act(async () => {
-      handlers['upload_complete']?.({ payload: { id: 'v123' } })
+      handlers['upload_complete']?.({
+        payload: { operationId: 'op-1', video: { id: 'v123' } }
+      })
     })
   })
 
@@ -247,7 +254,9 @@ describe('US-06 — Sprout Video: File Upload (useFileUpload)', () => {
     })
 
     await act(async () => {
-      handlers['upload_complete']?.({ payload: mockResponse })
+      handlers['upload_complete']?.({
+        payload: { operationId: 'op-1', video: mockResponse }
+      })
     })
 
     await waitFor(() => {
@@ -273,7 +282,9 @@ describe('US-06 — Sprout Video: File Upload (useFileUpload)', () => {
     })
 
     await act(async () => {
-      handlers['upload_error']?.({ payload: 'Server error: 500' })
+      handlers['upload_error']?.({
+        payload: { operationId: 'op-1', message: 'Server error: 500' }
+      })
     })
 
     await waitFor(() => {
@@ -296,7 +307,9 @@ describe('US-06 — Sprout Video: File Upload (useFileUpload)', () => {
     })
 
     await act(async () => {
-      handlers['upload_complete']?.({ payload: { id: 'v123', title: 'Test' } })
+      handlers['upload_complete']?.({
+        payload: { operationId: 'op-1', video: { id: 'v123', title: 'Test' } }
+      })
     })
 
     await waitFor(() => {
@@ -357,7 +370,9 @@ describe('US-06 — Sprout Video: File Upload (useFileUpload)', () => {
     })
 
     await act(async () => {
-      handlers['upload_complete']?.({ payload: mockResponse })
+      handlers['upload_complete']?.({
+        payload: { operationId: 'op-1', video: mockResponse }
+      })
     })
 
     await waitFor(() => {

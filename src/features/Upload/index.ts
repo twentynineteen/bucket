@@ -61,3 +61,17 @@ export type { UploadMessageSeverity } from './types'
 export type { UploadMessage } from './types'
 /** A folder chosen as an upload destination, with its breadcrumb path */
 export type { SelectedSproutFolder } from './types'
+/** One progress sample, carrying bytes transferred as well as a float percentage */
+export type { UploadProgressEvent } from './types'
+/** A successful upload, correlated to the operation it belongs to */
+export type { UploadCompleteEvent } from './types'
+/** A failed upload, correlated to the operation it belongs to */
+export type { UploadErrorEvent } from './types'
+/** A user-cancelled upload -- a terminal outcome that is not a failure (#225) */
+export type { UploadCancelledEvent } from './types'
+/** The non-terminal stall warning, raised at half the terminal window (#225) */
+export type { UploadStallWarningEvent } from './types'
+
+// Formatting
+/** Renders a transfer byte count in the decimal units the backend messages use */
+export { formatTransferredBytes } from './internal/formatTransferredBytes'

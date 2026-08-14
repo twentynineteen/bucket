@@ -20,11 +20,14 @@ import { fontDir, join } from '@tauri-apps/api/path'
 
 import { isRateLimited } from '@shared/lib'
 import { resolveAppDataFile } from '@shared/utils'
+import type { GetFoldersResponse, SproutVideoDetails } from '@shared/types'
 import type {
-  GetFoldersResponse,
-  SproutUploadResponse,
-  SproutVideoDetails
-} from '@shared/types'
+  UploadCancelledEvent,
+  UploadCompleteEvent,
+  UploadErrorEvent,
+  UploadProgressEvent,
+  UploadStallWarningEvent
+} from './types'
 
 import {
   recordBudget,
@@ -34,13 +37,36 @@ import {
 
 // --- Tauri Command Wrappers ---
 
+/**
+ * Starts an upload and resolves with the id it can be cancelled by.
+ *
+ * It used to resolve `void`, which is why nothing could stop a running upload:
+ * there was no handle on it, so a stalled multi-gigabyte transfer could only be
+ * ended by quitting the app, and dismissing the dialog orphaned it. See #225.
+ */
 export async function uploadVideo(
   filePath: string,
   apiKey: string,
   folderId: string | null,
   title?: string | null
-): Promise<void> {
-  return invoke('upload_video', { filePath, apiKey, folderId, title: title ?? null })
+): Promise<string> {
+  return invoke<string>('upload_video', {
+    filePath,
+    apiKey,
+    folderId,
+    title: title ?? null
+  })
+}
+
+/**
+ * Cancels an in-flight upload, tearing the request down rather than only
+ * detaching the UI from it.
+ *
+ * Resolves false when the operation is not running, which is the normal outcome
+ * when the upload finished a moment before the dialog was dismissed.
+ */
+export async function cancelUpload(operationId: string): Promise<boolean> {
+  return invoke<boolean>('cancel_upload', { operationId })
 }
 
 /** Probe a local MP4/MOV file for its duration in seconds (mvhd metadata) */
@@ -131,21 +157,41 @@ export async function savePosterFrameCopy(
 // --- Tauri Event Listener Wrappers ---
 
 export async function listenUploadProgress(
-  callback: (event: Event<number>) => void
+  callback: (event: Event<UploadProgressEvent>) => void
 ): Promise<() => void> {
   return listen('upload_progress', callback)
 }
 
 export async function listenUploadComplete(
-  callback: (event: Event<SproutUploadResponse>) => void
+  callback: (event: Event<UploadCompleteEvent>) => void
 ): Promise<() => void> {
   return listen('upload_complete', callback)
 }
 
 export async function listenUploadError(
-  callback: (event: Event<string>) => void
+  callback: (event: Event<UploadErrorEvent>) => void
 ): Promise<() => void> {
   return listen('upload_error', callback)
+}
+
+/**
+ * A user-cancelled upload. Separate from `upload_error` so a cancellation cannot
+ * raise a destructive toast for something the user asked for (#225 UP-21).
+ */
+export async function listenUploadCancelled(
+  callback: (event: Event<UploadCancelledEvent>) => void
+): Promise<() => void> {
+  return listen('upload_cancelled', callback)
+}
+
+/**
+ * The non-terminal stall warning, raised at half the terminal window and
+ * withdrawn (with a null message) when progress resumes (#225 UP-26/UP-27).
+ */
+export async function listenUploadStallWarning(
+  callback: (event: Event<UploadStallWarningEvent>) => void
+): Promise<() => void> {
+  return listen('upload_stall_warning', callback)
 }
 
 // --- Dialog Wrappers ---

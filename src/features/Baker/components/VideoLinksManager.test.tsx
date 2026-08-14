@@ -24,7 +24,10 @@ import type { SproutUploadResponse } from '@shared/types'
 import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createFileUploadMock } from '@tests/factories/fileUploadMock'
+import {
+  createFileUploadMock,
+  createUploadEventsMock
+} from '@tests/factories/fileUploadMock'
 
 import type { VideoLink } from '../types'
 import { VideoLinksManager } from './VideoLinksManager'
@@ -260,14 +263,9 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     )
 
     // Mock useUploadEvents
-    vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-      progress: 0,
-      uploading: false,
-      message: null,
-      setUploading: vi.fn(),
-      setProgress: vi.fn(),
-      setMessage: vi.fn()
-    })
+    vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+      createUploadEventsMock()
+    )
 
     // Mock useSproutFolderSelection (Issue #155)
     vi.mocked(useFileUploadModule.useSproutFolderSelection).mockReturnValue({
@@ -630,14 +628,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 45,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 45,
+          uploading: true
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -679,14 +675,9 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: false,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock()
+      )
 
       const { rerender } = render(
         <QueryClientProvider client={queryClient}>
@@ -717,14 +708,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 50,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 50,
+          uploading: true
+        })
+      )
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -773,14 +762,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 100,
-        uploading: false,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 100
+        })
+      )
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -831,14 +817,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 25,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 25,
+          uploading: true
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -866,14 +850,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 67,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 67,
+          uploading: true
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -916,14 +898,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          uploading: true
+        })
+      )
 
       const { rerender } = render(
         <QueryClientProvider client={queryClient}>
@@ -943,14 +922,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       expect(screen.getByRole('button', { name: /uploading.*0%/i })).toBeInTheDocument()
 
       // Progress update to 10%
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 10,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 10,
+          uploading: true
+        })
+      )
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -962,14 +939,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       expect(screen.getByText(/uploading:.*10%/i)).toBeInTheDocument()
 
       // Progress update to 50%
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 50,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 50,
+          uploading: true
+        })
+      )
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -981,14 +956,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       expect(screen.getByText(/uploading:.*50%/i)).toBeInTheDocument()
 
       // Progress update to 100%
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 100,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 100,
+          uploading: true
+        })
+      )
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -1207,14 +1180,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
   // ==========================================
   describe('T007: Error states and retry', () => {
     it('should show error alert when upload fails (network error)', async () => {
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: false,
-        message: { text: 'Upload failed: Network error', severity: 'error' },
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          message: { text: 'Upload failed: Network error', severity: 'error' }
+        })
+      )
 
       vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
         createFileUploadMock({
@@ -1242,14 +1212,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should show error alert when upload times out', async () => {
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: false,
-        message: { text: 'Upload failed: Request timeout', severity: 'error' },
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          message: { text: 'Upload failed: Request timeout', severity: 'error' }
+        })
+      )
 
       vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
         createFileUploadMock({
@@ -1307,14 +1274,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should keep file selected after error (for retry)', async () => {
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: false,
-        message: { text: 'Upload failed: Network error', severity: 'error' },
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          message: { text: 'Upload failed: Network error', severity: 'error' }
+        })
+      )
 
       vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
         createFileUploadMock({
@@ -1343,14 +1307,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should re-enable "Upload and Add" button after error', async () => {
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: false,
-        message: { text: 'Upload failed', severity: 'error' },
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          message: { text: 'Upload failed', severity: 'error' }
+        })
+      )
 
       vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
         createFileUploadMock({

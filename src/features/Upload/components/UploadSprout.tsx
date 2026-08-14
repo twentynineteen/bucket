@@ -20,10 +20,11 @@ import { useSproutFolderSelection } from '../hooks/useSproutFolderSelection'
 import { SproutFolderPicker } from './SproutFolderPicker'
 import { useImageRefresh } from '../hooks/useImageRefresh'
 import { useUploadEvents } from '../hooks/useUploadEvents'
+import { formatTransferredBytes } from '../internal/formatTransferredBytes'
 import EmbedCodeInput from '@shared/ui/EmbedCodeInput'
 import ExternalLink from '@shared/ui/ExternalLink'
 import FormattedDate from '@shared/ui/FormattedDate'
-import { AlertTriangle, RefreshCw, Sprout } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Sprout, X } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 
 /**
@@ -44,12 +45,75 @@ function uploadButtonLabel(state: {
   return 'Upload Video'
 }
 
+/**
+ * What a transfer in flight looks like: how far it has got in both percent and
+ * bytes, whether it appears to have gone quiet, and the way to stop it.
+ *
+ * Its own component rather than inline, for the reason `uploadButtonLabel` above
+ * is: the page sits at the complexity the repo lints for, and three more
+ * conditional branches in the tree would push it over.
+ */
+const UploadInFlight: React.FC<{
+  progress: number
+  bytesSent: number
+  totalBytes: number
+  stallWarning: string | null
+  onCancel: () => void
+}> = ({ progress, bytesSent, totalBytes, stallWarning, onCancel }) => (
+  <div className="mb-4 space-y-2">
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-muted-foreground text-sm">
+        {/*
+          The absolute figures, not just the percentage: 3% of 200 MB and 3% of
+          12 GB are the same bar and completely different decisions (#225 UP-30).
+        */}
+        Uploading: {progress}%
+        {totalBytes > 0 && (
+          <>
+            {' '}
+            ({formatTransferredBytes(bytesSent)} of {formatTransferredBytes(totalBytes)})
+          </>
+        )}
+      </p>
+      {/*
+        Before #225 there was no way to end an upload short of quitting the app,
+        which is what made #204's stall report a dead end.
+      */}
+      <Button variant="outline" size="sm" onClick={onCancel}>
+        <X className="mr-1.5 h-3.5 w-3.5" />
+        Cancel upload
+      </Button>
+    </div>
+    <Progress value={progress} />
+    {/*
+      Non-terminal, so the bar and the cancel button both stay: a recoverable TCP
+      backoff is legitimate for tens of seconds, and the terminal verdict is still
+      35 seconds away (#225 UP-26).
+    */}
+    {stallWarning && (
+      <p role="status" className="text-warning flex items-start gap-1.5 text-xs">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>{stallWarning}</span>
+      </p>
+    )}
+  </div>
+)
+
 const UploadSproutContent: React.FC = () => {
   // Custom hooks
   const { apiKey, isLoading: apiKeyLoading } = useSproutVideoApiKey()
-  const { progress, uploading, message, setProgress, setMessage, setUploading } =
-    useUploadEvents()
-  const { selectedFile, response, selectFile, uploadFile } = useFileUpload()
+  const {
+    progress,
+    uploading,
+    bytesSent,
+    totalBytes,
+    stallWarning,
+    message,
+    setProgress,
+    setMessage,
+    setUploading
+  } = useUploadEvents()
+  const { selectedFile, response, selectFile, uploadFile, cancelUpload } = useFileUpload()
   // Destination folder, resolved once: session last-used -> default -> root.
   const {
     selectedFolder,
@@ -205,12 +269,13 @@ const UploadSproutContent: React.FC = () => {
             </div>
             <div className="p-4">
               {uploading && (
-                <div className="mb-4">
-                  <p className="text-muted-foreground mb-2 text-sm">
-                    Uploading: {progress}%
-                  </p>
-                  <Progress value={progress} />
-                </div>
+                <UploadInFlight
+                  progress={progress}
+                  bytesSent={bytesSent}
+                  totalBytes={totalBytes}
+                  stallWarning={stallWarning}
+                  onCancel={() => void cancelUpload()}
+                />
               )}
               <KavanaghGateControls kavanagh={kavanagh} uploading={uploading} />
 
