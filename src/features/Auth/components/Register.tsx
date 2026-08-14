@@ -21,7 +21,11 @@ export default function Register() {
     // Validate user input
     const result = registerSchema.safeParse({ username, password })
     if (!result.success) {
-      setError(result.error.errors[0].message) // Show validation error
+      // zod 4 exposes issues on .issues; .errors was removed. Index defensively -
+      // an empty issues list would otherwise crash the branch that reports the error.
+      setError(
+        result.error.issues[0]?.message ?? 'Please check your details and try again.'
+      )
       return
     }
 
