@@ -1,8 +1,14 @@
 /**
  * Animation Constants
  *
- * Centralizes all timing, easing, and animation values for consistent,
- * professional animations across the application.
+ * Centralises the timing, easing and variant values read by the components that
+ * animate. Every export here has a consumer; twelve that had none were removed under
+ * issue #219.
+ *
+ * `DURATION` and `EASING` are deliberately not exported. They are the vocabulary the
+ * constants below are written in, not shared infrastructure: nothing outside this file
+ * read them, and leaving them exported made the module look like a design-token API that
+ * no component had ever used.
  *
  * Philosophy:
  * - All animations use GPU-accelerated properties (transform, opacity)
@@ -12,55 +18,26 @@
  */
 
 // ============================================================================
-// CORE TIMING VALUES
+// INTERNAL VOCABULARY
 // ============================================================================
 
-/**
- * Standard duration values (in milliseconds)
- * Use these instead of magic numbers for consistency
- */
-export const DURATION = {
+/** Duration values in milliseconds, used to build the constants below. */
+const DURATION = {
   instant: 0,
   fast: 150,
   normal: 300,
-  slow: 500,
-  slower: 700,
   slowest: 900
 } as const
 
-// ============================================================================
-// EASING FUNCTIONS
-// ============================================================================
-
-/**
- * Easing curves for natural, polished animations
- * Apple-inspired timing functions
- */
-export const EASING = {
-  // Standard Material Design curves
+/** Easing curves used to build the constants below. */
+const EASING = {
   easeOut: 'cubic-bezier(0.0, 0.0, 0.2, 1)',
-  easeIn: 'cubic-bezier(0.4, 0.0, 1, 1)',
-  easeInOut: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
-
-  // Apple-inspired curves (smoother, more refined)
-  appleEase: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
-  appleSpring: 'cubic-bezier(0.5, 1.8, 0.9, 0.8)',
 
   // Sharp/snappy for quick interactions
   sharp: 'cubic-bezier(0.4, 0.0, 0.6, 1)',
 
   // Legacy support
   legacy: 'ease-in-out'
-} as const
-
-/**
- * Spring physics configurations for Framer Motion
- * Use for natural, bouncy animations
- */
-export const SPRING = {
-  gentle: { type: 'spring' as const, stiffness: 120, damping: 14 },
-  snappy: { type: 'spring' as const, stiffness: 400, damping: 30 },
-  bouncy: { type: 'spring' as const, stiffness: 300, damping: 10 }
 } as const
 
 // ============================================================================
@@ -83,19 +60,6 @@ export const STEP_CARD_ANIMATION = {
   // Animation timing
   duration: DURATION.slowest,
   easing: EASING.legacy
-} as const
-
-/**
- * Success Section Animations
- * Used when project creation completes successfully
- */
-export const SUCCESS_ANIMATION = {
-  // Delay before showing success section (allows collapse animation to be visible)
-  delay: 100,
-
-  // Success section fade-in animation
-  fadeInDuration: DURATION.slow,
-  fadeInEasing: EASING.easeOut
 } as const
 
 /**
@@ -166,171 +130,11 @@ export const BUTTON_ANIMATIONS = {
 } as const
 
 /**
- * Card Animations
- * Used for card components (hover, entrance, exit)
- */
-export const CARD_ANIMATIONS = {
-  enter: {
-    duration: DURATION.normal,
-    easing: EASING.appleEase,
-    from: { opacity: 0, y: 20 },
-    to: { opacity: 1, y: 0 }
-  },
-  hover: {
-    elevation: '0 8px 16px rgba(0, 0, 0, 0.1)',
-    scale: 1.01,
-    duration: DURATION.fast,
-    easing: EASING.easeOut
-  },
-  exit: {
-    duration: DURATION.fast,
-    easing: EASING.easeIn,
-    to: { opacity: 0, scale: 0.95 }
-  }
-} as const
-
-/**
- * Modal/Dialog Animations
- * Entry and exit animations for modals, dialogs, sheets
- */
-export const MODAL_ANIMATIONS = {
-  backdrop: {
-    enter: { opacity: 0 },
-    show: { opacity: 1 },
-    exit: { opacity: 0 },
-    duration: DURATION.normal
-  },
-  content: {
-    enter: { opacity: 0, scale: 0.95, y: 20 },
-    show: { opacity: 1, scale: 1, y: 0 },
-    exit: { opacity: 0, scale: 0.95, y: 20 },
-    transition: SPRING.snappy
-  }
-} as const
-
-/**
- * Progress Indicator Animations
- * Used for progress bars, loading spinners, etc.
- */
-export const PROGRESS_ANIMATIONS = {
-  bar: {
-    duration: DURATION.normal,
-    easing: EASING.easeOut
-  },
-  spinner: {
-    duration: 1000, // 1 full rotation per second
-    easing: 'linear' as const
-  },
-  pulse: {
-    duration: 1500,
-    easing: EASING.easeInOut
-  }
-} as const
-
-/**
- * Toast/Notification Animations
- * Entry and exit animations for toasts
- */
-export const TOAST_ANIMATIONS = {
-  slideIn: {
-    from: { x: '100%', opacity: 0 },
-    to: { x: 0, opacity: 1 },
-    duration: DURATION.normal,
-    easing: EASING.appleEase
-  },
-  slideOut: {
-    to: { x: '100%', opacity: 0 },
-    duration: DURATION.fast,
-    easing: EASING.easeIn
-  }
-} as const
-
-/**
- * Input/Form Animations
- * Focus states, validation feedback, etc.
- */
-export const INPUT_ANIMATIONS = {
-  focus: {
-    borderColor: '#3b82f6',
-    boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
-    duration: DURATION.fast,
-    easing: EASING.easeOut
-  },
-  error: {
-    shake: {
-      keyframes: [
-        { transform: 'translateX(0)' },
-        { transform: 'translateX(-10px)' },
-        { transform: 'translateX(10px)' },
-        { transform: 'translateX(-10px)' },
-        { transform: 'translateX(10px)' },
-        { transform: 'translateX(0)' }
-      ],
-      duration: 400
-    }
-  },
-  success: {
-    borderColor: '#10b981',
-    duration: DURATION.fast
-  }
-} as const
-
-/**
- * Skeleton/Loading State Animations
- * Pulse effects for loading placeholders
- */
-export const SKELETON_ANIMATIONS = {
-  pulse: {
-    keyframes: [{ opacity: 1 }, { opacity: 0.5 }, { opacity: 1 }],
-    duration: 1500,
-    easing: EASING.easeInOut,
-    iterationCount: 'infinite' as const
-  }
-} as const
-
-/**
- * Scroll-Based Animations
- * Fade in on scroll, parallax effects, etc.
- */
-export const SCROLL_ANIMATIONS = {
-  fadeIn: {
-    from: { opacity: 0, y: 50 },
-    to: { opacity: 1, y: 0 },
-    duration: DURATION.slow,
-    easing: EASING.appleEase,
-    threshold: 0.1 // IntersectionObserver threshold
-  },
-  parallax: {
-    speed: 0.5, // Multiplier for scroll speed
-    easing: EASING.easeOut
-  }
-} as const
-
-/**
- * Drag & Drop Animations
- * Feedback for draggable elements
- */
-export const DRAG_ANIMATIONS = {
-  lift: {
-    scale: 1.05,
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
-    duration: DURATION.fast,
-    easing: EASING.easeOut
-  },
-  drop: {
-    scale: 1,
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    duration: DURATION.normal,
-    easing: SPRING.gentle
-  },
-  dragConstraints: {
-    elastic: 0.1 // Resistance at boundaries
-  }
-} as const
-
-/**
  * Baker Page Animations
- * Animations specific to the Baker workflow page
+ * The two variant sets `ProjectListPanel` reads. Seven further keys (projectRow,
+ * detailPanel, scanResults, checkbox, alert, navTab, fileItem) were removed under
+ * issue #219: no component read any of them, and their only readers were the Baker
+ * tests deleted under #220.
  */
 export const BAKER_ANIMATIONS = {
   // Project list stagger entrance
@@ -355,42 +159,6 @@ export const BAKER_ANIMATIONS = {
     }
   },
 
-  // Project selection row hover
-  projectRow: {
-    hover: {
-      scale: 1.005,
-      duration: DURATION.fast,
-      easing: EASING.easeOut
-    },
-    selected: {
-      duration: DURATION.normal,
-      easing: EASING.easeOut
-    }
-  },
-
-  // Detail panel transition
-  detailPanel: {
-    enter: {
-      opacity: 0,
-      x: 20
-    },
-    show: {
-      opacity: 1,
-      x: 0,
-      transition: {
-        duration: DURATION.normal / 1000,
-        ease: [0.25, 0.1, 0.25, 1] // appleEase as array
-      }
-    },
-    exit: {
-      opacity: 0,
-      x: -20,
-      transition: {
-        duration: DURATION.fast / 1000
-      }
-    }
-  },
-
   // Status badge pulse (for warnings)
   statusBadge: {
     pulse: {
@@ -400,85 +168,6 @@ export const BAKER_ANIMATIONS = {
         repeat: Infinity,
         ease: [0.4, 0.0, 0.2, 1] // easeInOut as array
       }
-    }
-  },
-
-  // Scan results celebration
-  scanResults: {
-    enter: {
-      opacity: 0,
-      scale: 0.95,
-      y: 20
-    },
-    show: {
-      opacity: 1,
-      scale: 1,
-      y: 0,
-      transition: {
-        type: 'spring' as const,
-        stiffness: 300,
-        damping: 25
-      }
-    }
-  },
-
-  // Checkbox check animation
-  checkbox: {
-    check: {
-      pathLength: [0, 1],
-      duration: DURATION.normal,
-      ease: [0.25, 0.1, 0.25, 1] // appleEase as array
-    },
-    scale: {
-      checked: 1.1,
-      unchecked: 1,
-      duration: DURATION.fast
-    }
-  },
-
-  // Alert/toast slide-in
-  alert: {
-    enter: {
-      x: 400,
-      opacity: 0
-    },
-    show: {
-      x: 0,
-      opacity: 1,
-      transition: {
-        type: 'spring' as const,
-        stiffness: 400,
-        damping: 30
-      }
-    },
-    exit: {
-      x: 400,
-      opacity: 0,
-      transition: {
-        duration: DURATION.fast / 1000
-      }
-    }
-  },
-
-  // Navigation tabs
-  navTab: {
-    hover: {
-      scale: 1.02,
-      duration: DURATION.fast,
-      easing: EASING.easeOut
-    },
-    active: {
-      duration: DURATION.normal,
-      easing: EASING.easeOut
-    }
-  },
-
-  // File list items
-  fileItem: {
-    hover: {
-      backgroundColor: 'hsl(var(--accent) / 0.5)',
-      scale: 1.002,
-      duration: DURATION.fast
     }
   }
 } as const
