@@ -8,13 +8,13 @@ use serde_json::Value;
 use std::fs::File;
 use std::path::Path;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::Emitter;
 use tauri::{command, AppHandle};
 use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
-use tokio::sync::Mutex;
 
 /// A single Sprout folder.
 ///
@@ -255,12 +255,312 @@ pub fn upload_video(
     folder_id: Option<String>,
     title: Option<String>,
 ) {
-    tauri::async_runtime::spawn(async move {
-        match upload_video_task(app_handle, file_path, api_key, folder_id, title).await {
-            Ok(_) => println!("Upload successful"),
-            Err(err) => println!("Upload failed: {}", err),
+    let gate = TerminalGate::new(app_handle.clone());
+    let progress = Arc::new(UploadProgress::new());
+
+    let upload_gate = gate.clone();
+    let upload_progress = progress.clone();
+    let upload = tauri::async_runtime::spawn(async move {
+        let outcome = upload_video_task(
+            app_handle,
+            file_path,
+            api_key,
+            folder_id,
+            title,
+            upload_progress,
+            upload_gate.clone(),
+        )
+        .await;
+
+        // Every exit from the task reports itself, including the `?` paths that
+        // used to vanish into a bare `println!`. The gate makes a second report
+        // impossible, so the watchdog and this arm cannot both be heard.
+        if let Err(err) = outcome {
+            upload_gate.fail(err);
         }
     });
+
+    // Deliberately its own task rather than a `select!` inside the upload task: a
+    // watchdog that shares the task it is watching cannot fire when that task is
+    // blocked inside a syscall, which is one of #150's candidate causes.
+    tauri::async_runtime::spawn(watch_for_stall(upload, progress, gate));
+}
+
+/// How often the watchdog samples progress. Cheap: two atomic loads.
+const STALL_POLL_INTERVAL: Duration = Duration::from_secs(1);
+
+/// How long a transfer may fail to advance before it is called stalled.
+///
+/// The binding constraint is not the gap between chunks, it is the longest
+/// silence a *recoverable* TCP connection can produce. RFC 6298 doubles the
+/// retransmission timeout from a 1s minimum, so six consecutive retransmissions
+/// put 1+2+4+8+16+32 = 63s between the last acknowledged byte and recovery, and
+/// macOS keeps retransmitting well past six. Reporting a stall inside that window
+/// means a Wi-Fi roam or a VPN re-establish costs the user a multi-gigabyte
+/// upload, so the threshold sits just above the backoff ceiling with margin for
+/// the client-side buffer that has to fill before source-read silence begins to
+/// track wire silence.
+///
+/// Chunk gaps are nowhere near this: the stream pulls 64 KB per read, so the
+/// steady-state gap is 64 KB / bandwidth -- 32ms at 2 MB/s, 3.2s even at an
+/// abysmal 20 KB/s.
+///
+/// If false stalls are ever observed in the wild, raise this rather than removing
+/// the check. See issue #204.
+pub const STALL_WINDOW: Duration = Duration::from_secs(70);
+
+/// The advance that counts as headway and restarts the window.
+///
+/// A bare "no bytes for N seconds" gap timer is defeated by a trickle: a dying
+/// connection that moves one byte every 20s resets such a timer forever while
+/// never completing. Requiring 1 MiB per window puts the floor at ~15 KB/s, well
+/// below any bandwidth on which a multi-gigabyte upload could plausibly finish
+/// and far above a trickle. A gap timer is the degenerate case of this test with
+/// the minimum set to one byte, so generalising costs nothing.
+pub const STALL_MIN_PROGRESS_BYTES: u64 = 1024 * 1024;
+
+/// The verdict on one progress sample.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StallCheck {
+    /// Still making headway, or still inside the current window.
+    Advancing,
+    /// Less than `STALL_MIN_PROGRESS_BYTES` moved across a full window.
+    Stalled {
+        /// How long since the last qualifying advance, for the message.
+        since_last_advance: Duration,
+    },
+}
+
+/// Decides whether a transfer has stalled, from progress over a sliding window.
+///
+/// The clock is a parameter rather than a field: every decision is a pure
+/// function of (bytes so far, time so far), which is what makes the thresholds
+/// unit-testable in microseconds instead of by sleeping.
+pub struct StallMonitor {
+    window: Duration,
+    min_progress: u64,
+    /// Byte count at the start of the current window.
+    anchor_bytes: u64,
+    /// When the current window started.
+    anchor_at: Duration,
+}
+
+impl StallMonitor {
+    /// A monitor with the production thresholds, anchored at `started_at`.
+    pub fn new(started_at: Duration) -> Self {
+        StallMonitor {
+            window: STALL_WINDOW,
+            min_progress: STALL_MIN_PROGRESS_BYTES,
+            anchor_bytes: 0,
+            anchor_at: started_at,
+        }
+    }
+
+    /// Feeds one sample. `now` is elapsed time since the upload was invoked.
+    pub fn observe(&mut self, bytes_sent: u64, now: Duration) -> StallCheck {
+        if bytes_sent.saturating_sub(self.anchor_bytes) >= self.min_progress {
+            self.anchor_bytes = bytes_sent;
+            self.anchor_at = now;
+            return StallCheck::Advancing;
+        }
+
+        let since_last_advance = now.saturating_sub(self.anchor_at);
+        if since_last_advance >= self.window {
+            StallCheck::Stalled { since_last_advance }
+        } else {
+            StallCheck::Advancing
+        }
+    }
+}
+
+/// Renders a byte count for a user-facing message, in the decimal units macOS
+/// shows in Finder so the figure is one the user can verify.
+fn format_bytes(bytes: u64) -> String {
+    if bytes >= 1_000_000_000 {
+        format!("{:.2} GB", bytes as f64 / 1_000_000_000.0)
+    } else if bytes >= 1_000_000 {
+        format!("{:.1} MB", bytes as f64 / 1_000_000.0)
+    } else {
+        format!("{} bytes", bytes)
+    }
+}
+
+/// The message a stalled upload reports.
+///
+/// It names the offset, the total and the silence, because "stopped at 1.68 GB of
+/// 4.10 GB, silent for 71s" is what tells the user whether to keep waiting or
+/// cancel -- which is the question the old "timed out after 45 minutes" could not
+/// answer. It deliberately says neither "timed out" nor "45 minutes": a stall is
+/// a different condition from a deadline, and from the failures #152 and #154
+/// already classify.
+pub fn stall_message(bytes_sent: u64, total_bytes: u64, since_last_advance: Duration) -> String {
+    let position = if bytes_sent == 0 {
+        "The transfer never started sending".to_string()
+    } else {
+        let percentage = if total_bytes > 0 {
+            format!(
+                " ({:.0}%)",
+                (bytes_sent as f64 / total_bytes as f64) * 100.0
+            )
+        } else {
+            String::new()
+        };
+        format!(
+            "The transfer stopped at {} of {}{}",
+            format_bytes(bytes_sent),
+            format_bytes(total_bytes),
+            percentage
+        )
+    };
+
+    format!(
+        "Stalled after {}s with no data reaching Sprout. {}. That is a dropped \
+         connection rather than a slow one, so waiting will not help. Check your \
+         network and start the upload again.",
+        since_last_advance.as_secs(),
+        position
+    )
+}
+
+/// One-shot arbitration for the terminal event.
+///
+/// The watchdog and the upload task race by construction: a stall can be detected
+/// in the same instant the request completes. Without this, an operation could
+/// emit both an `upload_error` and an `upload_complete` and the user would be
+/// told two contradictory things. #154 established one terminal event per
+/// operation; this is what enforces it.
+#[derive(Clone, Default)]
+pub struct TerminalOnce(Arc<AtomicBool>);
+
+impl TerminalOnce {
+    /// True for exactly one caller, however many race.
+    pub fn claim(&self) -> bool {
+        self.0
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+    }
+
+    /// Whether the operation has already reported. The watchdog stops polling on
+    /// this rather than being aborted from elsewhere.
+    pub fn is_settled(&self) -> bool {
+        self.0.load(Ordering::SeqCst)
+    }
+}
+
+/// `TerminalOnce` bound to the handle the single event is emitted on.
+#[derive(Clone)]
+struct TerminalGate {
+    once: TerminalOnce,
+    app_handle: AppHandle,
+}
+
+impl TerminalGate {
+    fn new(app_handle: AppHandle) -> Self {
+        TerminalGate {
+            once: TerminalOnce::default(),
+            app_handle,
+        }
+    }
+
+    fn is_settled(&self) -> bool {
+        self.once.is_settled()
+    }
+
+    /// Emits `upload_complete`, unless something already reported.
+    fn succeed(&self, video: Value) {
+        if self.once.claim() {
+            let _ = self.app_handle.emit("upload_complete", video);
+        }
+    }
+
+    /// Emits `upload_error`, unless something already reported.
+    fn fail(&self, message: String) {
+        if self.once.claim() {
+            let _ = self.app_handle.emit("upload_error", message);
+        }
+    }
+}
+
+/// Byte progress shared between the upload task and the watchdog.
+///
+/// Atomics rather than a `Mutex`, so the watchdog can read the count without ever
+/// contending with `poll_read` -- and so the old `try_lock` arm, which silently
+/// dropped a chunk's bytes whenever it lost the race, is gone. Under-counting
+/// progress is exactly what a stall detector must not do.
+pub struct UploadProgress {
+    bytes_sent: AtomicU64,
+    total_bytes: AtomicU64,
+    started_at: Instant,
+}
+
+impl UploadProgress {
+    fn new() -> Self {
+        UploadProgress {
+            bytes_sent: AtomicU64::new(0),
+            total_bytes: AtomicU64::new(0),
+            started_at: Instant::now(),
+        }
+    }
+
+    fn set_total(&self, total: u64) {
+        self.total_bytes.store(total, Ordering::Relaxed);
+    }
+
+    /// Adds a chunk and returns the new total sent.
+    fn advance(&self, bytes: u64) -> u64 {
+        self.bytes_sent.fetch_add(bytes, Ordering::Relaxed) + bytes
+    }
+
+    fn bytes_sent(&self) -> u64 {
+        self.bytes_sent.load(Ordering::Relaxed)
+    }
+
+    fn total_bytes(&self) -> u64 {
+        self.total_bytes.load(Ordering::Relaxed)
+    }
+
+    fn elapsed(&self) -> Duration {
+        self.started_at.elapsed()
+    }
+}
+
+/// Watches a transfer for a stall and tears it down if it finds one.
+///
+/// Detection lives here rather than in the frontend for three reasons the
+/// frontend cannot match: it can stop the transfer, it knows the byte offset, and
+/// it can measure a rate rather than an event gap. What it cannot see is bytes
+/// acknowledged on the wire -- it watches source-file reads, which reqwest's
+/// backpressure keeps within the ~5 MB of hyper queue plus kernel socket buffer
+/// measured in #150. So it detects "the transfer stopped", never "the transfer is
+/// being discarded".
+async fn watch_for_stall(
+    upload: tauri::async_runtime::JoinHandle<()>,
+    progress: Arc<UploadProgress>,
+    gate: TerminalGate,
+) {
+    let mut monitor = StallMonitor::new(Duration::ZERO);
+
+    loop {
+        tokio::time::sleep(STALL_POLL_INTERVAL).await;
+
+        // The operation reported for itself, so there is nothing left to watch.
+        if gate.is_settled() {
+            return;
+        }
+
+        let bytes_sent = progress.bytes_sent();
+        if let StallCheck::Stalled { since_last_advance } =
+            monitor.observe(bytes_sent, progress.elapsed())
+        {
+            let message = stall_message(bytes_sent, progress.total_bytes(), since_last_advance);
+            log::warn!("{}", message);
+            gate.fail(message);
+            // Reporting without tearing down would leave a dead upload holding
+            // the socket, and its progress events would interleave with a retry's.
+            upload.abort();
+            return;
+        }
+    }
 }
 
 /// Maximum characters of a response body to quote in an error message. Enough to
@@ -382,7 +682,10 @@ pub use size_gate::{check_upload_size, CheckedUploadSize};
 // Async Progress Tracking Reader using Tokio's AsyncRead API (with ReadBuf)
 pub struct ProgressReader<R> {
     inner: R,
-    progress: Arc<Mutex<u64>>,
+    /// Shared with the stall watchdog, which is why this is atomic rather than a
+    /// `Mutex` guarded by `try_lock`: that arm silently discarded a chunk's bytes
+    /// whenever it lost the race, and a stall detector must never under-count.
+    progress: Arc<UploadProgress>,
     /// A gated size, not a bare `u64`. This is what stops a reader - and the
     /// `upload_progress` events it emits - ever existing for a file Sprout's API
     /// would refuse. See `size_gate` and issue #154.
@@ -405,24 +708,12 @@ impl<R: AsyncRead + Unpin> AsyncRead for ProgressReader<R> {
             let post_filled = buf.filled().len();
             let bytes_read = post_filled - pre_filled;
             if bytes_read > 0 {
-                // Use try_lock but with better error handling
-                match self.progress.try_lock() {
-                    Ok(mut progress_guard) => {
-                        *progress_guard += bytes_read as u64;
-                        let percentage =
-                            (*progress_guard as f64 / self.total_size.bytes() as f64) * 100.0;
-                        println!("Upload progress: {:.2}%", percentage);
+                let sent = self.progress.advance(bytes_read as u64);
+                let percentage = (sent as f64 / self.total_size.bytes() as f64) * 100.0;
 
-                        // Emit progress event to frontend
-                        if let Err(e) = self.app_handle.emit("upload_progress", percentage as u32) {
-                            eprintln!("Failed to emit progress event: {}", e);
-                        }
-                    }
-                    Err(_) => {
-                        // Progress update skipped due to lock contention
-                        // This is acceptable for progress reporting - we'll catch up on the next read
-                        eprintln!("Progress update skipped due to lock contention");
-                    }
+                // Emit progress event to frontend
+                if let Err(e) = self.app_handle.emit("upload_progress", percentage as u32) {
+                    eprintln!("Failed to emit progress event: {}", e);
                 }
             }
         }
@@ -431,12 +722,15 @@ impl<R: AsyncRead + Unpin> AsyncRead for ProgressReader<R> {
 }
 
 // Upload function that streams file data with progress tracking
+#[allow(clippy::too_many_arguments)]
 async fn upload_video_task(
     app_handle: AppHandle,
     file_path: String,
     api_key: String,
     folder_id: Option<String>,
     title: Option<String>,
+    progress: Arc<UploadProgress>,
+    gate: TerminalGate,
 ) -> Result<(), String> {
     // Open the file
     let file = File::open(&file_path).map_err(|e| e.to_string())?;
@@ -445,20 +739,14 @@ async fn upload_video_task(
     // Refuse what Sprout's API cannot accept before a single byte is streamed. A
     // 12.72 GB render used to transfer for a long time only to earn an HTML 413,
     // and the size was knowable here in milliseconds. See issue #154.
-    let checked_size = match check_upload_size(file_size) {
-        Ok(checked) => checked,
-        Err(message) => {
-            let _ = app_handle.emit("upload_error", message.clone());
-            return Err(message);
-        }
-    };
+    let checked_size = check_upload_size(file_size)?;
+    progress.set_total(checked_size.bytes());
 
     // Convert the file into an async Tokio file and wrap it in a BufReader
     let file = tokio::fs::File::from_std(file);
     let reader = BufReader::new(file);
 
     // Set up the progress tracker
-    let progress = Arc::new(Mutex::new(0));
     let progress_reader = ProgressReader {
         inner: reader,
         progress: progress.clone(),
@@ -473,10 +761,19 @@ async fn upload_video_task(
         .unwrap_or("uploaded_video.mp4")
         .to_string();
 
-    // Configure client with appropriate timeouts for large file uploads
+    // No total-request deadline. It used to be 45 minutes, which killed a healthy
+    // upload of a very large file over a slow connection while it was making
+    // steady progress, and let a dead one sit for 44 minutes looking identical to
+    // a slow one. A deadline that cannot see progress is the wrong mechanism in
+    // both directions; `watch_for_stall` replaces it. See issue #204.
+    //
+    // `connect_timeout` stays, because a connect that has not completed is not a
+    // transfer that is progressing. `tcp_keepalive` makes a wedged socket surface
+    // as a transport error rather than relying on the watchdog alone (#150 T1.5).
     let client = Client::builder()
-        .timeout(Duration::from_secs(45 * 60)) // 45 minute timeout for large files
-        .connect_timeout(Duration::from_secs(30)) // 30 second connection timeout
+        .connect_timeout(Duration::from_secs(30))
+        .tcp_keepalive(Duration::from_secs(30))
+        .pool_idle_timeout(Duration::from_secs(90))
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
@@ -542,13 +839,10 @@ async fn upload_video_task(
     match classify_response(status, &body_text) {
         Ok(response_json) => {
             println!("Upload complete!");
-            let _ = app_handle.emit("upload_complete", response_json);
+            gate.succeed(response_json);
             Ok(())
         }
-        Err(error_message) => {
-            let _ = app_handle.emit("upload_error", error_message.clone());
-            Err(error_message)
-        }
+        Err(error_message) => Err(error_message),
     }
 }
 

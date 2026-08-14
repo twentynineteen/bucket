@@ -330,6 +330,322 @@ fn the_rejection_names_the_size_the_limit_and_both_ways_forward() {
     );
 }
 
+// --- Stall detection (issue #204) ---
+//
+// The only backstop used to be a flat 45-minute wall-clock timer armed at
+// invocation, so an upload that died at 3% held at 3% for another 44 minutes -
+// which is exactly what a genuinely slow large upload looks like. The same timer
+// killed healthy uploads that legitimately ran past 45 minutes. Both directions
+// are wrong because a deadline that cannot see progress is the wrong mechanism.
+//
+// The decision is a pure function of (bytes so far, time so far), so the clock is
+// injected as an explicit `Duration` rather than a trait or a tokio timer, and
+// every case below runs in microseconds.
+
+use crate::commands::sprout_upload::{
+    stall_message, StallCheck, StallMonitor, TerminalOnce, STALL_MIN_PROGRESS_BYTES, STALL_WINDOW,
+};
+use std::time::Duration;
+
+/// A monitor anchored at t=0 with the production thresholds.
+fn monitor() -> StallMonitor {
+    StallMonitor::new(Duration::ZERO)
+}
+
+fn secs(n: u64) -> Duration {
+    Duration::from_secs(n)
+}
+
+#[test]
+fn a_transfer_that_stops_advancing_is_stalled_after_the_window() {
+    // UP-12. 700 MB in, then nothing.
+    let mut monitor = monitor();
+    let offset = 700 * 1024 * 1024;
+    assert!(
+        matches!(monitor.observe(offset, secs(30)), StallCheck::Advancing),
+        "the first observation establishes the anchor, it cannot be a stall"
+    );
+
+    // Past the window, still on the same byte. Deliberately past rather than
+    // exactly on it: `the_window_boundary_is_inclusive` is the only test that
+    // pins the comparison, so flipping it fails exactly one case.
+    match monitor.observe(offset, secs(30) + STALL_WINDOW + secs(5)) {
+        StallCheck::Stalled { since_last_advance } => assert_eq!(
+            since_last_advance,
+            STALL_WINDOW + secs(5),
+            "the report must name how long it has been silent"
+        ),
+        StallCheck::Advancing => {
+            panic!("a transfer that has not moved for a full window is stalled, not slow")
+        }
+    }
+}
+
+#[test]
+fn a_trickling_transfer_is_also_stalled() {
+    // UP-13. A bare gap timer is reset forever by a connection that is dying
+    // rather than dead: a byte every 20 seconds keeps it happy while the upload
+    // never completes. The measure is progress over a window, not any movement.
+    let mut monitor = monitor();
+    let mut bytes = 0u64;
+
+    for tick in 1..=69 {
+        bytes += 1024; // ~70 KB total across the whole window
+        assert!(
+            matches!(monitor.observe(bytes, secs(tick)), StallCheck::Advancing),
+            "inside the window a trickle is not yet a verdict (tick {tick})"
+        );
+    }
+
+    bytes += 6 * 1024;
+    assert!(
+        matches!(monitor.observe(bytes, secs(75)), StallCheck::Stalled { .. }),
+        "75 KB across a 75-second window is a dying connection, not a slow one"
+    );
+}
+
+#[test]
+fn steady_progress_is_never_stalled_however_long_it_runs() {
+    // UP-14. Three hours at 2 MB per poll. The old flat deadline killed this at
+    // 45 minutes while it was making perfectly good headway.
+    let mut monitor = monitor();
+    let mut bytes = 0u64;
+
+    for tick in 1..=(3 * 60 * 60) {
+        bytes += 2 * 1024 * 1024;
+        assert!(
+            matches!(monitor.observe(bytes, secs(tick)), StallCheck::Advancing),
+            "an upload making steady progress must never be cancelled for taking \
+             a long time (tick {tick})"
+        );
+    }
+}
+
+#[test]
+fn no_wall_clock_upload_deadline_survives_anywhere() {
+    // UP-14. The frontend timer is only half of it: reqwest's total-request
+    // `.timeout(45 * 60)` would kill a healthy slow upload from the Rust side
+    // even with the frontend fixed. The stall watchdog replaces both.
+    let source = include_str!("../sprout_upload.rs");
+    assert!(
+        !source.contains("45 * 60"),
+        "a 45-minute total-request deadline cannot tell a slow upload from a dead \
+         one, and killing a transfer that is still advancing is the other half of #204"
+    );
+    assert!(
+        source.contains("connect_timeout"),
+        "a connect that has not completed is not a transfer that is progressing, so \
+         the connect timeout must stay"
+    );
+}
+
+#[test]
+fn the_window_boundary_is_inclusive() {
+    // UP-15. Mutation check: `>=` to `>` on the window comparison must fail here
+    // and nowhere else.
+    let mut monitor = monitor();
+    monitor.observe(0, Duration::ZERO);
+    assert!(
+        matches!(monitor.observe(0, STALL_WINDOW), StallCheck::Stalled { .. }),
+        "exactly one window of silence is a stall"
+    );
+}
+
+#[test]
+fn one_millisecond_short_of_the_window_is_not_a_stall() {
+    let mut monitor = monitor();
+    monitor.observe(0, Duration::ZERO);
+    assert!(
+        matches!(
+            monitor.observe(0, STALL_WINDOW - Duration::from_millis(1)),
+            StallCheck::Advancing
+        ),
+        "the verdict must not arrive early - a recoverable TCP backoff is not a stall"
+    );
+}
+
+#[test]
+fn exactly_the_minimum_advance_restarts_the_window() {
+    // UP-15. Mutation check: `>=` to `>` on the progress comparison must fail
+    // here and nowhere else. Every other test advances by strictly more than the
+    // minimum, so only this one pins the boundary.
+    let mut monitor = monitor();
+    monitor.observe(0, Duration::ZERO);
+    monitor.observe(STALL_MIN_PROGRESS_BYTES, secs(10));
+
+    // If that advance restarted the window, only 60 of the 70 seconds have run.
+    assert!(
+        matches!(
+            monitor.observe(STALL_MIN_PROGRESS_BYTES, secs(70)),
+            StallCheck::Advancing
+        ),
+        "exactly the minimum advance qualifies, so the window must restart from it"
+    );
+    assert!(
+        matches!(
+            monitor.observe(STALL_MIN_PROGRESS_BYTES, secs(85)),
+            StallCheck::Stalled { .. }
+        ),
+        "and the restarted window must still expire"
+    );
+}
+
+#[test]
+fn one_byte_short_of_the_minimum_does_not_restart_the_window() {
+    let mut monitor = monitor();
+    monitor.observe(0, Duration::ZERO);
+    monitor.observe(STALL_MIN_PROGRESS_BYTES - 1, secs(10));
+
+    assert!(
+        matches!(
+            monitor.observe(STALL_MIN_PROGRESS_BYTES - 1, secs(75)),
+            StallCheck::Stalled { .. }
+        ),
+        "a sub-minimum advance must not buy the transfer another full window, or a \
+         trickle defeats the check"
+    );
+}
+
+#[test]
+fn the_stall_message_names_the_offset_the_total_and_the_silence() {
+    // UP-12. "Stopped at 1.68 GB of 4.10 GB" is what tells the user whether to
+    // wait or cancel; a percentage alone does not.
+    let message = stall_message(1_680_000_000, 4_100_000_000, secs(71));
+
+    assert!(
+        message.contains("1.68 GB"),
+        "the message must name the byte offset reached, got: {message}"
+    );
+    assert!(
+        message.contains("4.10 GB"),
+        "the message must name the total so the offset means something, got: {message}"
+    );
+    assert!(
+        message.contains("71"),
+        "the message must name how long it has been silent, got: {message}"
+    );
+    assert!(
+        message.to_lowercase().contains("stall"),
+        "the message must name the condition, got: {message}"
+    );
+}
+
+#[test]
+fn a_stall_is_not_reported_as_a_timeout() {
+    // UP-16. The old message named a duration rather than the problem. A stall
+    // that reads as a timeout sends the user back to "try again in 45 minutes".
+    let message = stall_message(120_000_000, 4_100_000_000, secs(70));
+
+    assert!(
+        !message.contains("timed out"),
+        "a stall is not a timeout, got: {message}"
+    );
+    assert!(
+        !message.contains("45 minutes"),
+        "the 45-minute framing is exactly what #204 removes, got: {message}"
+    );
+}
+
+#[test]
+fn a_stall_is_distinguishable_from_the_other_terminal_outcomes() {
+    // UP-16. #152 classified failures that report themselves and #154 rejects
+    // oversized files up front. A fifth outcome is only useful if the user can
+    // tell it from the other four.
+    let stall = stall_message(120_000_000, 4_100_000_000, secs(70));
+    let rejected = classify_response(StatusCode::PAYLOAD_TOO_LARGE, "<html>413</html>")
+        .expect_err("a 413 is a failure");
+    let unparseable =
+        classify_response(StatusCode::OK, "<html>not json</html>").expect_err("a non-record");
+    let oversized = check_upload_size(12_720_000_000)
+        .err()
+        .expect("over the limit");
+
+    for other in [&rejected, &unparseable, &oversized] {
+        assert!(
+            !other.to_lowercase().contains("stall"),
+            "only the stall message may read as a stall, got: {other}"
+        );
+    }
+    assert!(
+        !stall.contains("HTTP"),
+        "a stall never had a response to report a status for, got: {stall}"
+    );
+    assert!(
+        !stall.contains("5 GB"),
+        "a stall is not a size rejection, got: {stall}"
+    );
+}
+
+#[test]
+fn a_stall_before_any_bytes_move_still_reads_sensibly() {
+    // The watchdog is armed from invocation, so it can fire before the first read.
+    let message = stall_message(0, 4_100_000_000, secs(70));
+    assert!(message.to_lowercase().contains("stall"), "got: {message}");
+    assert!(
+        !message.contains("0.00 GB"),
+        "\"stopped at 0.00 GB\" reads as a bug; a transfer that never started must \
+         say so, got: {message}"
+    );
+}
+
+#[test]
+fn exactly_one_reporter_wins_the_terminal_event() {
+    // UP-17. A stall detected in the same instant the request completes must not
+    // produce both an upload_error and an upload_complete. The watchdog and the
+    // upload task race by construction, so the arbitration is the guarantee.
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    let gate = TerminalOnce::default();
+    let winners = Arc::new(AtomicUsize::new(0));
+
+    let threads: Vec<_> = (0..8)
+        .map(|_| {
+            let gate = gate.clone();
+            let winners = winners.clone();
+            std::thread::spawn(move || {
+                if gate.claim() {
+                    winners.fetch_add(1, Ordering::SeqCst);
+                }
+            })
+        })
+        .collect();
+
+    for thread in threads {
+        thread.join().expect("no claimant should panic");
+    }
+
+    assert_eq!(
+        winners.load(Ordering::SeqCst),
+        1,
+        "exactly one terminal event per operation - #154 established that discipline"
+    );
+    assert!(
+        gate.is_settled(),
+        "the watchdog stops polling once the operation has settled, so it must be \
+         able to see that it has"
+    );
+}
+
+#[test]
+fn the_stall_watchdog_runs_outside_the_upload_task() {
+    // UP-12. A `select!` inside the upload task cannot fire when that task is
+    // blocked in a syscall, which is one of the candidate causes in #150. The
+    // watchdog must therefore be spawned separately and hold the ability to tear
+    // the upload down.
+    let source = include_str!("../sprout_upload.rs");
+
+    assert!(
+        source.contains("watch_for_stall"),
+        "the watchdog must exist as its own task entry point"
+    );
+    assert!(
+        source.contains(".abort()"),
+        "detecting a stall without tearing the request down leaves a dead upload \
+         holding the socket"
+    );
+}
+
 #[test]
 fn the_size_check_runs_before_any_streaming_or_network_work() {
     // UP-09a. `ProgressReader` holds a `CheckedUploadSize`, which only

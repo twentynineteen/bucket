@@ -10,9 +10,29 @@ import {
   getVideoDuration,
   listenUploadComplete,
   listenUploadError,
+  listenUploadProgress,
   openFileDialog,
   uploadVideo
 } from '../api'
+
+/**
+ * How long the hook waits for *any* word from the backend -- a progress event or
+ * a terminal event -- before concluding the backend itself has stopped talking.
+ *
+ * This is not stall detection. Stall detection lives in Rust
+ * (`sprout_upload.rs::watch_for_stall`), which can see byte offsets and tear the
+ * request down; the frontend can only observe the absence of events, which is a
+ * weaker signal. What this timer covers is the one thing Rust cannot report: the
+ * backend going silent altogether.
+ *
+ * Two full Rust stall windows (70s each) plus slack, so the watchdog always wins
+ * the race and the user gets the specific message rather than this vague one. The
+ * deadline is rearmed by every progress event, which is what stops it killing a
+ * healthy upload of a very large file over a slow connection -- the flat
+ * 45-minute deadline it replaces was armed once at invocation and never consulted
+ * progress, so it was wrong in both directions. See issue #204.
+ */
+const BACKEND_SILENCE_TIMEOUT_MS = 150_000
 
 interface UseFileUploadReturn {
   selectedFile: string | null
@@ -93,42 +113,59 @@ export const useFileUpload = (): UseFileUploadReturn => {
     setResponse(null)
 
     try {
-      // Create a promise with timeout that will wait for either upload_complete or upload_error event
+      // Waits for upload_complete or upload_error, backed by a liveness deadline
+      // that follows the transfer's progress rather than the wall clock.
       const finalResponse = await new Promise<SproutUploadResponse>((resolve, reject) => {
         let completeUnlisten: Promise<() => void> | null = null
         let errorUnlisten: Promise<() => void> | null = null
-        let timeoutId: NodeJS.Timeout | null = null
+        let progressUnlisten: Promise<() => void> | null = null
+        let silenceTimeoutId: NodeJS.Timeout | null = null
 
-        const cleanup = async () => {
-          if (timeoutId) clearTimeout(timeoutId)
-          if (completeUnlisten) {
-            try {
-              const unsub = await completeUnlisten
-              unsub()
-            } catch (e) {
-              logger.warn('Failed to unsubscribe from upload_complete:', e)
-            }
-          }
-          if (errorUnlisten) {
-            try {
-              const unsub = await errorUnlisten
-              unsub()
-            } catch (e) {
-              logger.warn('Failed to unsubscribe from upload_error:', e)
-            }
+        const unsubscribe = async (
+          pending: Promise<() => void> | null,
+          channel: string
+        ) => {
+          if (!pending) return
+          try {
+            const unsub = await pending
+            unsub()
+          } catch (e) {
+            logger.warn(`Failed to unsubscribe from ${channel}:`, e)
           }
         }
 
-        // Set up 45-minute timeout for large file uploads
-        timeoutId = setTimeout(
-          async () => {
+        const cleanup = async () => {
+          if (silenceTimeoutId) clearTimeout(silenceTimeoutId)
+          await unsubscribe(completeUnlisten, 'upload_complete')
+          await unsubscribe(errorUnlisten, 'upload_error')
+          await unsubscribe(progressUnlisten, 'upload_progress')
+        }
+
+        /**
+         * (Re)arms the backend liveness deadline. Called once at the start and
+         * again on every progress event, so the deadline measures *silence* and
+         * not elapsed time: an upload that is still moving bytes can run for as
+         * long as it needs to.
+         */
+        const armSilenceDeadline = () => {
+          if (silenceTimeoutId) clearTimeout(silenceTimeoutId)
+          silenceTimeoutId = setTimeout(async () => {
             await cleanup()
             reject(
-              'Upload timed out after 45 minutes. Please try again or check your network connection.'
+              'The upload backend stopped responding: no progress and no result for ' +
+                `${BACKEND_SILENCE_TIMEOUT_MS / 1000} seconds. The transfer may still be ` +
+                'running in the background; restart the app before trying again.'
             )
-          },
-          45 * 60 * 1000
-        ) // 45 minutes
+          }, BACKEND_SILENCE_TIMEOUT_MS)
+        }
+
+        armSilenceDeadline()
+
+        // Every 64 KB read on the Rust side emits one of these, so any transfer
+        // that is alive at all keeps the deadline pushed out.
+        progressUnlisten = listenUploadProgress(() => {
+          armSilenceDeadline()
+        })
 
         // Listen for the upload_complete event and resolve with its payload
         completeUnlisten = listenUploadComplete(async (event) => {
@@ -162,23 +199,16 @@ export const useFileUpload = (): UseFileUploadReturn => {
       // Log and display any error encountered during the upload process
       logger.error('Upload error:', error)
 
-      // Provide more specific error messages based on error type
-      let errorMessage = 'Upload failed: '
-      if (typeof error === 'string') {
-        if (error.includes('timed out')) {
-          errorMessage +=
-            'The upload timed out. This can happen with very large files or slow network connections. Please try again.'
-        } else if (error.includes('network') || error.includes('connection')) {
-          errorMessage +=
-            'Network connection error. Please check your internet connection and try again.'
-        } else {
-          errorMessage += error
-        }
-      } else {
-        errorMessage += String(error)
-      }
-
-      toast.error(errorMessage)
+      // Passed through verbatim. Every terminal message the backend sends is
+      // already user-facing prose -- #152 classified the failures that report
+      // themselves, #154 the oversized file, #204 the stall -- so the two
+      // `includes()` rewrites that used to live here only destroyed detail. A
+      // stall message reading "no data has reached Sprout for 71s, stopped at
+      // 1.68 GB of 4.10 GB" matched `includes('connection')` and was rewritten
+      // into a generic "Network connection error", discarding precisely the
+      // information that lets a user tell a dead transfer from a slow one. #152
+      // removed the same string sniffing at two other sites.
+      toast.error(`Upload failed: ${typeof error === 'string' ? error : String(error)}`)
     } finally {
       // Regardless of success or failure, mark the upload as finished
       setUploading(false)
