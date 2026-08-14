@@ -5,7 +5,7 @@
 use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::Manager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -528,8 +528,19 @@ pub async fn get_all_examples(app: tauri::AppHandle) -> Result<Vec<SimilarExampl
     // Get or initialize database (persists across updates)
     let db_path = get_or_initialize_database(&app)?;
 
+    db_get_all_examples(&db_path)
+}
+
+/// The SQL behind [`get_all_examples`], separated from path resolution so it is testable
+/// without a `tauri::AppHandle` (issue #221).
+///
+/// Each `db_*` function opens its own connection rather than borrowing one, so a connection's
+/// lifetime still ends when the operation does. That matters for the writers below: they roll a
+/// failed transaction back by closing the connection, and would leave it open if the caller owned
+/// it.
+pub(crate) fn db_get_all_examples(db_path: &Path) -> Result<Vec<SimilarExample>, String> {
     // Open database connection
-    let conn = Connection::open(&db_path)
+    let conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Fetch all examples
@@ -567,8 +578,15 @@ pub async fn get_all_examples_with_metadata(
     // Get or initialize database (persists across updates)
     let db_path = get_or_initialize_database(&app)?;
 
+    db_get_all_examples_with_metadata(&db_path)
+}
+
+/// The SQL behind [`get_all_examples_with_metadata`]. See [`db_get_all_examples`].
+pub(crate) fn db_get_all_examples_with_metadata(
+    db_path: &Path,
+) -> Result<Vec<ExampleWithMetadata>, String> {
     // Open database connection
-    let conn = Connection::open(&db_path)
+    let conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Fetch all examples with metadata
@@ -708,17 +726,28 @@ pub async fn upload_example(
     validate_text_content(&request.after_content, "After content")?;
     validate_embedding_dimensions(&request.embedding)?;
 
+    // Get or initialize database (persists across updates)
+    let db_path = get_or_initialize_database(&app)?;
+
+    db_upload_example(&db_path, request)
+}
+
+/// The SQL behind [`upload_example`]. See [`db_get_all_examples`].
+///
+/// Input validation stays in the command so an invalid request still fails before the database is
+/// touched or initialised.
+pub(crate) fn db_upload_example(
+    db_path: &Path,
+    request: UploadExampleRequest,
+) -> Result<String, String> {
     // Generate UUID for new example
     let new_id = uuid::Uuid::new_v4().to_string();
 
     // Calculate word count
     let word_count = calculate_word_count(&request.before_content);
 
-    // Get or initialize database (persists across updates)
-    let db_path = get_or_initialize_database(&app)?;
-
     // Open database connection
-    let conn = Connection::open(&db_path)
+    let conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Begin transaction
@@ -788,8 +817,18 @@ pub async fn replace_example(
     // Get or initialize database (persists across updates)
     let db_path = get_or_initialize_database(&app)?;
 
+    db_replace_example(&db_path, &id, request)
+}
+
+/// The SQL behind [`replace_example`], including the refusal to overwrite bundled content.
+/// See [`db_get_all_examples`].
+pub(crate) fn db_replace_example(
+    db_path: &Path,
+    id: &str,
+    request: ReplaceExampleRequest,
+) -> Result<(), String> {
     // Open database connection
-    let conn = Connection::open(&db_path)
+    let conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Check if example exists and is user-uploaded
@@ -854,8 +893,14 @@ pub async fn delete_example(app: tauri::AppHandle, id: String) -> Result<(), Str
     // Get or initialize database (persists across updates)
     let db_path = get_or_initialize_database(&app)?;
 
+    db_delete_example(&db_path, &id)
+}
+
+/// The SQL behind [`delete_example`], including the refusal to delete bundled content and the
+/// removal of the example's embedding alongside it. See [`db_get_all_examples`].
+pub(crate) fn db_delete_example(db_path: &Path, id: &str) -> Result<(), String> {
     // Open database connection
-    let conn = Connection::open(&db_path)
+    let conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Check if example exists and is user-uploaded
