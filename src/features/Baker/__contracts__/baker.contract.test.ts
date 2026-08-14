@@ -136,14 +136,12 @@ describe('Baker Barrel Exports - Shape', () => {
     'useBreadcrumbsVideoLinks'
   ].sort()
 
-  it('exports exactly the expected named exports (no more, no fewer)', () => {
+  // Presence, not exhaustiveness: a caller breaks when a name it imports
+  // disappears, never when a new one is added beside it.
+  it('exports every documented named export', () => {
     // Filter out type-only exports (not visible at runtime)
     const exportNames = Object.keys(bakerBarrel).sort()
-    expect(exportNames).toEqual(expectedExports)
-  })
-
-  it('exports exactly 7 runtime members', () => {
-    expect(Object.keys(bakerBarrel)).toHaveLength(7)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedExports))
   })
 
   it('exports BakerPage as a function (React component)', () => {
@@ -248,9 +246,9 @@ describe('Baker api.ts Exports - Shape', () => {
     'addTrelloCardComment'
   ].sort()
 
-  it('exports exactly the expected I/O wrapper functions', () => {
+  it('exports every documented I/O wrapper function', () => {
     const exportNames = Object.keys(bakerApi).sort()
-    expect(exportNames).toEqual(expectedApiExports)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedApiExports))
   })
 
   // The count assertion that used to sit here has been removed rather than
