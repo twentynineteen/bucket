@@ -41,8 +41,8 @@ describe('useBreadcrumb', () => {
     vi.clearAllMocks()
 
     // Mock the Zustand store selector
-    vi.mocked(useBreadcrumbStore).mockImplementation(selector =>
-      selector({ setBreadcrumbs: mockSetBreadcrumbs } as any)
+    vi.mocked(useBreadcrumbStore).mockImplementation((selector) =>
+      selector({ breadcrumbs: [], setBreadcrumbs: mockSetBreadcrumbs })
     )
   })
 
@@ -202,32 +202,107 @@ describe('useBreadcrumb', () => {
     })
 
     it('should update Zustand store when items change', async () => {
-      const initialItems = [{ label: 'Home', href: '/' }]
-
-      const { rerender } = renderHookWithClient(initialItems)
-
-      await waitFor(() => {
-        expect(mockSetBreadcrumbs).toHaveBeenCalledWith(initialItems)
-      })
-
-      mockSetBreadcrumbs.mockClear()
-
-      const newItems = [
-        { label: 'Home', href: '/' },
-        { label: 'New Page', href: '/new' }
-      ]
-
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
       )
 
-      rerender({
-        children: renderHook(() => useBreadcrumb(newItems), { wrapper }).result
+      const { rerender } = renderHook(
+        ({ items }: { items: Array<{ label: string; href?: string }> }) =>
+          useBreadcrumb(items),
+        {
+          wrapper,
+          initialProps: { items: [{ label: 'Home', href: '/' }] }
+        }
+      )
+
+      await waitFor(() => {
+        expect(mockSetBreadcrumbs).toHaveBeenCalledWith([{ label: 'Home', href: '/' }])
       })
+
+      mockSetBreadcrumbs.mockClear()
+
+      rerender({
+        items: [
+          { label: 'Home', href: '/' },
+          { label: 'New Page', href: '/new' }
+        ]
+      })
+
+      await waitFor(() => {
+        expect(mockSetBreadcrumbs).toHaveBeenCalledWith([
+          { label: 'Home', href: '/' },
+          { label: 'New Page', href: '/new' }
+        ])
+      })
+    })
+  })
+
+  // ============================================================================
+  // Render Stability (issue #228)
+  // ============================================================================
+
+  // Every page in the app calls this hook, and callers write the items array
+  // inline. If a render can schedule the write, and the write can schedule the
+  // next render, the whole tree spins: measured at ~570 renders per second on an
+  // idle Build Project screen, each one re-running the sidebar's vibrancy effect
+  // for two Tauri IPC calls. See issue #228.
+  describe('render stability', () => {
+    it('does not write the breadcrumbs again when a re-render allocates an equal items array', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      )
+
+      // A fresh array literal on every render, exactly as the pages write it.
+      const { rerender } = renderHook(
+        () =>
+          useBreadcrumb([
+            { label: 'Ingest footage', href: '/ingest/build' },
+            { label: 'Build a project' }
+          ]),
+        { wrapper }
+      )
 
       await waitFor(() => {
         expect(mockSetBreadcrumbs).toHaveBeenCalled()
       })
+      mockSetBreadcrumbs.mockClear()
+
+      rerender()
+      rerender()
+      rerender()
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(mockSetBreadcrumbs).not.toHaveBeenCalled()
+    })
+
+    it('does not rewrite the query cache when a re-render allocates an equal items array', async () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      )
+
+      const { rerender } = renderHook(
+        () => useBreadcrumb([{ label: 'Ingest footage', href: '/ingest/build' }]),
+        { wrapper }
+      )
+
+      await waitFor(() => {
+        expect(queryClient.getQueryData(['user', 'breadcrumb'])).toBeDefined()
+      })
+
+      const before = queryClient.getQueryState(['user', 'breadcrumb'])?.dataUpdateCount
+
+      rerender()
+      rerender()
+      rerender()
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(queryClient.getQueryState(['user', 'breadcrumb'])?.dataUpdateCount).toBe(
+        before
+      )
     })
   })
 
@@ -269,7 +344,7 @@ describe('useBreadcrumb', () => {
 
       // Wait for any pending updates to settle
       await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 50))
+        await new Promise((resolve) => setTimeout(resolve, 50))
       })
 
       // Get the fetch status before focus
@@ -280,7 +355,7 @@ describe('useBreadcrumb', () => {
       await act(async () => {
         window.dispatchEvent(new Event('focus'))
         // Wait a bit to ensure no refetch happens
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise((resolve) => setTimeout(resolve, 100))
       })
 
       // Query should not be fetching after focus (refetchOnWindowFocus: false)

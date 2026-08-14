@@ -327,7 +327,12 @@ test.describe('Long Operation - Extended Duration', { tag: '@slow' }, () => {
       .setScenario(SCENARIOS.SMOKE_TEST)
       .setMockFiles(generateMockFiles(20, 4, SCENARIOS.SMOKE_TEST))
       .setSelectedFolder(TEST_PROJECTS.PROFESSIONAL.folder)
-      .setSpeedMultiplier(500)
+      // The floor asserted below is on the mock's own duration, so the mock has
+      // to supply it. At 500x it did not: the operation ran 849ms once the
+      // render loop in #228 was fixed, and only ever passed because the app was
+      // spending hundreds of milliseconds per progress event. 2x gives a
+      // three-second simulated transfer.
+      .setSpeedMultiplier(2)
       .setMaxEventsPerFile(5)
     await mock.setup()
 
