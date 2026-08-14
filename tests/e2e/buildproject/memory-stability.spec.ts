@@ -5,8 +5,17 @@
  * file operations. Tests for memory leaks, UI responsiveness, and
  * proper cleanup of event listeners.
  *
- * Note: Memory tests use Chrome's performance.memory API which
- * requires the --enable-precise-memory-info flag.
+ * The memory tests read Chrome's `performance.memory`, which needs
+ * `--enable-precise-memory-info`. That flag is set in the top-level `use` block
+ * of `playwright.config.ts`, so it reaches every project, and `measureMemory`
+ * degrades to `{ available: false }` where the API is missing regardless. It was
+ * recorded as the reason one of these tests was skipped, and it was not the
+ * reason (issue #200).
+ *
+ * Thresholds here are on measured heap and frame timing, so each one says what
+ * it was measured against and how much headroom that leaves. A threshold within
+ * noise of its observed range is a flake rather than a check, which is what put
+ * two of these tests beyond use.
  */
 
 import { test, expect } from '@playwright/test'
@@ -17,12 +26,15 @@ import {
   MemorySampler,
   measureMemory,
   checkUIResponsivenessDuring,
-  formatMemory
+  collectGarbage,
+  formatMemory,
+  readLongestFrameGap,
+  startFrameGapProbe
 } from '../utils/memory-monitor'
 import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 
 test.describe('Memory Stability - Long Running Operations', () => {
-  test.skip('no memory leak during 50 file operation', async ({ page }) => {
+  test('no memory leak during 50 file operation', async ({ page }) => {
     // Setup with many files scenario (reduced for CI speed)
     const mock = createTauriMock(page)
     mock
@@ -37,46 +49,54 @@ test.describe('Memory Stability - Long Running Operations', () => {
     await buildPage.goto()
     await mock.injectMocks()
 
-    // Take initial heap measurement
-    const initialMemory = await measureMemory(page)
-
-    // Start memory sampling
-    const sampler = new MemorySampler(page)
-    sampler.start(1000) // Sample every second
-
     await buildPage.fillProjectDetails('Memory Test 50', 4)
     await buildPage.clickSelectDestination()
     await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
 
-    // Wait for completion
+    // Baseline is taken here, with the page loaded and all 20 files rendered,
+    // so what follows measures the transfer rather than the cost of starting
+    // the app. Measured straight after navigation instead, the number is
+    // whatever the heap happened to be before the route had done any work, and
+    // comparing a peak against it says nothing about leaking (issue #200).
+    await collectGarbage(page)
+    const baseline = await measureMemory(page)
+
+    // Sampled during the transfer for diagnostics only, deliberately without an
+    // assertion. First-to-last-sample growth is dominated by where GC happens
+    // to land between samples: measured locally over twenty runs it ranged from
+    // -6.6MB to +42.9MB for an identical operation, and asserting it against
+    // the 50MB threshold this test shipped with failed once in eight runs on an
+    // idle machine. A threshold that close to the noise is a flake, not a
+    // check, so the leak claim is made after GC instead (issue #200). The peak
+    // is logged because it is the first thing worth seeing if that claim fails.
+    const sampler = new MemorySampler(page)
+    sampler.start(500)
+
+    await buildPage.clickCreateProject()
     await buildPage.waitForCompletion(60000)
 
-    // Stop sampling
     sampler.stop()
+    const analysis = sampler.analyze()
 
-    // Take final measurement
-    const finalMemory = await measureMemory(page)
+    // Retained heap once the transfer is over and garbage has been collected.
+    // This is the assertion that distinguishes a leak from a working set: a
+    // transfer is free to allocate while it runs, but must give it back.
+    await collectGarbage(page)
+    const settled = await measureMemory(page)
 
-    // Analyze samples
-    const analysis = sampler.analyze(50 * 1024 * 1024) // 50MB threshold
+    if (baseline.available && settled.available) {
+      const retained = settled.usedJSHeapSize! - baseline.usedJSHeapSize!
+      console.log(`Baseline heap: ${formatMemory(baseline.usedJSHeapSize!)}`)
+      console.log(`Settled heap: ${formatMemory(settled.usedJSHeapSize!)}`)
+      console.log(`Retained after GC: ${formatMemory(retained)}`)
+      console.log(`Peak heap during transfer: ${formatMemory(analysis.peakHeap)}`)
 
-    // Log memory stats for debugging
-    if (initialMemory.available && finalMemory.available) {
-      console.log(`Initial heap: ${formatMemory(initialMemory.usedJSHeapSize!)}`)
-      console.log(`Final heap: ${formatMemory(finalMemory.usedJSHeapSize!)}`)
-      console.log(`Peak heap: ${formatMemory(analysis.peakHeap)}`)
-      console.log(`Growth: ${formatMemory(analysis.growthBytes)} (${analysis.growthPercent.toFixed(1)}%)`)
-    }
-
-    // Assert: No significant memory growth
-    if (analysis.growthBytes > 0) {
-      expect(analysis.hasLeak).toBe(false)
-    }
-
-    // Assert: Peak should not be excessive (< 2x initial)
-    if (initialMemory.available && analysis.peakHeap > 0) {
-      expect(analysis.peakHeap).toBeLessThan(initialMemory.usedJSHeapSize! * 2)
+      // 30MB against a measured -1.8MB to +11.3MB over eighteen local runs.
+      // The margin is deliberate: GC is not exhaustive on demand, so the
+      // figure has a spread of about 13MB run to run. It is still a real
+      // check, because the working set a leaking transfer would hold on to is
+      // around 80MB above baseline - see the peak logged above.
+      expect(retained).toBeLessThan(30 * 1024 * 1024)
     }
 
     // Verify operation completed successfully
@@ -249,7 +269,7 @@ test.describe('Memory Stability - Long Running Operations', () => {
     }
   })
 
-  test.skip('no UI freeze during operation', async ({ page }) => {
+  test('no UI freeze during operation', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
       .setScenario(SCENARIOS.SMOKE_TEST)
@@ -266,55 +286,58 @@ test.describe('Memory Stability - Long Running Operations', () => {
     await buildPage.fillProjectDetails('No Freeze Test', 3)
     await buildPage.clickSelectDestination()
     await buildPage.clickSelectFiles()
+
+    await startFrameGapProbe(page)
     await buildPage.clickCreateProject()
 
-    // Try to interact with UI during operation
-    const interactions: { action: string; success: boolean; duration: number }[] = []
+    // Interact while the transfer runs. These have to complete, and if the main
+    // thread were wedged they would time out rather than return - which is the
+    // freeze this test is named for. The try/catch records the outcome instead
+    // of throwing so that all three are attempted and reported together.
+    const interactions: { action: string; success: boolean }[] = []
 
-    // Test 1: Can we read title?
-    let start = Date.now()
-    try {
-      await buildPage.getTitle()
-      interactions.push({ action: 'getTitle', success: true, duration: Date.now() - start })
-    } catch {
-      interactions.push({ action: 'getTitle', success: false, duration: Date.now() - start })
+    for (const [action, run] of [
+      ['getTitle', () => buildPage.getTitle()],
+      ['isVisible', () => buildPage.pageTitle.isVisible()],
+      ['hover', () => buildPage.pageTitle.hover()]
+    ] as const) {
+      try {
+        await run()
+        interactions.push({ action, success: true })
+      } catch {
+        interactions.push({ action, success: false })
+      }
     }
 
-    // Test 2: Can we check page title visibility?
-    start = Date.now()
-    try {
-      await buildPage.pageTitle.isVisible()
-      interactions.push({ action: 'isVisible', success: true, duration: Date.now() - start })
-    } catch {
-      interactions.push({ action: 'isVisible', success: false, duration: Date.now() - start })
-    }
-
-    // Test 3: Can we hover elements?
-    start = Date.now()
-    try {
-      await buildPage.pageTitle.hover()
-      interactions.push({ action: 'hover', success: true, duration: Date.now() - start })
-    } catch {
-      interactions.push({ action: 'hover', success: false, duration: Date.now() - start })
-    }
+    // Read the probe before the transfer ends, so it covers the busy period.
+    const longestFrameGap = await readLongestFrameGap(page)
 
     console.log('Interactions during operation:', interactions)
+    console.log(`Longest frame gap during transfer: ${longestFrameGap.toFixed(0)}ms`)
 
-    // All interactions should succeed
     interactions.forEach((i) => {
-      expect(i.success).toBe(true)
-      expect(i.duration).toBeLessThan(1000) // Should complete in < 1 second
+      expect(i.success, `${i.action} during transfer`).toBe(true)
     })
+
+    // A long task on the main thread is what a user experiences as a freeze,
+    // and it is the one thing here that is a property of the application rather
+    // than of the machine the test runs on. 500ms is roughly thirty dropped
+    // frames; measured locally the worst gap over ten runs was well inside it.
+    //
+    // This deliberately replaces a `duration < 1000` budget on each interaction
+    // above. Those durations were 55-620ms locally on an idle machine, and the
+    // large one was Playwright waiting for a re-rendering element to go stable
+    // before hovering it - a measurement of the harness, not of the app, and
+    // 1.6x off its threshold before CI load is even considered (issue #200).
+    expect(longestFrameGap).toBeLessThan(500)
 
     await buildPage.waitForCompletion(60000)
     await expect(buildPage.successMessage).toBeVisible()
   })
 })
 
-test.describe('Memory Stability - Stress Tests', () => {
-  test.skip('stress test: rapid start/stop operations', async ({ page }) => {
-    // This test is skipped by default as it's intensive
-    // Enable for thorough stress testing
+test.describe('Memory Stability - Stress Tests', { tag: '@slow' }, () => {
+  test('stress test: rapid start/stop operations', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
       .setScenario(SCENARIOS.SMOKE_TEST)
@@ -327,15 +350,31 @@ test.describe('Memory Stability - Stress Tests', () => {
     await buildPage.goto()
     await mock.injectMocks()
 
-    // Rapidly start and clear operations
+    // Start a transfer and abandon it, ten times over.
+    //
+    // The stop is a navigation away, which is the reset the rest of this suite
+    // uses and the only one that works from any state. This loop used to call
+    // `clickClearAll()`, and there is no Clear button once a build has finished
+    // - the control is "Start New Project" - so the click silently did nothing,
+    // the form was never reset, and the next iteration waited five minutes for
+    // a "Create Project" button that the success view does not render. That is
+    // why this test could never have passed as written (issue #200).
     for (let i = 0; i < 10; i++) {
       await buildPage.fillProjectDetails(`Stress ${i}`, 2)
       await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
+      await buildPage.clickSelectFiles()
       await buildPage.clickCreateProject()
       await page.waitForTimeout(200)
-      await buildPage.clickClearAll()
+
+      // The transfer has to be genuinely under way for this to be a stress
+      // test rather than ten no-ops, so check it emitted before killing it.
+      const events = await mock.getEmittedEvents()
+      expect(events.length, `transfer ${i} started`).toBeGreaterThan(0)
+
+      await page.goto('/')
       await mock.reset()
+      await buildPage.goto()
+      await mock.injectMocks()
     }
 
     // Final successful operation

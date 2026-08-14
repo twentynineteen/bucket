@@ -9,6 +9,7 @@ import { test, expect } from '@playwright/test'
 import { BuildProjectPage } from '../pages/BuildProjectPage'
 import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
 import { SCENARIOS, generateMockFiles } from '../utils/large-file-simulator'
+import { collectGarbage, measureMemory } from '../utils/memory-monitor'
 import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 
 test.describe('Long Operation - Progress Visibility', { tag: '@slow' }, () => {
@@ -390,48 +391,33 @@ test.describe('Long Operation - Memory During Extended Operation', { tag: '@slow
     await buildPage.goto()
     await mock.injectMocks()
 
-    // Try to get initial memory (may not be available)
-    let initialMemory: number | null = null
-    try {
-      const metrics = await page.evaluate(() => {
-        const perf = performance as Performance & {
-          memory?: { usedJSHeapSize: number }
-        }
-        return perf.memory?.usedJSHeapSize || null
-      })
-      initialMemory = metrics
-    } catch {
-      // Memory API not available
-    }
-
     await buildPage.fillProjectDetails('Memory Test', 4)
     await buildPage.clickSelectDestination()
     await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
 
+    // Baseline with the page loaded and the file list rendered, after a GC.
+    //
+    // This test compared the heap immediately after navigation against the heap
+    // immediately after completion, with no collection in between, and called a
+    // 50MB difference excessive growth. It failed on every one of three runs
+    // against master at around 100MB, because that difference is mostly the app
+    // warming up plus garbage that had not been collected yet - neither of which
+    // is growth. Same defect, same fix as `no memory leak during 50 file
+    // operation` in memory-stability.spec.ts (issue #200).
+    await collectGarbage(page)
+    const baseline = await measureMemory(page)
+
+    await buildPage.clickCreateProject()
     await buildPage.waitForCompletion(60000)
 
-    // Try to get final memory
-    let finalMemory: number | null = null
-    try {
-      const metrics = await page.evaluate(() => {
-        const perf = performance as Performance & {
-          memory?: { usedJSHeapSize: number }
-        }
-        return perf.memory?.usedJSHeapSize || null
-      })
-      finalMemory = metrics
-    } catch {
-      // Memory API not available
-    }
+    await collectGarbage(page)
+    const settled = await measureMemory(page)
 
-    // If memory measurements available, check growth
-    if (initialMemory && finalMemory) {
-      const growth = finalMemory - initialMemory
-      const growthMB = growth / (1024 * 1024)
-
-      // Memory growth should be less than 50MB
-      expect(growthMB).toBeLessThan(50)
+    if (baseline.available && settled.available) {
+      const retainedMB =
+        (settled.usedJSHeapSize! - baseline.usedJSHeapSize!) / (1024 * 1024)
+      console.log(`Retained after GC: ${retainedMB.toFixed(2)} MB`)
+      expect(retainedMB).toBeLessThan(30)
     }
 
     await expect(buildPage.successMessage).toBeVisible()

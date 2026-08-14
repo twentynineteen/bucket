@@ -199,6 +199,66 @@ export class MemorySampler {
 }
 
 /**
+ * Force a garbage collection via the Chrome DevTools Protocol, so that a
+ * follow-up measurement reports retained heap rather than garbage that simply
+ * has not been collected yet. Resolves quietly where CDP is unavailable.
+ */
+export async function collectGarbage(page: Page): Promise<void> {
+  try {
+    const client = await page.context().newCDPSession(page)
+    // Two passes with a settle between them. One pass leaves a variable amount
+    // uncollected - locally it produced retained figures between 1.8MB and
+    // 12MB for the same operation - which is enough noise to make a threshold
+    // on the result flaky.
+    await client.send('HeapProfiler.collectGarbage')
+    await page.waitForTimeout(200)
+    await client.send('HeapProfiler.collectGarbage')
+    await client.detach()
+  } catch {
+    // No CDP session available (non-Chromium); callers treat GC as best effort.
+  }
+}
+
+/**
+ * Start recording, inside the page, the longest gap between consecutive
+ * animation frames.
+ *
+ * This is the direct measurement of a frozen UI: the browser cannot serve an
+ * animation frame while the main thread is executing, so a long task shows up
+ * as a long gap and nothing else does. Timing an interaction from the test
+ * process measures something different and much noisier - Playwright's
+ * actionability polling on a re-rendering page, plus a round trip per call
+ * (issue #200).
+ *
+ * Call `readLongestFrameGap` after the work under test to read the result.
+ */
+export async function startFrameGapProbe(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as Window & { __frameGap__?: { longest: number; last: number } }
+    const state = { longest: 0, last: performance.now() }
+    w.__frameGap__ = state
+    const tick = (now: number) => {
+      const gap = now - state.last
+      if (gap > state.longest) state.longest = gap
+      state.last = now
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+}
+
+/**
+ * Longest gap in milliseconds between animation frames since
+ * `startFrameGapProbe` was called. Returns 0 if the probe was never started.
+ */
+export async function readLongestFrameGap(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const w = window as Window & { __frameGap__?: { longest: number } }
+    return w.__frameGap__?.longest ?? 0
+  })
+}
+
+/**
  * Format bytes for display
  */
 export function formatMemory(bytes: number): string {
