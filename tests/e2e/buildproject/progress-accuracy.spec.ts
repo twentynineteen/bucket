@@ -92,7 +92,14 @@ test.describe('Progress Accuracy - Basic Tests', () => {
       .setScenario(SCENARIOS.SMOKE_TEST)
       .setMockFiles(generateMockFiles(20, 4, SCENARIOS.SMOKE_TEST))
       .setSelectedFolder(TEST_PROJECTS.PROFESSIONAL.folder)
-      .setSpeedMultiplier(2000) // Faster for CI stability
+      // The mock has to stay slower than the app for the length of this test:
+      // it reads progress 500ms in, interacts, then reads it again, and both
+      // reads have to land while a transfer is genuinely under way. At the
+      // previous 2000x the whole 60-event transfer now finishes in about
+      // 200ms - it used to take ~20s only because of the render loop fixed in
+      // #228 - and `getProgress()` then waits forever for a progress bar that
+      // has already gone. 1x gives roughly three seconds of transfer.
+      .setSpeedMultiplier(1)
       .setMaxEventsPerFile(3) // Reduced for speed
     await mock.setup()
 

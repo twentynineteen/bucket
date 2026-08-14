@@ -62,7 +62,12 @@ test.describe('Transfer Cancellation - User Initiated', { tag: '@slow' }, () => 
       .setScenario(SCENARIOS.SMOKE_TEST)
       .setMockFiles(generateMockFiles(20, 4, SCENARIOS.SMOKE_TEST))
       .setSelectedFolder(TEST_PROJECTS.PROFESSIONAL.folder)
-      .setSpeedMultiplier(30) // Slow enough to see progress before cancellation
+      // Slow enough to see progress before cancellation. This has to be the
+      // mock's own timers, not the app being slow: at 30x the 200 events took
+      // seconds only because of the render loop fixed in #228, and the transfer
+      // now finishes well inside the 2s this test waits before cancelling. 2x
+      // gives a five-second transfer.
+      .setSpeedMultiplier(2)
       .setMaxEventsPerFile(10)
     await mock.setup()
 
