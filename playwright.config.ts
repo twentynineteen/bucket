@@ -1,14 +1,40 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * Playwright configuration for Bucket E2E tests
- * Tests run against the Vite dev server (localhost:1422)
+ * The only Playwright configuration in this repo. Tests run against the Vite
+ * dev server (localhost:1422).
+ *
+ * Discovery is driven by the file layout and nothing else (issue #171). There
+ * used to be a second config under `tests/e2e/`, and eleven projects each
+ * declaring an explicit `testMatch`, so a spec file matching none of them never
+ * ran and nothing reported it - three files were in that state. No project here
+ * may declare `testMatch` or `testIgnore`: a spec dropped anywhere under
+ * `tests/e2e/` runs. `tests/integration/e2e-spec-discovery.test.ts` enforces
+ * that, and fails on a project that resolves to zero tests or one no workflow
+ * runs.
+ *
+ * The two projects below partition the suite by cost, not by feature. The heavy
+ * simulation specs carry a `@slow` tag, so they can be held back to pushes and
+ * manual runs without a per-file list in this file:
+ *
+ *   e2e   every spec without a `@slow` tag. Runs on every push and pull
+ *         request, in ci.yml.
+ *   slow  the `@slow` specs, which simulate 250GB transfers and multi-minute
+ *         operations. Runs on pushes to master/release and on workflow_dispatch,
+ *         in e2e-tests.yml.
+ *
+ * Their union is the whole suite, so tagging a spec moves it between CI jobs
+ * and can never drop it from both.
  */
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // One retry keeps the trace from the first attempt. failOnFlakyTests then
+  // fails the run anyway, so a test that only passes on retry is visible
+  // rather than reported green (issue #171 finding 7).
+  retries: process.env.CI ? 1 : 0,
+  failOnFlakyTests: !!process.env.CI,
   workers: process.env.CI ? 1 : undefined,
   reporter: [['html', { open: 'never' }], ['list']],
 
@@ -16,10 +42,16 @@ export default defineConfig({
     baseURL: 'http://localhost:1422',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure'
+    video: 'retain-on-failure',
+    // memory-stability.spec.ts reads performance.memory, which Chrome only
+    // populates precisely with this flag.
+    launchOptions: {
+      args: ['--enable-precise-memory-info']
+    }
   },
 
-  // Global timeout for tests (5 minutes for large file simulations)
+  // Global timeout for tests (5 minutes for large file simulations). The two
+  // specs that need longer raise it themselves with test.describe.configure.
   timeout: 300000,
 
   // Expect timeout for assertions
@@ -29,87 +61,21 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'smoke',
-      testMatch: /buildproject\.spec\.ts/,
+      name: 'e2e',
+      grepInvert: /@slow/,
       use: { ...devices['Desktop Chrome'] }
     },
     {
-      name: 'debug',
-      testMatch: /debug\.spec\.ts/,
+      name: 'slow',
+      grep: /@slow/,
       use: { ...devices['Desktop Chrome'] }
-    },
-    {
-      name: 'progress',
-      testMatch: /progress-accuracy\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'] }
-    },
-    {
-      name: 'memory',
-      testMatch: /memory-stability\.spec\.ts/,
-      use: {
-        ...devices['Desktop Chrome'],
-        // Chrome-specific flags for memory API access
-        launchOptions: {
-          args: ['--enable-precise-memory-info']
-        }
-      }
-    },
-    {
-      name: 'errors',
-      testMatch: /error-recovery\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'] }
-    },
-    // New projects for large file testing
-    {
-      name: 'large-files',
-      testMatch: /realistic-progress\.spec\.ts|external-drive\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'] },
-      timeout: 600000 // 10 minutes for large file tests
-    },
-    {
-      name: 'cancellation',
-      testMatch: /cancellation\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'] }
-    },
-    {
-      name: 'sprout-folders',
-      testMatch: /sprout-folder-picker\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'] }
-    },
-    {
-      name: 'folder-picker-dialog-scroll',
-      testMatch: /folder-picker-dialog-scroll\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'] }
-    },
-    {
-      // Every project here uses an explicit testMatch, so a spec that matches
-      // none of them never runs at all. Issue #166.
-      name: 'posterframe-backgrounds',
-      testMatch: /posterframe-backgrounds\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'] }
-    },
-    {
-      // Walks Baker to reach the poster frame dialogs. Scan completion arrives
-      // via useBakerScan's 2s status poll, so these are slower than the
-      // folder-only specs. Issue #166.
-      name: 'posterframe-baker',
-      testMatch: /posterframe-baker-journey\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'] }
-    },
-    {
-      name: 'long-operations',
-      testMatch: /long-operation-states\.spec\.ts/,
-      use: {
-        ...devices['Desktop Chrome'],
-        video: 'retain-on-failure' // Capture video for visual debugging
-      },
-      timeout: 300000 // 5 minutes
     }
   ],
 
-  // Dev server configuration
+  // Dev server configuration. bun, matching the toolchain in CLAUDE.md - this
+  // said `npm run dev` until issue #171.
   webServer: {
-    command: 'npm run dev',
+    command: 'bun run dev',
     url: 'http://localhost:1422',
     reuseExistingServer: !process.env.CI,
     timeout: 120000

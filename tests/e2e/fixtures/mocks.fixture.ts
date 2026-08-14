@@ -136,153 +136,238 @@ export const mockScanResult: ScanResult = {
   projects: mockScanResults
 }
 
+/** Root folder the directory picker hands back. */
+export const SCAN_ROOT = '/test'
+
+/** Ollama model name the embedding dialogs require. */
+const OLLAMA_MODEL = 'nomic-embed-text'
+
+export interface TauriMockOptions {
+  /** Folder the directory picker returns for Baker's scan root. */
+  scanRoot?: string
+  /** Examples the Example Embeddings page loads. */
+  examples?: ExampleWithMetadata[]
+  /** Projects a completed scan reports. */
+  projects?: ProjectFolder[]
+}
+
 /**
- * Setup common Tauri mocks for E2E tests
+ * Install the Tauri IPC mock for E2E tests.
+ *
+ * This serves the mock data declared above rather than returning `null` for
+ * everything. It used to answer only `get_version` and a couple of path
+ * commands, which left the Baker project list empty and crashed the Example
+ * Embeddings page into its error boundary - `get_all_examples_with_metadata`
+ * returned `null`, and `null.filter(...)` throws during render. That is why
+ * every assertion in the two specs that used this fixture had to be a soft
+ * `count >= 0` check: there was nothing on screen to assert (issue #171).
+ *
+ * Call before `page.goto`, since it installs as an init script.
  */
-export async function setupTauriMocks(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    // Create mock Tauri objects IMMEDIATELY before any scripts run
-    // Tauri v2 uses __TAURI_INTERNALS__ for the main API
-    if (typeof window !== 'undefined') {
-      const tauriWindow = window as {
-        __TAURI__?: unknown
-        __TAURI_INTERNALS__?: {
-          invoke: (cmd: string, args?: unknown) => Promise<unknown>
-          metadata: {
-            windows: Array<{ label: string }>
-            currentWindow: { label: string }
+export async function setupTauriMocks(
+  page: Page,
+  options: TauriMockOptions = {}
+): Promise<void> {
+  const projects = options.projects ?? mockScanResults
+  const config = {
+    scanRoot: options.scanRoot ?? SCAN_ROOT,
+    examples: options.examples ?? mockExamples,
+    projects,
+    breadcrumbs: mockBreadcrumbs,
+    // endTime is present, so useBakerScan's 2s status poll treats the scan as
+    // finished. Events are registered but never delivered here, so the poll is
+    // the route completion actually arrives by.
+    scanResult: {
+      ...mockScanResult,
+      rootPath: options.scanRoot ?? SCAN_ROOT,
+      validProjects: projects.length,
+      projects
+    }
+  }
+
+  await page.addInitScript((cfg: typeof config) => {
+    type Internals = {
+      invoke: (cmd: string, args?: unknown) => Promise<unknown>
+      transformCallback: (callback?: (response: unknown) => void) => number
+      convertFileSrc: (filePath: string) => string
+      unregisterCallback: (id: number) => void
+      metadata: {
+        windows: Array<{ label: string }>
+        currentWindow: { label: string }
+      }
+    }
+    const win = window as unknown as {
+      __TAURI__?: unknown
+      __TAURI_INTERNALS__?: Internals
+      __E2E_CALLBACKS__: Record<number, (response: unknown) => void>
+    }
+
+    /** No trailing separator, matching the real appDataDir (issue #167). */
+    const APP_DATA_DIR = '/tmp/bucket-test/data'
+
+    /** The app data directory itself, or something genuinely inside it. */
+    const isInsideAppData = (path: string) =>
+      path === APP_DATA_DIR || path.startsWith(`${APP_DATA_DIR}/`)
+
+    let nextId = 1
+    win.__E2E_CALLBACKS__ = {}
+
+    // plugin:fs|read_text_file returns BYTES, which the plugin then decodes.
+    // Returning a string yields garbage after Uint8Array.from().
+    const asBytes = (text: string) => Array.from(new TextEncoder().encode(text))
+
+    const projectAt = (path: string) => cfg.projects.find((entry) => entry.path === path)
+
+    const invoke = async (cmd: string, args?: unknown): Promise<unknown> => {
+      const payload = (args ?? {}) as Record<string, unknown>
+
+      switch (cmd) {
+        case 'get_version':
+          return '0.0.0-e2e'
+        case 'get_username':
+          return 'Test User'
+        case 'get_preferences':
+          return { defaultPath: '/Users/test', theme: 'system' }
+
+        // Example Embeddings. Must be an array: the page filters it directly,
+        // so null crashes the render into the error boundary.
+        case 'get_all_examples_with_metadata':
+          return cfg.examples
+        case 'delete_example':
+        case 'replace_example':
+          return null
+        case 'upload_example':
+          return 'new-example-id'
+
+        // Baker. A titled directory dialog is Baker's scan-root picker.
+        case 'plugin:dialog|open': {
+          const opts = (payload.options ?? payload) as { directory?: boolean }
+          return opts?.directory ? cfg.scanRoot : `${cfg.scanRoot}/clip.mp4`
+        }
+        case 'baker_start_scan':
+          return 'scan-e2e-1'
+        case 'baker_get_scan_status':
+          return cfg.scanResult
+        case 'baker_cancel_scan':
+          return null
+        case 'baker_validate_folder':
+          return projectAt(String(payload.folderPath ?? '')) ?? null
+        case 'baker_read_breadcrumbs': {
+          const project = projectAt(String(payload.projectPath ?? ''))
+          if (!project?.hasBreadcrumbs) return null
+          return {
+            ...cfg.breadcrumbs,
+            projectTitle: project.name,
+            parentFolder: project.path
           }
         }
-      }
+        case 'baker_read_raw_breadcrumbs':
+          return null
+        case 'baker_scan_current_files':
+          return []
+        case 'baker_get_video_links':
+        case 'baker_get_trello_cards':
+          return []
+        case 'get_folder_size':
+          return 1024
 
-      const mockInvoke = async (cmd: string, args?: unknown) => {
-        // Return mock data based on command
-        switch (cmd) {
-          case 'get_version':
-            return '0.9.3'
-          // Tauri v2 invokes this directly rather than nested under 'tauri'.
-          // It must genuinely concatenate, or every file the app joins onto
-          // the app data directory collapses onto one path (issue #167).
-          case 'plugin:path|join': {
-            const parts = ((args as { paths?: string[] })?.paths ?? []) as string[]
+        // Must be a numeric listener id: null makes hooks that check it report
+        // a listener failure and hide whole panels.
+        case 'plugin:event|listen':
+          return nextId++
+        case 'plugin:event|unlisten':
+          return null
+
+        // join must genuinely concatenate, or every file the app joins onto the
+        // app data directory collapses onto one path (issue #167).
+        case 'plugin:path|join': {
+          const parts = (payload.paths as string[]) ?? []
+          return parts.join('/').replace(/\/{2,}/g, '/')
+        }
+        case 'plugin:path|resolve_directory':
+          return APP_DATA_DIR
+
+        // A path beside the app data directory rather than inside it is the
+        // pre-#167 layout. E2E runs start already migrated, so those siblings
+        // must report absent - answering `true` makes the app believe there is
+        // a stray settings file to move and then stat a path that is not there.
+        // The directory itself must report present, or every run takes the
+        // mkdir branch.
+        case 'plugin:fs|exists':
+          return isInsideAppData(String(payload.path ?? ''))
+        case 'plugin:fs|stat': {
+          const path = String(payload.path ?? '')
+          if (!isInsideAppData(path)) throw `No such file or directory: ${path}`
+          return {
+            isFile: path !== APP_DATA_DIR,
+            isDirectory: path === APP_DATA_DIR,
+            isSymlink: false,
+            size: 2,
+            readonly: false,
+            fileAttributes: 0
+          }
+        }
+        case 'plugin:fs|read_text_file':
+          return asBytes('{}')
+        case 'plugin:fs|read_dir':
+          return []
+        case 'plugin:fs|mkdir':
+        case 'plugin:fs|write_text_file':
+        case 'plugin:fs|write_file':
+          return null
+
+        case 'tauri': {
+          const inner = (payload as { cmd?: string }).cmd
+          if (inner === 'plugin:path|join') {
+            const parts = (payload.paths as string[]) ?? []
             return parts.join('/').replace(/\/{2,}/g, '/')
           }
-          // appDataDir()/fontDir() resolve through resolve_directory with a
-          // directory enum, not through per-directory commands. Without this
-          // the call fell through to `default` and returned null.
-          case 'plugin:path|resolve_directory':
-            // No trailing separator, matching the real API.
-            return '/tmp/bucket-test/data'
-          case 'get_preferences':
-            return {
-              defaultPath: '/Users/test',
-              theme: 'system'
-            }
-          case 'tauri':
-            // Handle nested Tauri API calls
-            if (args && typeof args === 'object' && 'cmd' in args) {
-              const innerCmd = (args as { cmd: string }).cmd
-              switch (innerCmd) {
-                // Must genuinely concatenate, or every file the app joins onto
-                // the app data directory collapses onto one path (issue #167).
-                case 'plugin:path|join': {
-                  const parts = ((args as { paths?: string[] }).paths ?? []) as string[]
-                  return parts.join('/').replace(/\/{2,}/g, '/')
-                }
-                case 'plugin:path|app_data_dir':
-                case 'plugin:path|resolve_directory':
-                  return '/tmp/bucket-test/data'
-                case 'plugin:path|app_dir':
-                  return '/tmp/bucket-test/app'
-                case 'plugin:path|resource_dir':
-                  return '/tmp/bucket-test/resources'
-                default:
-                  // eslint-disable-next-line no-console
-                  console.warn(`[E2E Mock] Unhandled nested Tauri command: ${innerCmd}`)
-                  return null
-              }
-            }
-            return null
-          default:
-            // Log unhandled commands for debugging
-            // eslint-disable-next-line no-console
-            console.warn(`[E2E Mock] Unhandled Tauri command: ${cmd}`, args)
-            return null
+          if (inner?.startsWith('plugin:path|')) return APP_DATA_DIR
+          return null
         }
-      }
 
-      // Tauri v2 uses __TAURI_INTERNALS__
-      tauriWindow.__TAURI_INTERNALS__ = {
-        invoke: mockInvoke,
-        metadata: {
-          windows: [{ label: 'main' }],
-          currentWindow: { label: 'main' }
-        }
+        default:
+          if (cmd.startsWith('plugin:path|')) return APP_DATA_DIR
+          if (cmd.startsWith('plugin:')) return null
+          // eslint-disable-next-line no-console
+          console.warn(`[E2E Mock] Unhandled Tauri command: ${cmd}`, args)
+          return null
       }
-
-      // Also set __TAURI__ for backwards compatibility
-      tauriWindow.__TAURI__ = tauriWindow.__TAURI_INTERNALS__
     }
-  })
+
+    win.__TAURI_INTERNALS__ = {
+      invoke,
+      transformCallback: (callback) => {
+        const id = nextId++
+        if (callback) win.__E2E_CALLBACKS__[id] = callback
+        return id
+      },
+      convertFileSrc: (filePath) => filePath,
+      unregisterCallback: (id) => {
+        delete win.__E2E_CALLBACKS__[id]
+      },
+      metadata: {
+        windows: [{ label: 'main' }],
+        currentWindow: { label: 'main' }
+      }
+    }
+    win.__TAURI__ = win.__TAURI_INTERNALS__
+  }, config)
 }
 
 /**
- * Mock file dialog responses
+ * Serve the Ollama embedding endpoints the upload and replace dialogs probe.
+ *
+ * Without this the dialogs read "Embedding model not available" and their
+ * submit button is stuck at "Model Not Ready" - and worse, the outcome depends
+ * on whether the machine running the test happens to have Ollama listening on
+ * 11434.
  */
-export async function mockFileDialog(
-  page: Page,
-  response: string | string[] | null
-): Promise<void> {
-  await page.evaluate(dialogResponse => {
-    const tauriWindow = window as {
-      __TAURI__?: {
-        dialog?: {
-          open: () => Promise<string | string[] | null>
-        }
-      }
-    }
-
-    if (tauriWindow.__TAURI__) {
-      tauriWindow.__TAURI__.dialog = {
-        open: async () => dialogResponse
-      }
-    }
-  }, response)
-}
-
-/**
- * Mock file system operations
- */
-export async function mockFileSystem(
-  page: Page,
-  files: Record<string, string>
-): Promise<void> {
-  await page.evaluate(mockFiles => {
-    const tauriWindow = window as {
-      __TAURI__?: {
-        fs?: {
-          readTextFile: (path: string) => Promise<string>
-          writeTextFile: (path: string, contents: string) => Promise<void>
-          exists: (path: string) => Promise<boolean>
-        }
-      }
-    }
-
-    if (tauriWindow.__TAURI__) {
-      tauriWindow.__TAURI__.fs = {
-        readTextFile: async (path: string) => {
-          if (path in mockFiles) {
-            return mockFiles[path]
-          }
-          throw new Error(`File not found: ${path}`)
-        },
-        writeTextFile: async (path: string, contents: string) => {
-          mockFiles[path] = contents
-        },
-        exists: async (path: string) => {
-          return path in mockFiles
-        }
-      }
-    }
-  }, files)
+export async function mockOllamaEmbedding(page: Page): Promise<void> {
+  await page.route('**/api/tags', (route) =>
+    route.fulfill({ json: { models: [{ name: `${OLLAMA_MODEL}:latest` }] } })
+  )
+  await page.route('**/api/embeddings', (route) =>
+    route.fulfill({ json: { embedding: Array.from({ length: 8 }, () => 0.1) } })
+  )
 }

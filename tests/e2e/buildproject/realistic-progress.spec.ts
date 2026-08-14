@@ -19,7 +19,14 @@ import {
 } from '../utils/large-file-simulator'
 import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 
-test.describe('Realistic Progress - Intra-File Progress', () => {
+/**
+ * The 250GB simulations need longer than the config's 5 minute default. This
+ * was the removed `large-files` project's timeout; it belongs beside the specs
+ * that need it, so the config keeps no per-file rules (issue #171).
+ */
+test.describe.configure({ timeout: 600000 })
+
+test.describe('Realistic Progress - Intra-File Progress', { tag: '@slow' }, () => {
   test('emits progress events within each file (not just per-file)', async ({ page }) => {
     // Use 10-file scenario to verify intra-file progress
     const mock = createTauriMock(page)
@@ -104,7 +111,7 @@ test.describe('Realistic Progress - Intra-File Progress', () => {
   })
 })
 
-test.describe('Realistic Progress - Formula Verification', () => {
+test.describe('Realistic Progress - Formula Verification', { tag: '@slow' }, () => {
   test('progress formula matches: (files + fileProgress) / total * 100', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -185,7 +192,7 @@ test.describe('Realistic Progress - Formula Verification', () => {
   })
 })
 
-test.describe('Realistic Progress - Variable File Sizes', () => {
+test.describe('Realistic Progress - Variable File Sizes', { tag: '@slow' }, () => {
   test('handles variable file sizes correctly', async ({ page }) => {
     const mock = createTauriMock(page)
     const variableFiles = generateVariableSizeFiles(SCENARIOS.SMOKE_TEST, 4)
@@ -284,7 +291,7 @@ test.describe('Realistic Progress - Variable File Sizes', () => {
   })
 })
 
-test.describe('Realistic Progress - Rapid Events', () => {
+test.describe('Realistic Progress - Rapid Events', { tag: '@slow' }, () => {
   test('handles rapid progress events without dropping updates', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -364,7 +371,7 @@ test.describe('Realistic Progress - Rapid Events', () => {
   })
 })
 
-test.describe('Realistic Progress - 250GB Simulation', () => {
+test.describe('Realistic Progress - 250GB Simulation', { tag: '@slow' }, () => {
   test('handles 50 files @ 500MB with realistic intra-file events', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
