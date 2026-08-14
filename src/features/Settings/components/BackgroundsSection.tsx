@@ -117,8 +117,11 @@ const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({
   const handleSave = async () => {
     try {
       await saveMutation.mutateAsync({
-        defaultBackgroundFolder,
-        rebrandBackgroundFolder
+        // The store normalises "not configured" to `null` (#189); ApiKeys
+        // records it as an absent key, which is what JSON.stringify writes for
+        // `undefined` anyway (#210).
+        defaultBackgroundFolder: defaultBackgroundFolder ?? undefined,
+        rebrandBackgroundFolder: rebrandBackgroundFolder ?? undefined
       })
     } catch (error) {
       logger.error('Failed to save background folders:', error)

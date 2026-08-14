@@ -9,7 +9,9 @@ import FileList from './FileList'
 import KeyValueRow from './KeyValueRow'
 
 interface Props {
-  data: Breadcrumb
+  // Optional, matching the `if (!data) return null` below and the caller, which
+  // guards on the breadcrumbs *block* rather than on the data itself (#210).
+  data: Breadcrumb | undefined
 }
 
 const BreadcrumbsAccordionItem: React.FC<Props> = ({ data }) => {

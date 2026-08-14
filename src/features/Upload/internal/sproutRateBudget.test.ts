@@ -176,9 +176,7 @@ describe('the guard is asymmetric by design', () => {
     recordRateLimited(now / 1000 + 30, now)
     const verdict = checkBrowseAllowed(now)
 
-    // `=== true`, not just truthiness: strictNullChecks is off repo-wide, and
-    // without it TypeScript will not narrow a boolean discriminant by truthiness.
-    if (verdict.allowed === true) throw new Error('expected a refusal')
+    if (verdict.allowed) throw new Error('expected a refusal')
     const message = describeRefusal(verdict, now)
 
     expect(message).toMatch(/30s/)

@@ -7,6 +7,12 @@
     "esModuleInterop": true,
     "jsx": "preserve",
     // "jsxImportSource": "react",
+    // With this off, TypeScript will not narrow a union by the truthiness of a
+    // boolean discriminant: `if (result.ok === false)` narrowed and
+    // `if (!result.ok)` silently did not. `StageResult`'s own doc comment taught
+    // the form that did not work, and around 35 of the errors #178 cleared came
+    // from that one trap (issue #210).
+    "strictNullChecks": true,
     "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
     "noEmit": true,
     // Third-party declarations are not ours to fix; monaco-editor's own .d.ts

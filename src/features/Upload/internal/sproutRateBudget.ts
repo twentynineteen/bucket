@@ -130,10 +130,7 @@ export function runBrowseRequest<T>(request: () => Promise<T>): Promise<T> {
   // when it joins it: a 429 arriving while it waits must still refuse it.
   const run = queueTail.then(() => {
     const verdict = checkBrowseAllowed()
-    // `=== false`, not `!verdict.allowed`: strictNullChecks is off repo-wide,
-    // and without it TypeScript will not narrow a union by the truthiness of a
-    // boolean discriminant, only by an explicit comparison.
-    if (verdict.allowed === false) {
+    if (!verdict.allowed) {
       throw new BudgetError(describeRefusal(verdict), verdict.reason)
     }
     return request()

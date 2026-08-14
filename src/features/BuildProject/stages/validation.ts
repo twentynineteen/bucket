@@ -417,10 +417,7 @@ export const validationActor = fromPromise<
   const result = await validateInputs(input)
 
   // If validation failed, throw to trigger onError in XState.
-  // `=== false` rather than `!result.ok`: strictNullChecks is off repo-wide and
-  // without it TypeScript will not narrow a union by a boolean discriminant's
-  // truthiness, only by an explicit comparison.
-  if (result.ok === false) {
+  if (!result.ok) {
     throw createValidationError('validation', result.error.message, {
       errors: result.error
     })

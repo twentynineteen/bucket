@@ -24,7 +24,9 @@ import type { SelectedCard, TrelloCard, TrelloMember } from '../types'
 
 interface CardDetailsDialogProps {
   selectedCard: SelectedCard | null
-  selectedCardDetails: TrelloCard | null
+  // React Query's `data`, so absent is `undefined` - the same shape as `members`
+  // below, which the sole caller feeds from the same query (#210).
+  selectedCardDetails: TrelloCard | undefined
   members: TrelloMember[] | undefined
   isCardLoading: boolean
   uploadedVideo: SproutUploadResponse | null

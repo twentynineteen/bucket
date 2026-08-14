@@ -166,8 +166,6 @@ export class TauriE2EMock {
         __E2E_CONFIG__?: typeof cfg
         __E2E_EVENTS__?: Array<{ percent: number; fileIndex: number; fileProgress?: number }>
         __E2E_LISTENERS__?: Map<string, Map<number, EventCallback>>
-        __E2E_NEXT_EVENT_ID__?: number
-        __E2E_NEXT_OPERATION_ID__?: number
         __E2E_CALLBACKS__?: Record<number, (response: unknown) => void>
         __E2E_CANCELLED__?: boolean
         __E2E_OPERATION_IN_PROGRESS__?: boolean
@@ -184,12 +182,31 @@ export class TauriE2EMock {
 
       // Store config globally
       win.__E2E_CONFIG__ = cfg
-      win.__E2E_EVENTS__ = []
-      win.__E2E_LISTENERS__ = new Map()
-      win.__E2E_NEXT_EVENT_ID__ = 1
-      win.__E2E_NEXT_OPERATION_ID__ = 1
       win.__E2E_CANCELLED__ = false
       win.__E2E_OPERATION_IN_PROGRESS__ = false
+
+      // The listener registry and the two id counters are held as locals that the
+      // closures below capture. Reading them back off `win` inside a closure does
+      // not typecheck under strictNullChecks: they are declared optional and
+      // assignment narrowing is reset at every function boundary (#210). Only the
+      // registry needs to stay visible on `win`, for getListenerCount; the two
+      // counters are read nowhere outside this function, so they no longer sit on
+      // the window at all.
+      const eventListeners = new Map<string, Map<number, EventCallback>>()
+      win.__E2E_LISTENERS__ = eventListeners
+      let nextEventId = 1
+      let nextOperationId = 1
+
+      // Progress events cannot be captured the same way: TauriE2EMock.reset()
+      // replaces the array wholesale, so each push has to go through `win`.
+      win.__E2E_EVENTS__ = []
+      const recordEvent = (event: {
+        percent: number
+        fileIndex: number
+        fileProgress?: number
+      }) => {
+        ;(win.__E2E_EVENTS__ ??= []).push(event)
+      }
 
       // Callback registry for transformCallback
       let callbackId = 0
@@ -198,7 +215,7 @@ export class TauriE2EMock {
 
       // Helper to emit events - calls registered callbacks
       const emitEvent = (event: string, payload: unknown) => {
-        const listeners = win.__E2E_LISTENERS__.get(event)
+        const listeners = eventListeners.get(event)
         const count = listeners?.size || 0
         console.log('[E2E Mock] Emitting', event, 'to', count, 'listeners')
         if (listeners) {
@@ -215,7 +232,7 @@ export class TauriE2EMock {
       // Create event plugin internals
       win.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
         unregisterListener: (event: string, eventId: number) => {
-          const listeners = win.__E2E_LISTENERS__.get(event)
+          const listeners = eventListeners.get(event)
           if (listeners) {
             listeners.delete(eventId)
           }
@@ -247,14 +264,15 @@ export class TauriE2EMock {
             const handlerId = args?.handler as number
             console.log('[E2E Mock] Registering listener for:', eventName, 'handler:', handlerId)
 
-            const eventId = win.__E2E_NEXT_EVENT_ID__++
+            const eventId = nextEventId++
 
-            if (!win.__E2E_LISTENERS__.has(eventName)) {
-              win.__E2E_LISTENERS__.set(eventName, new Map())
+            let listeners = eventListeners.get(eventName)
+            if (!listeners) {
+              listeners = new Map()
+              eventListeners.set(eventName, listeners)
             }
 
             // Create a wrapper that will call the registered callback
-            const listeners = win.__E2E_LISTENERS__.get(eventName)!
             listeners.set(eventId, (event: { payload: unknown; id: number }) => {
               if (callbacks[handlerId]) {
                 callbacks[handlerId](event)
@@ -272,7 +290,7 @@ export class TauriE2EMock {
             const eventName = args?.event as string
             const eventId = args?.eventId as number
             console.log('[E2E Mock] Unregistering listener for:', eventName, 'id:', eventId)
-            const listeners = win.__E2E_LISTENERS__.get(eventName)
+            const listeners = eventListeners.get(eventName)
             if (listeners) {
               listeners.delete(eventId)
             }
@@ -298,7 +316,7 @@ export class TauriE2EMock {
               | { files: Array<{ source: string; destination: string }> }
               | undefined
             const requestFiles = request?.files ?? []
-            const operationId = `e2e-op-${win.__E2E_NEXT_OPERATION_ID__++}`
+            const operationId = `e2e-op-${nextOperationId++}`
             console.log(
               '[E2E Mock] Mocking transfer_files_with_progress:',
               operationId,
@@ -412,7 +430,7 @@ export class TauriE2EMock {
                     const fileProgress = (chunk + 1) / eventsPerFile
                     const overallProgress = ((fileIndex + fileProgress) / totalFiles) * 100
 
-                    win.__E2E_EVENTS__.push({
+                    recordEvent({
                       percent: overallProgress,
                       fileIndex,
                       fileProgress
@@ -432,7 +450,7 @@ export class TauriE2EMock {
                 } else {
                   // One event per file
                   const percent = ((fileIndex + 1) / totalFiles) * 100
-                  win.__E2E_EVENTS__.push({ percent, fileIndex })
+                  recordEvent({ percent, fileIndex })
                   emitProgress(currentFile, fileSize, fileSize, percent)
                 }
 
@@ -445,7 +463,7 @@ export class TauriE2EMock {
               }
 
               // Ensure we emit exactly 100% at the end, then the success event
-              win.__E2E_EVENTS__.push({ percent: 100, fileIndex: totalFiles - 1 })
+              recordEvent({ percent: 100, fileIndex: totalFiles - 1 })
               emitProgress('', 0, 0, 100)
               emitComplete(true, null)
               console.log(

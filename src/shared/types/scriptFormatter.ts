@@ -175,8 +175,11 @@ export interface ProviderConfiguration {
 export interface ConnectionValidationResult {
   success: boolean
   errorMessage?: string
-  modelsFound: number
-  latencyMs: number
+  /** Optional: a failed validation has no model count and no latency to report,
+   *  and validateAIConnection already returns both as optional. ProviderSelector
+   *  reads them through `?.` for that reason (#210). */
+  modelsFound?: number
+  latencyMs?: number
 }
 
 // ============================================================================

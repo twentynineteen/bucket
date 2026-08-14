@@ -43,6 +43,16 @@ describe('useScriptReview', () => {
     isEdited: false
   }
 
+  // getUpdatedOutput returns null when the hook was given no initialOutput
+  // (#178). Every caller below does give it one, so a null here is a real
+  // failure and should say so rather than being asserted around (#210).
+  const requireOutput = (output: ProcessedOutput | null): ProcessedOutput => {
+    if (output === null) {
+      throw new Error('getUpdatedOutput returned null despite an initialOutput')
+    }
+    return output
+  }
+
   describe('Initial State', () => {
     it('should initialize with null when no processed output provided', () => {
       const { result } = renderHook(() => useScriptReview())
@@ -382,7 +392,7 @@ describe('useScriptReview', () => {
         result.current.handleChange('Modified content')
       })
 
-      const updatedOutput = result.current.getUpdatedOutput()
+      const updatedOutput = requireOutput(result.current.getUpdatedOutput())
 
       expect(updatedOutput.formattedText).toBe('Modified content')
       expect(updatedOutput.isEdited).toBe(true)
@@ -400,7 +410,7 @@ describe('useScriptReview', () => {
         result.current.handleChange('Modified content')
       })
 
-      const updatedOutput = result.current.getUpdatedOutput()
+      const updatedOutput = requireOutput(result.current.getUpdatedOutput())
 
       expect(updatedOutput.generationTimestamp).toEqual(
         initialProcessedOutput.generationTimestamp
@@ -415,14 +425,14 @@ describe('useScriptReview', () => {
         })
       )
 
-      let updatedOutput = result.current.getUpdatedOutput()
+      let updatedOutput = requireOutput(result.current.getUpdatedOutput())
       expect(updatedOutput.isEdited).toBe(false)
 
       act(() => {
         result.current.handleChange('Modified content')
       })
 
-      updatedOutput = result.current.getUpdatedOutput()
+      updatedOutput = requireOutput(result.current.getUpdatedOutput())
       expect(updatedOutput.isEdited).toBe(true)
     })
   })

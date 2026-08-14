@@ -98,9 +98,12 @@ describe('baker_read_breadcrumbs Contract', () => {
     expect(() => new Date(result.creationDateTime)).not.toThrow()
     expect(new Date(result.creationDateTime).getTime()).not.toBeNaN()
 
-    // Optional fields should be valid if present
-    if (result.lastModified) {
-      expect(() => new Date(result.lastModified)).not.toThrow()
+    // Optional fields should be valid if present. Bound to a local first: the
+    // `if` narrows `result.lastModified`, but the arrow below is a new function
+    // scope and the narrowing does not survive it (#210).
+    const lastModified = result.lastModified
+    if (lastModified) {
+      expect(() => new Date(lastModified)).not.toThrow()
     }
   })
 

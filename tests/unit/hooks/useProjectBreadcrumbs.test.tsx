@@ -182,9 +182,16 @@ describe('useProjectBreadcrumbs', () => {
         username: 'Test User'
       })
 
-      // Check it's a valid ISO string
-      expect(() => new Date(breadcrumbs.creationDateTime)).not.toThrow()
-      expect(breadcrumbs.creationDateTime).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+      // Check it's a valid ISO string. creationDateTime is optional on
+      // Breadcrumb, so it is narrowed explicitly before use - the toMatch below
+      // already caught its absence, but only after new Date(undefined) had
+      // quietly produced an Invalid Date that not.toThrow() accepted (#210).
+      const { creationDateTime } = breadcrumbs
+      if (creationDateTime === undefined) {
+        throw new Error('createBreadcrumbsData returned no creationDateTime')
+      }
+      expect(() => new Date(creationDateTime)).not.toThrow()
+      expect(creationDateTime).toMatch(/^\d{4}-\d{2}-\d{2}T/)
     })
 
     it('should handle empty files array', async () => {

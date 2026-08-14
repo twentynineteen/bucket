@@ -1622,22 +1622,18 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       sourceRenderFile: 'managing_change.mp4'
     }
 
+    // Absent optional fields are omitted, not null. The Rust structs behind
+    // VideoLink use skip_serializing_if = "Option::is_none", so a null never
+    // reaches the frontend for any of these (#210).
     const linkWithoutId: VideoLink = {
       url: 'https://videos.sproutvideo.com/embed/def456/tok',
       title: 'WBS - MSc - Leading Teams',
-      sproutVideoId: null,
-      thumbnailUrl: 'https://cdn.sproutvideo.com/poster/def456.jpg',
-      uploadDate: null,
-      sourceRenderFile: null
+      thumbnailUrl: 'https://cdn.sproutvideo.com/poster/def456.jpg'
     }
 
     const unlinkableLink: VideoLink = {
       url: 'https://example.com/not-a-sprout-video',
-      title: 'Somewhere else entirely',
-      sproutVideoId: null,
-      thumbnailUrl: null,
-      uploadDate: null,
-      sourceRenderFile: null
+      title: 'Somewhere else entirely'
     }
 
     const withVideoLinks = (links: VideoLink[]) => {

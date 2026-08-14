@@ -120,7 +120,7 @@ describe('TrelloCardItem Component', () => {
       // Arrange
       const cardWithoutBoard: TrelloCard = {
         ...baseTrelloCard,
-        boardName: null
+        boardName: undefined
       }
 
       // Act
