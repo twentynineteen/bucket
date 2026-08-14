@@ -51,8 +51,13 @@ const UploadSproutContent: React.FC = () => {
     useUploadEvents()
   const { selectedFile, response, selectFile, uploadFile } = useFileUpload()
   // Destination folder, resolved once: session last-used -> default -> root.
-  const { selectedFolder, selectFolder, recentFolders, commitFolder } =
-    useSproutFolderSelection()
+  const {
+    selectedFolder,
+    selectFolder,
+    recentFolders,
+    commitFolder,
+    defaultFolderReason
+  } = useSproutFolderSelection()
   const { thumbnailLoaded, refreshTimestamp, setThumbnailLoaded } =
     useImageRefresh(response)
   const [title, setTitle] = useState('')
@@ -169,9 +174,21 @@ const UploadSproutContent: React.FC = () => {
                       recentFolders={recentFolders}
                       disabled={uploading}
                     />
-                    <p className="text-muted-foreground text-xs">
-                      Where the video is filed on Sprout. Defaults to the account root.
-                    </p>
+                    {/*
+                      A saved default that cannot be vouched for says so here,
+                      beside the control that fixes it (#169). Silent otherwise:
+                      the picker's own label always states the real destination.
+                    */}
+                    {defaultFolderReason ? (
+                      <p className="text-destructive flex items-start gap-1.5 text-xs">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>{defaultFolderReason}</span>
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground text-xs">
+                        Where the video is filed on Sprout. Defaults to the account root.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

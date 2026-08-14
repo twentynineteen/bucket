@@ -68,10 +68,20 @@ let mockImageRefreshState = {
   setThumbnailLoaded: mockSetThumbnailLoaded
 }
 
+// useSproutFolderSelection reads the Settings default -- and, since #169, the
+// settings query's failure -- through useApiKeys, so this is the boundary a test
+// moves to put the default folder into a given state.
+let mockApiKeysState: {
+  data: Record<string, unknown> | undefined
+  isLoading: boolean
+  isPending?: boolean
+  isError?: boolean
+  error: unknown
+} = { data: {}, isLoading: false, error: null }
+
 vi.mock('@shared/hooks/useApiKeys', () => ({
   useSproutVideoApiKey: vi.fn(() => mockApiKeyState),
-  // useSproutFolderSelection reads the Settings default through useApiKeys.
-  useApiKeys: vi.fn(() => ({ data: {}, isLoading: false, error: null })),
+  useApiKeys: vi.fn(() => mockApiKeysState),
   useTrelloApiKeys: vi.fn(() => ({}))
 }))
 
@@ -170,6 +180,7 @@ describe('UploadSprout Page', () => {
       refreshTimestamp: Date.now(),
       setThumbnailLoaded: mockSetThumbnailLoaded
     }
+    mockApiKeysState = { data: {}, isLoading: false, error: null }
   })
 
   // ==========================================
@@ -325,6 +336,29 @@ describe('UploadSprout Page', () => {
       renderUploadSprout()
 
       expect(screen.getByText(/video\.mp4/i)).toBeInTheDocument()
+    })
+
+    // B5, issue #169: whatever the resolved default folder has to report has to
+    // be visible where the destination is chosen, or the page still looks
+    // confident about a destination it cannot vouch for.
+    it('B5.1 shows why the default folder is unusable beside the folder picker', () => {
+      mockApiKeysState = {
+        data: undefined,
+        isLoading: false,
+        isError: true,
+        error: new Error('api_keys.json is not readable')
+      }
+
+      renderUploadSprout()
+
+      expect(screen.getByText(/could not read your settings/i)).toBeInTheDocument()
+    })
+
+    it('B5.2 shows only the usual helper text when there is nothing to report', () => {
+      renderUploadSprout()
+
+      expect(screen.getByText(/Defaults to the account root/i)).toBeInTheDocument()
+      expect(screen.queryByText(/could not read your settings/i)).not.toBeInTheDocument()
     })
 
     it('should enable Upload Video button when file is selected', () => {
