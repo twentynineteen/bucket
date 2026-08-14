@@ -343,7 +343,7 @@ fn the_rejection_names_the_size_the_limit_and_both_ways_forward() {
 // every case below runs in microseconds.
 
 use crate::commands::sprout_upload::{
-    stall_message, StallCheck, StallMonitor, TerminalOnce, STALL_MIN_PROGRESS_BYTES, STALL_WINDOW
+    stall_message, StallCheck, StallMonitor, TerminalOnce, STALL_MIN_PROGRESS_BYTES, STALL_WINDOW,
 };
 use std::time::Duration;
 
@@ -580,10 +580,7 @@ fn a_stall_is_distinguishable_from_the_other_terminal_outcomes() {
 fn a_stall_before_any_bytes_move_still_reads_sensibly() {
     // The watchdog is armed from invocation, so it can fire before the first read.
     let message = stall_message(0, 4_100_000_000, secs(70));
-    assert!(
-        message.to_lowercase().contains("stall"),
-        "got: {message}"
-    );
+    assert!(message.to_lowercase().contains("stall"), "got: {message}");
     assert!(
         !message.contains("0.00 GB"),
         "\"stopped at 0.00 GB\" reads as a bug; a transfer that never started must \

@@ -268,7 +268,7 @@ pub fn upload_video(
             folder_id,
             title,
             upload_progress,
-            upload_gate.clone()
+            upload_gate.clone(),
         )
         .await;
 
@@ -327,8 +327,8 @@ pub enum StallCheck {
     /// Less than `STALL_MIN_PROGRESS_BYTES` moved across a full window.
     Stalled {
         /// How long since the last qualifying advance, for the message.
-        since_last_advance: Duration
-    }
+        since_last_advance: Duration,
+    },
 }
 
 /// Decides whether a transfer has stalled, from progress over a sliding window.
@@ -342,7 +342,7 @@ pub struct StallMonitor {
     /// Byte count at the start of the current window.
     anchor_bytes: u64,
     /// When the current window started.
-    anchor_at: Duration
+    anchor_at: Duration,
 }
 
 impl StallMonitor {
@@ -352,7 +352,7 @@ impl StallMonitor {
             window: STALL_WINDOW,
             min_progress: STALL_MIN_PROGRESS_BYTES,
             anchor_bytes: 0,
-            anchor_at: started_at
+            anchor_at: started_at,
         }
     }
 
@@ -398,7 +398,10 @@ pub fn stall_message(bytes_sent: u64, total_bytes: u64, since_last_advance: Dura
         "The transfer never started sending".to_string()
     } else {
         let percentage = if total_bytes > 0 {
-            format!(" ({:.0}%)", (bytes_sent as f64 / total_bytes as f64) * 100.0)
+            format!(
+                " ({:.0}%)",
+                (bytes_sent as f64 / total_bytes as f64) * 100.0
+            )
         } else {
             String::new()
         };
@@ -448,14 +451,14 @@ impl TerminalOnce {
 #[derive(Clone)]
 struct TerminalGate {
     once: TerminalOnce,
-    app_handle: AppHandle
+    app_handle: AppHandle,
 }
 
 impl TerminalGate {
     fn new(app_handle: AppHandle) -> Self {
         TerminalGate {
             once: TerminalOnce::default(),
-            app_handle
+            app_handle,
         }
     }
 
@@ -487,7 +490,7 @@ impl TerminalGate {
 pub struct UploadProgress {
     bytes_sent: AtomicU64,
     total_bytes: AtomicU64,
-    started_at: Instant
+    started_at: Instant,
 }
 
 impl UploadProgress {
@@ -495,7 +498,7 @@ impl UploadProgress {
         UploadProgress {
             bytes_sent: AtomicU64::new(0),
             total_bytes: AtomicU64::new(0),
-            started_at: Instant::now()
+            started_at: Instant::now(),
         }
     }
 
@@ -533,7 +536,7 @@ impl UploadProgress {
 async fn watch_for_stall(
     upload: tauri::async_runtime::JoinHandle<()>,
     progress: Arc<UploadProgress>,
-    gate: TerminalGate
+    gate: TerminalGate,
 ) {
     let mut monitor = StallMonitor::new(Duration::ZERO);
 
@@ -839,7 +842,7 @@ async fn upload_video_task(
             gate.succeed(response_json);
             Ok(())
         }
-        Err(error_message) => Err(error_message)
+        Err(error_message) => Err(error_message),
     }
 }
 
