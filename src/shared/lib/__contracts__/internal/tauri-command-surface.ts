@@ -24,13 +24,13 @@ import { join, relative, resolve } from 'node:path'
 export const REPO_ROOT = resolve(__dirname, '../../../../..')
 
 /** Everything the frontend ships. */
-export const SRC_DIR = join(REPO_ROOT, 'src')
+const SRC_DIR = join(REPO_ROOT, 'src')
 
 /** Where `#[command]` functions live. */
 export const RUST_COMMANDS_DIR = join(REPO_ROOT, 'src-tauri/src/commands')
 
 /** The only file holding `generate_handler![...]`. */
-export const MAIN_RS = join(REPO_ROOT, 'src-tauri/src/main.rs')
+const MAIN_RS = join(REPO_ROOT, 'src-tauri/src/main.rs')
 
 /** Every file under `dir` whose name matches, recursively. */
 export function walkFiles(dir: string, match: RegExp): string[] {
@@ -50,7 +50,7 @@ export function walkFiles(dir: string, match: RegExp): string[] {
  * literals and regexes describing the rule, which a scanner reads as real call
  * sites.
  */
-export function sourceFiles(dir: string = SRC_DIR): string[] {
+function sourceFiles(dir: string = SRC_DIR): string[] {
   return walkFiles(dir, /\.tsx?$/).filter(
     (file) => !/\.test\.tsx?$|__contracts__|__mocks__/.test(file)
   )
@@ -259,12 +259,4 @@ export function invokeSitesIn(files: string[]): InvokeSite[] {
 /** Every `invoke(...)` call site in the shipped source under `dir`. */
 export function invokeSites(dir: string = SRC_DIR): InvokeSite[] {
   return invokeSitesIn(sourceFiles(dir))
-}
-
-/**
- * Call sites naming a command statically, so their name can be checked against
- * the handler list. Plugin and dynamic sites are the callers' business.
- */
-export function staticInvokeSites(sites: InvokeSite[]): InvokeSite[] {
-  return sites.filter((site) => site.kind === 'static')
 }
