@@ -24,7 +24,7 @@ export class CacheInvalidationService {
   async invalidateUserData() {
     await Promise.all([
       this.queryClient.invalidateQueries({ queryKey: queryKeys.user.profile() }),
-      this.queryClient.invalidateQueries({ queryKey: queryKeys.user.authentication() })
+      this.queryClient.invalidateQueries({ queryKey: queryKeys.user.username() })
     ])
   }
 

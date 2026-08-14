@@ -65,7 +65,13 @@ export const queryKeys = {
     all: ['user'] as const,
     profile: () => ['user', 'profile'] as const,
     preferences: () => ['user', 'preferences'] as const,
-    authentication: () => ['user', 'authentication'] as const,
+    /**
+     * The OS account name, from the `get_username` command. Called
+     * `authentication()` until #223, which named a capability the app does not
+     * have: #199 removed the mock auth surface and #206 removed the last
+     * `useAuth` consumer, leaving a display-name lookup under an auth name.
+     */
+    username: () => ['user', 'username'] as const,
     breadcrumb: () => ['user', 'breadcrumb'] as const
   },
 
