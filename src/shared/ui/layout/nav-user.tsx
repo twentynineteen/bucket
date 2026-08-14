@@ -19,7 +19,7 @@ import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@s
 import { useQuery } from '@tanstack/react-query'
 import { core } from '@tauri-apps/api'
 import { getVersion } from '@tauri-apps/api/app'
-import { ChevronsUpDown, LogOut } from 'lucide-react'
+import { ChevronsUpDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 type Props = {
@@ -27,12 +27,11 @@ type Props = {
     name: string
     avatar: string
   }
-  onLogout: () => void
   onUpdateClicked: () => void
   // isLoading: boolean
 }
 
-export function NavUser({ user, onLogout, onUpdateClicked }: Props) {
+export function NavUser({ user, onUpdateClicked }: Props) {
   const { isMobile } = useSidebar()
 
   // Use React Query for app version fetching
@@ -138,13 +137,6 @@ export function NavUser({ user, onLogout, onUpdateClicked }: Props) {
                 </div>
               </DropdownMenuItem>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOut />
-              <Link to="#" onClick={onLogout}>
-                Log out
-              </Link>
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

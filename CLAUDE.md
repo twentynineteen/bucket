@@ -64,7 +64,6 @@ npx npm-check-updates -u             # Update all dependencies to latest
 src/
 +-- features/
 |   +-- AITools/       # ScriptFormatter + ExampleEmbeddings (api.ts, 2 barrel exports)
-|   +-- Auth/          # Logout action for the sidebar only -- no authentication (api.ts)
 |   +-- Baker/         # Drive scanning, breadcrumbs management (api.ts, 24 barrel exports)
 |   +-- BuildProject/  # File ingest, camera assignment, XState (api.ts, 4 barrel exports)
 |   +-- Premiere/      # Adobe Premiere plugin management (api.ts, 1 barrel export)
@@ -226,8 +225,8 @@ vi.mock('@shared/ui/layout/app-sidebar', () => ({ AppSidebar: () => <div>AppSide
 expect(screen.getByText('AppSidebar')).toBeInTheDocument()
 
 // GOOD -- mock only the I/O boundary, then assert what a user would see
-vi.mock('@features/Auth', () => ({ useAuth: () => ({ logout: vi.fn() }) }))
-expect(screen.getByRole('navigation')).toBeInTheDocument()
+vi.mock('@tauri-apps/api', () => ({ core: { invoke: async () => 'alice' } }))
+expect(await screen.findByRole('button', { name: /alice/i })).toBeInTheDocument()
 ```
 
 **Soft checks.** A test that logs violations and passes regardless is not a test. Either assert

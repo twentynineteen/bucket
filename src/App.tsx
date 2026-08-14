@@ -11,7 +11,6 @@ import { RouteLoadingSpinner } from './shared/ui/layout/RouteLoadingSpinner'
 import { TitleBar } from './shared/ui/layout/TitleBar'
 import { Toaster } from './shared/ui/sonner'
 import { CACHE, getBackoffDelay, RETRY } from '@shared/constants'
-import { AuthProvider } from '@features/Auth'
 import { useWindowState } from '@shared/hooks/useWindowState'
 import {
   initializePerformanceMonitor,
@@ -99,16 +98,14 @@ const App: React.FC = () => {
     >
       <QueryClientProvider client={queryClient}>
         <QueryErrorBoundary>
-          <AuthProvider>
-            <Router>
-              <TitleBar />
-              <ChunkErrorBoundary>
-                <Suspense fallback={<RouteLoadingSpinner />}>
-                  <AppRouter />
-                </Suspense>
-              </ChunkErrorBoundary>
-            </Router>
-          </AuthProvider>
+          <Router>
+            <TitleBar />
+            <ChunkErrorBoundary>
+              <Suspense fallback={<RouteLoadingSpinner />}>
+                <AppRouter />
+              </Suspense>
+            </ChunkErrorBoundary>
+          </Router>
         </QueryErrorBoundary>
         <Toaster />
         {/* React Query DevTools - only shows in development */}

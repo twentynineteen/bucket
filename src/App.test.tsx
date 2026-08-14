@@ -30,9 +30,9 @@ beforeEach(() => {
   }))
 })
 
-// App wraps the whole router in AuthProvider (issue #199 cut that provider back
-// to a logout action). If the provider stops rendering standalone, the app is
-// blank, so mount the real tree rather than a mocked stand-in.
+// App composes the theme, query, error-boundary and router providers by hand.
+// #206 removed AuthProvider from between them, and mis-nesting any of the rest
+// leaves the app blank, so mount the real tree rather than a mocked stand-in.
 it('mounts the real provider tree and renders the dashboard shell', async () => {
   render(<App />)
 
