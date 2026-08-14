@@ -233,20 +233,17 @@ fn test_embedding_binary_conversion() {
 }
 
 // ============================================================================
-// Known gap
+// The gap this file used to record
 // ============================================================================
 //
-// The command-level contracts below have no test, because `get_all_examples_with_metadata`,
-// `upload_example`, `replace_example` and `delete_example` all resolve their database path
-// through `app.path().app_data_dir()` and so need a `tauri::AppHandle`. The crate has no
-// mock-app harness. `rag_tests.rs` claimed to cover these and did not: it was never declared
-// in mod.rs, so it never compiled, and every assertion in it was commented out behind an
-// unconditional `panic!("NOT IMPLEMENTED")` (issue #202). It has been deleted rather than
-// left to read as coverage. Uncovered:
+// This file previously ended with a "Known gap" listing the command-level contracts that had no
+// test, because `get_all_examples`, `get_all_examples_with_metadata`, `upload_example`,
+// `replace_example` and `delete_example` all resolved their database path through
+// `app.path().app_data_dir()` and so needed a `tauri::AppHandle` that the crate had no harness
+// for.
 //
-// - get_all_examples_with_metadata returns bundled and user-uploaded rows together,
-//   converts comma-separated tags to an array, and orders by quality_score DESC, title ASC.
-// - upload_example generates a UUID v4, sets source='user-uploaded', stores the embedding
-//   as a little-endian f32 blob, and is transaction-safe.
-// - replace_example rejects source='bundled', updates content and embedding, keeps the ID.
-// - delete_example rejects source='bundled' and cascades to the embeddings table.
+// That gap is closed in `rag_db_tests.rs` (issue #221). The SQL now lives in `db_*` functions
+// taking a database path, each command being a wrapper that resolves the path and delegates, so
+// the database invariants - the bundled-example protections, the embeddings cascade, transaction
+// safety, ordering, tag conversion, the source field and the embedding encoding - are tested
+// against a `tempdir` with no Tauri involved.
