@@ -37,6 +37,8 @@ export { useSproutFolders } from './hooks/useSproutFolders'
 export { useSproutFolderSelection } from './hooks/useSproutFolderSelection'
 /** Hook owning the saved folder index that makes search cover unopened folders */
 export { useSproutFolderIndex } from './hooks/useSproutFolderIndex'
+/** Hook validating the stored default folder against the saved index, no requests */
+export { useDefaultSproutFolder } from './hooks/useDefaultSproutFolder'
 
 // Types (re-export for consumers)
 /** Sprout Video upload response with video ID, embed code, and status */
