@@ -69,7 +69,7 @@ const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({
   // renamed on Sprout as the configured destination -- and this is the screen
   // where someone would come to fix it. Validation is a disk read against the
   // saved index and costs no Sprout requests.
-  const defaultFolder = useDefaultSproutFolder({
+  const resolvedDefault = useDefaultSproutFolder({
     apiKey: apiKeys.sproutVideo ?? null,
     storedId: apiKeys.sproutDefaultFolderId,
     storedName: apiKeys.sproutDefaultFolderName,
@@ -135,7 +135,7 @@ const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({
         <label className="mb-2 block text-sm font-medium">Default upload folder</label>
         <SproutFolderPicker
           apiKey={apiKeys.sproutVideo || null}
-          value={defaultFolder.folder}
+          value={resolvedDefault.folder}
           onChange={handleDefaultFolderChange}
           disabled={saveMutation.isPending}
         />
@@ -144,10 +144,10 @@ const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({
           control that fixes it (#169). Silent otherwise: the picker's own label
           always states the real destination.
         */}
-        {defaultFolder.reason ? (
+        {resolvedDefault.reason ? (
           <p className="text-destructive mt-2 flex items-start gap-1.5 text-sm">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{defaultFolder.reason}</span>
+            <span>{resolvedDefault.reason}</span>
           </p>
         ) : (
           <p className="text-muted-foreground mt-2 text-sm">
