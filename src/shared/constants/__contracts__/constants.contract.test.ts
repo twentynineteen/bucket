@@ -19,21 +19,9 @@ import {
   LIMITS,
   getBackoffDelay,
   // Animations
-  DURATION,
-  EASING,
-  SPRING,
   STEP_CARD_ANIMATION,
-  SUCCESS_ANIMATION,
   FILE_LIST_ANIMATION,
   BUTTON_ANIMATIONS,
-  CARD_ANIMATIONS,
-  MODAL_ANIMATIONS,
-  PROGRESS_ANIMATIONS,
-  TOAST_ANIMATIONS,
-  INPUT_ANIMATIONS,
-  SKELETON_ANIMATIONS,
-  SCROLL_ANIMATIONS,
-  DRAG_ANIMATIONS,
   BAKER_ANIMATIONS,
   // Project
   PROJECT_LIMITS
@@ -59,22 +47,13 @@ describe('@shared/constants barrel contract', () => {
       expect(getBackoffDelay).toBeTypeOf('function')
     })
 
+    // Only the four animation exports a component reads. Twelve more were removed
+    // under issue #219; this test was the only reader of four of them, which is how
+    // dead exports came to look covered.
     test('animation constant objects', () => {
-      expect(DURATION).toBeDefined()
-      expect(EASING).toBeDefined()
-      expect(SPRING).toBeDefined()
       expect(STEP_CARD_ANIMATION).toBeDefined()
-      expect(SUCCESS_ANIMATION).toBeDefined()
       expect(FILE_LIST_ANIMATION).toBeDefined()
       expect(BUTTON_ANIMATIONS).toBeDefined()
-      expect(CARD_ANIMATIONS).toBeDefined()
-      expect(MODAL_ANIMATIONS).toBeDefined()
-      expect(PROGRESS_ANIMATIONS).toBeDefined()
-      expect(TOAST_ANIMATIONS).toBeDefined()
-      expect(INPUT_ANIMATIONS).toBeDefined()
-      expect(SKELETON_ANIMATIONS).toBeDefined()
-      expect(SCROLL_ANIMATIONS).toBeDefined()
-      expect(DRAG_ANIMATIONS).toBeDefined()
       expect(BAKER_ANIMATIONS).toBeDefined()
     })
 
@@ -144,27 +123,6 @@ describe('@shared/constants barrel contract', () => {
   })
 
   describe('behavior: animation constants have correct shapes', () => {
-    test('DURATION has expected tiers', () => {
-      expect(DURATION.instant).toBe(0)
-      expect(DURATION.fast).toBeGreaterThan(0)
-      expect(DURATION.normal).toBeGreaterThan(DURATION.fast)
-      expect(DURATION.slow).toBeGreaterThan(DURATION.normal)
-    })
-
-    test('EASING has expected curve properties', () => {
-      expect(EASING.easeOut).toContain('cubic-bezier')
-      expect(EASING.easeIn).toContain('cubic-bezier')
-      expect(EASING.easeInOut).toContain('cubic-bezier')
-      expect(EASING.appleEase).toContain('cubic-bezier')
-    })
-
-    test('SPRING configs have type and physics properties', () => {
-      expect(SPRING.gentle).toHaveProperty('type', 'spring')
-      expect(SPRING.gentle).toHaveProperty('stiffness')
-      expect(SPRING.gentle).toHaveProperty('damping')
-      expect(SPRING.snappy.stiffness).toBeGreaterThan(SPRING.gentle.stiffness)
-    })
-
     test('STEP_CARD_ANIMATION has expected properties', () => {
       expect(STEP_CARD_ANIMATION).toHaveProperty('collapsedHeight')
       expect(STEP_CARD_ANIMATION).toHaveProperty('expandedHeight')
@@ -179,10 +137,10 @@ describe('@shared/constants barrel contract', () => {
       expect(FILE_LIST_ANIMATION.staggerDelay).toBeGreaterThan(0)
     })
 
+    // The two keys ProjectListPanel reads. `projectRow` and `detailPanel` went with
+    // the other unread keys under issue #219.
     test('BAKER_ANIMATIONS has project-specific animations', () => {
       expect(BAKER_ANIMATIONS).toHaveProperty('projectList')
-      expect(BAKER_ANIMATIONS).toHaveProperty('projectRow')
-      expect(BAKER_ANIMATIONS).toHaveProperty('detailPanel')
       expect(BAKER_ANIMATIONS).toHaveProperty('statusBadge')
     })
   })

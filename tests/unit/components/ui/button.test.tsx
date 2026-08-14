@@ -7,7 +7,7 @@
  */
 
 import { Button } from '@shared/ui/button'
-import { BUTTON_ANIMATIONS, DURATION, EASING } from '@shared/constants/animations'
+import { BUTTON_ANIMATIONS } from '@shared/constants/animations'
 import { render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockReducedMotion } from '@tests/utils/animation-testing'
@@ -92,18 +92,19 @@ describe('Button Animations', () => {
       expect(BUTTON_ANIMATIONS.press.scale).toBe(0.98)
     })
 
-    it('should use DURATION.fast for hover animation', () => {
-      expect(BUTTON_ANIMATIONS.hover.duration).toBe(DURATION.fast)
-      expect(DURATION.fast).toBe(150)
+    // `DURATION` and `EASING` stopped being exported under issue #219 - they are
+    // internal to `shared/constants/animations.ts` now, so these compare against the
+    // values they used to read out of them.
+    it('should use a fast duration for hover animation', () => {
+      expect(BUTTON_ANIMATIONS.hover.duration).toBe(150)
     })
 
-    it('should use DURATION.instant for press animation', () => {
-      expect(BUTTON_ANIMATIONS.press.duration).toBe(DURATION.instant)
-      expect(DURATION.instant).toBe(0)
+    it('should use an instant duration for press animation', () => {
+      expect(BUTTON_ANIMATIONS.press.duration).toBe(0)
     })
 
-    it('should use EASING.easeOut for hover', () => {
-      expect(BUTTON_ANIMATIONS.hover.easing).toBe(EASING.easeOut)
+    it('should use an ease-out curve for hover', () => {
+      expect(BUTTON_ANIMATIONS.hover.easing).toContain('cubic-bezier')
     })
   })
 
