@@ -105,7 +105,13 @@ describe('feature modules keep their Tauri I/O behind api.ts', () => {
     // scanning nothing at all.
     expect(modules).toContain('Baker')
     expect(modules).toContain('Upload')
-    expect(modules.length).toBeGreaterThanOrEqual(9)
+    // Deliberately not a census. Naming two known modules above already proves the
+    // scan reached the tree; a hardcoded total additionally fails every time a module
+    // is legitimately merged away, which is the export-count antipattern the testing
+    // policy forbids. It bit immediately: this PR removes `build-project` and #206
+    // removes `Auth`, each leaving 9 and passing alone, but 8 once both land. The
+    // floor stays only as something a broken path could not clear.
+    expect(modules.length).toBeGreaterThan(3)
     expect(featureSourceFiles('Baker').length).toBeGreaterThan(10)
   })
 
