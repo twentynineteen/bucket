@@ -143,7 +143,7 @@ const data = {
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar>
 
-export function AppSidebar({ ...props }: AppSidebarProps) {
+export function AppSidebar(props: AppSidebarProps) {
   const { data: username } = useUsername()
 
   // Apply macOS sidebar vibrancy effect
