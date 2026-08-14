@@ -27,9 +27,7 @@ const breadcrumbs: Breadcrumb = {
   parentFolder: RECORDED_LOCATION,
   createdBy: 'Someone Else',
   creationDateTime: '2026-01-01T00:00:00Z',
-  files: [
-    { camera: 1, name: 'A001.mov', path: `${RECORDED_LOCATION}/Footage/A001.mov` }
-  ]
+  files: [{ camera: 1, name: 'A001.mov', path: `${RECORDED_LOCATION}/Footage/A001.mov` }]
 }
 
 describe('B6 - writing Location into a Trello card', () => {

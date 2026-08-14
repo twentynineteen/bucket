@@ -33,6 +33,7 @@ import { toast } from 'sonner'
 import React, { useEffect, useMemo, useState } from 'react'
 
 import { openInShell } from '../api'
+import { useVerifiedPaths } from '../hooks/useVerifiedPaths'
 import { formatFileSize } from '../internal/fieldUtils'
 import { buildProjectChangeRows } from '../utils/changeRows'
 import { Button } from '@shared/ui/button'
@@ -250,10 +251,31 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({
     breadcrumbs?.parentFolder ?? projectPath.split('/').slice(0, -1).join('/')
   const cameraCount = breadcrumbs?.numberOfCameras ?? project?.cameraCount
 
+  // Two paths, one batched probe (issue #168). They are genuinely different
+  // strings: the header displays `parentPath`, which prefers the location
+  // recorded in breadcrumbs and so may have been authored on another machine,
+  // while the button copies `projectPath`, the live path from the scan. Both
+  // need resolving, and the toast must speak for the one actually copied.
+  const probed = useMemo(() => [projectPath, parentPath], [projectPath, parentPath])
+  const { isPresent } = useVerifiedPaths(probed)
+
+  const parentPresent = isPresent(parentPath)
+  const projectPresent = isPresent(projectPath)
+
   const handleCopyPath = async () => {
     try {
       await navigator.clipboard.writeText(projectPath)
-      toast.success('Project path copied')
+      // Copying is never blocked. A path that does not resolve here is still
+      // the thing the user wants to send to whoever has the drive. What changes
+      // is the claim made about it: three states, so an unverified path is
+      // never confirmed as though it had been checked.
+      if (projectPresent === true) {
+        toast.success('Project path copied')
+      } else if (projectPresent === false) {
+        toast.warning('Project path copied, but it was not found on this machine')
+      } else {
+        toast.info('Project path copied. Bucket has not checked whether it still exists.')
+      }
     } catch {
       toast.error('Failed to copy path')
     }
@@ -265,7 +287,19 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({
         {title}
       </h3>
       <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
-        <span className="min-w-0 [overflow-wrap:anywhere]">{parentPath}</span>
+        <span
+          className={cn(
+            'min-w-0 [overflow-wrap:anywhere]',
+            parentPresent === false && 'line-through'
+          )}
+          title={
+            parentPresent === false
+              ? `Not found on this machine: ${parentPath}`
+              : undefined
+          }
+        >
+          {parentPath}
+        </span>
         <button
           type="button"
           onClick={handleCopyPath}
@@ -281,6 +315,14 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({
             {project.isValid ? 'Valid structure' : 'Invalid structure'}
           </HeaderPill>
           <BreadcrumbsStatusPill project={project} />
+          {/*
+            Only ever rendered on a definite `false`. While the probe is in
+            flight `parentPresent` is undefined and nothing is claimed, so the
+            panel does not flash a wrong cause mid-check (#166 B5.6).
+          */}
+          {parentPresent === false && (
+            <HeaderPill tone="warning">Location not found</HeaderPill>
+          )}
           {cameraCount !== undefined && (
             <HeaderPill tone="muted">
               {cameraCount === 0
@@ -777,6 +819,13 @@ const FilesTab: React.FC<{ files?: FileInfo[] }> = ({ files }) => {
   const [query, setQuery] = useState('')
   const [collapsedCameras, setCollapsedCameras] = useState<Set<number>>(new Set())
 
+  // Every recorded path in one batched call (issue #168). One probe per rendered
+  // row would be one IPC message per row - hundreds on a normal shoot. Probing
+  // the whole set rather than the filtered set also means the summary count does
+  // not change as the user types in the filter box.
+  const allPaths = useMemo(() => (files ?? []).map((file) => file.path), [files])
+  const { isPresent, missingCount, probedCount } = useVerifiedPaths(allPaths)
+
   const cameraGroups = useMemo(() => {
     const filtered = (files ?? []).filter(
       (file) =>
@@ -823,6 +872,19 @@ const FilesTab: React.FC<{ files?: FileInfo[] }> = ({ files }) => {
           onChange={(e) => setQuery(e.target.value)}
           className="h-8 max-w-64 text-xs"
         />
+        {/*
+          The aggregate goes in the pill and the individual mark goes on the
+          row. A pill per row would be noise at a few hundred files, and the
+          honest headline is how many of the recorded paths this machine cannot
+          find - not that any one of them is broken, since these paths are
+          routinely authored elsewhere and may be perfectly valid there.
+        */}
+        {missingCount !== undefined && missingCount > 0 && (
+          <HeaderPill tone="warning">
+            {missingCount} of {probedCount} file{probedCount !== 1 ? 's' : ''} not found
+            on this machine
+          </HeaderPill>
+        )}
         <span className="text-muted-foreground ml-auto text-xs whitespace-nowrap">
           {files.length} file{files.length !== 1 ? 's' : ''}
         </span>
@@ -858,22 +920,47 @@ const FilesTab: React.FC<{ files?: FileInfo[] }> = ({ files }) => {
 
             {!isCollapsed && (
               <div className="space-y-1.5">
-                {cameraFiles.map((file, index) => (
-                  <div
-                    key={`${file.path}-${index}`}
-                    className="bg-background border-border hover:bg-accent/50 flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors"
-                  >
-                    {fileIcon(file.name)}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium [overflow-wrap:anywhere]">
-                        {file.name}
-                      </p>
-                      <p className="text-muted-foreground truncate text-xs">
-                        {file.path}
-                      </p>
+                {cameraFiles.map((file, index) => {
+                  const notFound = isPresent(file.path) === false
+                  return (
+                    <div
+                      key={`${file.path}-${index}`}
+                      className="bg-background border-border hover:bg-accent/50 flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors"
+                    >
+                      {fileIcon(file.name)}
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={cn(
+                            'text-sm font-medium [overflow-wrap:anywhere]',
+                            notFound && 'line-through'
+                          )}
+                        >
+                          {file.name}
+                        </p>
+                        <p
+                          className={cn(
+                            'text-muted-foreground truncate text-xs',
+                            notFound && 'line-through'
+                          )}
+                          title={
+                            notFound
+                              ? `Not found on this machine: ${file.path}`
+                              : file.path
+                          }
+                        >
+                          {file.path}
+                        </p>
+                      </div>
+                      {notFound && (
+                        <AlertTriangle
+                          role="img"
+                          aria-label="Not found on this machine"
+                          className="text-warning h-4 w-4 flex-shrink-0"
+                        />
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

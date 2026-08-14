@@ -1,4 +1,5 @@
 use std::env;
+use std::path::Path;
 use std::process::Command;
 use tauri::command;
 
@@ -38,6 +39,28 @@ pub fn open_folder(path: String) {
             .expect("Failed to open folder")
             .wait();
     }
+}
+
+/// Whether each of `paths` is present on this machine, one answer per path in
+/// the order asked (issue #168).
+///
+/// Batched deliberately. The Baker detail panel renders one path per footage
+/// file, so probing from the frontend a path at a time is one IPC message per
+/// rendered row - hundreds on a normal shoot and thousands on a long one. Here
+/// the whole list crosses the boundary once and each answer costs a `stat`.
+///
+/// `Path::exists()` collapses every io error to `false`, which is the intended
+/// reading: a check that cannot run is not evidence of presence. That is the
+/// same collapse `Settings/api.ts:directoryExists` makes deliberately for #166.
+/// Callers must therefore phrase the result as "not found on this machine"
+/// rather than asserting the path is gone - these paths are routinely authored
+/// on another machine and are often perfectly valid there.
+#[command]
+pub fn paths_exist(paths: Vec<String>) -> Vec<bool> {
+    paths
+        .iter()
+        .map(|path| !path.is_empty() && Path::new(path).exists())
+        .collect()
 }
 
 #[cfg(test)]

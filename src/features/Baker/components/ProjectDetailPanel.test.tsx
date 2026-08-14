@@ -19,7 +19,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from 'sonner'
 import React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import * as bakerApi from '../api'
 import type { BreadcrumbsFile, ProjectFolder } from '../types'
@@ -89,6 +89,20 @@ const breadcrumbs: BreadcrumbsFile = {
 
 const writeText = vi.fn()
 
+/**
+ * `userEvent.setup()` installs its own `navigator.clipboard` stub, so this must
+ * be called after it or the spy is silently replaced and every assertion on it
+ * reports zero calls.
+ */
+const stubClipboard = () => {
+  writeText.mockReset().mockResolvedValue(undefined)
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText },
+    configurable: true,
+    writable: true
+  })
+}
+
 const renderPanel = () => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } }
@@ -119,15 +133,6 @@ const answerProbe = (present: (path: string) => boolean) => {
 const openFilesTab = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('tab', { name: /Files/ }))
 }
-
-beforeEach(() => {
-  writeText.mockReset().mockResolvedValue(undefined)
-  Object.defineProperty(navigator, 'clipboard', {
-    value: { writeText },
-    configurable: true,
-    writable: true
-  })
-})
 
 describe('B2 - recorded location in the detail header', () => {
   it('B2.1 renders the recorded location unmarked when it resolves', async () => {
@@ -173,6 +178,7 @@ describe('B2 - recorded location in the detail header', () => {
 describe('B3 - copy project path', () => {
   it('B3.1 confirms without qualification when the copied path resolves', async () => {
     const user = userEvent.setup()
+    stubClipboard()
     answerProbe(() => true)
     renderPanel()
 
@@ -185,6 +191,7 @@ describe('B3 - copy project path', () => {
 
   it('B3.2 still copies but says so when the copied path does not resolve', async () => {
     const user = userEvent.setup()
+    stubClipboard()
     answerProbe(() => false)
     renderPanel()
 
@@ -200,6 +207,7 @@ describe('B3 - copy project path', () => {
 
   it('B3.3 makes no claim when the probe has not answered yet', async () => {
     const user = userEvent.setup()
+    stubClipboard()
     vi.mocked(bakerApi.pathsExist).mockReturnValue(new Promise(() => {}))
     renderPanel()
 
@@ -224,6 +232,7 @@ describe('B3 - copy project path', () => {
 
   it('B3.5 reports the verification of the copied path, not of the displayed one', async () => {
     const user = userEvent.setup()
+    stubClipboard()
     // The live project path resolves; the location recorded in breadcrumbs
     // does not. The toast must speak for the string the button copies.
     answerProbe((path) => path === PROJECT_PATH)
