@@ -79,6 +79,39 @@ const alpha = project({ name: 'Alpha', path: '/v/alpha' })
 const beta = project({ name: 'Beta', path: '/v/beta' })
 const gamma = project({ name: 'Gamma', path: '/v/gamma' })
 
+// Size-varied fixtures for sort-by-size tests
+const small = project({ name: 'Small', path: '/v/small', folderSizeBytes: 1024 })
+const medium = project({ name: 'Medium', path: '/v/medium', folderSizeBytes: 1_048_576 })
+const big = project({ name: 'Big', path: '/v/big', folderSizeBytes: 1_073_741_824 })
+const noSize = project({ name: 'NoSize', path: '/v/nosize', folderSizeBytes: undefined })
+
+// Status-varied fixtures for chip-filter tests
+const staleProj = project({
+  name: 'Outdated',
+  path: '/v/outdated',
+  staleBreadcrumbs: true
+})
+const noBcProj = project({
+  name: 'Homeless',
+  path: '/v/homeless',
+  hasBreadcrumbs: false
+})
+const invalidProj = project({
+  name: 'Broken',
+  path: '/v/broken',
+  invalidBreadcrumbs: true
+})
+
+/** Returns project names in rendered order by reading each row button's first `<p>`. */
+const visibleProjectNames = () =>
+  screen
+    .getAllByRole('button')
+    .filter((btn) => btn.hasAttribute('aria-pressed'))
+    .map((btn) => {
+      const p = btn.querySelector('p')
+      return p?.textContent ?? ''
+    })
+
 describe('ProjectListPanel list rendering', () => {
   it('renders a row and a checkbox for every scanned project', () => {
     renderPanel({ projects: [alpha, beta, gamma] })
@@ -243,6 +276,115 @@ describe('ProjectListPanel repair action (B3.1)', () => {
 
     expect(onRepairProject).toHaveBeenCalledWith('/v/Broken')
     expect(onProjectClick).not.toHaveBeenCalled()
+  })
+})
+
+describe('ProjectListPanel text filter', () => {
+  it('narrows the list to projects whose name matches the query', async () => {
+    const user = userEvent.setup()
+    renderPanel({ projects: [alpha, beta, gamma] })
+
+    await user.type(screen.getByPlaceholderText('Filter projects…'), 'alp')
+
+    expect(visibleProjectNames()).toEqual(['Alpha'])
+  })
+
+  it('shows the empty state when no projects match the filter', async () => {
+    const user = userEvent.setup()
+    renderPanel({ projects: [alpha, beta, gamma] })
+
+    await user.type(screen.getByPlaceholderText('Filter projects…'), 'xyz')
+
+    expect(screen.getByText('No projects match the current filter')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { pressed: false })).not.toBeInTheDocument()
+  })
+
+  it('matches against the project path as well as the name', async () => {
+    const user = userEvent.setup()
+    renderPanel({ projects: [alpha, beta, gamma] })
+
+    await user.type(screen.getByPlaceholderText('Filter projects…'), '/v/beta')
+
+    expect(visibleProjectNames()).toEqual(['Beta'])
+  })
+})
+
+describe('ProjectListPanel sort order', () => {
+  it('defaults to scan order (array position)', () => {
+    renderPanel({ projects: [small, big, medium] })
+
+    expect(visibleProjectNames()).toEqual(['Small', 'Big', 'Medium'])
+  })
+
+  it('reorders by folder size, largest first, when the Size button is clicked', async () => {
+    const user = userEvent.setup()
+    renderPanel({ projects: [small, big, medium] })
+
+    await user.click(screen.getByRole('button', { name: 'Size' }))
+
+    expect(visibleProjectNames()).toEqual(['Big', 'Medium', 'Small'])
+  })
+
+  it('sinks projects with unknown size to the bottom when sorting by size', async () => {
+    const user = userEvent.setup()
+    renderPanel({ projects: [noSize, small, big] })
+
+    await user.click(screen.getByRole('button', { name: 'Size' }))
+
+    expect(visibleProjectNames()).toEqual(['Big', 'Small', 'NoSize'])
+  })
+
+  it('returns to scan order when Scan order is clicked after sorting by size', async () => {
+    const user = userEvent.setup()
+    renderPanel({ projects: [small, big, medium] })
+
+    await user.click(screen.getByRole('button', { name: 'Size' }))
+    expect(visibleProjectNames()).toEqual(['Big', 'Medium', 'Small'])
+
+    await user.click(screen.getByRole('button', { name: 'Scan order' }))
+    expect(visibleProjectNames()).toEqual(['Small', 'Big', 'Medium'])
+  })
+})
+
+describe('ProjectListPanel status chips', () => {
+  const statusMix = [alpha, staleProj, noBcProj, invalidProj]
+
+  it('restricts to stale projects when the Stale chip is clicked', async () => {
+    const user = userEvent.setup()
+    renderPanel({ projects: statusMix })
+
+    await user.click(screen.getByRole('button', { name: /^Stale \d+$/ }))
+
+    expect(visibleProjectNames()).toEqual(['Outdated'])
+  })
+
+  it('restricts to no-BC projects when the No BC chip is clicked', async () => {
+    const user = userEvent.setup()
+    renderPanel({ projects: statusMix })
+
+    await user.click(screen.getByRole('button', { name: /^No BC \d+$/ }))
+
+    expect(visibleProjectNames()).toEqual(['Homeless'])
+  })
+
+  it('restricts to invalid projects when the Invalid chip is clicked', async () => {
+    const user = userEvent.setup()
+    renderPanel({ projects: statusMix })
+
+    await user.click(screen.getByRole('button', { name: /^Invalid \d+$/ }))
+
+    expect(visibleProjectNames()).toEqual(['Broken'])
+  })
+
+  it('returns to the full list when the All chip is clicked after filtering', async () => {
+    const user = userEvent.setup()
+    renderPanel({ projects: statusMix })
+
+    await user.click(screen.getByRole('button', { name: /^Stale \d+$/ }))
+    expect(visibleProjectNames()).toEqual(['Outdated'])
+
+    await user.click(screen.getByRole('button', { name: /^All \d+$/ }))
+    expect(visibleProjectNames()).toEqual(['Alpha', 'Outdated', 'Homeless', 'Broken'])
   })
 })
 
