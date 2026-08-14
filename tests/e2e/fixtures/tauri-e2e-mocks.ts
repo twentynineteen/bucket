@@ -474,6 +474,19 @@ export class TauriE2EMock {
             return cfg.scenario.totalSize
           }
 
+          // Reads the Trello cards recorded in the project's breadcrumbs.json.
+          // The real command returns an empty vector when there is no
+          // breadcrumbs file, so an empty array is the honest answer for a
+          // freshly created project. Until issue #212 this fell through to the
+          // `undefined` default below, which made TanStack Query reject with
+          // "data is undefined" and put a destructive error alert on the
+          // BuildProject success screen in every mocked run - silently, with no
+          // test noticing.
+          if (cmd === 'baker_get_trello_cards') {
+            console.log('[E2E Mock] Mocking baker_get_trello_cards')
+            return []
+          }
+
           // App plugin commands
           if (cmd === 'plugin:app|version') {
             console.log('[E2E Mock] Mocking app version')

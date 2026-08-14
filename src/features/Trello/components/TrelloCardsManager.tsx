@@ -8,9 +8,10 @@ import { useMemo } from 'react'
 
 import { useTrelloCardsManager } from '../hooks/useTrelloCardsManager'
 import { useTrelloSelfAssignment } from '../hooks/useTrelloSelfAssignment'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 
-import { Alert, AlertDescription } from '@shared/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert'
+import { Button } from '@shared/ui/button'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,7 @@ import {
   AlertDialogTitle
 } from '@shared/ui/alert-dialog'
 
+import { describeTrelloCardsError } from '../internal/trelloCardsError'
 import { TrelloCardItem } from './TrelloCardItem'
 import { AddCardDialog } from './AddCardDialog'
 
@@ -43,6 +45,7 @@ export function TrelloCardsManager({
     trelloCards,
     isLoading,
     error,
+    refetchTrelloCards,
     addError,
     fetchError,
     validationErrors,
@@ -102,14 +105,36 @@ export function TrelloCardsManager({
     )
   }
 
-  // Error state
+  // Error state. What failed here is reading this project's local breadcrumbs
+  // file, not anything to do with Trello, so lead with a headline naming the
+  // real cause and a remedy the user can act on. The backend's own words stay
+  // reachable in the disclosure below, and are logged by the query (issue #212).
   if (error) {
+    const failure = describeTrelloCardsError(error)
+
     return (
-      <Alert variant="destructive">
+      <Alert variant="destructive" data-test="trello-cards-error">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load Trello cards:{' '}
-          {error instanceof Error ? error.message : String(error)}
+        <AlertTitle>{failure.title}</AlertTitle>
+        <AlertDescription className="mt-2 space-y-3">
+          <p>{failure.description}</p>
+
+          <details className="bg-muted/50 border-border rounded-md border p-3 text-left text-xs">
+            <summary className="text-foreground cursor-pointer font-medium">
+              Technical Details
+            </summary>
+            <p className="text-muted-foreground mt-2 break-words">{failure.detail}</p>
+          </details>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => refetchTrelloCards()}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
         </AlertDescription>
       </Alert>
     )
@@ -167,7 +192,10 @@ export function TrelloCardsManager({
 
       {/* Card List */}
       {trelloCards.length === 0 ? (
-        <div className="border-border bg-muted rounded-lg border border-dashed p-12 text-center">
+        <div
+          data-test="trello-cards-empty"
+          className="border-border bg-muted rounded-lg border border-dashed p-12 text-center"
+        >
           <p className="text-muted-foreground text-sm">No Trello cards added yet</p>
           <p className="text-muted-foreground/50 mt-1 text-xs">
             Link Trello cards to track project management tasks

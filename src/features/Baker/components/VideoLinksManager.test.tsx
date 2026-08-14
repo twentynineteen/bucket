@@ -208,6 +208,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       trelloCards: [],
       isLoading: false,
       error: null,
+      refetch: vi.fn(),
       addTrelloCard: vi.fn(),
       addTrelloCardAsync: vi.fn(),
       removeTrelloCard: vi.fn(),
