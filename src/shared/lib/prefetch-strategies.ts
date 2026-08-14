@@ -1,9 +1,9 @@
 import { CACHE } from '@shared/constants'
 import { QueryClient } from '@tanstack/react-query'
 import { core } from '@tauri-apps/api'
-import { getVersion } from '@tauri-apps/api/app'
 import { createNamespacedLogger, loadApiKeys } from '@shared/utils'
 
+import { appVersionQueryOptions } from './app-version-query'
 import { queryKeys } from './query-keys'
 import { createQueryError, createQueryOptions, shouldRetry } from './query-utils'
 
@@ -55,24 +55,7 @@ export class QueryPrefetchManager {
    * Prefetch app version (static data with long cache time)
    */
   async prefetchAppVersion() {
-    return this.queryClient.prefetchQuery({
-      ...createQueryOptions(
-        queryKeys.user.profile(),
-        async () => {
-          try {
-            return await getVersion()
-          } catch (error) {
-            throw createQueryError(`Failed to get app version: ${error}`, 'SYSTEM_INFO')
-          }
-        },
-        'STATIC',
-        {
-          staleTime: CACHE.MEDIUM, // 10 minutes
-          gcTime: CACHE.GC_EXTENDED, // Keep cached for 30 minutes
-          retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
-        }
-      )
-    })
+    return this.queryClient.prefetchQuery(appVersionQueryOptions())
   }
 
   /**
