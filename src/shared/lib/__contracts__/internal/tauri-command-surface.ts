@@ -260,3 +260,72 @@ export function invokeSitesIn(files: string[]): InvokeSite[] {
 export function invokeSites(dir: string = SRC_DIR): InvokeSite[] {
   return invokeSitesIn(sourceFiles(dir))
 }
+
+// ---------------------------------------------------------------------------
+// Fixture-side: commands an E2E mock HANDLES
+// ---------------------------------------------------------------------------
+
+/**
+ * A command name that an E2E mock fixture answers, read from a `case` label in
+ * a `switch` statement or a `cmd === '...'` comparison in an `if` chain.
+ *
+ * The direction is inverted from `InvokeSite`: in `src/`, invoking a command
+ * that does not exist is the bug. In a mock fixture, *handling* a command that
+ * does not exist is the bug (issue #241). So the extraction looks at the
+ * fixture's response table rather than at `invoke()` call sites.
+ */
+export interface HandledCommand {
+  /** 'static' for commands that should be in `generate_handler!`, 'plugin' for plugin-routed. */
+  kind: 'static' | 'plugin'
+  /** The command name as it appears in the fixture. */
+  command: string
+  /** Repo-relative path. */
+  file: string
+  /** 1-based line number. */
+  line: number
+}
+
+/**
+ * Every command name that files in `files` answer via a `case '...':` label
+ * or a `cmd === '...'` comparison.
+ *
+ * `case` labels are matched unconditionally because every fixture's switch is
+ * on `cmd`. `===` comparisons are matched only when the left-hand side is the
+ * identifier `cmd`, which excludes sub-variables like `windowCmd` or `inner`
+ * that compare against fragments rather than full Tauri command names.
+ *
+ * Classification reuses the same rule as the invoke scanner: a name containing
+ * `:` is plugin-routed and exempt from the `generate_handler!` check.
+ */
+export function handledCommandsIn(files: string[]): HandledCommand[] {
+  const commands: HandledCommand[] = []
+
+  /** Two patterns that denote a command name this fixture handles. */
+  const CASE_LABEL = /case\s+['"]([^'"]+)['"]\s*:/g
+  const CMD_EQUALS = /\bcmd\s*===\s*['"]([^'"]+)['"]/g
+
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8')
+    const rel = relative(REPO_ROOT, file)
+
+    const extract = (pattern: RegExp) => {
+      pattern.lastIndex = 0
+      let match: RegExpExecArray | null
+      while ((match = pattern.exec(source)) !== null) {
+        const command = match[1]
+        const line = source.slice(0, match.index).split('\n').length
+        commands.push({
+          kind: command.includes(':') ? 'plugin' : 'static',
+          command,
+          file: rel,
+          line
+        })
+      }
+    }
+
+    extract(CASE_LABEL)
+    extract(CMD_EQUALS)
+  }
+
+  return commands
+}
