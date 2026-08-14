@@ -14,8 +14,9 @@
  *   commands/sprout_upload.rs, poster_frame.rs, ... -> feature-owned
  *
  * `main.rs`'s `generate_handler![...]` is a flat list with no ownership
- * information, so it cannot answer this on its own. Whether a command in that
- * list exists at all is a separate rule, in `invoked-commands-exist` (#222).
+ * information, so it cannot answer this on its own. Whether an invoked command
+ * appears in that list at all is a separate rule, in `invoked-commands-exist`
+ * (#222).
  *
  * `auth.rs` was also permitted here until #206. It was deleted from the crate by
  * #199, so the entry named a module that no longer existed.
