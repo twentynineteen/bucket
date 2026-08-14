@@ -47,7 +47,13 @@ export class BuildProjectPage {
 
     // Success state
     this.successMessage = page.getByText('Project Created Successfully!')
-    this.trelloSection = page.getByText('Trello')
+    // Name the section's own heading. This was `getByText('Trello')`, a
+    // substring match, and it passed for the wrong reason: the E2E fixture did
+    // not implement `baker_get_trello_cards`, so the section rendered its error
+    // alert instead, and "Failed to load Trello cards: ..." was the only text
+    // on the page containing "Trello" (issue #212). Now that the real section
+    // renders, the loose locator matches three elements and trips strict mode.
+    this.trelloSection = page.getByRole('heading', { name: 'Trello Cards' })
 
     // Warnings
     this.sanitizationWarning = page.getByText(/characters were changed/i)
