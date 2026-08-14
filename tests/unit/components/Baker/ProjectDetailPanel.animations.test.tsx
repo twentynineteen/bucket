@@ -267,8 +267,12 @@ describe('ProjectDetailPanel Animations', () => {
   })
 
   describe('Error State', () => {
+    // These two need the QueryClient: the error branch still renders the detail
+    // header, which now resolves the stored location against the filesystem
+    // through a query (issue #168). The loading branch above returns before the
+    // header, so it does not.
     it('should show error message when error occurs', () => {
-      render(
+      renderWithQueryClient(
         <ProjectDetailPanel
           {...defaultProps}
           breadcrumbs={null}
@@ -280,7 +284,7 @@ describe('ProjectDetailPanel Animations', () => {
     })
 
     it('should not animate error state (instant feedback)', () => {
-      render(
+      renderWithQueryClient(
         <ProjectDetailPanel
           {...defaultProps}
           breadcrumbs={null}

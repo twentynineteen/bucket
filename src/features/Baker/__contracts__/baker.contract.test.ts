@@ -32,6 +32,7 @@ vi.mock('../api', () => ({
   bakerUpdateVideoLink: vi.fn().mockResolvedValue({}),
   bakerReorderVideoLinks: vi.fn().mockResolvedValue({}),
   getFolderSize: vi.fn().mockResolvedValue(0),
+  pathsExist: vi.fn().mockResolvedValue([]),
   listenScanProgress: vi.fn().mockResolvedValue(() => {}),
   listenScanComplete: vi.fn().mockResolvedValue(() => {}),
   listenScanError: vi.fn().mockResolvedValue(() => {}),
@@ -226,6 +227,7 @@ describe('Baker api.ts Exports - Shape', () => {
     'bakerUpdateVideoLink',
     'bakerReorderVideoLinks',
     'getFolderSize',
+    'pathsExist',
     // Event Listeners (3)
     'listenScanProgress',
     'listenScanComplete',
@@ -246,14 +248,15 @@ describe('Baker api.ts Exports - Shape', () => {
     'addTrelloCardComment'
   ].sort()
 
-  it('exports exactly 29 I/O wrapper functions', () => {
+  it('exports exactly the expected I/O wrapper functions', () => {
     const exportNames = Object.keys(bakerApi).sort()
     expect(exportNames).toEqual(expectedApiExports)
   })
 
-  it('exports exactly 29 members', () => {
-    expect(Object.keys(bakerApi)).toHaveLength(29)
-  })
+  // The count assertion that used to sit here has been removed rather than
+  // bumped to 30. It duplicated the `toEqual` above, which already pins the
+  // exact set, and the repo's testing policy names export-count assertions
+  // specifically: a legitimate new export should never fail a test.
 
   for (const name of expectedApiExports) {
     it(`exports ${name} as a function`, () => {

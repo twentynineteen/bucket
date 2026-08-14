@@ -49,7 +49,15 @@ export const queryKeys = {
         fingerprint(token ?? '')
       ] as const,
     me: (apiKey: string | null | undefined) =>
-      ['trello', 'me', fingerprint(apiKey ?? '')] as const
+      ['trello', 'me', fingerprint(apiKey ?? '')] as const,
+    /**
+     * Whether the paths recorded in a card's breadcrumbs block still resolve on
+     * this machine (issue #168). Its own key rather than sharing Baker's: the
+     * two probe different path sets, and one cache entry for both would mean
+     * whichever was checked last decided what both reported.
+     */
+    pathsPresent: (paths: string[]) =>
+      ['trello', 'paths-present', fingerprint(paths.join('\n'))] as const
   },
 
   // User domain
@@ -101,6 +109,22 @@ export const queryKeys = {
       posterframe: (videoId: string) =>
         ['upload', 'sprout', 'posterframe', videoId] as const
     }
+  },
+
+  // Baker domain
+  baker: {
+    all: ['baker'] as const,
+    /**
+     * Whether the paths stored in breadcrumbs.json still resolve on this
+     * machine (issue #168).
+     *
+     * Keyed on a fingerprint of the path list rather than the list itself. A
+     * project's footage runs to hundreds or thousands of paths, and React Query
+     * serialises the whole key on every cache lookup; the fingerprint keeps that
+     * bounded while still varying whenever the set of paths does.
+     */
+    pathsPresent: (paths: string[]) =>
+      ['baker', 'paths-present', fingerprint(paths.join('\n'))] as const
   },
 
   // Video QC domain (issue #180)

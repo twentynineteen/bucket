@@ -70,6 +70,47 @@ export function posterFrameDelay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/** Whether Sprout accepted the frame, with the reason it did not. */
+export type PosterFrameSendOutcome =
+  | { ok: true; error: null }
+  | { ok: false; error: string }
+
+/**
+ * Sends poster frame bytes to Sprout, retrying only failures that another
+ * identical attempt could survive (#140 B5.4, B5.5).
+ *
+ * The retry policy lives here rather than in a hook because two surfaces need
+ * exactly the same one: the Baker upload flow and the Posterframe page's
+ * `Upload to Sprout` action (#142). `delay` is passed in rather than defaulted
+ * so a caller's test can neutralise the backoff by mocking the export it
+ * imports, instead of waiting 17 seconds for the real thing.
+ */
+export async function sendPosterFrameWithRetry(
+  bytes: Uint8Array,
+  send: (bytes: Uint8Array) => Promise<void>,
+  delay: (ms: number) => Promise<void>
+): Promise<PosterFrameSendOutcome> {
+  for (let attempt = 0; attempt <= POSTER_FRAME_RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      await send(bytes)
+      return { ok: true, error: null }
+    } catch (error) {
+      const canRetry =
+        isTransientPosterFrameError(error) &&
+        attempt < POSTER_FRAME_RETRY_DELAYS_MS.length
+
+      if (!canRetry) {
+        return { ok: false, error: describePosterFrameError(error, bytes.byteLength) }
+      }
+
+      await delay(POSTER_FRAME_RETRY_DELAYS_MS[attempt])
+    }
+  }
+
+  // Unreachable: the loop either returns or exhausts its retries above.
+  return { ok: false, error: 'Poster frame upload failed' }
+}
+
 /**
  * Snapshots a canvas as JPEG bytes. Matches the Posterframe page's export
  * exactly (native canvas size, default quality) so both paths produce the

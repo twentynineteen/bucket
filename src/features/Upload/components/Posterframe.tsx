@@ -5,8 +5,19 @@
  */
 
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@shared/ui/alert-dialog'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
+import { Label } from '@shared/ui/label'
 import {
   Select,
   SelectContent,
@@ -19,7 +30,9 @@ import { useBackgroundFolder } from '../hooks/useBackgroundFolder'
 import { useBreadcrumb } from '@shared/hooks'
 import { useFileSelection } from '../hooks/useFileSelection'
 import { usePosterframeAutoRedraw } from '../hooks/usePosterframeAutoRedraw'
+import type { PosterframeFontStatus } from '../hooks/usePosterframeCanvas'
 import { usePosterframeCanvas } from '../hooks/usePosterframeCanvas'
+import { usePosterframeSproutUpload } from '../hooks/usePosterframeSproutUpload'
 import { usePosterframeTemplate } from '../hooks/usePosterframeTemplate'
 import { useZoomPan } from '../hooks/useZoomPan'
 import {
@@ -34,8 +47,11 @@ import {
 import { openFolder, openFolderDialog, saveFile } from '../api'
 import {
   AlertTriangle,
+  CheckCircle2,
+  CloudUpload,
   FolderOpen,
   Image,
+  Loader2,
   Maximize2,
   RefreshCw,
   Save,
@@ -43,10 +59,10 @@ import {
   ZoomIn,
   ZoomOut
 } from 'lucide-react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
-import { logger } from '@shared/utils'
+import { logger, titleToPosterFrameText } from '@shared/utils'
 
 /**
  * Off-aspect notice for the live preview (issue #189 B4.2). A warning, not a
@@ -66,6 +82,166 @@ const AspectWarning: React.FC<{ offAspect: boolean; hasPreview: boolean }> = ({
         thumbnail.
       </span>
     </p>
+  )
+}
+
+/**
+ * Why this page cannot hand Sprout a frame yet (issue #142 B2.1, B2.3).
+ *
+ * A frame with no words on it is worse than the auto-generated still it would
+ * replace, so a missing font blocks the upload here exactly as it does in the
+ * other two flows (#140 B1.3) - even though a local save is still allowed with
+ * a warning, because a local file harms nothing.
+ */
+function uploadUnavailableReason(
+  hasBackground: boolean,
+  fontStatus: PosterframeFontStatus
+): string | null {
+  if (!hasBackground) {
+    return 'Select a background image before uploading a poster frame.'
+  }
+  if (fontStatus === 'missing') {
+    return 'Poster frame text requires Cabrito.otf in ~/Library/Fonts.'
+  }
+  return null
+}
+
+/**
+ * The Upload to Sprout panel and its overwrite confirmation (issue #142).
+ *
+ * Presentational: every value comes from usePosterframeSproutUpload. The
+ * confirmation is an AlertDialog rather than an inline second click because
+ * replacing the poster frame on a live video cannot be undone from the app.
+ */
+const SproutUploadPanel: React.FC<{
+  upload: ReturnType<typeof usePosterframeSproutUpload>
+}> = ({ upload }) => {
+  const working = upload.status === 'working'
+
+  return (
+    <div className="bg-card border-border rounded-xl border p-4 shadow-sm">
+      <div className="mb-3">
+        <h2 className="text-foreground text-sm font-semibold">Upload to Sprout</h2>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          Replace the poster frame on a video already hosted on Sprout Video
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="posterframe-sprout-reference" className="text-xs">
+            Sprout video URL or ID
+          </Label>
+          <Input
+            id="posterframe-sprout-reference"
+            type="text"
+            placeholder="https://sproutvideo.com/videos/..."
+            value={upload.videoReference}
+            onChange={(e) => upload.setVideoReference(e.target.value)}
+            disabled={working}
+          />
+        </div>
+
+        <Button
+          onClick={() => void upload.fetchDetails()}
+          variant="outline"
+          size="sm"
+          className="w-full gap-1.5"
+          disabled={!upload.canFetch || upload.isFetching || working}
+        >
+          {upload.isFetching ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
+          Fetch details
+        </Button>
+
+        {/* The title is the only thing that tells the user which video they are
+            about to overwrite, so it is shown as soon as it is known. */}
+        {upload.resolvedVideo && (
+          <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
+            <CheckCircle2 className="text-success mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span className="text-foreground font-medium">
+              {upload.resolvedVideo.title}
+            </span>
+          </p>
+        )}
+
+        {upload.fetchError && (
+          <p role="alert" className="text-destructive flex items-start gap-1.5 text-xs">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{upload.fetchError}</span>
+          </p>
+        )}
+
+        <Button
+          onClick={upload.requestUpload}
+          size="sm"
+          className="w-full gap-1.5"
+          disabled={upload.blockedReason !== null || working}
+        >
+          {working ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <CloudUpload className="h-3.5 w-3.5" />
+          )}
+          {working ? 'Uploading to Sprout...' : 'Upload to Sprout'}
+        </Button>
+
+        {/* Saying why the action is unavailable is the whole difference between
+            a greyed-out button and a usable page (issue #166 reasoning). */}
+        {upload.blockedReason && (
+          <p className="text-muted-foreground text-xs">{upload.blockedReason}</p>
+        )}
+
+        {upload.status === 'success' && (
+          <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
+            <CheckCircle2 className="text-success mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>Poster frame set on Sprout Video.</span>
+          </p>
+        )}
+
+        {upload.status === 'error' && upload.error && (
+          <div role="alert" className="space-y-2">
+            <p className="text-destructive flex items-start gap-1.5 text-xs">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{upload.error}</span>
+            </p>
+            <Button
+              onClick={() => void upload.retry()}
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <AlertDialog open={upload.confirmOpen} onOpenChange={upload.setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace the poster frame on Sprout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This replaces the live poster frame on{' '}
+              <span className="text-foreground font-medium">
+                {upload.resolvedVideo?.title}
+              </span>
+              . Sprout keeps no copy of the old one, so it cannot be undone from Bucket.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void upload.confirmUpload()}>
+              Replace poster frame
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   )
 }
 
@@ -139,6 +315,44 @@ const PosterframeContent: React.FC = () => {
     }
   }
 
+  /**
+   * Renders the frame currently on screen as JPEG bytes.
+   *
+   * Shared by the local save and the Sprout upload so both send byte-identical
+   * output. Rejects rather than reporting, because the two callers word their
+   * failures differently.
+   */
+  const renderPosterFrameBytes = useCallback(async (): Promise<Uint8Array> => {
+    const canvas = canvasRef.current
+    if (!canvas || !selectedFileBlob) {
+      throw new Error('Posterframe preview is not ready.')
+    }
+
+    // Force a synchronous-relative-to-this-handler redraw before snapshotting.
+    // The auto-redraw hook debounces by 300ms, so a quick "type-then-save"
+    // sequence can leave a pending redraw in flight when the export fires.
+    // Awaiting a fresh draw here guarantees the canvas reflects the current
+    // image+title+template when we capture it.
+    await draw(selectedFileBlob, videoTitle, template)
+    // The shared pipeline compresses down to Sprout's 500KB limit, so a
+    // file saved here is guaranteed uploadable later; nothing is written
+    // when even the quality floor cannot fit it (issue #189 B5.3, B5.4).
+    return exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES)
+  }, [canvasRef, draw, selectedFileBlob, template, videoTitle])
+
+  const sproutUpload = usePosterframeSproutUpload({
+    text: videoTitle,
+    unavailableReason: uploadUnavailableReason(!!selectedFileBlob, fontStatus),
+    renderBytes: renderPosterFrameBytes,
+    // Only ever fills a blank field, so a title the user typed is never
+    // overwritten by the one stored on Sprout (B1.9).
+    onVideoResolved: useCallback((resolvedTitle: string) => {
+      setVideoTitle((current) =>
+        current.trim() ? current : titleToPosterFrameText(resolvedTitle)
+      )
+    }, [])
+  })
+
   const generateThumbnail = async () => {
     if (!canvasRef.current || !savePath || !videoTitle.trim() || !selectedFileBlob) {
       toast.error(
@@ -147,19 +361,9 @@ const PosterframeContent: React.FC = () => {
       return
     }
 
-    // Force a synchronous-relative-to-this-handler redraw before snapshotting.
-    // The auto-redraw hook debounces by 300ms, so a quick "type-then-save"
-    // sequence can leave a pending redraw in flight when the export fires.
-    // Awaiting a fresh draw here guarantees the canvas reflects the current
-    // image+title+template when we capture it.
-    const canvas = canvasRef.current
     let bytes: Uint8Array
     try {
-      await draw(selectedFileBlob, videoTitle, template)
-      // The shared pipeline compresses down to Sprout's 500KB limit, so a
-      // file saved here is guaranteed uploadable later; nothing is written
-      // when even the quality floor cannot fit it (issue #189 B5.3, B5.4).
-      bytes = await exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES)
+      bytes = await renderPosterFrameBytes()
     } catch (err) {
       logger.error('Thumbnail export failed:', err)
       toast.error(
@@ -402,6 +606,13 @@ const PosterframeContent: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/*
+                Uploading is additive (issue #142): the save path above and
+                Generate Thumbnail keep working on their own terms, and nothing
+                here writes to disk.
+              */}
+              <SproutUploadPanel upload={sproutUpload} />
             </div>
 
             {/* Right Column - Preview (2/3) */}

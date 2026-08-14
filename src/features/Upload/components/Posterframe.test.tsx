@@ -18,7 +18,12 @@ import { useBackgroundFolder } from '../hooks/useBackgroundFolder'
 import { useFileSelection } from '../hooks/useFileSelection'
 import { usePosterframeTemplate } from '../hooks/usePosterframeTemplate'
 import { PosterFrameTooLargeError, exportCanvasJpegUnder } from '../internal/posterFrame'
-import { openFolderDialog, saveFile } from '../api'
+import {
+  fetchSproutVideoDetails,
+  openFolderDialog,
+  saveFile,
+  setSproutPosterFrame
+} from '../api'
 import { toast } from 'sonner'
 
 vi.mock('../hooks/useBackgroundFolder', () => ({ useBackgroundFolder: vi.fn() }))
@@ -60,12 +65,24 @@ vi.mock('../hooks/useZoomPan', () => ({
 }))
 vi.mock('@shared/hooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@shared/hooks')>()
-  return { ...actual, useBreadcrumb: vi.fn() }
+  return {
+    ...actual,
+    useBreadcrumb: vi.fn(),
+    // The Sprout upload panel needs a key to be usable; the key itself is
+    // React Query-backed I/O, which is exactly what belongs behind a mock.
+    useSproutVideoApiKey: vi.fn(() => ({
+      apiKey: 'sprout-key',
+      isLoading: false,
+      error: null
+    }))
+  }
 })
 vi.mock('../api', () => ({
   openFolder: vi.fn(),
   openFolderDialog: vi.fn(),
-  saveFile: vi.fn()
+  saveFile: vi.fn(),
+  fetchSproutVideoDetails: vi.fn(),
+  setSproutPosterFrame: vi.fn()
 }))
 
 const DEFAULT_FOLDER = '/backgrounds/wbs'
@@ -334,6 +351,8 @@ describe('Posterframe page - rebrand template (#189)', () => {
     await waitFor(() => expect(saveFile).toHaveBeenCalled())
     expect(exportCanvasJpegUnder).toHaveBeenCalled()
     expect(vi.mocked(saveFile).mock.calls[0][1]).toBe(bytes)
+    // Uploading is additive: the local save must never reach Sprout (#142 B5.1)
+    expect(setSproutPosterFrame).not.toHaveBeenCalled()
   })
 
   it('b5_3_writes_no_file_when_even_the_quality_floor_is_too_large', async () => {
@@ -359,6 +378,147 @@ describe('Posterframe page - rebrand template (#189)', () => {
     // The specific size/limit message reaches the user, not the generic
     // "could not render" fallback.
     expect(vi.mocked(toast.error).mock.calls[0][0]).toMatch(/600 KB/)
+    expect(saveFile).not.toHaveBeenCalled()
+  })
+})
+
+describe('Posterframe page - upload to Sprout (#142)', () => {
+  const VIDEO_URL = 'https://sproutvideo.com/videos/abc123'
+  const DETAILS = {
+    id: 'abc123',
+    title: 'WBS - MSc - Managing Change',
+    duration: 90,
+    created_at: '2026-08-01T00:00:00Z',
+    assets: { poster_frames: ['https://sproutvideo.com/poster.jpg'] }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    canvasHook.canvasRef.current = {} as HTMLCanvasElement
+    canvasHook.fontStatus = 'available'
+    canvasHook.offAspect = false
+    canvasHook.draw.mockResolvedValue(undefined)
+    vi.mocked(exportCanvasJpegUnder).mockResolvedValue(new Uint8Array([1, 2, 3]))
+    vi.mocked(fetchSproutVideoDetails).mockResolvedValue(DETAILS)
+    vi.mocked(setSproutPosterFrame).mockResolvedValue(undefined)
+  })
+
+  /** Renders the page with a usable background and resolves the target video */
+  async function renderAndResolve(user: ReturnType<typeof userEvent.setup>) {
+    renderPage(
+      { status: 'ready', files: ['/backgrounds/wbs/a.jpg'] },
+      '/backgrounds/wbs/a.jpg'
+    )
+    await user.type(screen.getByLabelText(/sprout video url or id/i), VIDEO_URL)
+    await user.click(screen.getByRole('button', { name: /fetch details/i }))
+    await waitFor(() => expect(fetchSproutVideoDetails).toHaveBeenCalled())
+  }
+
+  it('b1_1_offers_a_video_reference_field_with_the_upload_held_back', () => {
+    renderPage(
+      { status: 'ready', files: ['/backgrounds/wbs/a.jpg'] },
+      '/backgrounds/wbs/a.jpg'
+    )
+
+    expect(screen.getByLabelText(/sprout video url or id/i)).toBeInTheDocument()
+    // Nothing to look up and nothing to overwrite until a video is named.
+    expect(screen.getByRole('button', { name: /fetch details/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /upload to sprout/i })).toBeDisabled()
+  })
+
+  it('b1_2_confirms_the_title_of_the_resolved_video', async () => {
+    const user = userEvent.setup()
+
+    await renderAndResolve(user)
+
+    expect(fetchSproutVideoDetails).toHaveBeenCalledWith('abc123', 'sprout-key')
+    expect(await screen.findByText('WBS - MSc - Managing Change')).toBeInTheDocument()
+  })
+
+  it('b1_9_prefills_an_empty_title_from_the_resolved_video', async () => {
+    const user = userEvent.setup()
+
+    await renderAndResolve(user)
+
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText(/enter video title/i)).toHaveValue(
+        'Managing Change'
+      )
+    )
+  })
+
+  it('b1_9_leaves_a_title_the_user_typed_untouched', async () => {
+    const user = userEvent.setup()
+    renderPage(
+      { status: 'ready', files: ['/backgrounds/wbs/a.jpg'] },
+      '/backgrounds/wbs/a.jpg'
+    )
+
+    await user.type(screen.getByPlaceholderText(/enter video title/i), 'My own wording')
+    await user.type(screen.getByLabelText(/sprout video url or id/i), VIDEO_URL)
+    await user.click(screen.getByRole('button', { name: /fetch details/i }))
+    await waitFor(() => expect(fetchSproutVideoDetails).toHaveBeenCalled())
+
+    expect(screen.getByPlaceholderText(/enter video title/i)).toHaveValue(
+      'My own wording'
+    )
+  })
+
+  it('b2_1_holds_the_upload_back_without_a_background', async () => {
+    const user = userEvent.setup()
+    renderPage({ status: 'ready', files: ['/backgrounds/wbs/a.jpg'] }, null)
+
+    await user.type(screen.getByLabelText(/sprout video url or id/i), VIDEO_URL)
+    await user.click(screen.getByRole('button', { name: /fetch details/i }))
+    await waitFor(() => expect(fetchSproutVideoDetails).toHaveBeenCalled())
+
+    expect(screen.getByRole('button', { name: /upload to sprout/i })).toBeDisabled()
+    expect(screen.getByText(/select a background image/i)).toBeInTheDocument()
+  })
+
+  it('b2_3_holds_the_upload_back_when_the_posterframe_font_is_missing', async () => {
+    canvasHook.fontStatus = 'missing'
+    const user = userEvent.setup()
+
+    await renderAndResolve(user)
+
+    expect(screen.getByRole('button', { name: /upload to sprout/i })).toBeDisabled()
+    expect(screen.getByText(/Cabrito\.otf/)).toBeInTheDocument()
+  })
+
+  it('b3_1_confirms_against_the_resolved_title_before_sending_anything', async () => {
+    const user = userEvent.setup()
+    await renderAndResolve(user)
+
+    await user.click(screen.getByRole('button', { name: /upload to sprout/i }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog).toHaveTextContent('WBS - MSc - Managing Change')
+    expect(setSproutPosterFrame).not.toHaveBeenCalled()
+  })
+
+  it('b3_2_sends_nothing_when_the_confirmation_is_cancelled', async () => {
+    const user = userEvent.setup()
+    await renderAndResolve(user)
+
+    await user.click(screen.getByRole('button', { name: /upload to sprout/i }))
+    await screen.findByRole('alertdialog')
+    await user.click(screen.getByRole('button', { name: /cancel/i }))
+
+    expect(setSproutPosterFrame).not.toHaveBeenCalled()
+  })
+
+  it('b3_3_sends_the_frame_once_the_overwrite_is_confirmed', async () => {
+    const user = userEvent.setup()
+    await renderAndResolve(user)
+
+    await user.click(screen.getByRole('button', { name: /upload to sprout/i }))
+    await screen.findByRole('alertdialog')
+    await user.click(screen.getByRole('button', { name: /replace poster frame/i }))
+
+    await waitFor(() => expect(setSproutPosterFrame).toHaveBeenCalled())
+    expect(vi.mocked(setSproutPosterFrame).mock.calls[0][0]).toBe('abc123')
+    // B5.2: uploading writes nothing to disk
     expect(saveFile).not.toHaveBeenCalled()
   })
 })
