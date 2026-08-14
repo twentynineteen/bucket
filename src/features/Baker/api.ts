@@ -143,6 +143,19 @@ export async function getFolderSize(folderPath: string): Promise<number> {
   return invoke<number>('get_folder_size', { folderPath })
 }
 
+/**
+ * Whether each stored path is present on this machine, one answer per path in
+ * the order asked (issue #168).
+ *
+ * Batched on purpose: the detail panel renders one path per footage file, so a
+ * probe per row would be one IPC message per row. The Rust side answers the
+ * whole list in a single round trip and reports `false` for anything it cannot
+ * probe, so this never rejects for an absent or unreadable path.
+ */
+export async function pathsExist(paths: string[]): Promise<boolean[]> {
+  return invoke<boolean[]>('paths_exist', { paths })
+}
+
 // --- Event Listeners ---
 
 export async function listenScanProgress(

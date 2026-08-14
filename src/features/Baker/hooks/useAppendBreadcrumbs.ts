@@ -25,7 +25,24 @@ function formatBreadcrumbsForHumans(breadcrumbs: Breadcrumb): string {
   }
 
   if (breadcrumbs.parentFolder) {
-    lines.push(`**Location:** ${breadcrumbs.parentFolder}`)
+    // Qualified, not verified (issue #168). This line is how a stale path used
+    // to propagate: stamped into a card description as authoritative for the
+    // whole team, then read back by two other surfaces as current state.
+    //
+    // Verifying before writing was the alternative and is the wrong trade. A
+    // card is a durable artefact read on other people's machines and by its
+    // author weeks later, so a path verified at write time is not current for
+    // any of those readers - checking would only decide whether the author may
+    // record a fact about their own machine. Gating on it would also refuse to
+    // record footage on an external drive that happens to be unmounted right
+    // now, destroying real information for the same reason #166 declined to
+    // auto-clear a stored folder on a temporary unmount.
+    //
+    // So the value is written unchanged and the claim is narrowed to one that
+    // stays true for every reader at every time. Verification happens at read
+    // time instead, on the reader's own machine, where it can say something
+    // true.
+    lines.push(`**Location (as recorded):** ${breadcrumbs.parentFolder}`)
   }
 
   if (breadcrumbs.createdBy) {

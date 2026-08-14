@@ -23,6 +23,21 @@ export async function fetchTrelloBoards(
   return invoke<TrelloBoard[]>('fetch_trello_boards', { apiKey, apiToken })
 }
 
+/**
+ * Whether each path recorded in a card's breadcrumbs block is present on this
+ * machine, one answer per path in the order asked (issue #168).
+ *
+ * Deliberately duplicated from `Baker/api.ts` rather than imported across the
+ * feature boundary: it is a two-line wrapper over a Tauri command, and each
+ * feature's `api.ts` is meant to be the whole I/O surface for that feature.
+ * Batched because a card can record hundreds of footage paths. The Rust side
+ * reports `false` for anything it cannot probe, so this never rejects for an
+ * absent or unreadable path.
+ */
+export async function pathsExist(paths: string[]): Promise<boolean[]> {
+  return invoke<boolean[]>('paths_exist', { paths })
+}
+
 // --- Trello REST API ---
 
 export async function fetchCardWithMembers(

@@ -58,6 +58,8 @@ fn main() {
             open_resource_file,
             get_username,
             open_folder,
+            // Issue #168: batched existence probe for stored breadcrumbs paths
+            paths_exist,
             baker_start_scan,
             baker_get_scan_status,
             baker_cancel_scan,
