@@ -130,9 +130,11 @@ fn get_or_initialize_database(app: &tauri::AppHandle) -> Result<PathBuf, String>
     Ok(db_path)
 }
 
-/// Merge new bundled examples into the active database
-/// This runs on app startup after updates to add new bundled examples
-fn merge_bundled_examples(app: &tauri::AppHandle, active_db_path: &PathBuf) -> Result<(), String> {
+/// Merge new bundled examples into the active database.
+/// This runs on app startup after updates to add new bundled examples.
+/// Resolves the bundled database path from the app handle and delegates to
+/// [`db_merge_bundled_examples`].
+fn merge_bundled_examples(app: &tauri::AppHandle, active_db_path: &Path) -> Result<(), String> {
     // Get bundled database path
     let resource_path = app
         .path()
@@ -144,8 +146,32 @@ fn merge_bundled_examples(app: &tauri::AppHandle, active_db_path: &PathBuf) -> R
         return Ok(()); // No bundled database, nothing to merge
     }
 
+    db_merge_bundled_examples(active_db_path, &bundled_db_path)
+}
+
+/// The SQL behind [`merge_bundled_examples`], separated from path resolution so it is testable
+/// without a `tauri::AppHandle` (issue #234).
+///
+/// Each `db_*` function opens its own connections rather than borrowing them, so the connections'
+/// lifetimes still end when the operation does. That matters for the transaction: a failed
+/// transaction is rolled back when the local `Connection` drops, and would stay open if the caller
+/// owned it.
+///
+/// The merge walks the bundled database and, for each example:
+/// - **Exists in active as `bundled`**: updates the example and its embedding from the shipped copy.
+/// - **Exists in active as `user-uploaded`**: skips it, preserving the user's work.
+/// - **Not in active**: inserts it with its embedding.
+///
+/// Bundled examples that exist in the active database but are absent from the shipped database are
+/// **left in place**. Removing content that a user may have been relying on silently degrades RAG
+/// search quality, and there is no UI to undo it. An explicit "prune retired examples" operation
+/// would be the right way to handle that if it ever matters.
+pub(crate) fn db_merge_bundled_examples(
+    active_db_path: &Path,
+    bundled_db_path: &Path,
+) -> Result<(), String> {
     // Open both databases
-    let bundled_conn = Connection::open(&bundled_db_path)
+    let bundled_conn = Connection::open(bundled_db_path)
         .map_err(|e| format!("Failed to open bundled database: {}", e))?;
     let active_conn = Connection::open(active_db_path)
         .map_err(|e| format!("Failed to open active database: {}", e))?;
