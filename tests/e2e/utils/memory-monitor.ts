@@ -266,38 +266,16 @@ export function formatMemory(bytes: number): string {
   return `${mb.toFixed(2)} MB`
 }
 
-/**
- * Measure UI responsiveness by timing a simple interaction
- */
-export async function measureUIResponsiveness(
-  page: Page,
-  selector: string = 'body'
-): Promise<number> {
-  const start = Date.now()
-  await page.locator(selector).isVisible()
-  return Date.now() - start
-}
-
-/**
- * Check that UI remains responsive during operation
- * Returns array of response times for each check
- */
-export async function checkUIResponsivenessDuring(
-  page: Page,
-  durationMs: number,
-  checkIntervalMs: number = 500,
-  maxResponseTimeMs: number = 100
-): Promise<{ responseTimes: number[]; allResponsive: boolean }> {
-  const responseTimes: number[] = []
-  const start = Date.now()
-
-  while (Date.now() - start < durationMs) {
-    const responseTime = await measureUIResponsiveness(page)
-    responseTimes.push(responseTime)
-    await page.waitForTimeout(checkIntervalMs)
-  }
-
-  const allResponsive = responseTimes.every((t) => t < maxResponseTimeMs)
-
-  return { responseTimes, allResponsive }
-}
+// `measureUIResponsiveness` and `checkUIResponsivenessDuring` used to live here.
+// Both timed an `await` on a Playwright locator and compared the elapsed time to
+// a budget, which measures a round trip to the browser and the actionability
+// polling of a re-rendering page - the runner, in other words, and not
+// main-thread availability in the application. Three tests were built on them
+// and all three now use `startFrameGapProbe` above instead: #200 converted one,
+// #211 two, #229 the last. Deleted with no callers left, so the pattern is gone
+// rather than merely unused (issue #229).
+//
+// A fourth site had the same stopwatch written out inline and so was never a
+// caller of either - `external-drive.spec.ts`, converted in #229 as well. If you
+// are looking for a survivor, grep `tests/e2e` for `Date.now()` around an `await`
+// on a locator rather than for these names.

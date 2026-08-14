@@ -50,11 +50,22 @@ export default defineConfig({
     }
   },
 
+  // Navigates once before any test runs, so that Vite's first compile is not
+  // charged to whichever spec happens to go first (issue #227). See the file for
+  // what `webServer.url` below does and does not prove.
+  globalSetup: './tests/e2e/global-setup.ts',
+
   // Global timeout for tests (5 minutes for large file simulations). The two
   // specs that need longer raise it themselves with test.describe.configure.
   timeout: 300000,
 
-  // Expect timeout for assertions
+  // The per-test action budget: what one assertion about the application is
+  // allowed to take to come true. Two things are deliberately not measured
+  // against it, because neither is a claim about the application (issue #227):
+  // getting a page rendered in the first place, which is
+  // `PAGE_READY_TIMEOUT_MS` in the page object and carries the load of every
+  // worker in the run, and Vite's first compile, which `globalSetup` above pays
+  // for once before any test exists.
   expect: {
     timeout: 10000
   },
@@ -74,6 +85,11 @@ export default defineConfig({
 
   // Dev server configuration. bun, matching the toolchain in CLAUDE.md - this
   // said `npm run dev` until issue #171.
+  //
+  // `url` is a liveness check and not a readiness one: Vite answers it with
+  // `index.html` before it has transformed an application module, so the first
+  // compile happens after this resolves. `globalSetup` above is what waits for the
+  // app to actually render (issue #227).
   webServer: {
     command: 'bun run dev',
     url: 'http://localhost:1422',
