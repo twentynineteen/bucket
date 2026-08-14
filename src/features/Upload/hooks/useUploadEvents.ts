@@ -5,16 +5,57 @@ import { useCallback, useEffect, useRef } from 'react'
 
 import { logger } from '@shared/utils'
 
-import { listenUploadComplete, listenUploadError, listenUploadProgress } from '../api'
+import {
+  listenUploadCancelled,
+  listenUploadComplete,
+  listenUploadError,
+  listenUploadProgress,
+  listenUploadStallWarning
+} from '../api'
 import type { UploadMessage } from '../types'
 
 interface UseUploadEventsReturn {
+  /** Whole percent, for the bar and its label. */
   progress: number
   uploading: boolean
-  message: UploadMessage | null
+  /**
+   * Bytes transferred and the file's total (#225 UP-30). A percentage alone
+   * cannot tell 3% of 200 MB from 3% of 12 GB, which is exactly the judgement a
+   * user makes when deciding whether to keep waiting.
+   */
+  bytesSent: number
+  totalBytes: number
+  /**
+   * The non-terminal "this looks stalled" text, or null (#225 UP-26/UP-27).
+   *
+   * Distinct from `message`: this one does not mean the upload is over, and is
+   * withdrawn if the transfer recovers. The terminal verdict, when it comes,
+   * arrives as an error `message` instead.
+   */
+  stallWarning: string | null
   setUploading: (uploading: boolean) => void
   setProgress: (progress: number) => void
   setMessage: (message: UploadMessage | null) => void
+  message: UploadMessage | null
+}
+
+/** Everything the upload event stream tracks, as held in the query cache. */
+interface UploadEventState {
+  progress: number
+  uploading: boolean
+  bytesSent: number
+  totalBytes: number
+  stallWarning: string | null
+  message: UploadMessage | null
+}
+
+const IDLE_UPLOAD_STATE: UploadEventState = {
+  progress: 0,
+  uploading: false,
+  bytesSent: 0,
+  totalBytes: 0,
+  stallWarning: null,
+  message: null
 }
 
 export const useUploadEvents = (): UseUploadEventsReturn => {
@@ -25,11 +66,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
   const { data: uploadState } = useQuery({
     ...createQueryOptions(
       queryKeys.upload.events(),
-      async () => ({
-        progress: 0,
-        uploading: false,
-        message: null as UploadMessage | null
-      }),
+      async () => ({ ...IDLE_UPLOAD_STATE }),
       'REALTIME',
       {
         staleTime: 0, // Always fresh for real-time updates
@@ -42,30 +79,17 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
   const progress = uploadState?.progress ?? 0
   const uploading = uploadState?.uploading ?? false
   const message = uploadState?.message ?? null
+  const bytesSent = uploadState?.bytesSent ?? 0
+  const totalBytes = uploadState?.totalBytes ?? 0
+  const stallWarning = uploadState?.stallWarning ?? null
 
   // Helper to update upload state via React Query
   const updateUploadState = useCallback(
-    (
-      updates: Partial<{
-        progress: number
-        uploading: boolean
-        message: UploadMessage | null
-      }>
-    ) => {
+    (updates: Partial<UploadEventState>) => {
       queryClient.setQueryData(
         queryKeys.upload.events(),
-        (
-          old:
-            | {
-                progress: number
-                uploading: boolean
-                message: UploadMessage | null
-              }
-            | undefined
-        ) => ({
-          progress: 0,
-          uploading: false,
-          message: null,
+        (old: UploadEventState | undefined) => ({
+          ...IDLE_UPLOAD_STATE,
           ...old,
           ...updates
         })
@@ -106,14 +130,22 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
     let unlistenProgress: (() => void) | null = null
     let unlistenComplete: (() => void) | null = null
     let unlistenError: (() => void) | null = null
+    let unlistenCancelled: (() => void) | null = null
+    let unlistenStallWarning: (() => void) | null = null
     let isMounted = true
 
     const setupListeners = async () => {
       try {
         unlistenProgress = await listenUploadProgress((event) => {
           if (isMounted) {
-            const progressValue = event.payload as number
-            updateUploadState({ progress: progressValue })
+            const { percentage, bytesSent: sent, totalBytes: total } = event.payload
+            updateUploadState({
+              // The bar and its label want whole percent; the byte counts carry
+              // the precision, so rounding here loses nothing.
+              progress: Math.round(percentage),
+              bytesSent: sent,
+              totalBytes: total
+            })
           }
         })
 
@@ -124,18 +156,43 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
             updateUploadState({
               message: { text: 'Upload successful', severity: 'success' },
               uploading: false,
-              progress: 100
+              progress: 100,
+              // A warning outliving the upload would sit under a finished panel
+              // advising the user to cancel something already over.
+              stallWarning: null
             })
           }
         })
 
         unlistenError = await listenUploadError((event) => {
           if (isMounted) {
-            const errorMessage = event.payload as string
             updateUploadState({
-              message: { text: errorMessage, severity: 'error' },
-              uploading: false
+              message: { text: event.payload.message, severity: 'error' },
+              uploading: false,
+              stallWarning: null
             })
+          }
+        })
+
+        // Cancellation is its own channel so severity never has to be guessed
+        // from wording: the user asked for this, so it is `info`, not `error`.
+        unlistenCancelled = await listenUploadCancelled(() => {
+          if (isMounted) {
+            updateUploadState({
+              message: { text: 'Upload cancelled', severity: 'info' },
+              uploading: false,
+              progress: 0,
+              bytesSent: 0,
+              stallWarning: null
+            })
+          }
+        })
+
+        // Non-terminal: it changes nothing about `uploading` or `message`, and a
+        // null payload message withdraws a warning the transfer has recovered from.
+        unlistenStallWarning = await listenUploadStallWarning((event) => {
+          if (isMounted) {
+            updateUploadState({ stallWarning: event.payload.message })
           }
         })
       } catch (error) {
@@ -159,6 +216,8 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
           if (unlistenProgress) unlistenProgress()
           if (unlistenComplete) unlistenComplete()
           if (unlistenError) unlistenError()
+          if (unlistenCancelled) unlistenCancelled()
+          if (unlistenStallWarning) unlistenStallWarning()
         } catch (error) {
           // Silently handle cleanup errors to avoid console spam
           logger.debug('Event listener cleanup encountered errors:', error)
@@ -170,6 +229,9 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
   return {
     progress,
     uploading,
+    bytesSent,
+    totalBytes,
+    stallWarning,
     message,
     setUploading,
     setProgress,

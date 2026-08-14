@@ -32,6 +32,7 @@ vi.mock('@shared/hooks/useBreadcrumb', () => ({
 
 const mockSelectFile = vi.fn()
 const mockUploadFile = vi.fn()
+const mockCancelUpload = vi.fn()
 const mockSetProgress = vi.fn()
 const mockSetMessage = vi.fn()
 const mockSetUploading = vi.fn()
@@ -43,7 +44,8 @@ let mockFileUploadState = {
   selectedFile: null as string | null,
   response: null as unknown,
   selectFile: mockSelectFile,
-  uploadFile: mockUploadFile
+  uploadFile: mockUploadFile,
+  cancelUpload: mockCancelUpload
 }
 /**
  * Upload messages carry their own severity so nothing has to sniff the text.
@@ -54,14 +56,23 @@ type UploadMessage = {
   severity: 'error' | 'success' | 'info'
 }
 
-let mockUploadEventsState = {
+/**
+ * The idle shape of useUploadEvents. Cases below spread this and override the
+ * one or two fields they care about, so a new field on the hook does not have to
+ * be repeated at every assignment site.
+ */
+const idleUploadEvents = {
   progress: 0,
   uploading: false,
+  bytesSent: 0,
+  totalBytes: 0,
+  stallWarning: null as string | null,
   message: null as UploadMessage | null,
   setProgress: mockSetProgress,
   setMessage: mockSetMessage,
   setUploading: mockSetUploading
 }
+let mockUploadEventsState = { ...idleUploadEvents }
 let mockImageRefreshState = {
   thumbnailLoaded: false,
   refreshTimestamp: Date.now(),
@@ -165,16 +176,10 @@ describe('UploadSprout Page', () => {
       selectedFile: null,
       response: null,
       selectFile: mockSelectFile,
-      uploadFile: mockUploadFile
+      uploadFile: mockUploadFile,
+      cancelUpload: mockCancelUpload
     }
-    mockUploadEventsState = {
-      progress: 0,
-      uploading: false,
-      message: null,
-      setProgress: mockSetProgress,
-      setMessage: mockSetMessage,
-      setUploading: mockSetUploading
-    }
+    mockUploadEventsState = { ...idleUploadEvents }
     mockImageRefreshState = {
       thumbnailLoaded: false,
       refreshTimestamp: Date.now(),
@@ -328,7 +333,8 @@ describe('UploadSprout Page', () => {
         selectedFile: '/path/to/video.mp4',
         response: null,
         selectFile: mockSelectFile,
-        uploadFile: mockUploadFile
+        uploadFile: mockUploadFile,
+        cancelUpload: mockCancelUpload
       }
     })
 
@@ -468,15 +474,15 @@ describe('UploadSprout Page', () => {
         selectedFile: '/path/to/video.mp4',
         response: null,
         selectFile: mockSelectFile,
-        uploadFile: mockUploadFile
+        uploadFile: mockUploadFile,
+        cancelUpload: mockCancelUpload
       }
       mockUploadEventsState = {
-        progress: 45,
+        ...idleUploadEvents,
+        progress: 41,
         uploading: true,
-        message: null,
-        setProgress: mockSetProgress,
-        setMessage: mockSetMessage,
-        setUploading: mockSetUploading
+        bytesSent: 1_680_000_000,
+        totalBytes: 4_100_000_000
       }
     })
 
@@ -489,7 +495,56 @@ describe('UploadSprout Page', () => {
     it('should show upload percentage', () => {
       renderUploadSprout()
 
-      expect(screen.getByText(/45%/i)).toBeInTheDocument()
+      expect(screen.getByText(/41%/i)).toBeInTheDocument()
+    })
+
+    it('shows bytes transferred against the total, not only a percentage', () => {
+      // UP-30 (issue #225). A percentage alone cannot tell 3% of 200 MB from 3% of
+      // 12 GB, which is the judgement a user makes when deciding whether a slow
+      // upload is worth waiting for.
+      renderUploadSprout()
+
+      expect(screen.getByText(/1\.68 GB of 4\.10 GB/)).toBeInTheDocument()
+    })
+
+    it('offers a way to cancel, which this page did not have at all', () => {
+      // UP-25 (issue #225). Before this the only way to end an upload was to quit
+      // the app.
+      renderUploadSprout()
+
+      expect(screen.getByRole('button', { name: /cancel upload/i })).toBeInTheDocument()
+    })
+
+    it('cancels through the hook that owns the operation id', async () => {
+      // UP-20. The page must not invent its own teardown - the operation id lives
+      // in useFileUpload, which is the only thing that can name the upload.
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /cancel upload/i }))
+
+      await waitFor(() => {
+        expect(mockCancelUpload).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('shows the soft stall warning without ending the upload', () => {
+      // UP-26. Non-terminal: the progress bar and the cancel button both stay.
+      mockUploadEventsState = {
+        ...mockUploadEventsState,
+        stallWarning:
+          'No data has reached Sprout for 35s. The transfer is at 1.68 GB of 4.10 GB (41%).'
+      }
+      renderUploadSprout()
+
+      expect(screen.getByRole('status')).toHaveTextContent(/35s/)
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /cancel upload/i })).toBeEnabled()
+    })
+
+    it('shows no stall warning while the transfer is moving', () => {
+      renderUploadSprout()
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
 
     it('should show Uploading... button text when uploading', () => {
@@ -526,7 +581,8 @@ describe('UploadSprout Page', () => {
         selectedFile: '/path/to/video.mp4',
         response: mockResponse,
         selectFile: mockSelectFile,
-        uploadFile: mockUploadFile
+        uploadFile: mockUploadFile,
+        cancelUpload: mockCancelUpload
       }
       mockImageRefreshState = {
         thumbnailLoaded: true,
@@ -567,12 +623,9 @@ describe('UploadSprout Page', () => {
   describe('with success message', () => {
     beforeEach(() => {
       mockUploadEventsState = {
+        ...idleUploadEvents,
         progress: 100,
-        uploading: false,
-        message: { text: 'Upload successful!', severity: 'success' },
-        setProgress: mockSetProgress,
-        setMessage: mockSetMessage,
-        setUploading: mockSetUploading
+        message: { text: 'Upload successful!', severity: 'success' }
       }
     })
 
@@ -589,12 +642,8 @@ describe('UploadSprout Page', () => {
   describe('with error message', () => {
     beforeEach(() => {
       mockUploadEventsState = {
-        progress: 0,
-        uploading: false,
-        message: { text: 'Upload failed: Network error', severity: 'error' },
-        setProgress: mockSetProgress,
-        setMessage: mockSetMessage,
-        setUploading: mockSetUploading
+        ...idleUploadEvents,
+        message: { text: 'Upload failed: Network error', severity: 'error' }
       }
     })
 
@@ -618,12 +667,8 @@ describe('UploadSprout Page', () => {
 
     beforeEach(() => {
       mockUploadEventsState = {
-        progress: 0,
-        uploading: false,
-        message: { text: ADVERSARIAL_TEXT, severity: 'error' },
-        setProgress: mockSetProgress,
-        setMessage: mockSetMessage,
-        setUploading: mockSetUploading
+        ...idleUploadEvents,
+        message: { text: ADVERSARIAL_TEXT, severity: 'error' }
       }
     })
 
@@ -645,12 +690,8 @@ describe('UploadSprout Page', () => {
 
     beforeEach(() => {
       mockUploadEventsState = {
-        progress: 0,
-        uploading: false,
-        message: { text: HTTP_413_TEXT, severity: 'error' },
-        setProgress: mockSetProgress,
-        setMessage: mockSetMessage,
-        setUploading: mockSetUploading
+        ...idleUploadEvents,
+        message: { text: HTTP_413_TEXT, severity: 'error' }
       }
     })
 
@@ -677,7 +718,8 @@ describe('UploadSprout Page', () => {
         selectedFile: '/path/to/video.mp4',
         response: null,
         selectFile: mockSelectFile,
-        uploadFile: mockUploadFile
+        uploadFile: mockUploadFile,
+        cancelUpload: mockCancelUpload
       }
     })
 

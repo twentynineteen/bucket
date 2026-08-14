@@ -1,3 +1,4 @@
+use crate::build_project::OperationRegistry;
 use app_lib::media::SproutVideoDetails;
 use bytes::Bytes;
 use futures_util::stream::unfold;
@@ -13,8 +14,9 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 use tauri::Emitter;
-use tauri::{command, AppHandle};
+use tauri::{command, AppHandle, State};
 use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
+use tokio::sync::watch;
 
 /// A single Sprout folder.
 ///
@@ -247,19 +249,92 @@ pub async fn get_folders(
     })
 }
 
+/// One `upload_progress` sample.
+///
+/// A percentage alone cannot tell 3% of 200 MB from 3% of 12 GB, which is exactly
+/// the judgement a user makes when deciding whether a slow upload is worth
+/// waiting for. The stall path has always known the byte offset; the progress path
+/// now reports it too. `percentage` is a float rather than the old truncated
+/// `u32`, so 1% of a 3 GB file is no longer 30 MB of invisible movement.
+/// See issue #225.
+#[derive(serde::Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadProgressEvent {
+    pub operation_id: String,
+    pub bytes_sent: u64,
+    pub total_bytes: u64,
+    pub percentage: f64,
+}
+
+/// A successful upload, with the Sprout video record.
+#[derive(serde::Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadCompleteEvent {
+    pub operation_id: String,
+    pub video: Value,
+}
+
+/// A failed upload. `message` is already user-facing prose, classified by
+/// `classify_response`, the size gate or the stall watchdog.
+#[derive(serde::Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadErrorEvent {
+    pub operation_id: String,
+    pub message: String,
+}
+
+/// A user-cancelled upload.
+///
+/// Its own channel rather than an `upload_error` carrying a "cancelled" message:
+/// cancellation is not a failure and must not raise a destructive toast, and
+/// deciding that from the text would be the string sniffing #152 removed.
+#[derive(serde::Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadCancelledEvent {
+    pub operation_id: String,
+    pub bytes_sent: u64,
+    pub total_bytes: u64,
+}
+
+/// The non-terminal "this looks stalled" signal, and its all-clear.
+///
+/// `message` is `None` when a warning is being withdrawn because progress
+/// resumed. Nothing about this event ends the upload - that is the whole point of
+/// it, and why it does not go through `TerminalOnce`.
+#[derive(serde::Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadStallWarningEvent {
+    pub operation_id: String,
+    pub bytes_sent: u64,
+    pub total_bytes: u64,
+    pub silent_for_seconds: u64,
+    pub message: Option<String>,
+}
+
+/// Starts an upload and returns the id it can be addressed by.
+///
+/// Returning the id is what makes cancellation possible at all: before #225 this
+/// command returned `()`, so a running upload could not be named, let alone
+/// stopped, and dismissing the dialog left a multi-gigabyte transfer running with
+/// nowhere to watch it. The registry is the same `OperationRegistry` BuildProject's
+/// file transfers use - reused rather than reinvented.
 #[command]
-pub fn upload_video(
+pub async fn upload_video(
     app_handle: AppHandle,
+    registry: State<'_, OperationRegistry>,
     file_path: String,
     api_key: String,
     folder_id: Option<String>,
     title: Option<String>,
-) {
-    let gate = TerminalGate::new(app_handle.clone());
+) -> Result<String, String> {
+    let (operation_id, cancel_rx) = registry.register().await;
+
+    let gate = TerminalGate::new(app_handle.clone(), operation_id.clone());
     let progress = Arc::new(UploadProgress::new());
 
     let upload_gate = gate.clone();
     let upload_progress = progress.clone();
+    let upload_operation = operation_id.clone();
     let upload = tauri::async_runtime::spawn(async move {
         let outcome = upload_video_task(
             app_handle,
@@ -269,12 +344,13 @@ pub fn upload_video(
             title,
             upload_progress,
             upload_gate.clone(),
+            upload_operation,
         )
         .await;
 
         // Every exit from the task reports itself, including the `?` paths that
         // used to vanish into a bare `println!`. The gate makes a second report
-        // impossible, so the watchdog and this arm cannot both be heard.
+        // impossible, so the supervisor and this arm cannot both be heard.
         if let Err(err) = outcome {
             upload_gate.fail(err);
         }
@@ -282,8 +358,53 @@ pub fn upload_video(
 
     // Deliberately its own task rather than a `select!` inside the upload task: a
     // watchdog that shares the task it is watching cannot fire when that task is
-    // blocked inside a syscall, which is one of #150's candidate causes.
-    tauri::async_runtime::spawn(watch_for_stall(upload, progress, gate));
+    // blocked inside a syscall, which is one of #150's candidate causes. The same
+    // reasoning applies to cancellation - a cancel must be actioned even when the
+    // upload task is wedged, which is precisely when a user reaches for it.
+    tauri::async_runtime::spawn(supervise_upload(
+        upload,
+        progress,
+        gate,
+        cancel_rx,
+        registry.inner().clone(),
+        operation_id.clone(),
+    ));
+
+    Ok(operation_id)
+}
+
+/// Signals cancellation for a running upload.
+///
+/// Extracted from the command so it can be tested against a real registry without
+/// a Tauri runtime. Returns false when the operation is not running: a dialog is
+/// routinely dismissed a moment after the upload finished, and "nothing to
+/// cancel" is not a failure.
+pub async fn signal_cancel(registry: &OperationRegistry, operation_id: &str) -> bool {
+    if !registry.has_operation(operation_id).await {
+        log::info!(
+            "[Sprout] Upload {} is not running; nothing to cancel",
+            operation_id
+        );
+        return false;
+    }
+
+    let signalled = registry.cancel(operation_id).await;
+    if signalled {
+        log::info!("[Sprout] Cancellation signalled for upload {}", operation_id);
+    }
+    signalled
+}
+
+/// Cancels an in-flight upload. Mirrors `cancel_file_transfer`.
+///
+/// `Ok(false)` means the operation was not found, which is the normal outcome when
+/// the upload had already finished.
+#[command]
+pub async fn cancel_upload(
+    registry: State<'_, OperationRegistry>,
+    operation_id: String,
+) -> Result<bool, String> {
+    Ok(signal_cancel(registry.inner(), &operation_id).await)
 }
 
 /// How often the watchdog samples progress. Cheap: two atomic loads.
@@ -318,6 +439,47 @@ pub const STALL_WINDOW: Duration = Duration::from_secs(70);
 /// and far above a trickle. A gap timer is the degenerate case of this test with
 /// the minimum set to one byte, so generalising costs nothing.
 pub const STALL_MIN_PROGRESS_BYTES: u64 = 1024 * 1024;
+
+/// When the non-terminal "this looks stalled" warning is raised.
+///
+/// The terminal verdict at `STALL_WINDOW` answers "is it dead?"; the question a
+/// user actually has while watching a frozen bar is "wait, or cancel?", and until
+/// #225 nothing answered that before the transfer was already over. Half the
+/// window gives the user the whole second half to act on it.
+///
+/// Derived from `STALL_WINDOW` rather than written as its own literal, so raising
+/// one cannot silently leave the other behind. Note the contrast with #154, which
+/// declined a soft warning below the 5 GB limit because warning about a
+/// legitimately uploadable file is noise: a stall is not a legitimate state. The
+/// warning is non-terminal precisely because a recoverable TCP backoff *is*
+/// legitimate for tens of seconds - it informs, it does not act.
+pub const STALL_WARNING_AFTER: Duration = Duration::from_secs(STALL_WINDOW.as_secs() / 2);
+
+/// Whether the soft warning should be showing, and whether that has just changed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WarningTransition {
+    /// Nothing to say: either still quiet and already warned, or still moving.
+    Unchanged,
+    /// Newly quiet past the soft threshold.
+    Raise,
+    /// Progress resumed after a warning, so the warning must be withdrawn.
+    Clear,
+}
+
+/// Decides whether the soft warning changes state, given whether it is currently
+/// showing and how long the transfer has been quiet.
+///
+/// Latching is the caller's job, which is what keeps this a pure function: the
+/// supervisor samples every second, so an unlatched warning would fire 35 times
+/// across one silent period and read as a stream of failures rather than one piece
+/// of information.
+pub fn warning_transition(warned: bool, silence: Duration) -> WarningTransition {
+    match (warned, silence >= STALL_WARNING_AFTER) {
+        (false, true) => WarningTransition::Raise,
+        (true, false) => WarningTransition::Clear,
+        _ => WarningTransition::Unchanged,
+    }
+}
 
 /// The verdict on one progress sample.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -364,12 +526,21 @@ impl StallMonitor {
             return StallCheck::Advancing;
         }
 
-        let since_last_advance = now.saturating_sub(self.anchor_at);
+        let since_last_advance = self.silence(now);
         if since_last_advance >= self.window {
             StallCheck::Stalled { since_last_advance }
         } else {
             StallCheck::Advancing
         }
+    }
+
+    /// How long since the last qualifying advance.
+    ///
+    /// The soft warning reads the same clock the terminal verdict does rather than
+    /// starting a second one, so the two can never disagree about how quiet the
+    /// transfer has been.
+    pub fn silence(&self, now: Duration) -> Duration {
+        now.saturating_sub(self.anchor_at)
     }
 }
 
@@ -422,6 +593,44 @@ pub fn stall_message(bytes_sent: u64, total_bytes: u64, since_last_advance: Dura
     )
 }
 
+/// The message the non-terminal warning carries.
+///
+/// It must not read like `stall_message`. That one is a verdict - the transfer is
+/// over and waiting will not help. This one is a heads-up on something that may
+/// still come back, and its job is to put the choice in front of the user while
+/// there is still a choice to make. It names cancelling because cancelling is what
+/// #225 made possible: a warning with no available action attached would be closer
+/// to taunting than helping.
+pub fn stall_warning_message(bytes_sent: u64, total_bytes: u64, silence: Duration) -> String {
+    let position = if bytes_sent == 0 {
+        "Nothing has been sent yet".to_string()
+    } else {
+        let percentage = if total_bytes > 0 {
+            format!(
+                " ({:.0}%)",
+                (bytes_sent as f64 / total_bytes as f64) * 100.0
+            )
+        } else {
+            String::new()
+        };
+        format!(
+            "The transfer is at {} of {}{}",
+            format_bytes(bytes_sent),
+            format_bytes(total_bytes),
+            percentage
+        )
+    };
+
+    format!(
+        "No data has reached Sprout for {}s. {}. A connection this quiet may recover \
+         on its own, so this is not a failure yet - the upload is given up on at {}s. \
+         Cancel it now if you would rather start again.",
+        silence.as_secs(),
+        position,
+        STALL_WINDOW.as_secs()
+    )
+}
+
 /// One-shot arbitration for the terminal event.
 ///
 /// The watchdog and the upload task race by construction: a stall can be detected
@@ -447,18 +656,21 @@ impl TerminalOnce {
     }
 }
 
-/// `TerminalOnce` bound to the handle the single event is emitted on.
+/// `TerminalOnce` bound to the handle the single event is emitted on, and to the
+/// operation every event names.
 #[derive(Clone)]
 struct TerminalGate {
     once: TerminalOnce,
     app_handle: AppHandle,
+    operation_id: String,
 }
 
 impl TerminalGate {
-    fn new(app_handle: AppHandle) -> Self {
+    fn new(app_handle: AppHandle, operation_id: String) -> Self {
         TerminalGate {
             once: TerminalOnce::default(),
             app_handle,
+            operation_id,
         }
     }
 
@@ -469,15 +681,55 @@ impl TerminalGate {
     /// Emits `upload_complete`, unless something already reported.
     fn succeed(&self, video: Value) {
         if self.once.claim() {
-            let _ = self.app_handle.emit("upload_complete", video);
+            let _ = self.app_handle.emit(
+                "upload_complete",
+                UploadCompleteEvent {
+                    operation_id: self.operation_id.clone(),
+                    video,
+                },
+            );
         }
     }
 
     /// Emits `upload_error`, unless something already reported.
     fn fail(&self, message: String) {
         if self.once.claim() {
-            let _ = self.app_handle.emit("upload_error", message);
+            let _ = self.app_handle.emit(
+                "upload_error",
+                UploadErrorEvent {
+                    operation_id: self.operation_id.clone(),
+                    message,
+                },
+            );
         }
+    }
+
+    /// Emits `upload_cancelled`, unless something already reported.
+    ///
+    /// Claims the same one-shot as every other terminal arm: a cancel and a
+    /// completion race by construction, and a user who cancels the instant Sprout
+    /// answers must not be told both things happened.
+    fn cancel(&self, bytes_sent: u64, total_bytes: u64) {
+        if self.once.claim() {
+            let _ = self.app_handle.emit(
+                "upload_cancelled",
+                UploadCancelledEvent {
+                    operation_id: self.operation_id.clone(),
+                    bytes_sent,
+                    total_bytes,
+                },
+            );
+        }
+    }
+
+    /// Emits the non-terminal stall warning, or withdraws it when `message` is
+    /// `None`. Deliberately outside the one-shot: this settles nothing, and an
+    /// operation may raise and withdraw it repeatedly across one upload.
+    fn warn_stall(&self, event: UploadStallWarningEvent) {
+        if self.once.is_settled() {
+            return;
+        }
+        let _ = self.app_handle.emit("upload_stall_warning", event);
     }
 }
 
@@ -490,14 +742,34 @@ impl TerminalGate {
 pub struct UploadProgress {
     bytes_sent: AtomicU64,
     total_bytes: AtomicU64,
+    /// Microseconds since `started_at` at the last emitted progress event, or
+    /// `NEVER_EMITTED` before the first one.
+    last_emit_micros: AtomicU64,
     started_at: Instant,
 }
 
+/// Sentinel for "no progress event has been emitted yet", so the first read
+/// reports immediately instead of waiting out an interval.
+const NEVER_EMITTED: u64 = u64::MAX;
+
+/// How often at most an `upload_progress` event is emitted.
+///
+/// Unthrottled, a 64 KB read emitted one event, so a 4 GB upload produced roughly
+/// 65,000 of them. Carrying byte counts makes each payload larger, so the throttle
+/// is what stops reporting bytes making the IPC flood worse. See #150 UP-05.
+pub const PROGRESS_EMIT_INTERVAL: Duration = Duration::from_millis(100);
+
+/// Whether a progress event is due, given when the last one went out.
+pub fn is_progress_emit_due(last_emit: Duration, now: Duration) -> bool {
+    now.saturating_sub(last_emit) >= PROGRESS_EMIT_INTERVAL
+}
+
 impl UploadProgress {
-    fn new() -> Self {
+    pub fn new() -> Self {
         UploadProgress {
             bytes_sent: AtomicU64::new(0),
             total_bytes: AtomicU64::new(0),
+            last_emit_micros: AtomicU64::new(NEVER_EMITTED),
             started_at: Instant::now(),
         }
     }
@@ -507,24 +779,65 @@ impl UploadProgress {
     }
 
     /// Adds a chunk and returns the new total sent.
-    fn advance(&self, bytes: u64) -> u64 {
+    ///
+    /// Called on **every** read, never conditionally on whether an event is
+    /// emitted. #204 moved this off `Mutex` + `try_lock` because the losing arm
+    /// silently discarded a chunk's bytes, and an accumulator that under-counts is
+    /// indistinguishable from a stall to the watchdog reading it. Throttling the
+    /// event must not reintroduce that by throttling the count.
+    pub fn advance(&self, bytes: u64) -> u64 {
         self.bytes_sent.fetch_add(bytes, Ordering::Relaxed) + bytes
     }
 
-    fn bytes_sent(&self) -> u64 {
+    pub fn bytes_sent(&self) -> u64 {
         self.bytes_sent.load(Ordering::Relaxed)
     }
 
-    fn total_bytes(&self) -> u64 {
+    pub fn total_bytes(&self) -> u64 {
         self.total_bytes.load(Ordering::Relaxed)
     }
 
     fn elapsed(&self) -> Duration {
         self.started_at.elapsed()
     }
+
+    /// Takes the right to emit a progress event at `now`, if one is due.
+    ///
+    /// `compare_exchange` rather than load-then-store so two readers could never
+    /// both consider themselves due for the same interval. Only the emit slot is
+    /// contended - `advance` above is unconditional.
+    pub fn claim_emit_slot(&self, now: Duration) -> bool {
+        let stamp = u64::try_from(now.as_micros()).unwrap_or(NEVER_EMITTED - 1);
+        let mut last = self.last_emit_micros.load(Ordering::Relaxed);
+
+        loop {
+            let due =
+                last == NEVER_EMITTED || is_progress_emit_due(Duration::from_micros(last), now);
+            if !due {
+                return false;
+            }
+
+            match self.last_emit_micros.compare_exchange_weak(
+                last,
+                stamp,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => return true,
+                Err(actual) => last = actual,
+            }
+        }
+    }
 }
 
-/// Watches a transfer for a stall and tears it down if it finds one.
+impl Default for UploadProgress {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Watches a transfer for a stall, watches for the user cancelling it, and tears
+/// it down for either reason.
 ///
 /// Detection lives here rather than in the frontend for three reasons the
 /// frontend cannot match: it can stop the transfer, it knows the byte offset, and
@@ -533,34 +846,103 @@ impl UploadProgress {
 /// backpressure keeps within the ~5 MB of hyper queue plus kernel socket buffer
 /// measured in #150. So it detects "the transfer stopped", never "the transfer is
 /// being discarded".
-async fn watch_for_stall(
+///
+/// Cancellation shares this task rather than getting one of its own for the same
+/// reason the watchdog is not a `select!` inside the upload task: a cancel has to
+/// be actioned even when the upload task is wedged in a syscall, which is exactly
+/// the situation in which a user reaches for it.
+async fn supervise_upload(
     upload: tauri::async_runtime::JoinHandle<()>,
     progress: Arc<UploadProgress>,
     gate: TerminalGate,
+    mut cancel_rx: watch::Receiver<bool>,
+    registry: OperationRegistry,
+    operation_id: String,
 ) {
     let mut monitor = StallMonitor::new(Duration::ZERO);
+    // Whether the soft warning is currently showing. Latched here so
+    // `warning_transition` stays pure and the user is told once, not once a second.
+    let mut warned = false;
+    // The watch sender is dropped when the operation is deregistered. That is not
+    // a cancellation, and `changed()` would then return `Err` immediately forever,
+    // spinning the loop - so stop selecting on it once it has closed.
+    let mut watching_cancel = true;
 
     loop {
-        tokio::time::sleep(STALL_POLL_INTERVAL).await;
+        if watching_cancel {
+            tokio::select! {
+                _ = tokio::time::sleep(STALL_POLL_INTERVAL) => {}
+                changed = cancel_rx.changed() => {
+                    if changed.is_err() {
+                        watching_cancel = false;
+                    }
+                }
+            }
+        } else {
+            tokio::time::sleep(STALL_POLL_INTERVAL).await;
+        }
+
+        if OperationRegistry::is_cancelled(&cancel_rx) {
+            let bytes_sent = progress.bytes_sent();
+            log::info!(
+                "[Sprout] Upload {} cancelled by the user at {} bytes",
+                operation_id,
+                bytes_sent
+            );
+            gate.cancel(bytes_sent, progress.total_bytes());
+            // Reporting a cancellation without tearing the request down is the
+            // orphaned-upload defect with a nicer message. The abort drops the
+            // reqwest future, which closes the socket.
+            upload.abort();
+            break;
+        }
 
         // The operation reported for itself, so there is nothing left to watch.
         if gate.is_settled() {
-            return;
+            break;
         }
 
         let bytes_sent = progress.bytes_sent();
-        if let StallCheck::Stalled { since_last_advance } =
-            monitor.observe(bytes_sent, progress.elapsed())
-        {
-            let message = stall_message(bytes_sent, progress.total_bytes(), since_last_advance);
-            log::warn!("{}", message);
-            gate.fail(message);
-            // Reporting without tearing down would leave a dead upload holding
-            // the socket, and its progress events would interleave with a retry's.
-            upload.abort();
-            return;
+        let now = progress.elapsed();
+        match monitor.observe(bytes_sent, now) {
+            StallCheck::Stalled { since_last_advance } => {
+                let message = stall_message(bytes_sent, progress.total_bytes(), since_last_advance);
+                log::warn!("{}", message);
+                gate.fail(message);
+                // Reporting without tearing down would leave a dead upload holding
+                // the socket, and its progress events would interleave with a
+                // retry's.
+                upload.abort();
+                break;
+            }
+            StallCheck::Advancing => {
+                let silence = monitor.silence(now);
+                let transition = warning_transition(warned, silence);
+                if transition != WarningTransition::Unchanged {
+                    warned = transition == WarningTransition::Raise;
+                    gate.warn_stall(UploadStallWarningEvent {
+                        operation_id: operation_id.clone(),
+                        bytes_sent,
+                        total_bytes: progress.total_bytes(),
+                        silent_for_seconds: silence.as_secs(),
+                        message: if warned {
+                            Some(stall_warning_message(
+                                bytes_sent,
+                                progress.total_bytes(),
+                                silence,
+                            ))
+                        } else {
+                            None
+                        }
+                    });
+                }
+            }
         }
     }
+
+    // Unconditional and in one place: any terminal path that skipped this would
+    // leak the operation and leave a stale id the user could still "cancel".
+    registry.complete(&operation_id).await;
 }
 
 /// Maximum characters of a response body to quote in an error message. Enough to
@@ -691,6 +1073,9 @@ pub struct ProgressReader<R> {
     /// would refuse. See `size_gate` and issue #154.
     total_size: CheckedUploadSize,
     app_handle: AppHandle,
+    /// Named on every event, so a zombie operation's progress can never be
+    /// mistaken for a retry's. See #150 UP-11.
+    operation_id: String,
 }
 
 impl<R: AsyncRead + Unpin> AsyncRead for ProgressReader<R> {
@@ -708,12 +1093,25 @@ impl<R: AsyncRead + Unpin> AsyncRead for ProgressReader<R> {
             let post_filled = buf.filled().len();
             let bytes_read = post_filled - pre_filled;
             if bytes_read > 0 {
+                // Unconditional: the accumulator the stall watchdog reads must
+                // never miss a chunk, whatever the throttle below decides.
+                let total = self.total_size.bytes();
                 let sent = self.progress.advance(bytes_read as u64);
-                let percentage = (sent as f64 / self.total_size.bytes() as f64) * 100.0;
+                let percentage = (sent as f64 / total as f64) * 100.0;
 
-                // Emit progress event to frontend
-                if let Err(e) = self.app_handle.emit("upload_progress", percentage as u32) {
-                    eprintln!("Failed to emit progress event: {}", e);
+                // The last read always reports, so the bar and the byte counts
+                // land on the total rather than stopping a throttle-interval short.
+                let due = sent >= total || self.progress.claim_emit_slot(self.progress.elapsed());
+                if due {
+                    let event = UploadProgressEvent {
+                        operation_id: self.operation_id.clone(),
+                        bytes_sent: sent,
+                        total_bytes: total,
+                        percentage
+                    };
+                    if let Err(e) = self.app_handle.emit("upload_progress", event) {
+                        log::warn!("Failed to emit progress event: {}", e);
+                    }
                 }
             }
         }
@@ -731,6 +1129,7 @@ async fn upload_video_task(
     title: Option<String>,
     progress: Arc<UploadProgress>,
     gate: TerminalGate,
+    operation_id: String,
 ) -> Result<(), String> {
     // Open the file
     let file = File::open(&file_path).map_err(|e| e.to_string())?;
@@ -752,6 +1151,7 @@ async fn upload_video_task(
         progress: progress.clone(),
         total_size: checked_size,
         app_handle: app_handle.clone(),
+        operation_id
     };
 
     // Extract the original filename

@@ -22,26 +22,39 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../api', () => ({
-  uploadVideo: vi.fn().mockResolvedValue(undefined),
+  uploadVideo: vi.fn().mockResolvedValue('op-1'),
+  cancelUpload: vi.fn().mockResolvedValue(true),
   getVideoDuration: vi.fn().mockResolvedValue(0),
   openFileDialog: vi.fn(),
   listenUploadComplete: vi.fn().mockResolvedValue(() => undefined),
   listenUploadError: vi.fn().mockResolvedValue(() => undefined),
-  listenUploadProgress: vi.fn().mockResolvedValue(() => undefined)
+  listenUploadProgress: vi.fn().mockResolvedValue(() => undefined),
+  listenUploadCancelled: vi.fn().mockResolvedValue(() => undefined),
+  listenUploadStallWarning: vi.fn().mockResolvedValue(() => undefined)
 }))
-vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() }
+}))
 
 import { toast } from 'sonner'
 
 import {
+  cancelUpload,
   getVideoDuration,
+  listenUploadCancelled,
   listenUploadComplete,
   listenUploadError,
   listenUploadProgress,
+  listenUploadStallWarning,
   openFileDialog,
   uploadVideo
 } from '../api'
-import type { SelectedSproutFolder } from '../types'
+import type {
+  SelectedSproutFolder,
+  UploadCancelledEvent,
+  UploadErrorEvent,
+  UploadProgressEvent
+} from '../types'
 import { useFileUpload } from './useFileUpload'
 
 const folder: SelectedSproutFolder = {
@@ -58,12 +71,15 @@ function startUpload(upload: () => Promise<void>): void {
 beforeEach(() => {
   // The suite resets mock implementations between tests, so these are set here
   // rather than in the vi.mock factory.
-  vi.mocked(uploadVideo).mockClear().mockResolvedValue(undefined)
+  vi.mocked(uploadVideo).mockClear().mockResolvedValue('op-1')
+  vi.mocked(cancelUpload).mockClear().mockResolvedValue(true)
   vi.mocked(openFileDialog).mockResolvedValue('/tmp/clip.mp4')
   vi.mocked(getVideoDuration).mockResolvedValue(0)
   vi.mocked(listenUploadComplete).mockResolvedValue(() => undefined)
   vi.mocked(listenUploadError).mockResolvedValue(() => undefined)
   vi.mocked(listenUploadProgress).mockResolvedValue(() => undefined)
+  vi.mocked(listenUploadCancelled).mockResolvedValue(() => undefined)
+  vi.mocked(listenUploadStallWarning).mockResolvedValue(() => undefined)
 })
 
 /** Selects a file so uploadFile gets past its guard clause. */
@@ -175,9 +191,9 @@ const BACKEND_STALL_MESSAGE =
 
 describe('useFileUpload stall handling', () => {
   /** Captured `upload_progress` handlers, in registration order. */
-  let progressHandlers: Array<(event: { payload: number }) => void>
+  let progressHandlers: Array<(event: { payload: UploadProgressEvent }) => void>
   /** Captured `upload_error` handlers. */
-  let errorHandlers: Array<(event: { payload: string }) => void>
+  let errorHandlers: Array<(event: { payload: UploadErrorEvent }) => void>
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -185,11 +201,11 @@ describe('useFileUpload stall handling', () => {
     errorHandlers = []
 
     vi.mocked(listenUploadProgress).mockImplementation((callback) => {
-      progressHandlers.push(callback as (event: { payload: number }) => void)
+      progressHandlers.push(callback)
       return Promise.resolve(() => undefined)
     })
     vi.mocked(listenUploadError).mockImplementation((callback) => {
-      errorHandlers.push(callback as (event: { payload: string }) => void)
+      errorHandlers.push(callback)
       return Promise.resolve(() => undefined)
     })
   })
@@ -210,9 +226,20 @@ describe('useFileUpload stall handling', () => {
     return result
   }
 
-  /** Emits a progress event, as the Rust `ProgressReader` does on every read. */
-  function emitProgress(percentage: number) {
-    for (const handler of progressHandlers) handler({ payload: percentage })
+  /** Emits a progress event, as the Rust `ProgressReader` does. */
+  function emitProgress(percentage: number, operationId = 'op-1') {
+    const payload: UploadProgressEvent = {
+      operationId,
+      bytesSent: Math.round((percentage / 100) * 4_100_000_000),
+      totalBytes: 4_100_000_000,
+      percentage
+    }
+    for (const handler of progressHandlers) handler({ payload })
+  }
+
+  /** Emits a terminal failure, as `TerminalGate::fail` does. */
+  function emitError(message: string, operationId = 'op-1') {
+    for (const handler of errorHandlers) handler({ payload: { operationId, message } })
   }
 
   it('subscribes to progress so its deadline can follow the transfer', async () => {
@@ -288,7 +315,7 @@ describe('useFileUpload stall handling', () => {
     await beginUpload()
 
     await act(async () => {
-      for (const handler of errorHandlers) handler({ payload: BACKEND_STALL_MESSAGE })
+      emitError(BACKEND_STALL_MESSAGE)
       await vi.advanceTimersByTimeAsync(0)
     })
 
@@ -306,8 +333,7 @@ describe('useFileUpload stall handling', () => {
     await beginUpload()
 
     await act(async () => {
-      for (const handler of errorHandlers)
-        handler({ payload: 'Sprout rejected the upload' })
+      emitError('Sprout rejected the upload')
       await vi.advanceTimersByTimeAsync(0)
     })
     expect(toast.error).toHaveBeenCalledTimes(1)
@@ -316,5 +342,123 @@ describe('useFileUpload stall handling', () => {
       await vi.advanceTimersByTimeAsync(600_000)
     })
     expect(toast.error).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignores a terminal event belonging to a different operation', async () => {
+    // UP-32. With no operation id, a zombie upload's events were
+    // indistinguishable from the live one's, so a retry could be failed by the
+    // corpse of the attempt it replaced.
+    const result = await beginUpload()
+
+    await act(async () => {
+      emitError('Sprout rejected the upload', 'some-other-operation')
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(result.current.uploading).toBe(true)
+
+    await act(async () => {
+      emitError('Sprout rejected the upload')
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    expect(result.current.uploading).toBe(false)
+  })
+})
+
+// --- Cancellation (issue #225) ---
+
+describe('useFileUpload cancellation', () => {
+  /** Captured `upload_cancelled` handlers. */
+  let cancelledHandlers: Array<(event: { payload: UploadCancelledEvent }) => void>
+
+  beforeEach(() => {
+    cancelledHandlers = []
+    vi.mocked(listenUploadCancelled).mockImplementation((callback) => {
+      cancelledHandlers.push(callback)
+      return Promise.resolve(() => undefined)
+    })
+  })
+
+  async function beginUpload() {
+    const { result } = renderHook(() => useFileUpload())
+    await act(async () => {
+      await result.current.selectFile()
+    })
+    await act(async () => {
+      startUpload(() => result.current.uploadFile('key-123'))
+    })
+    return result
+  }
+
+  it('exposes a cancel action, which the hook did not have at all before', () => {
+    // The heart of #225: #204 could report a stall in 70 seconds and the only
+    // thing a user could do with that was quit the app.
+    const { result } = renderHook(() => useFileUpload())
+
+    expect(typeof result.current.cancelUpload).toBe('function')
+  })
+
+  it('cancels the operation the backend named', async () => {
+    // UP-20. `upload_video` used to return nothing, so no running upload could be
+    // addressed. It now returns the id the registry minted for it.
+    const result = await beginUpload()
+
+    await act(async () => {
+      await result.current.cancelUpload()
+    })
+
+    expect(cancelUpload).toHaveBeenCalledWith('op-1')
+  })
+
+  it('does not call the backend when nothing is in flight', async () => {
+    // UP-23. A dialog is routinely dismissed when no upload is running, and that
+    // must not fire a command naming an operation that never existed.
+    const { result } = renderHook(() => useFileUpload())
+
+    await act(async () => {
+      await result.current.cancelUpload()
+    })
+
+    expect(cancelUpload).not.toHaveBeenCalled()
+  })
+
+  it('settles quietly on cancellation, with no error toast', async () => {
+    // UP-21. Cancellation is not a failure. A destructive toast for something the
+    // user asked for reads as though the app went wrong.
+    const result = await beginUpload()
+
+    await act(async () => {
+      for (const handler of cancelledHandlers) {
+        handler({
+          payload: {
+            operationId: 'op-1',
+            bytesSent: 1_680_000_000,
+            totalBytes: 4_100_000_000
+          }
+        })
+      }
+    })
+
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(result.current.uploading).toBe(false)
+    expect(result.current.response).toBeNull()
+  })
+
+  it('does not treat another operation cancellation as its own', async () => {
+    // UP-32, from the cancellation side.
+    const result = await beginUpload()
+
+    await act(async () => {
+      for (const handler of cancelledHandlers) {
+        handler({
+          payload: { operationId: 'not-mine', bytesSent: 0, totalBytes: 1 }
+        })
+      }
+    })
+
+    expect(result.current.uploading).toBe(true)
   })
 })
