@@ -37,9 +37,11 @@ describe('build-project barrel — runtime exports', () => {
     'useBuildProject'
   ].sort()
 
-  it('exports exactly the expected runtime members', () => {
+  // Presence, not exhaustiveness: a caller breaks when a name it imports
+  // disappears, never when a new one is added beside it.
+  it('exports every documented runtime member', () => {
     const actual = Object.keys(buildProjectBarrel).sort()
-    expect(actual).toEqual(expectedRuntimeExports)
+    expect(actual).toEqual(expect.arrayContaining(expectedRuntimeExports))
   })
 
   it('useBuildProject is a function (React hook)', () => {

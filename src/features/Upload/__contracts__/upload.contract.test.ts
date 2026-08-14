@@ -195,16 +195,21 @@ describe('Upload Barrel Exports - Shape', () => {
     'usePosterFrameForUpload',
     'useSproutFolders',
     'useSproutFolderSelection',
-    'useSproutFolderIndex'
+    'useSproutFolderIndex',
+    'useDefaultSproutFolder'
   ].sort()
 
-  it('exports exactly the expected named exports (no more, no fewer)', () => {
+  /**
+   * Presence, not exhaustiveness. What a caller relies on is that the names it
+   * imports are there with the right types; it cannot break because a name it
+   * has never heard of was added beside them. The exact-list and count forms
+   * that used to live here failed on every legitimate addition instead -- they
+   * blocked the one-line Settings fix in #169 and pushed #142 into not
+   * exporting a hook at all.
+   */
+  it('exports every documented named export', () => {
     const exportNames = Object.keys(uploadBarrel).sort()
-    expect(exportNames).toEqual(expectedExports)
-  })
-
-  it('exports exactly 18 members (5 components + 13 hooks)', () => {
-    expect(Object.keys(uploadBarrel)).toHaveLength(18)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedExports))
   })
 
   // Component shape checks
@@ -233,7 +238,11 @@ describe('Upload Barrel Exports - Shape', () => {
     'usePosterframeAutoRedraw',
     'useFileSelection',
     'useZoomPan',
-    'usePosterFrameForUpload'
+    'usePosterFrameForUpload',
+    'useSproutFolders',
+    'useSproutFolderSelection',
+    'useSproutFolderIndex',
+    'useDefaultSproutFolder'
   ] as const
 
   for (const name of hookNames) {

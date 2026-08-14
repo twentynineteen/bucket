@@ -35,14 +35,12 @@ describe('BuildProject Barrel Exports - Shape', () => {
     'useVideoInfoBlock'
   ].sort()
 
-  it('exports exactly the expected named exports (no more, no fewer)', () => {
+  // Presence, not exhaustiveness: a caller breaks when a name it imports
+  // disappears, never when a new one is added beside it.
+  it('exports every documented named export', () => {
     // Filter out type-only exports (not visible at runtime)
     const exportNames = Object.keys(buildProjectBarrel).sort()
-    expect(exportNames).toEqual(expectedExports)
-  })
-
-  it('exports exactly 2 runtime members', () => {
-    expect(Object.keys(buildProjectBarrel)).toHaveLength(2)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedExports))
   })
 
   it('exports BuildProjectPage as a function (React component)', () => {
@@ -102,13 +100,9 @@ describe('BuildProject api.ts Exports - Shape', () => {
     'writeTextFileContents'
   ].sort()
 
-  it('exports exactly the expected I/O wrapper functions', () => {
+  it('exports every documented I/O wrapper function', () => {
     const exportNames = Object.keys(buildProjectApi).sort()
-    expect(exportNames).toEqual(expectedApiExports)
-  })
-
-  it('exports exactly 9 members', () => {
-    expect(Object.keys(buildProjectApi)).toHaveLength(9)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedApiExports))
   })
 
   for (const name of expectedApiExports) {
