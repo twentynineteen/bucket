@@ -11,7 +11,7 @@ import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
 import { SCENARIOS, generateMockFiles } from '../utils/large-file-simulator'
 import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 
-test.describe('Long Operation - Progress Visibility', () => {
+test.describe('Long Operation - Progress Visibility', { tag: '@slow' }, () => {
   test('progress bar remains visible throughout extended operation', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -124,7 +124,7 @@ test.describe('Long Operation - Progress Visibility', () => {
   })
 })
 
-test.describe('Long Operation - Button States', () => {
+test.describe('Long Operation - Button States', { tag: '@slow' }, () => {
   test('create project button shows appropriate state during operation', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -183,7 +183,7 @@ test.describe('Long Operation - Button States', () => {
   })
 })
 
-test.describe('Long Operation - UI Responsiveness', () => {
+test.describe('Long Operation - UI Responsiveness', { tag: '@slow' }, () => {
   test('page remains interactive during long operation', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -300,7 +300,7 @@ test.describe('Long Operation - UI Responsiveness', () => {
   })
 })
 
-test.describe('Long Operation - Extended Duration', () => {
+test.describe('Long Operation - Extended Duration', { tag: '@slow' }, () => {
   test('handles 30+ second simulated operation', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -375,7 +375,7 @@ test.describe('Long Operation - Extended Duration', () => {
   })
 })
 
-test.describe('Long Operation - Memory During Extended Operation', () => {
+test.describe('Long Operation - Memory During Extended Operation', { tag: '@slow' }, () => {
   test('no excessive memory growth during long operation', async ({ page }) => {
     const mock = createTauriMock(page)
     mock

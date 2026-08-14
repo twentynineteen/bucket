@@ -1,219 +1,146 @@
 /**
- * E2E Tests: Example Management Workflows
- * Feature: 007-frontend-script-example
+ * E2E: managing AI script examples, as a user drives it.
  *
- * Tests for upload, delete, and tab filtering workflows
- * for the AI Script Example Embedding Management feature.
+ * The previous version of this file was ten conditional tests ending in
+ * `expect(true).toBe(true)`, `expect(typeof dialogVisible).toBe('boolean')` or
+ * `expect(count).toBeGreaterThanOrEqual(0)` (issue #171 finding 5). They could
+ * not have asserted anything: `setupTauriMocks` answered `null` for
+ * `get_all_examples_with_metadata`, and the page filters that value directly,
+ * so every one of those runs was in fact looking at the "Example Embeddings
+ * Error" boundary rather than at the library. The fixture now serves the three
+ * examples it always declared - two bundled, one uploaded.
+ *
+ * IPC is mocked, and the Ollama embedding endpoints are routed, so the upload
+ * dialog's readiness does not depend on whether the machine running the test
+ * happens to have Ollama listening.
  */
+import { expect, test, type Page } from '@playwright/test'
 
-import { expect, test } from '../fixtures/app.fixture'
-import { setupTauriMocks } from '../fixtures/mocks.fixture'
-import { ExampleEmbeddingsPage } from '../pages/example.page'
+import { mockOllamaEmbedding, setupTauriMocks } from '../fixtures/mocks.fixture'
 
-test.describe('Example Management - Upload Workflow', () => {
-  let examplePage: ExampleEmbeddingsPage
+const BUNDLED_ONE = 'Educational Script Example'
+const BUNDLED_TWO = 'Business Script Example'
+const UPLOADED = 'User Custom Script'
 
-  test.beforeEach(async ({ page }) => {
-    await setupTauriMocks(page)
-    examplePage = new ExampleEmbeddingsPage(page)
-    await examplePage.navigate()
+/** Open the library and wait for the examples to land. */
+async function openLibrary(page: Page) {
+  await setupTauriMocks(page)
+  await mockOllamaEmbedding(page)
+  await page.goto('/ai-tools/example-embeddings')
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Example Embeddings' })
+  ).toBeVisible()
+  await expect(page.getByText('Example Library (3 total)')).toBeVisible()
+}
+
+test.describe('Example library', () => {
+  test('lists every example it loaded', async ({ page }) => {
+    await openLibrary(page)
+
+    await expect(page.getByText(BUNDLED_ONE)).toBeVisible()
+    await expect(page.getByText(BUNDLED_TWO)).toBeVisible()
+    await expect(page.getByText(UPLOADED)).toBeVisible()
+    await expect(page.getByText('No examples found')).toBeHidden()
   })
 
-  test('should display example list on page load', async ({ page }) => {
-    // Verify examples page loads with list
-    await expect(page.locator('body')).toBeVisible()
-    await examplePage.waitForLoadingComplete()
-  })
+  test('survives a reload with the library intact', async ({ page }) => {
+    await openLibrary(page)
 
-  test('should open upload dialog when upload button clicked', async ({ page }) => {
-    // Wait for page to fully load
-    await examplePage.waitForLoadingComplete()
-
-    // Find upload button
-    const uploadBtn = page
-      .locator('button:has-text("Upload"), button:has-text("Add")')
-      .first()
-
-    if (await uploadBtn.isVisible()) {
-      await uploadBtn.click()
-
-      // Try to verify dialog appears - may not work without Tauri backend
-      const dialogVisible = await examplePage.dialog
-        .first()
-        .isVisible({ timeout: 3000 })
-        .catch(() => false)
-
-      // Test passes whether dialog appears or not (depends on Tauri backend)
-      expect(typeof dialogVisible).toBe('boolean')
-    } else {
-      // Page may not have upload functionality visible without Tauri backend
-      expect(true).toBe(true)
-    }
-  })
-
-  test('should close dialog on cancel', async ({ page }) => {
-    await examplePage.waitForLoadingComplete()
-
-    const uploadBtn = page
-      .locator('button:has-text("Upload"), button:has-text("Add")')
-      .first()
-
-    if (await uploadBtn.isVisible()) {
-      await uploadBtn.click()
-
-      // Wait for dialog
-      const dialogVisible = await examplePage.dialog
-        .first()
-        .isVisible()
-        .catch(() => false)
-
-      if (dialogVisible) {
-        // Click cancel
-        await examplePage.cancelButton.first().click()
-        // Verify dialog closes
-        await expect(examplePage.dialog.first()).toBeHidden()
-      }
-    }
-
-    // Test passes if button not available (needs Tauri backend)
-    expect(true).toBe(true)
-  })
-
-  test('should show file input in upload dialog', async ({ page }) => {
-    await examplePage.waitForLoadingComplete()
-
-    const uploadBtn = page
-      .locator('button:has-text("Upload"), button:has-text("Add")')
-      .first()
-
-    if (await uploadBtn.isVisible()) {
-      await uploadBtn.click()
-
-      const dialogVisible = await examplePage.dialog
-        .first()
-        .isVisible()
-        .catch(() => false)
-
-      if (dialogVisible) {
-        // Verify file input exists
-        await expect(examplePage.fileInput).toBeAttached()
-        return
-      }
-    }
-
-    // Test passes if upload functionality not available
-    expect(true).toBe(true)
-  })
-})
-
-test.describe('Example Management - Delete Workflow', () => {
-  let examplePage: ExampleEmbeddingsPage
-
-  test.beforeEach(async ({ page }) => {
-    await setupTauriMocks(page)
-    examplePage = new ExampleEmbeddingsPage(page)
-    await examplePage.navigate()
-  })
-
-  test('should show delete button for user-uploaded examples', async ({ page }) => {
-    await examplePage.waitForLoadingComplete()
-
-    // Look for delete buttons in the UI
-    const deleteButtons = page.locator(
-      'button:has-text("Delete"), button[aria-label="Delete"], button:has(svg[class*="trash"])'
-    )
-
-    // There should be at least one delete button (for user-uploaded examples)
-    const count = await deleteButtons.count()
-    expect(count).toBeGreaterThanOrEqual(0) // May be 0 if mocks don't render user examples
-  })
-
-  test('should open confirmation dialog when delete clicked', async ({ page }) => {
-    await examplePage.waitForLoadingComplete()
-
-    // Find and click a delete button if available
-    const deleteButton = page
-      .locator('button:has-text("Delete"), button[aria-label="Delete"]')
-      .first()
-
-    if (await deleteButton.isVisible()) {
-      await deleteButton.click()
-
-      // Check for confirmation dialog
-      const confirmDialog = page.locator('[role="alertdialog"], [role="dialog"]')
-      await expect(confirmDialog).toBeVisible()
-    }
-  })
-})
-
-test.describe('Example Management - Tab Filtering', () => {
-  let examplePage: ExampleEmbeddingsPage
-
-  test.beforeEach(async ({ page }) => {
-    await setupTauriMocks(page)
-    examplePage = new ExampleEmbeddingsPage(page)
-    await examplePage.navigate()
-  })
-
-  test('should have filter options available', async ({ page }) => {
-    await examplePage.waitForLoadingComplete()
-
-    // Look for tab/filter controls
-    const tabs = page.locator(
-      '[role="tablist"], [data-testid="filter-tabs"], button:has-text("All"), button:has-text("Bundled")'
-    )
-
-    const count = await tabs.count()
-    expect(count).toBeGreaterThanOrEqual(0) // Tabs may not be visible depending on UI
-  })
-
-  test('should filter examples when tab clicked', async ({ page }) => {
-    await examplePage.waitForLoadingComplete()
-
-    // Try clicking filter options if available
-    const bundledTab = page
-      .locator('button:has-text("Bundled"), [role="tab"]:has-text("Bundled")')
-      .first()
-
-    // Check if the tab exists and is visible
-    const isVisible = await bundledTab.isVisible().catch(() => false)
-
-    if (isVisible) {
-      // Wait for the element to be clickable (not covered by other elements)
-      await bundledTab.click({ timeout: 5000 }).catch(() => {
-        // If click fails, the tab might not be clickable - that's okay for this test
-      })
-      // After filtering, list should update
-      await page.waitForTimeout(500) // Wait for filter to apply
-    }
-
-    // Test passes whether the tab was clickable or not
-    expect(true).toBe(true)
-  })
-})
-
-test.describe('Example Management - Page Navigation', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupTauriMocks(page)
-  })
-
-  test('should navigate to example embeddings page', async ({ page }) => {
-    await page.goto('/ai-tools/example-embeddings')
-    await page.waitForLoadState('networkidle')
-
-    // Verify we're on the right page
-    await expect(page).toHaveURL(/example-embeddings/)
-  })
-
-  test('should maintain state on page refresh', async ({ page }) => {
-    await page.goto('/ai-tools/example-embeddings')
-    await page.waitForLoadState('networkidle')
-
-    // Refresh the page
     await page.reload()
-    await page.waitForLoadState('networkidle')
 
-    // Page should still be accessible
-    await expect(page.locator('body')).toBeVisible()
+    await expect(page.getByText('Example Library (3 total)')).toBeVisible()
+    await expect(page.getByText(UPLOADED)).toBeVisible()
+  })
+
+  test('counts bundled and uploaded examples separately', async ({ page }) => {
+    await openLibrary(page)
+
+    await expect(page.getByRole('tab', { name: 'All (3)' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Bundled (2)' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Uploaded (1)' })).toBeVisible()
+  })
+
+  test('shows only the uploaded example on the Uploaded tab', async ({ page }) => {
+    await openLibrary(page)
+
+    await page.getByRole('tab', { name: 'Uploaded (1)' }).click()
+
+    await expect(page.getByText(UPLOADED)).toBeVisible()
+    await expect(page.getByText(BUNDLED_ONE)).toBeHidden()
+    await expect(page.getByText(BUNDLED_TWO)).toBeHidden()
+  })
+
+  test('shows only bundled examples on the Bundled tab', async ({ page }) => {
+    await openLibrary(page)
+
+    await page.getByRole('tab', { name: 'Bundled (2)' }).click()
+
+    await expect(page.getByText(BUNDLED_ONE)).toBeVisible()
+    await expect(page.getByText(BUNDLED_TWO)).toBeVisible()
+    await expect(page.getByText(UPLOADED)).toBeHidden()
+  })
+})
+
+test.describe('Example deletion', () => {
+  test('offers delete on the uploaded example only, never on a bundled one', async ({
+    page
+  }) => {
+    await openLibrary(page)
+
+    // Bundled examples ship with the app, so only the uploaded one is deletable.
+    await expect(page.getByRole('button', { name: 'Delete' })).toHaveCount(1)
+
+    await page.getByRole('tab', { name: 'Bundled (2)' }).click()
+
+    await expect(page.getByRole('button', { name: 'Delete' })).toHaveCount(0)
+  })
+
+  test('confirms which example it is about to delete', async ({ page }) => {
+    await openLibrary(page)
+
+    await page.getByRole('button', { name: 'Delete' }).click()
+
+    const dialog = page.getByRole('alertdialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByText('Delete Example?')).toBeVisible()
+    await expect(dialog.getByText(UPLOADED)).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible()
+  })
+
+  test('deletes nothing when the confirmation is cancelled', async ({ page }) => {
+    await openLibrary(page)
+
+    await page.getByRole('button', { name: 'Delete' }).click()
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel' }).click()
+
+    await expect(page.getByRole('alertdialog')).toBeHidden()
+    await expect(page.getByText(UPLOADED)).toBeVisible()
+  })
+})
+
+test.describe('Example upload', () => {
+  test('asks for both halves of the example when the dialog opens', async ({ page }) => {
+    await openLibrary(page)
+
+    await page.getByRole('button', { name: 'Upload Example' }).click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByText('Upload Script Example')).toBeVisible()
+    await expect(dialog.getByLabel('Original Script (.txt or .docx)')).toBeVisible()
+    await expect(dialog.getByLabel('Formatted Script (.txt or .docx)')).toBeVisible()
+    await expect(dialog.getByLabel('Title')).toBeVisible()
+  })
+
+  test('closes the upload dialog on cancel', async ({ page }) => {
+    await openLibrary(page)
+
+    await page.getByRole('button', { name: 'Upload Example' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click()
+
+    await expect(page.getByRole('dialog')).toBeHidden()
+    await expect(page.getByText('Example Library (3 total)')).toBeVisible()
   })
 })

@@ -16,7 +16,15 @@ import {
 } from '../utils/large-file-simulator'
 import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 
-test.describe('External Drive - Basic Workflow', () => {
+/**
+ * Large-drive ingest simulations need longer than the config's 5 minute
+ * default. This was the removed `large-files` project's timeout; it belongs
+ * beside the specs that need it, so the config keeps no per-file rules
+ * (issue #171).
+ */
+test.describe.configure({ timeout: 600000 })
+
+test.describe('External Drive - Basic Workflow', { tag: '@slow' }, () => {
   test('handles files from /Volumes/Production path', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -117,7 +125,7 @@ test.describe('External Drive - Basic Workflow', () => {
   })
 })
 
-test.describe('External Drive - Multiple Volumes', () => {
+test.describe('External Drive - Multiple Volumes', { tag: '@slow' }, () => {
   test('handles files from multiple external drives', async ({ page }) => {
     const multiVolumeFiles = generateMultiVolumeFiles(15, 3, SCENARIOS.SMOKE_TEST, [
       '/Volumes/Camera_A',
@@ -195,7 +203,7 @@ test.describe('External Drive - Multiple Volumes', () => {
   })
 })
 
-test.describe('External Drive - Latency Simulation', () => {
+test.describe('External Drive - Latency Simulation', { tag: '@slow' }, () => {
   test('UI remains responsive with external drive latency', async ({ page }) => {
     // External drives typically have higher latency than internal storage
     const mock = createTauriMock(page)
@@ -270,7 +278,7 @@ test.describe('External Drive - Latency Simulation', () => {
   })
 })
 
-test.describe('External Drive - Error Handling', () => {
+test.describe('External Drive - Error Handling', { tag: '@slow' }, () => {
   test('handles external drive disconnection simulation', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -341,7 +349,7 @@ test.describe('External Drive - Error Handling', () => {
   })
 })
 
-test.describe('External Drive - Network Drive Simulation', () => {
+test.describe('External Drive - Network Drive Simulation', { tag: '@slow' }, () => {
   test('handles network drive paths (SMB/NFS)', async ({ page }) => {
     // Network drives on macOS appear under /Volumes with mount names
     const networkScenario = {
