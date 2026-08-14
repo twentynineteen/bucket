@@ -5,6 +5,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { logger } from '@shared/utils'
+
 import {
   bakerAssociateVideoLink,
   bakerGetVideoLinks,
@@ -29,11 +31,20 @@ export function useBreadcrumbsVideoLinks({
   const {
     data: videoLinks = [],
     isLoading,
-    error
+    error,
+    refetch
   } = useQuery({
     queryKey: ['breadcrumbs', 'videoLinks', projectPath],
     queryFn: async () => {
-      return await bakerGetVideoLinks(projectPath)
+      try {
+        return await bakerGetVideoLinks(projectPath)
+      } catch (err) {
+        // What the user is shown is deliberately no longer the raw message
+        // (issue #226), so log the backend's own words once, here, where they
+        // are still exact.
+        logger.error('Failed to read video links from breadcrumbs:', projectPath, err)
+        throw err
+      }
     },
     enabled: enabled && !!projectPath
   })
@@ -112,6 +123,8 @@ export function useBreadcrumbsVideoLinks({
     videoLinks,
     isLoading,
     error,
+    /** Re-runs the breadcrumbs read, so a failure can offer the user a retry. */
+    refetch,
     addVideoLink: addVideoLink.mutate,
     addVideoLinkAsync: addVideoLink.mutateAsync,
     removeVideoLink: removeVideoLink.mutate,

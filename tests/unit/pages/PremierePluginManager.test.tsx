@@ -15,7 +15,7 @@
 
 import { PremierePluginManager } from '@features/Premiere'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -172,16 +172,24 @@ describe('PremierePluginManager', () => {
       expect(screen.getByText(/loading/i)).toBeInTheDocument()
     })
 
-    it('should display error message if plugin fetch fails', async () => {
+    // Issue #226. This asserted `getByText(/error/i)`, a substring match that
+    // passed on the word "Error" inside the raw backend string it should never
+    // have been showing. Name the headline the user actually reads instead.
+    it('should headline a plugin fetch failure without echoing the raw error', async () => {
       const { invoke } = await import('@tauri-apps/api/core')
 
       vi.mocked(invoke).mockRejectedValue(new Error('Failed to fetch plugins'))
 
       renderWithProviders(<PremierePluginManager />)
 
-      await waitFor(() => {
-        expect(screen.getByText(/error/i)).toBeInTheDocument()
-      })
+      const alert = await screen.findByRole('alert')
+
+      expect(within(alert).getByRole('heading')).toHaveTextContent(
+        'The bundled plugin list could not be loaded'
+      )
+      expect(within(alert).getByRole('heading')).not.toHaveTextContent(
+        'Failed to fetch plugins'
+      )
     })
   })
 

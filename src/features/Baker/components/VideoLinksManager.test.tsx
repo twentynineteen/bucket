@@ -178,6 +178,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       videoLinks: [],
       isLoading: false,
       error: null,
+      refetch: vi.fn(),
       addVideoLink: mockAddVideoLink,
       addVideoLinkAsync: vi.fn(),
       removeVideoLink: mockRemoveVideoLink,
@@ -1683,6 +1684,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         videoLinks: links,
         isLoading: false,
         error: null,
+        refetch: vi.fn(),
         addVideoLink: mockAddVideoLink,
         addVideoLinkAsync: vi.fn(),
         removeVideoLink: mockRemoveVideoLink,
@@ -1960,6 +1962,126 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
           .mocked(usePosterFrameForUploadModule.usePosterFrameForUpload)
           .mock.calls.some(([options]) => options?.videoTitle === linkWithoutId.title)
       ).toBe(true)
+    })
+  })
+
+  // ==========================================
+  // Issue #226: a failure to read this project's video links must not put a raw
+  // backend string in front of the user.
+  //
+  // `baker_get_video_links` reads the project's local breadcrumbs.json and
+  // never contacts Sprout Video, so every failure it can produce is a problem
+  // reaching a file on this machine, and the three it can produce want three
+  // different things from the user. Errors cross the Tauri IPC boundary as
+  // plain strings rather than Error instances, which is why the cases below
+  // set a string.
+  // ==========================================
+  describe('#226: failure presentation', () => {
+    /** Puts the video links query into a failed state with the given error. */
+    const failWith = (error: unknown, refetch = vi.fn()) => {
+      vi.mocked(useBreadcrumbsVideoLinksModule.useBreadcrumbsVideoLinks).mockReturnValue({
+        videoLinks: [],
+        isLoading: false,
+        error,
+        refetch,
+        addVideoLink: mockAddVideoLink,
+        addVideoLinkAsync: vi.fn(),
+        removeVideoLink: mockRemoveVideoLink,
+        removeVideoLinkAsync: vi.fn(),
+        updateVideoLink: vi.fn(),
+        updateVideoLinkAsync: mockUpdateVideoLinkAsync,
+        reorderVideoLinks: mockReorderVideoLinks,
+        reorderVideoLinksAsync: vi.fn(),
+        isUpdating: false,
+        addError: null,
+        removeError: null,
+        updateError: null,
+        reorderError: null
+      } as unknown as ReturnType<
+        typeof useBreadcrumbsVideoLinksModule.useBreadcrumbsVideoLinks
+      >)
+      return refetch
+    }
+
+    /** The alert's headline - the one line a user is certain to read. */
+    const alertHeadline = async () => {
+      const alert = await screen.findByRole('alert')
+      return within(alert).getByRole('heading').textContent ?? ''
+    }
+
+    it('shows the empty state and no alert when the project has no video links', async () => {
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      expect(screen.getByText('No video links added yet')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('leads with the missing project folder, not the backend string', async () => {
+      failWith('Project path does not exist')
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      expect(await alertHeadline()).toBe('Project folder not found on this machine')
+
+      const alert = screen.getByRole('alert')
+      expect(alert).toHaveTextContent(/reconnect it/i)
+      expect(alert).not.toHaveTextContent('Failed to load video links')
+    })
+
+    it('names the breadcrumbs file when the file will not parse', async () => {
+      failWith('Failed to parse breadcrumbs file: expected value at line 1 column 1')
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      expect(await alertHeadline()).toBe(
+        "This project's breadcrumbs file could not be read"
+      )
+
+      const alert = screen.getByRole('alert')
+      expect(alert).toHaveTextContent(/not valid JSON/i)
+      expect(alert).toHaveTextContent(/Baker/)
+    })
+
+    it('tells the user to check the file when it cannot be opened', async () => {
+      failWith('Failed to read breadcrumbs file: permission denied')
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      expect(await alertHeadline()).toBe(
+        "This project's breadcrumbs file could not be read"
+      )
+      expect(screen.getByRole('alert')).toHaveTextContent(/open in another application/i)
+    })
+
+    it('gives an unrecognised failure an actionable headline rather than echoing it', async () => {
+      // The shape TanStack Query itself produces when a queryFn resolves
+      // undefined, which is what an unimplemented Tauri command looks like.
+      failWith(new Error('["breadcrumbs","videoLinks","/p"] data is undefined'))
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      const headline = await alertHeadline()
+      expect(headline).toBe('Linked videos could not be loaded')
+      expect(headline).not.toContain('data is undefined')
+
+      expect(screen.getByRole('alert')).toHaveTextContent(/unaffected on Sprout Video/i)
+    })
+
+    it('keeps the raw error reachable for diagnostics', async () => {
+      failWith('Failed to read breadcrumbs file: permission denied')
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      const alert = await screen.findByRole('alert')
+      expect(within(alert).getByText('Technical Details')).toBeInTheDocument()
+      expect(alert).toHaveTextContent(
+        'Failed to read breadcrumbs file: permission denied'
+      )
+    })
+
+    it('re-reads the video links when the user retries', async () => {
+      const refetch = failWith('Project path does not exist')
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      await screen.findByRole('alert')
+      await userEvent.click(screen.getByRole('button', { name: /retry/i }))
+
+      expect(refetch).toHaveBeenCalledTimes(1)
     })
   })
 })

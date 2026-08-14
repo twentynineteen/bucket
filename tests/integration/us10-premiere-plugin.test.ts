@@ -14,7 +14,7 @@
  */
 
 import React from 'react'
-import { render, screen, waitFor, act } from '@testing-library/react'
+import { render, screen, waitFor, within, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -203,20 +203,82 @@ describe('US-10 — Premiere Pro: Plugin Management', () => {
     expect(screen.getByText('Loading plugins...')).toBeDefined()
   })
 
-  it('US-10g — should show error message when getAvailablePlugins rejects', async () => {
+  // Issue #226. `get_available_plugins` builds a hardcoded list and swallows its
+  // only fallible call with `unwrap_or(false)`, so neither a missing plugin nor
+  // an absent Premiere install reaches this branch - only a failure of the IPC
+  // call itself does. That makes it rare, and all the more reason for it to say
+  // something a user can act on rather than echoing an internal string.
+  it('US-10g — should lead a plugin list failure with an actionable headline, not the raw error', async () => {
     const api = await import('../../src/features/Premiere/api')
 
     vi.mocked(api.getAvailablePlugins).mockRejectedValue(
-      new Error('CEP directory not accessible')
+      new Error('Command get_available_plugins not found')
     )
 
     await act(async () => {
       renderWithProvider(React.createElement(PremierePluginManager))
     })
 
-    await waitFor(() => {
-      expect(screen.getByText(/Error loading plugins/)).toBeDefined()
+    const alert = await screen.findByRole('alert')
+    const headline = within(alert).getByRole('heading').textContent ?? ''
+
+    expect(headline).toBe('The bundled plugin list could not be loaded')
+    expect(headline).not.toContain('get_available_plugins')
+    expect(alert).not.toHaveTextContent('Error loading plugins')
+  })
+
+  it('US-10m — should reassure the user about installed plugins and keep the raw error in a disclosure', async () => {
+    const api = await import('../../src/features/Premiere/api')
+
+    vi.mocked(api.getAvailablePlugins).mockRejectedValue(
+      new Error('Command get_available_plugins not found')
+    )
+
+    await act(async () => {
+      renderWithProvider(React.createElement(PremierePluginManager))
     })
+
+    const alert = await screen.findByRole('alert')
+
+    expect(alert).toHaveTextContent(/already installed in Premiere Pro are unaffected/i)
+    expect(alert).toHaveTextContent(/restart Bucket/i)
+    expect(within(alert).getByText('Technical Details')).toBeDefined()
+    expect(alert).toHaveTextContent('Command get_available_plugins not found')
+  })
+
+  it('US-10n — should reload the plugin list when the user retries after a failure', async () => {
+    const api = await import('../../src/features/Premiere/api')
+    const user = userEvent.setup()
+
+    vi.mocked(api.getAvailablePlugins)
+      .mockRejectedValueOnce(new Error('Command get_available_plugins not found'))
+      .mockResolvedValue(MOCK_PLUGINS as any)
+
+    await act(async () => {
+      renderWithProvider(React.createElement(PremierePluginManager))
+    })
+
+    const alert = await screen.findByRole('alert')
+
+    await act(async () => {
+      await user.click(within(alert).getByRole('button', { name: /retry/i }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('AutoCue Panel')).toBeDefined()
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('US-10o — should show no alert at all when the plugin list loads', async () => {
+    await act(async () => {
+      renderWithProvider(React.createElement(PremierePluginManager))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('AutoCue Panel')).toBeDefined()
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('US-10h — should call installPlugin with correct filename and name when Install is clicked', async () => {
