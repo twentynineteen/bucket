@@ -106,8 +106,10 @@ jobs:
       - name: Install Playwright Browsers
         run: bunx playwright install --with-deps chromium
 
+      # The whole E2E suite bar the @slow specs, matching ci.yml. One config, no
+      # per-spec project list (issue #171).
       - name: Run E2E Tests
-        run: bunx playwright test --config tests/e2e/playwright.config.ts --project=chromium
+        run: bunx playwright test --project=e2e
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v5
