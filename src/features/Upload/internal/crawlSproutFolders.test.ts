@@ -261,7 +261,7 @@ describe('adaptive pacing', () => {
   it('accepts a function so the caller can react to remaining budget', async () => {
     const paces = [1000, 250, 250, 250, 250, 250, 250]
     let call = 0
-    const sleep = vi.fn(async () => undefined)
+    const sleep = vi.fn<(ms: number) => Promise<void>>(async () => undefined)
 
     await crawlSproutFolders({
       fetchLevel: fetcherFor(TREE),

@@ -5,6 +5,8 @@
  * testable without rendering anything.
  */
 
+import type { KavanaghPhase } from '../types'
+
 /** `m:ss.s`, because a QC report is read against a timeline. */
 export function formatTime(seconds: number): string {
   const safe = Number.isFinite(seconds) && seconds > 0 ? seconds : 0
@@ -27,11 +29,19 @@ export function evidencePrefix(videoPath: string | null): string {
   return stem === '' ? 'kavanagh' : `kavanagh-${stem}`
 }
 
-/** Wording for a progress phase. */
-export function phaseLabel(phase: 'probe' | 'watermark' | 'refine'): string {
+/**
+ * Wording for a progress phase.
+ *
+ * Typed as KavanaghPhase rather than a hand-listed union. The hand-listed one
+ * missed 'tail' when stage 3 added it, so a tail progress event rendered
+ * "undefined: <detail>" in the page (#178).
+ */
+export function phaseLabel(phase: KavanaghPhase): string {
   switch (phase) {
     case 'probe':
       return 'Reading the video'
+    case 'tail':
+      return 'Checking the closing sting'
     case 'watermark':
       return 'Checking the watermark'
     case 'refine':

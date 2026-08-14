@@ -75,7 +75,9 @@ export const SidebarProvider = React.forwardRef<
 
     // We add a state so that we can do data-state="expanded" or "collapsed".
     // This makes it easier to style the sidebar with Tailwind classes.
-    const state = open ? 'expanded' : 'collapsed'
+    // Annotated so the literals survive: without it the property widens to
+    // `string` inside the useMemo object and no longer matches SidebarContext.
+    const state: 'expanded' | 'collapsed' = open ? 'expanded' : 'collapsed'
 
     const contextValue = React.useMemo(
       () => ({

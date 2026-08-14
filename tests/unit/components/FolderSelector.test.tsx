@@ -19,6 +19,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock Tauri dialog
@@ -62,10 +63,10 @@ vi.mock('@shared/utils/logger', () => ({
 
 describe('FolderSelector Component', () => {
   // Mock functions for callbacks
-  let mockOnFolderChange: ReturnType<typeof vi.fn>
-  let mockOnStartScan: ReturnType<typeof vi.fn>
-  let mockOnCancelScan: ReturnType<typeof vi.fn>
-  let mockOnClearResults: ReturnType<typeof vi.fn>
+  let mockOnFolderChange: Mock
+  let mockOnStartScan: Mock
+  let mockOnCancelScan: Mock
+  let mockOnClearResults: Mock
 
   beforeEach(() => {
     vi.clearAllMocks()

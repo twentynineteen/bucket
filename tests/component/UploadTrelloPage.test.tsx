@@ -210,12 +210,7 @@ describe('UploadTrelloPage Component', () => {
               id: 'card-1',
               name: 'Test Card 1',
               desc: 'Description 1',
-              idList: 'list-1',
-              idBoard: 'board-1',
-              idMembers: [],
-              labels: [],
-              due: null,
-              shortUrl: 'https://trello.com/c/card-1'
+              idList: 'list-1'
             }
           ]
         },

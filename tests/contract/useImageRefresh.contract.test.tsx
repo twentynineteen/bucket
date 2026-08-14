@@ -135,7 +135,7 @@ describe('useImageRefresh Contract Tests', () => {
       })
 
       // The query should be configured with 30-second refetch interval
-      const foundQuery = queryClient.getQueryCache().find(queryKey)
+      const foundQuery = queryClient.getQueryCache().find({ queryKey })
 
       // For this test, we just verify the query exists and has data
       expect(foundQuery?.state.data).toBeDefined()
@@ -179,9 +179,9 @@ describe('useImageRefresh Contract Tests', () => {
 
       // Simulate error using the working pattern
       const queryCache = queryClient.getQueryCache()
-      const query = queryCache.build(queryClient, {
+      const query = queryCache.build<unknown, Error>(queryClient, {
         queryKey,
-        queryFn: () => Promise.reject(error)
+        queryFn: (): Promise<unknown> => Promise.reject(error)
       })
 
       query.setData(undefined)
@@ -197,11 +197,10 @@ describe('useImageRefresh Contract Tests', () => {
         fetchFailureReason: error,
         fetchMeta: null,
         isInvalidated: false,
-        isPaused: false,
         fetchStatus: 'idle'
       })
 
-      const foundQuery = queryClient.getQueryCache().find(queryKey)
+      const foundQuery = queryClient.getQueryCache().find({ queryKey })
       expect(foundQuery?.state.status).toBe('error')
       expect(foundQuery?.state.error).toBe(error)
     })
@@ -218,9 +217,9 @@ describe('useImageRefresh Contract Tests', () => {
 
       // Simulate network error using the working pattern
       const queryCache = queryClient.getQueryCache()
-      const query = queryCache.build(queryClient, {
+      const query = queryCache.build<unknown, Error>(queryClient, {
         queryKey,
-        queryFn: () => Promise.reject(networkError)
+        queryFn: (): Promise<unknown> => Promise.reject(networkError)
       })
 
       query.setData(undefined)
@@ -236,11 +235,10 @@ describe('useImageRefresh Contract Tests', () => {
         fetchFailureReason: networkError,
         fetchMeta: null,
         isInvalidated: false,
-        isPaused: false,
         fetchStatus: 'idle'
       })
 
-      const foundQuery = queryClient.getQueryCache().find(queryKey)
+      const foundQuery = queryClient.getQueryCache().find({ queryKey })
       expect(foundQuery?.state.error?.name).toBe('NetworkError')
     })
   })
@@ -259,7 +257,7 @@ describe('useImageRefresh Contract Tests', () => {
         lastModified: new Date().toISOString()
       })
 
-      const foundQuery = queryClient.getQueryCache().find(queryKey)
+      const foundQuery = queryClient.getQueryCache().find({ queryKey })
       expect(foundQuery?.state.data).toBeDefined()
     })
 

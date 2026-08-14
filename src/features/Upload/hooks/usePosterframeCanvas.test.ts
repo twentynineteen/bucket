@@ -18,6 +18,7 @@
  * updated for the template parameter (issue #189).
  */
 import { act, renderHook } from '@testing-library/react'
+import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { usePosterframeCanvas } from './usePosterframeCanvas'
@@ -109,8 +110,7 @@ describe('usePosterframeCanvas', () => {
     const { result } = renderHook(() => usePosterframeCanvas())
     const canvas = document.createElement('canvas')
     installCanvas2dStub(canvas)
-    // @ts-expect-error - assigning to RefObject.current in a test
-    result.current.canvasRef.current = canvas
+    ;(result.current.canvasRef as { current: HTMLCanvasElement }).current = canvas
 
     let resolved = false
     const drawPromise = result.current.draw('/some-image.jpg', 'Title', 'classic')
@@ -141,8 +141,7 @@ describe('usePosterframeCanvas', () => {
     const { result } = renderHook(() => usePosterframeCanvas())
     const canvas = document.createElement('canvas')
     installCanvas2dStub(canvas)
-    // @ts-expect-error - assigning to RefObject.current in a test
-    result.current.canvasRef.current = canvas
+    ;(result.current.canvasRef as { current: HTMLCanvasElement }).current = canvas
 
     const drawPromise = result.current.draw('/bad-image.jpg', 'Title', 'classic')
     // Catch upfront so an unhandled rejection doesn't bubble in the test.
@@ -162,8 +161,7 @@ describe('usePosterframeCanvas', () => {
 
     const canvas = document.createElement('canvas')
     installCanvas2dStub(canvas)
-    // @ts-expect-error - assigning to RefObject.current in a test
-    result.current.canvasRef.current = canvas
+    ;(result.current.canvasRef as { current: HTMLCanvasElement }).current = canvas
 
     await act(async () => {
       const p = result.current.draw('/image.jpg', 'Title', 'classic')
@@ -175,14 +173,13 @@ describe('usePosterframeCanvas', () => {
   })
 
   test("fontStatus transitions to 'loaded' when loadFont returns a font", async () => {
-    // Minimal opentype.Font stub — stringToGlyphs, unitsPerEm and ascender
+    // Minimal opentype.Font stub - stringToGlyphs, unitsPerEm and ascender
     // are all the layout pass touches.
     const fakeFont = {
       unitsPerEm: 1000,
       ascender: 800,
       stringToGlyphs: vi.fn(() => [])
     }
-    // @ts-expect-error - partial Font stub is enough for the loaded branch
     vi.mocked(loadFont).mockResolvedValue(fakeFont)
 
     const { result } = renderHook(() => usePosterframeCanvas())
@@ -190,8 +187,7 @@ describe('usePosterframeCanvas', () => {
 
     const canvas = document.createElement('canvas')
     installCanvas2dStub(canvas)
-    // @ts-expect-error - assigning to RefObject.current in a test
-    result.current.canvasRef.current = canvas
+    ;(result.current.canvasRef as { current: HTMLCanvasElement }).current = canvas
 
     await act(async () => {
       const p = result.current.draw('/image.jpg', 'Title', 'classic')
@@ -209,8 +205,7 @@ describe('usePosterframeCanvas', () => {
     const { result } = renderHook(() => usePosterframeCanvas())
     const canvas = document.createElement('canvas')
     installCanvas2dStub(canvas)
-    // @ts-expect-error - assigning to RefObject.current in a test
-    result.current.canvasRef.current = canvas
+    ;(result.current.canvasRef as { current: HTMLCanvasElement }).current = canvas
 
     expect(result.current.offAspect).toBe(false)
 
@@ -255,7 +250,6 @@ describe('usePosterframeCanvas - classic paint geometry (#189 B4.1, B1.5)', () =
 
   async function drawClassic(title: string) {
     const { font, getPathCalls } = paintRecordingFont()
-    // @ts-expect-error - partial Font stub is enough for the paint pass
     vi.mocked(loadFont).mockResolvedValue(font)
     // Classic's reference resolution: the size the production backgrounds
     // actually are, where output must be pixel-identical to the old code.
@@ -264,9 +258,8 @@ describe('usePosterframeCanvas - classic paint geometry (#189 B4.1, B1.5)', () =
     const { result } = renderHook(() => usePosterframeCanvas())
     const canvas = document.createElement('canvas')
     installCanvas2dStub(canvas)
-    // @ts-expect-error - assigning to RefObject.current in a test
-    result.current.canvasRef.current = canvas
-    const ctx = canvas.getContext('2d') as unknown as { rect: ReturnType<typeof vi.fn> }
+    ;(result.current.canvasRef as { current: HTMLCanvasElement }).current = canvas
+    const ctx = canvas.getContext('2d') as unknown as { rect: Mock }
 
     await act(async () => {
       const p = result.current.draw('/image.jpg', title, 'classic')

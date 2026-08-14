@@ -24,16 +24,26 @@ const mockExamples: ExampleWithMetadata[] = [
   {
     id: '1',
     title: 'Example 1',
+    category: 'educational',
+    beforeText: 'Original text 1',
+    afterText: 'Formatted text 1',
+    tags: [],
+    wordCount: 100,
+    qualityScore: 4,
     source: 'bundled',
-    filepath: 'example1.txt',
-    uploadedAt: '2024-01-01T00:00:00Z'
+    createdAt: '2024-01-01T00:00:00Z'
   },
   {
     id: '2',
     title: 'Example 2',
-    source: 'uploaded',
-    filepath: 'example2.txt',
-    uploadedAt: '2024-01-02T00:00:00Z'
+    category: 'business',
+    beforeText: 'Original text 2',
+    afterText: 'Formatted text 2',
+    tags: [],
+    wordCount: 150,
+    qualityScore: 3,
+    source: 'user-uploaded',
+    createdAt: '2024-01-02T00:00:00Z'
   }
 ]
 

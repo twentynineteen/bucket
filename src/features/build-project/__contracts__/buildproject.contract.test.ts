@@ -53,7 +53,7 @@ describe('build-project barrel — runtime exports', () => {
     // Constructable check
     const err = new buildProjectBarrel.BuildProjectError(
       buildProjectBarrel.ErrorKind.IO,
-      'test',
+      'validation',
       'msg',
       true
     )

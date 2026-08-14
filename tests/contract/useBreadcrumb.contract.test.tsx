@@ -119,7 +119,7 @@ describe('useBreadcrumb Contract Tests', () => {
 
       // Simulate error by setting error state directly on cache
       const queryCache = queryClient.getQueryCache()
-      const query = queryCache.build(queryClient, {
+      const query = queryCache.build<unknown>(queryClient, {
         queryKey,
         queryFn: () => Promise.reject(errorState)
       })
@@ -137,11 +137,10 @@ describe('useBreadcrumb Contract Tests', () => {
         fetchFailureReason: errorState,
         fetchMeta: null,
         isInvalidated: false,
-        isPaused: false,
         fetchStatus: 'idle'
       })
 
-      const foundQuery = queryClient.getQueryCache().find(queryKey)
+      const foundQuery = queryClient.getQueryCache().find({ queryKey })
       expect(foundQuery?.state.status).toBe('error')
       expect(foundQuery?.state.error).toBe(errorState)
     })
@@ -158,7 +157,7 @@ describe('useBreadcrumb Contract Tests', () => {
       queryClient.setQueryData(queryKey, initialData)
 
       // Verify data is cached and won't refetch immediately
-      const query = queryClient.getQueryCache().find(queryKey)
+      const query = queryClient.getQueryCache().find({ queryKey })
       expect(query?.state.data).toEqual(initialData)
     })
   })

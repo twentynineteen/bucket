@@ -19,6 +19,7 @@ import { TrelloCardUpdateDialog } from '@features/Trello'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock framer-motion to avoid animation issues in tests
@@ -41,31 +42,30 @@ vi.mock('framer-motion', () => ({
 
 describe('TrelloCardUpdateDialog Component', () => {
   // Mock functions for callbacks
-  let mockOnOpenChange: ReturnType<typeof vi.fn>
-  let mockOnUpdate: ReturnType<typeof vi.fn>
-  let mockOnAddTrelloCard: ReturnType<typeof vi.fn>
+  let mockOnOpenChange: Mock
+  let mockOnUpdate: Mock
+  let mockOnAddTrelloCard: Mock
 
   // Mock data
   const mockTrelloCards: TrelloCard[] = [
     {
       url: 'https://trello.com/c/card1',
+      cardId: 'card1',
       title: 'Project Alpha - Video Edit',
       boardName: 'Production Board',
-      cachedTitle: 'Project Alpha - Video Edit',
       lastFetched: '2024-01-01T00:00:00Z'
     },
     {
       url: 'https://trello.com/c/card2',
+      cardId: 'card2',
       title: 'Project Beta - Final Cut',
       boardName: 'Post-Production',
-      cachedTitle: 'Project Beta - Final Cut',
       lastFetched: '2024-01-02T00:00:00Z'
     },
     {
       url: 'https://trello.com/c/card3',
+      cardId: 'card3',
       title: 'Project Gamma - Review',
-      boardName: null,
-      cachedTitle: 'Project Gamma - Review',
       lastFetched: '2024-01-03T00:00:00Z'
     }
   ]
@@ -290,7 +290,7 @@ describe('TrelloCardUpdateDialog Component', () => {
     test('shows loading state during update', async () => {
       // Arrange
       const user = userEvent.setup()
-      let resolveUpdate: () => void
+      let resolveUpdate: (value?: unknown) => void
       mockOnUpdate.mockReturnValue(
         new Promise(resolve => {
           resolveUpdate = resolve

@@ -3,6 +3,7 @@
  * Purpose: Provide reusable mock factories for Tauri APIs
  */
 
+import type { Mock } from 'vitest'
 import { vi } from 'vitest'
 
 /**
@@ -28,7 +29,7 @@ export const createTauriMocks = () => {
  * await invoke('get_folder_size', { path: '/test' }) // Returns { size: 1024000 }
  */
 export const mockTauriCommand = (
-  invokeMock: ReturnType<typeof vi.fn>,
+  invokeMock: Mock,
   command: string,
   response: any
 ) => {
@@ -47,7 +48,7 @@ export const mockTauriCommand = (
  * mockTauriCommandError('invalid_command', new Error('Not found'))
  */
 export const mockTauriCommandError = (
-  invokeMock: ReturnType<typeof vi.fn>,
+  invokeMock: Mock,
   command: string,
   error: Error
 ) => {

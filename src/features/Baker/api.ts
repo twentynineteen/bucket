@@ -23,6 +23,7 @@ import type {
   ScanErrorEvent,
   ScanOptions,
   ScanProgressEvent,
+  ScanResult,
   VideoLink
 } from './types'
 

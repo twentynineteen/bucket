@@ -3,7 +3,12 @@
  * Issue #140 (B1.1, B1.3-B1.5, B2.2, B4.1-B4.3, B5.2, B5.3, B5.6, B7.1)
  */
 
-import { fireEvent, render as baseRender, screen } from '@testing-library/react'
+import {
+  fireEvent,
+  render as baseRender,
+  type RenderOptions,
+  screen
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -18,7 +23,7 @@ import { createTestQueryClient } from '@tests/utils/queryClientWrapper'
  * AddVideoDialog now renders SproutFolderPicker, which reads folder levels
  * through React Query (issue #155). Every render needs a client in scope.
  */
-const render: typeof baseRender = (ui, options) =>
+const render = (ui: React.ReactElement, options?: RenderOptions) =>
   baseRender(ui, {
     wrapper: ({ children }) => (
       <QueryClientProvider client={createTestQueryClient()}>
@@ -43,6 +48,7 @@ function posterFrameState(
     onBackgroundChange: vi.fn(),
     template: 'classic',
     onTemplateChange: vi.fn(),
+    offAspect: false,
     text: 'Managing Change',
     onTextChange: vi.fn(),
     previewImageUrl: 'blob:preview',
@@ -82,7 +88,11 @@ function baseProps(overrides: Partial<AddVideoDialogProps> = {}): AddVideoDialog
       message: null,
       uploadSuccess: false,
       onSelectFile: vi.fn(),
-      onUploadAndAdd: vi.fn()
+      onUploadAndAdd: vi.fn(),
+      apiKey: 'test-api-key',
+      selectedFolder: null,
+      onSelectedFolderChange: vi.fn(),
+      recentFolders: []
     },
     errors: { validationErrors: [], addError: null },
     posterFrame: posterFrameState(),
@@ -408,27 +418,26 @@ describe('AddVideoDialog - poster frame text is required (B7)', () => {
 })
 
 // ==========================================================================
-// UPLOAD-02 — upload message severity comes from the event, not the text.
+// UPLOAD-02 - upload message severity comes from the event, not the text.
 //
 // Every message below deliberately contains neither "failed" nor "success":
 // that is the whole regression. `message.includes('failed')` renders a hard
 // failure as a neutral notice.
 // ==========================================================================
-type UploadMessage = {
-  text: string
-  severity: 'error' | 'success' | 'info'
-}
 
 /**
- * Casts through the current `string | null` prop type. Once the message shape
- * lands in @features/Upload this cast disappears.
+ * Builds default props with the upload message already populated.
+ * The UploadMessage type is now the real one from @features/Upload.
  */
-const messageProps = (message: UploadMessage) =>
+const messageProps = (message: {
+  text: string
+  severity: 'error' | 'success' | 'info'
+}) =>
   baseProps({
     uploadMode: {
       ...baseProps().uploadMode,
       uploading: false,
-      message: message as unknown as string
+      message
     }
   })
 

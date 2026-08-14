@@ -10,6 +10,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { act, renderHook } from '@testing-library/react'
+import type { Mock } from 'vitest'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock the api layer (single mock point for all Baker I/O)
@@ -86,14 +87,32 @@ const mockRefetch = vi.fn()
 const mockMutate = vi.fn()
 const mockMutateAsync = vi.fn().mockResolvedValue(undefined)
 
-const mockUseQuery = vi.fn(() => ({
+// The generic, rather than an unused parameter, is what lets the vi.mock
+// factory below forward its arguments: spreading into a mock whose call
+// signature takes none is a type error.
+const mockUseQuery = vi.fn<
+  (options?: unknown) => {
+    data: undefined
+    isLoading: boolean
+    error: null
+    refetch: Mock
+  }
+>(() => ({
   data: undefined,
   isLoading: false,
   error: null,
   refetch: mockRefetch
 }))
 
-const mockUseMutation = vi.fn(() => ({
+const mockUseMutation = vi.fn<
+  (options?: unknown) => {
+    mutate: Mock
+    mutateAsync: Mock
+    isPending: boolean
+    error: null
+    data: null
+  }
+>(() => ({
   mutate: mockMutate,
   mutateAsync: mockMutateAsync,
   isPending: false,
@@ -102,8 +121,8 @@ const mockUseMutation = vi.fn(() => ({
 }))
 
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: (...args: unknown[]) => mockUseQuery(...args),
-  useMutation: (...args: unknown[]) => mockUseMutation(...args),
+  useQuery: (options: unknown) => mockUseQuery(options),
+  useMutation: (options: unknown) => mockUseMutation(options),
   useQueryClient: () => ({
     invalidateQueries: vi.fn(),
     setQueryData: vi.fn()

@@ -141,6 +141,9 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       backgrounds: ['/backgrounds/wbs-blue.jpg'],
       selectedBackground: '/backgrounds/wbs-blue.jpg',
       setSelectedBackground: vi.fn(),
+      template: 'classic',
+      setTemplate: vi.fn(),
+      offAspect: false,
       text: 'Managing Change',
       setText: vi.fn(),
       previewImageUrl: 'blob:preview',
@@ -269,7 +272,9 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       selectedFolder: null,
       selectFolder: vi.fn(),
       recentFolders: [],
-      commitFolder: vi.fn()
+      commitFolder: vi.fn(),
+      defaultFolderStatus: 'not-configured',
+      defaultFolderReason: null
     })
 
     // Mock usePosterFrameForUpload (Issue #140)

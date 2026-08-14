@@ -215,7 +215,10 @@ describe('ModelFactory', () => {
     it('should return false when provider is not found', async () => {
       vi.mocked(providerRegistry.get).mockReturnValue(undefined)
 
-      const result = await ModelFactory.validateProvider('nonexistent', {})
+      const result = await ModelFactory.validateProvider('nonexistent', {
+        serviceUrl: '',
+        connectionStatus: 'not-configured'
+      })
 
       expect(result).toBe(false)
     })

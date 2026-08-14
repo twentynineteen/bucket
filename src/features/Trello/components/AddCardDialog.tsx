@@ -4,6 +4,7 @@
  */
 
 import TrelloCardList from '../internal/TrelloCardList'
+import type { TrelloCard } from '../types'
 import { AlertCircle, Loader2, Plus, Search } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@shared/ui/alert'
@@ -43,7 +44,7 @@ export interface UrlModeState {
 export interface SelectModeState {
   searchTerm: string
   onSearchTermChange: (term: string) => void
-  filteredGrouped: Record<string, Array<{ id: string; name: string; desc?: string }>>
+  filteredGrouped: Record<string, TrelloCard[]>
   onSelectCard: (card: { id: string; name: string }) => void
   isBoardLoading: boolean
 }

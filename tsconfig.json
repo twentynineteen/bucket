@@ -7,8 +7,11 @@
     "esModuleInterop": true,
     "jsx": "preserve",
     // "jsxImportSource": "react",
-    "types": ["vite/client", "node", "jest", "@testing-library/jest-dom"],
+    "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
     "noEmit": true,
+    // Third-party declarations are not ours to fix; monaco-editor's own .d.ts
+    // files do not typecheck cleanly and would otherwise fail the gate.
+    "skipLibCheck": true,
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {

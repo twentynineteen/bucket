@@ -11,6 +11,8 @@ import { toast } from 'sonner'
 import type { TrelloCard } from '@features/Baker'
 
 import { fetchTrelloCardById, readBreadcrumbsFile } from '../api'
+// Aliased: TrelloCard above is Baker's breadcrumbs card, this one is a board card.
+import type { TrelloCard as TrelloBoardCard } from '../types'
 import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
 import { useFuzzySearch } from '@shared/hooks'
 import { useTrelloBoard } from './useTrelloBoard'
@@ -75,7 +77,7 @@ export function useTrelloCardsManager({
 
   // Flatten all cards for search
   const allCards = useMemo(() => {
-    const cards: Array<{ id: string; name: string; desc?: string }> = []
+    const cards: TrelloBoardCard[] = []
     Object.values(grouped).forEach((cardList) => {
       cards.push(...cardList)
     })
@@ -98,7 +100,7 @@ export function useTrelloCardsManager({
       return grouped
     }
 
-    const result: Record<string, Array<{ id: string; name: string; desc?: string }>> = {}
+    const result: Record<string, TrelloBoardCard[]> = {}
     filteredCards.forEach((card) => {
       Object.entries(grouped).forEach(([listName, cards]) => {
         if (cards.some((c) => c.id === card.id)) {

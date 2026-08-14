@@ -57,6 +57,18 @@ export interface BuildProjectInput {
   username: string
 }
 
+/** Every stage the machine can report, in workflow order. */
+export type BuildProjectStage =
+  | 'idle'
+  | 'validating'
+  | 'creatingFolders'
+  | 'copyingTemplate'
+  | 'savingBreadcrumbs'
+  | 'transferringFiles'
+  | 'success'
+  | 'error'
+  | 'cancelled'
+
 /**
  * Context for the build project state machine
  */
@@ -69,16 +81,7 @@ export interface BuildProjectContext {
   username: string
 
   // Workflow state
-  currentStage:
-    | 'idle'
-    | 'validating'
-    | 'creatingFolders'
-    | 'copyingTemplate'
-    | 'savingBreadcrumbs'
-    | 'transferringFiles'
-    | 'success'
-    | 'error'
-    | 'cancelled'
+  currentStage: BuildProjectStage
   progress: number
   operationId: string | null
 
@@ -88,7 +91,12 @@ export interface BuildProjectContext {
 
   // Error handling
   error: string | null
-  lastFailedStage: string | null
+  /**
+   * Same union as currentStage, not a bare string: resetForRetry feeds it
+   * straight back into currentStage, and `string` made that assignment
+   * unassignable (#178).
+   */
+  lastFailedStage: BuildProjectStage | null
 }
 
 /**

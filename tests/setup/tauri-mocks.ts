@@ -7,7 +7,13 @@ export function setupTauriMocks() {
   // Mock breadcrumbs file storage (in-memory)
   const mockBreadcrumbsStore = new Map<string, BreadcrumbsFile>()
 
-  mockIPC((cmd, args) => {
+  mockIPC((cmd, payload) => {
+    // Tauri types the mock payload as InvokeArgs, a union that also covers the
+    // raw binary forms (number[], ArrayBuffer, Uint8Array). Every command
+    // handled below is invoked with named arguments, so narrow once here rather
+    // than at each of the ~30 property reads.
+    const args = (payload ?? {}) as Record<string, unknown>
+
     switch (cmd) {
       case 'baker_get_video_links': {
         const breadcrumbs = mockBreadcrumbsStore.get(args.projectPath as string)

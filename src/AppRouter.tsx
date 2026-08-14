@@ -1,6 +1,7 @@
 // tauri auto updater on app launch
 import { relaunch } from '@tauri-apps/plugin-process'
 import { check } from '@tauri-apps/plugin-updater'
+import type { DownloadEvent, Update } from '@tauri-apps/plugin-updater'
 import React, { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
@@ -53,11 +54,6 @@ const KavanaghPage = React.lazy(() =>
 const log = createNamespacedLogger('AppRouter')
 
 // Extract download event handler to reduce nesting
-type DownloadEvent = {
-  event: 'Started' | 'Progress' | 'Finished'
-  data: { contentLength?: number; chunkLength?: number }
-}
-
 function createDownloadHandler() {
   let downloaded = 0
   let contentLength = 0
@@ -82,10 +78,7 @@ function createDownloadHandler() {
 }
 
 // Extract update installation logic to reduce nesting
-async function installUpdateAndRelaunch(update: {
-  version: string
-  downloadAndInstall: (handler: (event: DownloadEvent) => void) => Promise<void>
-}) {
+async function installUpdateAndRelaunch(update: Update) {
   log.info(`Found update: ${update.version}`)
 
   const downloadHandler = createDownloadHandler()

@@ -104,7 +104,7 @@ describe('useBreadcrumbsManager Hook', () => {
     const { result } = renderHook(() => useBreadcrumbsManager())
 
     // Start the update (don't await)
-    let updateCall: Promise<void>
+    let updateCall: Promise<BatchUpdateResult | void>
     act(() => {
       updateCall = result.current
         .updateBreadcrumbs(['/path/to/project'], {
@@ -188,7 +188,7 @@ describe('useBreadcrumbsManager Hook', () => {
     const { result } = renderHook(() => useBreadcrumbsManager())
 
     // Start first update (don't await - it's still pending)
-    let firstUpdate: Promise<void>
+    let firstUpdate: Promise<BatchUpdateResult | void>
     act(() => {
       firstUpdate = result.current
         .updateBreadcrumbs(['/path/1'], {

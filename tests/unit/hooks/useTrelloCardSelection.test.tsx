@@ -23,8 +23,8 @@ const mockCardDetails: TrelloCard = {
 }
 
 const mockMembers = [
-  { id: 'member1', fullName: 'John Doe' },
-  { id: 'member2', fullName: 'Jane Smith' }
+  { id: 'member1', fullName: 'John Doe', username: 'johndoe' },
+  { id: 'member2', fullName: 'Jane Smith', username: 'janesmith' }
 ]
 
 function createWrapper() {
@@ -50,7 +50,8 @@ describe('useTrelloCardSelection', () => {
       members: mockMembers,
       isLoading: false,
       refetchCard: vi.fn(),
-      refetchMembers: vi.fn()
+      refetchMembers: vi.fn(),
+      refetch: vi.fn()
     })
   })
 
@@ -171,7 +172,8 @@ describe('useTrelloCardSelection', () => {
         members: undefined,
         isLoading: true,
         refetchCard: vi.fn(),
-        refetchMembers: vi.fn()
+        refetchMembers: vi.fn(),
+        refetch: vi.fn()
       })
 
       const { result } = renderHook(
@@ -191,7 +193,8 @@ describe('useTrelloCardSelection', () => {
         members: mockMembers,
         isLoading: false,
         refetchCard: mockRefetchCard,
-        refetchMembers: mockRefetchMembers
+        refetchMembers: mockRefetchMembers,
+        refetch: vi.fn()
       })
 
       const { result } = renderHook(
@@ -224,7 +227,8 @@ describe('useTrelloCardSelection', () => {
         members: undefined,
         isLoading: false,
         refetchCard: vi.fn(),
-        refetchMembers: vi.fn()
+        refetchMembers: vi.fn(),
+        refetch: vi.fn()
       })
 
       // The validation hook should reset the card
@@ -310,8 +314,8 @@ describe('useTrelloCardSelection', () => {
 
     test('updates when credentials change', () => {
       const { result, rerender } = renderHook<
-        { apiKey: string | null; token: string | null },
-        ReturnType<typeof useTrelloCardSelection>
+        ReturnType<typeof useTrelloCardSelection>,
+        { apiKey: string | null; token: string | null }
       >(({ apiKey, token }) => useTrelloCardSelection(apiKey, token), {
         wrapper: createWrapper(),
         initialProps: { apiKey: 'key1', token: 'token1' }
@@ -355,7 +359,8 @@ describe('useTrelloCardSelection', () => {
         members: undefined,
         isLoading: false,
         refetchCard: vi.fn(),
-        refetchMembers: vi.fn()
+        refetchMembers: vi.fn(),
+        refetch: vi.fn()
       })
 
       const { result } = renderHook(
@@ -373,7 +378,8 @@ describe('useTrelloCardSelection', () => {
         members: mockMembers,
         isLoading: false,
         refetchCard: vi.fn(),
-        refetchMembers: vi.fn()
+        refetchMembers: vi.fn(),
+        refetch: vi.fn()
       })
 
       const card: SelectedCard = { id: 'card123', name: 'Test Card' }

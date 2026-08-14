@@ -14,7 +14,7 @@
 import type { ScriptDocument } from '@shared/types/scriptFormatter'
 import { useScriptDownload } from '@features/AITools/ScriptFormatter/hooks/useScriptDownload'
 import { act, renderHook } from '@testing-library/react'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 
 // Mock useDocxGenerator
 vi.mock('@features/AITools/ScriptFormatter/hooks/useDocxGenerator', () => ({
@@ -27,8 +27,21 @@ vi.mock('@features/AITools/ScriptFormatter/hooks/useDocxGenerator', () => ({
 
 describe('Markdown XSS Prevention', () => {
   const mockDocument: ScriptDocument = {
+    id: 'test-xss-1',
     filename: 'test.docx',
-    content: 'test content'
+    fileSize: 512,
+    uploadTimestamp: new Date('2024-01-01'),
+    textContent: 'test content',
+    htmlContent: '<p>test content</p>',
+    formattingMetadata: {
+      boldRanges: [],
+      italicRanges: [],
+      underlineRanges: [],
+      headings: [],
+      lists: [],
+      paragraphs: []
+    },
+    validationStatus: 'valid'
   }
 
   describe('Script Tag Injection', () => {

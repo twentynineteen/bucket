@@ -5,7 +5,6 @@
 
 import { useAppendBreadcrumbs } from '@features/Baker'
 import { useParsedTrelloDescription, useTrelloBreadcrumbs } from '@features/Trello'
-import { appStore } from '@shared/store'
 import type { TrelloCard } from '@features/Trello'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { act, renderHook } from '@testing-library/react'
@@ -34,9 +33,16 @@ vi.mock('@features/Trello/hooks/useParsedTrelloDescription', () => ({
   useParsedTrelloDescription: vi.fn()
 }))
 
+// vi.hoisted so the fn is available inside the hoisted vi.mock factory.
+// Locally scoped to avoid the full AppState type constraint - the test
+// only exercises the breadcrumbs and setBreadcrumbs slice of the store.
+const { mockGetState } = vi.hoisted(() => ({
+  mockGetState: vi.fn()
+}))
+
 vi.mock('@shared/store/useAppStore', () => ({
   appStore: {
-    getState: vi.fn()
+    getState: mockGetState
   }
 }))
 
@@ -72,10 +78,11 @@ describe('useTrelloBreadcrumbs', () => {
     vi.mocked(useParsedTrelloDescription).mockReturnValue({
       mainDescription: 'Test description',
       breadcrumbsData: mockBreadcrumbsData,
-      breadcrumbsBlock: mockBreadcrumbsBlock
+      breadcrumbsBlock: mockBreadcrumbsBlock,
+      videoInfoBlock: ''
     })
 
-    vi.mocked(appStore.getState).mockReturnValue({
+    mockGetState.mockReturnValue({
       breadcrumbs: mockBreadcrumbsData,
       setBreadcrumbs: mockSetBreadcrumbs
     })
@@ -208,7 +215,7 @@ describe('useTrelloBreadcrumbs', () => {
     })
 
     test('does not save file when missing parentFolder', async () => {
-      vi.mocked(appStore.getState).mockReturnValue({
+      mockGetState.mockReturnValue({
         breadcrumbs: { ...mockBreadcrumbsData, parentFolder: undefined },
         setBreadcrumbs: mockSetBreadcrumbs
       })
@@ -227,7 +234,7 @@ describe('useTrelloBreadcrumbs', () => {
     })
 
     test('does not save file when missing projectTitle', async () => {
-      vi.mocked(appStore.getState).mockReturnValue({
+      mockGetState.mockReturnValue({
         breadcrumbs: { ...mockBreadcrumbsData, projectTitle: undefined },
         setBreadcrumbs: mockSetBreadcrumbs
       })
@@ -359,7 +366,7 @@ describe('useTrelloBreadcrumbs', () => {
 
       for (const { breadcrumbs, expected } of testCases) {
         vi.clearAllMocks()
-        vi.mocked(appStore.getState).mockReturnValue({
+        mockGetState.mockReturnValue({
           breadcrumbs,
           setBreadcrumbs: mockSetBreadcrumbs
         })
@@ -379,7 +386,7 @@ describe('useTrelloBreadcrumbs', () => {
 
   describe('edge cases', () => {
     test('handles empty breadcrumbs data', async () => {
-      vi.mocked(appStore.getState).mockReturnValue({
+      mockGetState.mockReturnValue({
         breadcrumbs: {},
         setBreadcrumbs: mockSetBreadcrumbs
       })
@@ -404,7 +411,7 @@ describe('useTrelloBreadcrumbs', () => {
         nested: { data: 'value' }
       }
 
-      vi.mocked(appStore.getState).mockReturnValue({
+      mockGetState.mockReturnValue({
         breadcrumbs: existingData,
         setBreadcrumbs: mockSetBreadcrumbs
       })
@@ -443,8 +450,8 @@ describe('useTrelloBreadcrumbs', () => {
 
     test('updates when card changes', () => {
       const { result, rerender } = renderHook<
-        { card: TrelloCard | null },
-        ReturnType<typeof useTrelloBreadcrumbs>
+        ReturnType<typeof useTrelloBreadcrumbs>,
+        { card: TrelloCard | null }
       >(({ card }) => useTrelloBreadcrumbs('api-key', 'token', card, mockRefetchCard), {
         initialProps: { card: mockCard }
       })

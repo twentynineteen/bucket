@@ -17,6 +17,7 @@ import { useBreadcrumbsTrelloCards } from '@features/Trello/hooks/useBreadcrumbs
 import { useTrelloBoard } from '@features/Trello/hooks/useTrelloBoard'
 import { useFuzzySearch } from '@shared/hooks'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('@features/Trello/api', () => ({
@@ -63,9 +64,9 @@ const THREE_CARD_FILE = JSON.stringify({
   ]
 })
 
-let addTrelloCard: ReturnType<typeof vi.fn>
-let addTrelloCardAsync: ReturnType<typeof vi.fn>
-let fetchCardDetailsAsync: ReturnType<typeof vi.fn>
+let addTrelloCard: Mock
+let addTrelloCardAsync: Mock
+let fetchCardDetailsAsync: Mock
 
 function setup(autoSyncToTrello = true) {
   return renderHook(() =>

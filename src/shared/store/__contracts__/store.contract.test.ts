@@ -89,7 +89,11 @@ describe('useAppStore - Behavior', () => {
     const upload = { id: '123', embed_code: '<iframe>' }
     useAppStore
       .getState()
-      .setLatestSproutUpload(upload as Parameters<typeof useAppStore.getState>['0'])
+      .setLatestSproutUpload(
+        upload as Parameters<
+          ReturnType<typeof useAppStore.getState>['setLatestSproutUpload']
+        >[0]
+      )
     expect(useAppStore.getState().latestSproutUpload).toEqual(upload)
   })
 })

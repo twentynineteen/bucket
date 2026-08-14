@@ -21,11 +21,6 @@ export const createTestQueryClient = () => {
       mutations: {
         retry: false
       }
-    },
-    logger: {
-      log: () => {},
-      warn: () => {},
-      error: () => {} // Suppress console noise in tests
     }
   })
 }

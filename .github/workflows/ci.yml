@@ -36,6 +36,14 @@ jobs:
       - name: Run Prettier check
         run: bun run prettier
 
+      # The gate that was missing (issue #178). Nothing in CI ran tsc, and
+      # tsconfig named an uninstalled `jest` type library, so tsc exited before
+      # checking a single file and 487 type errors accumulated unseen. Neither
+      # eslint nor vitest nor `vite build` type-checks: Vite transpiles without
+      # checking, so a type error never failed a build either.
+      - name: Run TypeScript typecheck
+        run: bun run typecheck
+
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

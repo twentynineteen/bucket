@@ -9,10 +9,12 @@
 
 import { useExampleManagement } from '@features/AITools/ExampleEmbeddings/hooks/useExampleManagement'
 import { useScriptFormatterState } from '@features/AITools/ScriptFormatter/hooks/useScriptFormatterState'
+import { useOllamaEmbedding } from '@features/AITools/ScriptFormatter/hooks/useOllamaEmbedding'
 import { useScriptWorkflow } from '@features/AITools/ScriptFormatter/hooks/useScriptWorkflow'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
+import { ExampleCategory } from '@shared/types'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock the composed hooks
@@ -22,6 +24,10 @@ vi.mock('@features/AITools/ScriptFormatter/hooks/useScriptWorkflow', () => ({
 
 vi.mock('@features/AITools/ExampleEmbeddings/hooks/useExampleManagement', () => ({
   useExampleManagement: vi.fn()
+}))
+
+vi.mock('@features/AITools/ScriptFormatter/hooks/useOllamaEmbedding', () => ({
+  useOllamaEmbedding: vi.fn()
 }))
 
 vi.mock('@shared/utils/logger', () => ({
@@ -97,21 +103,34 @@ describe('useScriptFormatterState', () => {
     handleDownload: vi.fn()
   }
 
+  // Names match useExampleManagement's real return. They previously did not
+  // (uploadMutation / replaceMutation / deleteMutation), so these tests passed
+  // against a hook shape that has never existed and the production code's
+  // `uploadMutation` -- undefined at runtime -- went unnoticed (#178).
   const mockExampleManagement = {
-    uploadMutation: {
+    uploadExample: {
       mutateAsync: vi.fn(),
       isPending: false,
       isError: false,
       error: null
     },
-    replaceMutation: {
+    replaceExample: {
       mutateAsync: vi.fn(),
       isPending: false
     },
-    deleteMutation: {
+    deleteExample: {
       mutateAsync: vi.fn(),
       isPending: false
     }
+  }
+
+  const EMBEDDING = [0.1, 0.2, 0.3]
+  const mockEmbedding = {
+    embed: vi.fn(async () => EMBEDDING),
+    isReady: true,
+    isLoading: false,
+    error: null,
+    modelName: 'nomic-embed-text'
   }
 
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -128,6 +147,8 @@ describe('useScriptFormatterState', () => {
     vi.clearAllMocks()
     vi.mocked(useScriptWorkflow).mockReturnValue(mockWorkflowState as any)
     vi.mocked(useExampleManagement).mockReturnValue(mockExampleManagement as any)
+    mockEmbedding.embed.mockResolvedValue(EMBEDDING)
+    vi.mocked(useOllamaEmbedding).mockReturnValue(mockEmbedding as any)
   })
 
   describe('Initialization', () => {
@@ -213,7 +234,7 @@ describe('useScriptFormatterState', () => {
   describe('handleSaveAsExample', () => {
     test('T007: saves formatted text as example', async () => {
       // Arrange
-      const mockDocument = { name: 'test.docx', content: [] }
+      const mockDocument = { filename: 'test.docx', textContent: 'Raw script' }
       const mockModifiedText = 'Formatted script content'
 
       vi.mocked(useScriptWorkflow).mockReturnValue({
@@ -226,57 +247,65 @@ describe('useScriptFormatterState', () => {
 
       // Act
       await act(async () => {
-        await result.current.handleSaveAsExample('My Example', 'technical', 4)
+        await result.current.handleSaveAsExample('My Example', ExampleCategory.EDUCATIONAL, 4)
       })
 
-      // Assert
-      expect(mockExampleManagement.uploadMutation.mutateAsync).toHaveBeenCalledWith({
-        file: expect.any(File),
-        title: 'My Example',
-        category: 'technical',
-        qualityScore: 4,
-        source: 'uploaded'
+      // Assert - the UploadRequest shape the Tauri command actually accepts
+      expect(mockExampleManagement.uploadExample.mutateAsync).toHaveBeenCalledWith({
+        beforeContent: 'Raw script',
+        afterContent: mockModifiedText,
+        metadata: {
+          title: 'My Example',
+          category: ExampleCategory.EDUCATIONAL,
+          qualityScore: 4
+        },
+        embedding: EMBEDDING
       })
     })
 
-    test('T008: creates File with correct name and content', async () => {
-      // Arrange
-      const mockModifiedText = 'Formatted script content'
-
+    test('T008: embeds the unformatted script, not the reviewed text', async () => {
+      // The example is retrieved by similarity to a *new* unformatted script,
+      // so the embedding has to come from beforeContent.
       vi.mocked(useScriptWorkflow).mockReturnValue({
         ...mockWorkflowState,
-        document: { name: 'test.docx', content: [] },
-        modifiedText: mockModifiedText
+        document: { filename: 'test.docx', textContent: 'Raw script' },
+        modifiedText: 'Formatted script content'
       } as any)
 
       const { result } = renderHook(() => useScriptFormatterState(), { wrapper })
 
-      // Act
       await act(async () => {
-        await result.current.handleSaveAsExample('My Example', 'general', 3)
+        await result.current.handleSaveAsExample('My Example', ExampleCategory.BUSINESS, 3)
       })
 
-      // Assert
-      const callArgs = mockExampleManagement.uploadMutation.mutateAsync.mock.calls[0][0]
-      expect(callArgs.file).toBeInstanceOf(File)
-      expect(callArgs.file.name).toBe('My Example.txt')
-      expect(callArgs.file.type).toBe('text/plain')
+      expect(mockEmbedding.embed).toHaveBeenCalledWith('Raw script')
+    })
 
-      // Verify file content using FileReader (compatible with test environment)
-      const reader = new FileReader()
-      const fileContentPromise = new Promise<string>(resolve => {
-        reader.onload = () => resolve(reader.result as string)
+    test('T008b: rejects when the embedding comes back empty', async () => {
+      mockEmbedding.embed.mockResolvedValue([])
+
+      vi.mocked(useScriptWorkflow).mockReturnValue({
+        ...mockWorkflowState,
+        document: { filename: 'test.docx', textContent: 'Raw script' },
+        modifiedText: 'Formatted script content'
+      } as any)
+
+      const { result } = renderHook(() => useScriptFormatterState(), { wrapper })
+
+      await act(async () => {
+        await expect(
+          result.current.handleSaveAsExample('My Example', ExampleCategory.BUSINESS, 3)
+        ).rejects.toThrow('Failed to generate embedding')
       })
-      reader.readAsText(callArgs.file)
-      const fileContent = await fileContentPromise
-      expect(fileContent).toBe(mockModifiedText)
+
+      expect(mockExampleManagement.uploadExample.mutateAsync).not.toHaveBeenCalled()
     })
 
     test('T009: closes save dialog after successful save', async () => {
       // Arrange
       vi.mocked(useScriptWorkflow).mockReturnValue({
         ...mockWorkflowState,
-        document: { name: 'test.docx', content: [] },
+        document: { filename: 'test.docx', textContent: 'Raw script' },
         modifiedText: 'Formatted text'
       } as any)
 
@@ -289,7 +318,7 @@ describe('useScriptFormatterState', () => {
 
       // Act
       await act(async () => {
-        await result.current.handleSaveAsExample('Example', 'technical', 5)
+        await result.current.handleSaveAsExample('Example', ExampleCategory.EDUCATIONAL, 5)
       })
 
       // Assert
@@ -309,7 +338,7 @@ describe('useScriptFormatterState', () => {
       // Act & Assert
       await act(async () => {
         await expect(
-          result.current.handleSaveAsExample('Example', 'technical', 5)
+          result.current.handleSaveAsExample('Example', ExampleCategory.EDUCATIONAL, 5)
         ).rejects.toThrow('Missing document or formatted text')
       })
     })
@@ -318,7 +347,7 @@ describe('useScriptFormatterState', () => {
       // Arrange
       vi.mocked(useScriptWorkflow).mockReturnValue({
         ...mockWorkflowState,
-        document: { name: 'test.docx', content: [] },
+        document: { filename: 'test.docx', textContent: 'Raw script' },
         modifiedText: ''
       } as any)
 
@@ -327,7 +356,7 @@ describe('useScriptFormatterState', () => {
       // Act & Assert
       await act(async () => {
         await expect(
-          result.current.handleSaveAsExample('Example', 'technical', 5)
+          result.current.handleSaveAsExample('Example', ExampleCategory.EDUCATIONAL, 5)
         ).rejects.toThrow('Missing document or formatted text')
       })
     })
@@ -336,15 +365,15 @@ describe('useScriptFormatterState', () => {
       // Arrange
       vi.mocked(useScriptWorkflow).mockReturnValue({
         ...mockWorkflowState,
-        document: { name: 'test.docx', content: [] },
+        document: { filename: 'test.docx', textContent: 'Raw script' },
         modifiedText: 'Content'
       } as any)
 
       const { result } = renderHook(() => useScriptFormatterState(), { wrapper })
-      const categories: Array<'general' | 'technical' | 'narrative'> = [
-        'general',
-        'technical',
-        'narrative'
+      const categories = [
+        ExampleCategory.BUSINESS,
+        ExampleCategory.EDUCATIONAL,
+        ExampleCategory.NARRATIVE
       ]
 
       // Act & Assert
@@ -353,9 +382,9 @@ describe('useScriptFormatterState', () => {
           await result.current.handleSaveAsExample(`Example ${category}`, category, 3)
         })
 
-        expect(mockExampleManagement.uploadMutation.mutateAsync).toHaveBeenCalledWith(
+        expect(mockExampleManagement.uploadExample.mutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({
-            category
+            metadata: expect.objectContaining({ category })
           })
         )
       }
@@ -365,7 +394,7 @@ describe('useScriptFormatterState', () => {
       // Arrange
       vi.mocked(useScriptWorkflow).mockReturnValue({
         ...mockWorkflowState,
-        document: { name: 'test.docx', content: [] },
+        document: { filename: 'test.docx', textContent: 'Raw script' },
         modifiedText: 'Content'
       } as any)
 
@@ -375,12 +404,12 @@ describe('useScriptFormatterState', () => {
       // Act & Assert
       for (const score of scores) {
         await act(async () => {
-          await result.current.handleSaveAsExample('Example', 'general', score)
+          await result.current.handleSaveAsExample('Example', ExampleCategory.BUSINESS, score)
         })
 
-        expect(mockExampleManagement.uploadMutation.mutateAsync).toHaveBeenCalledWith(
+        expect(mockExampleManagement.uploadExample.mutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({
-            qualityScore: score
+            metadata: expect.objectContaining({ qualityScore: score })
           })
         )
       }

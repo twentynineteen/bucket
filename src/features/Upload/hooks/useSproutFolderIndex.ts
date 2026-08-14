@@ -24,6 +24,7 @@ import {
 } from '../api'
 import type { CrawlProgress } from '../internal/crawlSproutFolders'
 import { crawlSproutFolders } from '../internal/crawlSproutFolders'
+import type { FolderIndex } from '../internal/folderIndex'
 import {
   indexAgeInDays,
   mergeFolderIndex,
