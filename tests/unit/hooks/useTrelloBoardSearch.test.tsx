@@ -253,8 +253,8 @@ describe('useTrelloBoardSearch', () => {
 
     test('updates when cards prop changes', () => {
       const { result, rerender } = renderHook<
-        { cards: TrelloCard[]; grouped: Record<string, TrelloCard[]> },
-        ReturnType<typeof useTrelloBoardSearch>
+        ReturnType<typeof useTrelloBoardSearch>,
+        { cards: TrelloCard[]; grouped: Record<string, TrelloCard[]> }
       >(({ cards, grouped }) => useTrelloBoardSearch(cards, grouped), {
         initialProps: { cards: mockCards, grouped: mockGrouped }
       })

@@ -74,7 +74,7 @@ describe('useBreadcrumbsPreview', () => {
     diff: {
       hasChanges: true,
       changes: [],
-      summary: { added: 1, modified: 0, removed: 0 }
+      summary: { added: 1, modified: 0, removed: 0, unchanged: 0 }
     },
     ...overrides
   })
@@ -103,7 +103,7 @@ describe('useBreadcrumbsPreview', () => {
     mockCompareMeaningful.mockReturnValue({
       hasChanges: false,
       changes: [],
-      summary: { added: 0, modified: 0, removed: 0 }
+      summary: { added: 0, modified: 0, removed: 0, unchanged: 0 }
     })
   })
 

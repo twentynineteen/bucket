@@ -67,7 +67,9 @@ describe('US-03 — File Transfer Progress', () => {
     const result = await transferFiles({ files: [] })
 
     expect(result.ok).toBe(false)
-    if (!result.ok) {
+    // Use explicit comparison - strictNullChecks is off, so truthiness
+    // checks do not narrow the StageResult discriminated union.
+    if (result.ok === false) {
       expect(result.error.kind).toBe('Validation')
       expect(result.error.message).toContain('No files provided')
     }
@@ -228,7 +230,7 @@ describe('US-03 — File Transfer Progress', () => {
     const result = await transferFiles({ files: mockFiles })
 
     expect(result.ok).toBe(false)
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.kind).toBe('InsufficientSpace')
     }
   })
@@ -240,7 +242,7 @@ describe('US-03 — File Transfer Progress', () => {
     const result = await transferFiles({ files: mockFiles })
 
     expect(result.ok).toBe(false)
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.kind).toBe('Permission')
     }
   })
@@ -268,7 +270,7 @@ describe('US-03 — File Transfer Progress', () => {
     const result = await transferPromise
 
     expect(result.ok).toBe(false)
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.message).toContain('IO error during copy')
     }
   })
@@ -288,7 +290,7 @@ describe('US-03 — File Transfer Progress', () => {
     })
 
     expect(result.ok).toBe(false)
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.kind).toBe('Cancelled')
     }
   })

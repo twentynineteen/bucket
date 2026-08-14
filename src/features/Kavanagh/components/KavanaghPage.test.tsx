@@ -252,9 +252,9 @@ describe('KavanaghPage watermark run', () => {
   })
 
   it('B8.1 shows progress with its phase, then renders the report', async () => {
-    let settle: (report: KavanaghWatermarkReport) => void = () => {}
+    let settle: (report: KavanaghCheckReport) => void = () => {}
     runKavanaghCheck.mockImplementation(
-      () => new Promise<KavanaghWatermarkReport>((resolve) => (settle = resolve))
+      () => new Promise<KavanaghCheckReport>((resolve) => (settle = resolve))
     )
 
     renderPage()
@@ -324,7 +324,7 @@ describe('KavanaghPage watermark run', () => {
   it('B8.2 cancels the run and returns the page to idle without showing a failure', async () => {
     let reject: (error: unknown) => void = () => {}
     runKavanaghCheck.mockImplementation(
-      () => new Promise<KavanaghWatermarkReport>((_, r) => (reject = r))
+      () => new Promise<KavanaghCheckReport>((_, r) => (reject = r))
     )
     cancelKavanaghRun.mockResolvedValue(true)
 

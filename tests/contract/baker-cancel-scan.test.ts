@@ -37,9 +37,9 @@ describe('baker_cancel_scan Contract', () => {
     expect(result).toBeUndefined()
 
     // Verify scan status shows cancelled/stopped
-    const status = await invoke('baker_get_scan_status', {
+    const status = (await invoke('baker_get_scan_status', {
       scanId
-    })
+    })) as Record<string, unknown>
 
     // Should have endTime set when cancelled
     expect(status.endTime).toBeDefined()

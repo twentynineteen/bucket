@@ -291,6 +291,7 @@ describe('US-09 — Settings: AI Provider Management', () => {
 
     await act(async () => {
       validationResult = await result.current.validateProvider('nonexistent', {
+        serviceUrl: '',
         apiKey: 'some-key',
         connectionStatus: 'not-configured'
       })

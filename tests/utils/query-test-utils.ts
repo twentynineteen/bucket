@@ -17,25 +17,14 @@ export function createTestQueryClient(options: QueryTestOptions = {}): QueryClie
       queries: {
         retry: false,
         staleTime: 0,
-        cacheTime: 0,
+        gcTime: 0,
         ...options
       },
       mutations: {
         retry: false,
         ...options
       }
-    },
-    logger: options.enableLogging
-      ? {
-          log: console.log,
-          warn: console.warn,
-          error: console.error
-        }
-      : {
-          log: () => {},
-          warn: () => {},
-          error: () => {}
-        }
+    }
   })
 }
 
@@ -69,7 +58,7 @@ export function renderWithQueryClient(
   }
 
   const wrapper = ({ children }: { children: ReactNode }) =>
-    React.createElement(QueryWrapper, { queryClient }, children)
+    React.createElement(QueryWrapper, { queryClient, children })
 
   return {
     ...render(ui, { wrapper, ...renderOptions }),
@@ -146,7 +135,7 @@ export async function waitForQuery(
 }
 
 export function getQueryState(queryClient: QueryClient, queryKey: QueryKey) {
-  const query = queryClient.getQueryCache().find(queryKey)
+  const query = queryClient.getQueryCache().find({ queryKey })
   return query?.state
 }
 
@@ -155,7 +144,7 @@ export function assertQuerySuccess(
   queryKey: QueryKey,
   expectedData?: unknown
 ): void {
-  const query = queryClient.getQueryCache().find(queryKey)
+  const query = queryClient.getQueryCache().find({ queryKey })
 
   if (!query) {
     throw new Error(`Query with key ${JSON.stringify(queryKey)} not found`)
@@ -179,7 +168,7 @@ export function assertQueryError(
   queryKey: QueryKey,
   expectedError?: Error
 ): void {
-  const query = queryClient.getQueryCache().find(queryKey)
+  const query = queryClient.getQueryCache().find({ queryKey })
 
   if (!query) {
     throw new Error(`Query with key ${JSON.stringify(queryKey)} not found`)
@@ -199,13 +188,13 @@ export function assertQueryError(
 }
 
 export function assertQueryLoading(queryClient: QueryClient, queryKey: QueryKey): void {
-  const query = queryClient.getQueryCache().find(queryKey)
+  const query = queryClient.getQueryCache().find({ queryKey })
 
   if (!query) {
     throw new Error(`Query with key ${JSON.stringify(queryKey)} not found`)
   }
 
-  if (query.state.status !== 'loading') {
+  if (query.state.status !== 'pending') {
     throw new Error(`Expected query to be loading, but status was ${query.state.status}`)
   }
 }

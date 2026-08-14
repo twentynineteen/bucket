@@ -33,12 +33,21 @@ describe('useScriptDownload', () => {
   const mockGenerateFile = vi.fn()
 
   const mockDocument: ScriptDocument = {
+    id: 'test-doc-1',
     filename: 'test-script.docx',
+    fileSize: 1024,
+    uploadTimestamp: new Date('2024-01-01'),
     textContent: 'Original text content',
-    metadata: {
-      title: 'Test Script',
-      createdAt: new Date('2024-01-01')
-    }
+    htmlContent: '<p>Original text content</p>',
+    formattingMetadata: {
+      boldRanges: [],
+      italicRanges: [],
+      underlineRanges: [],
+      headings: [],
+      lists: [],
+      paragraphs: []
+    },
+    validationStatus: 'valid'
   }
 
   const mockMarkdownText = `**Bold text**

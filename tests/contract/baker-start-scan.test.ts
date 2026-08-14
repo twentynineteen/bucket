@@ -35,9 +35,11 @@ describe('baker_start_scan Contract', () => {
 
     expect(result).toBeDefined()
     expect(typeof result).toBe('string')
-    expect(result.length).toBeGreaterThan(0)
+    // After the typeof check, narrow to string for property access
+    const scanId = result as string
+    expect(scanId.length).toBeGreaterThan(0)
     // Scan ID should be a UUID or similar identifier
-    expect(result).toMatch(/^[a-f0-9-]+$/i)
+    expect(scanId).toMatch(/^[a-f0-9-]+$/i)
   })
 
   test('should reject when root path is empty', async () => {

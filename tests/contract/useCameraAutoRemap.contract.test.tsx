@@ -317,9 +317,9 @@ describe('useCameraAutoRemap Contract Tests', () => {
 
       // Simulate error using the working pattern from useBreadcrumb test
       const queryCache = queryClient.getQueryCache()
-      const query = queryCache.build(queryClient, {
+      const query = queryCache.build<unknown, Error>(queryClient, {
         queryKey: remapQuery,
-        queryFn: () => Promise.reject(error)
+        queryFn: (): Promise<unknown> => Promise.reject(error)
       })
 
       query.setData(undefined)
@@ -335,11 +335,10 @@ describe('useCameraAutoRemap Contract Tests', () => {
         fetchFailureReason: error,
         fetchMeta: null,
         isInvalidated: false,
-        isPaused: false,
         fetchStatus: 'idle'
       })
 
-      const foundQuery = queryClient.getQueryCache().find(remapQuery)
+      const foundQuery = queryClient.getQueryCache().find({ queryKey: remapQuery })
       expect(foundQuery?.state.status).toBe('error')
       expect(foundQuery?.state.error?.message).toBe(
         'Failed to analyze files for camera mapping'
@@ -381,7 +380,7 @@ describe('useCameraAutoRemap Contract Tests', () => {
         computedAt: new Date().toISOString()
       })
 
-      const query = queryClient.getQueryCache().find(remapQuery)
+      const query = queryClient.getQueryCache().find({ queryKey: remapQuery })
       expect(query?.state.data).toBeDefined()
     })
 

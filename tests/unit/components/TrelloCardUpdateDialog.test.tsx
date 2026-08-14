@@ -50,23 +50,22 @@ describe('TrelloCardUpdateDialog Component', () => {
   const mockTrelloCards: TrelloCard[] = [
     {
       url: 'https://trello.com/c/card1',
+      cardId: 'card1',
       title: 'Project Alpha - Video Edit',
       boardName: 'Production Board',
-      cachedTitle: 'Project Alpha - Video Edit',
       lastFetched: '2024-01-01T00:00:00Z'
     },
     {
       url: 'https://trello.com/c/card2',
+      cardId: 'card2',
       title: 'Project Beta - Final Cut',
       boardName: 'Post-Production',
-      cachedTitle: 'Project Beta - Final Cut',
       lastFetched: '2024-01-02T00:00:00Z'
     },
     {
       url: 'https://trello.com/c/card3',
+      cardId: 'card3',
       title: 'Project Gamma - Review',
-      boardName: null,
-      cachedTitle: 'Project Gamma - Review',
       lastFetched: '2024-01-03T00:00:00Z'
     }
   ]
@@ -291,7 +290,7 @@ describe('TrelloCardUpdateDialog Component', () => {
     test('shows loading state during update', async () => {
       // Arrange
       const user = userEvent.setup()
-      let resolveUpdate: () => void
+      let resolveUpdate: (value?: unknown) => void
       mockOnUpdate.mockReturnValue(
         new Promise(resolve => {
           resolveUpdate = resolve

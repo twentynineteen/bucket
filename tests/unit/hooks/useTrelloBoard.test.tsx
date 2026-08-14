@@ -278,8 +278,8 @@ describe('useTrelloBoard', () => {
 
     test('updates when board ID changes', async () => {
       const { result, rerender } = renderHook<
-        { boardId: string },
-        ReturnType<typeof useTrelloBoard>
+        ReturnType<typeof useTrelloBoard>,
+        { boardId: string }
       >(({ boardId }) => useTrelloBoard(boardId), {
         wrapper: createWrapper(),
         initialProps: { boardId: 'board1' }

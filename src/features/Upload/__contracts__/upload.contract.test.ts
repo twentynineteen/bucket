@@ -10,6 +10,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { renderHook } from '@testing-library/react'
+import type { Mock } from 'vitest'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock the api layer (single mock point for all Upload I/O)
@@ -126,7 +127,19 @@ const mockMutateAsync = vi.fn().mockResolvedValue(undefined)
 const mockSetQueryData = vi.fn()
 const mockRemoveQueries = vi.fn()
 
-const mockUseQuery = vi.fn(() => ({
+// The generic, rather than an unused parameter, is what lets the vi.mock
+// factory below forward its arguments: spreading into a mock whose call
+// signature takes none is a type error.
+const mockUseQuery = vi.fn<
+  (options?: unknown) => {
+    data: undefined
+    isLoading: boolean
+    error: null
+    refetch: Mock
+    isRefetching: boolean
+    dataUpdatedAt: number
+  }
+>(() => ({
   data: undefined,
   isLoading: false,
   error: null,
@@ -135,7 +148,15 @@ const mockUseQuery = vi.fn(() => ({
   dataUpdatedAt: 0
 }))
 
-const mockUseMutation = vi.fn(() => ({
+const mockUseMutation = vi.fn<
+  (options?: unknown) => {
+    mutate: Mock
+    mutateAsync: Mock
+    isPending: boolean
+    error: null
+    data: null
+  }
+>(() => ({
   mutate: mockMutate,
   mutateAsync: mockMutateAsync,
   isPending: false,

@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
  */
 
 describe('logger utility', () => {
-  let originalEnv: string | undefined
+  let originalEnv: boolean
   let consoleSpies: Record<string, ReturnType<typeof vi.spyOn>>
 
   beforeEach(() => {
@@ -40,9 +40,7 @@ describe('logger utility', () => {
     Object.values(consoleSpies).forEach(spy => spy.mockRestore())
 
     // Restore environment
-    if (originalEnv !== undefined) {
-      import.meta.env.DEV = originalEnv
-    }
+    import.meta.env.DEV = originalEnv
 
     // Clear module cache to get fresh logger instance
     vi.resetModules()

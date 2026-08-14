@@ -149,24 +149,33 @@ export class TauriE2EMock {
         transformCallback: (callback?: (response: unknown) => void, once?: boolean) => number
         convertFileSrc: (filePath: string, protocol?: string) => string
         unregisterCallback: (id: number) => void
-        metadata?: { target: string }
+        metadata?: {
+          target: string
+          currentWindow: { label: string }
+          currentWebview: { label: string; windowLabel: string }
+        }
       }
 
-      interface E2EWindow extends Window {
-        __E2E_CONFIG__: typeof cfg
-        __E2E_EVENTS__: Array<{ percent: number; fileIndex: number; fileProgress?: number }>
-        __E2E_LISTENERS__: Map<string, Map<number, EventCallback>>
-        __E2E_NEXT_EVENT_ID__: number
-        __E2E_NEXT_OPERATION_ID__: number
-        __E2E_CALLBACKS__: Record<number, (response: unknown) => void>
-        __E2E_CANCELLED__: boolean
-        __E2E_OPERATION_IN_PROGRESS__: boolean
+      // Properties added to window during E2E setup. Optional because they are
+      // populated progressively below; the cast targets this shape before any of
+      // them exist on the real window object.
+      type E2EExtras = {
+        __E2E_CONFIG__?: typeof cfg
+        __E2E_EVENTS__?: Array<{ percent: number; fileIndex: number; fileProgress?: number }>
+        __E2E_LISTENERS__?: Map<string, Map<number, EventCallback>>
+        __E2E_NEXT_EVENT_ID__?: number
+        __E2E_NEXT_OPERATION_ID__?: number
+        __E2E_CALLBACKS__?: Record<number, (response: unknown) => void>
+        __E2E_CANCELLED__?: boolean
+        __E2E_OPERATION_IN_PROGRESS__?: boolean
         __TAURI_INTERNALS__?: TauriInternals
         __TAURI_EVENT_PLUGIN_INTERNALS__?: {
           unregisterListener: (event: string, eventId: number) => void
         }
         isTauri?: boolean
       }
+
+      type E2EWindow = Window & E2EExtras
 
       const win = window as E2EWindow
 

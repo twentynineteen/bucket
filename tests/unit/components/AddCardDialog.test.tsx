@@ -6,6 +6,7 @@
  */
 
 import { AddCardDialog } from '@features/Trello'
+import type { AddCardDialogProps } from '@features/Trello/components/AddCardDialog'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
@@ -29,56 +30,8 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: any) => children
 }))
 
-// Type definitions for grouped parameters
-export interface DialogState {
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-  canAddCard: boolean
-  hasApiCredentials: boolean
-}
-
-export interface ModeState {
-  addMode: 'url' | 'select'
-  onAddModeChange: (mode: 'url' | 'select') => void
-}
-
-export interface UrlModeState {
-  cardUrl: string
-  onCardUrlChange: (url: string) => void
-  onFetchAndAdd: () => void
-}
-
-export interface SelectModeState {
-  searchTerm: string
-  onSearchTermChange: (term: string) => void
-  filteredGrouped: Record<string, Array<{ id: string; name: string; desc?: string }>>
-  onSelectCard: (card: { id: string; name: string }) => void
-  isBoardLoading: boolean
-}
-
-export interface CommonState {
-  isFetchingCard: boolean
-  onClose: () => void
-}
-
-export interface ErrorState {
-  validationErrors: string[]
-  addError: Error | null
-  fetchError: Error | null
-}
-
-// Refactored props interface with grouped parameters
-export interface AddCardDialogPropsRefactored {
-  dialog: DialogState
-  mode: ModeState
-  urlMode: UrlModeState
-  selectMode: SelectModeState
-  common: CommonState
-  errors: ErrorState
-}
-
 // Helper function to create default props
-function createDefaultProps(): AddCardDialogPropsRefactored {
+function createDefaultProps(): AddCardDialogProps {
   return {
     dialog: {
       isOpen: true,
@@ -324,10 +277,10 @@ describe('AddCardDialog - Select Mode State Group', () => {
     props.selectMode.isBoardLoading = false
     props.selectMode.filteredGrouped = {
       'To Do': [
-        { id: '1', name: 'Card 1', desc: 'Description 1' },
-        { id: '2', name: 'Card 2', desc: 'Description 2' }
+        { id: '1', name: 'Card 1', desc: 'Description 1', idList: 'list-1' },
+        { id: '2', name: 'Card 2', desc: 'Description 2', idList: 'list-1' }
       ],
-      Done: [{ id: '3', name: 'Card 3' }]
+      Done: [{ id: '3', name: 'Card 3', desc: '', idList: 'list-2' }]
     }
 
     render(<AddCardDialog {...props} />)
@@ -341,7 +294,7 @@ describe('AddCardDialog - Select Mode State Group', () => {
     const props = createDefaultProps()
     props.mode.addMode = 'select'
     props.selectMode.filteredGrouped = {
-      'To Do': [{ id: '1', name: 'Test Card' }]
+      'To Do': [{ id: '1', name: 'Test Card', desc: '', idList: 'list-1' }]
     }
 
     render(<AddCardDialog {...props} />)
@@ -462,7 +415,7 @@ describe('AddCardDialog - Integration Tests', () => {
     const props = createDefaultProps()
     props.mode.addMode = 'select'
     props.selectMode.filteredGrouped = {
-      'To Do': [{ id: '1', name: 'Test Card' }]
+      'To Do': [{ id: '1', name: 'Test Card', desc: '', idList: 'list-1' }]
     }
 
     render(<AddCardDialog {...props} />)

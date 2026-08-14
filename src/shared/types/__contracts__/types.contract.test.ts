@@ -79,7 +79,10 @@ describe('@shared/types barrel contract', () => {
       expect(folder.parent_id).toBeNull()
 
       const response: GetFoldersResponse = {
-        folders: [folder]
+        folders: [folder],
+        truncated: false,
+        rate_limit_remaining: 100,
+        rate_limit_reset: null
       }
       expect(response.folders).toHaveLength(1)
 

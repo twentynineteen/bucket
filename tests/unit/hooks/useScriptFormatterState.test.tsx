@@ -14,6 +14,7 @@ import { useScriptWorkflow } from '@features/AITools/ScriptFormatter/hooks/useSc
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
+import { ExampleCategory } from '@shared/types'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock the composed hooks
@@ -246,7 +247,7 @@ describe('useScriptFormatterState', () => {
 
       // Act
       await act(async () => {
-        await result.current.handleSaveAsExample('My Example', 'technical', 4)
+        await result.current.handleSaveAsExample('My Example', ExampleCategory.EDUCATIONAL, 4)
       })
 
       // Assert - the UploadRequest shape the Tauri command actually accepts
@@ -255,7 +256,7 @@ describe('useScriptFormatterState', () => {
         afterContent: mockModifiedText,
         metadata: {
           title: 'My Example',
-          category: 'technical',
+          category: ExampleCategory.EDUCATIONAL,
           qualityScore: 4
         },
         embedding: EMBEDDING
@@ -274,7 +275,7 @@ describe('useScriptFormatterState', () => {
       const { result } = renderHook(() => useScriptFormatterState(), { wrapper })
 
       await act(async () => {
-        await result.current.handleSaveAsExample('My Example', 'general', 3)
+        await result.current.handleSaveAsExample('My Example', ExampleCategory.BUSINESS, 3)
       })
 
       expect(mockEmbedding.embed).toHaveBeenCalledWith('Raw script')
@@ -293,7 +294,7 @@ describe('useScriptFormatterState', () => {
 
       await act(async () => {
         await expect(
-          result.current.handleSaveAsExample('My Example', 'general', 3)
+          result.current.handleSaveAsExample('My Example', ExampleCategory.BUSINESS, 3)
         ).rejects.toThrow('Failed to generate embedding')
       })
 
@@ -317,7 +318,7 @@ describe('useScriptFormatterState', () => {
 
       // Act
       await act(async () => {
-        await result.current.handleSaveAsExample('Example', 'technical', 5)
+        await result.current.handleSaveAsExample('Example', ExampleCategory.EDUCATIONAL, 5)
       })
 
       // Assert
@@ -337,7 +338,7 @@ describe('useScriptFormatterState', () => {
       // Act & Assert
       await act(async () => {
         await expect(
-          result.current.handleSaveAsExample('Example', 'technical', 5)
+          result.current.handleSaveAsExample('Example', ExampleCategory.EDUCATIONAL, 5)
         ).rejects.toThrow('Missing document or formatted text')
       })
     })
@@ -355,7 +356,7 @@ describe('useScriptFormatterState', () => {
       // Act & Assert
       await act(async () => {
         await expect(
-          result.current.handleSaveAsExample('Example', 'technical', 5)
+          result.current.handleSaveAsExample('Example', ExampleCategory.EDUCATIONAL, 5)
         ).rejects.toThrow('Missing document or formatted text')
       })
     })
@@ -369,10 +370,10 @@ describe('useScriptFormatterState', () => {
       } as any)
 
       const { result } = renderHook(() => useScriptFormatterState(), { wrapper })
-      const categories: Array<'general' | 'technical' | 'narrative'> = [
-        'general',
-        'technical',
-        'narrative'
+      const categories = [
+        ExampleCategory.BUSINESS,
+        ExampleCategory.EDUCATIONAL,
+        ExampleCategory.NARRATIVE
       ]
 
       // Act & Assert
@@ -403,7 +404,7 @@ describe('useScriptFormatterState', () => {
       // Act & Assert
       for (const score of scores) {
         await act(async () => {
-          await result.current.handleSaveAsExample('Example', 'general', score)
+          await result.current.handleSaveAsExample('Example', ExampleCategory.BUSINESS, score)
         })
 
         expect(mockExampleManagement.uploadExample.mutateAsync).toHaveBeenCalledWith(

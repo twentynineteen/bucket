@@ -77,7 +77,7 @@ describe('TitleBar Component', () => {
 
       // Should only use data-tauri-drag-region, not WebkitAppRegion
       const style = (dragRegion as HTMLElement)?.style
-      expect(style?.WebkitAppRegion).toBeFalsy()
+      expect(style?.getPropertyValue('-webkit-app-region')).toBeFalsy()
     })
 
     test('has willChange performance hint for smooth dragging', () => {

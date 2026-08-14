@@ -45,7 +45,9 @@ describe('ProjectListPanel Animations', () => {
       hasBreadcrumbs: true,
       staleBreadcrumbs: false,
       invalidBreadcrumbs: false,
-      cameraCount: 3
+      lastScanned: '2024-01-01T00:00:00Z',
+      cameraCount: 3,
+      validationErrors: []
     },
     {
       name: 'Project B',
@@ -54,7 +56,9 @@ describe('ProjectListPanel Animations', () => {
       hasBreadcrumbs: true,
       staleBreadcrumbs: true,
       invalidBreadcrumbs: false,
-      cameraCount: 2
+      lastScanned: '2024-01-02T00:00:00Z',
+      cameraCount: 2,
+      validationErrors: []
     },
     {
       name: 'Project C',
@@ -63,7 +67,9 @@ describe('ProjectListPanel Animations', () => {
       hasBreadcrumbs: false,
       staleBreadcrumbs: false,
       invalidBreadcrumbs: false,
-      cameraCount: 1
+      lastScanned: '2024-01-03T00:00:00Z',
+      cameraCount: 1,
+      validationErrors: []
     }
   ]
 

@@ -75,7 +75,6 @@ describe('TrelloCardItem Component', () => {
     cardId: 'abc123',
     title: 'Test Project - Video Edit',
     boardName: 'Production Board',
-    cachedTitle: 'Test Project - Video Edit',
     lastFetched: new Date().toISOString() // Current time
   }
 
