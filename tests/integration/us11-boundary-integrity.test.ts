@@ -222,7 +222,6 @@ describe('US-11a — @tauri-apps imports confined to api.ts boundary files', () 
     // The following features are expected to have api.ts based on CLAUDE.md
     const EXPECTED_FEATURES_WITH_API = [
       'AITools',
-      'Auth',
       'Baker',
       'BuildProject',
       'Premiere',
@@ -296,7 +295,7 @@ describe('US-11c — Feature barrel files use named exports only', () => {
   it('feature barrel files should have at least one named export', () => {
     const featuresMissingExports: string[] = []
 
-    const EXPECTED_FEATURES = ['AITools', 'Auth', 'Baker', 'BuildProject', 'Premiere', 'Settings', 'Trello', 'Upload']
+    const EXPECTED_FEATURES = ['AITools', 'Baker', 'BuildProject', 'Premiere', 'Settings', 'Trello', 'Upload']
 
     for (const feature of EXPECTED_FEATURES) {
       const barrelPath = join(FEATURES_DIR, feature, 'index.ts')

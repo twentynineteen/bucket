@@ -15,6 +15,9 @@
  *
  * `main.rs`'s `generate_handler![...]` is a flat list with no ownership
  * information, so it cannot answer this on its own.
+ *
+ * `auth.rs` was also permitted here until #206. It was deleted from the crate by
+ * #199, so the entry named a module that no longer existed.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
@@ -25,7 +28,7 @@ const SHARED_DIR = join(REPO_ROOT, 'src/shared')
 const RUST_COMMANDS_DIR = join(REPO_ROOT, 'src-tauri/src/commands')
 
 /** Rust modules whose commands shared code may call directly. */
-const SHARED_PERMITTED_MODULES = new Set(['system.rs', 'auth.rs'])
+const SHARED_PERMITTED_MODULES = new Set(['system.rs'])
 
 function walk(dir: string, match: RegExp): string[] {
   const found: string[] = []

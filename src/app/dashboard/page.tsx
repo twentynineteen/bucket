@@ -11,7 +11,6 @@ import { Separator } from '@shared/ui/separator'
 import { SidebarInset, SidebarTrigger } from '@shared/ui/sidebar/Sidebar'
 import { SidebarProvider } from '@shared/ui/sidebar/SidebarProvider'
 import { useBreadcrumbStore } from '@shared/store'
-import { useAuth } from '@features/Auth'
 import React from 'react'
 import { Outlet } from 'react-router-dom'
 
@@ -20,10 +19,9 @@ import { Outlet } from 'react-router-dom'
 
 export const Page: React.FC = () => {
   const { breadcrumbs } = useBreadcrumbStore()
-  const { logout } = useAuth()
   return (
     <SidebarProvider>
-      <AppSidebar onLogout={logout} />
+      <AppSidebar />
       <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear">
           <div className="flex items-center gap-2 px-4">

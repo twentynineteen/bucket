@@ -141,11 +141,9 @@ const data = {
   ]
 }
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  onLogout?: () => void
-}
+type AppSidebarProps = React.ComponentProps<typeof Sidebar>
 
-export function AppSidebar({ onLogout, ...props }: AppSidebarProps) {
+export function AppSidebar(props: AppSidebarProps) {
   const { data: username } = useUsername()
 
   // Apply macOS sidebar vibrancy effect
@@ -176,7 +174,7 @@ export function AppSidebar({ onLogout, ...props }: AppSidebarProps) {
         </SidebarContent>
         <SidebarFooter>
           <ThemeToggle />
-          <NavUser user={user} onLogout={onLogout} onUpdateClicked={onUpdateClicked} />
+          <NavUser user={user} onUpdateClicked={onUpdateClicked} />
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
