@@ -343,7 +343,14 @@ test.describe('Memory Stability - Stress Tests', { tag: '@slow' }, () => {
       .setScenario(SCENARIOS.SMOKE_TEST)
       .setMockFiles(generateMockFiles(10, 2, SCENARIOS.SMOKE_TEST))
       .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
+      // Slow enough that a transfer is still running 200ms in, which is what
+      // makes the abandonment below a stop rather than a no-op: at ten events
+      // per file each file takes about 100ms, so the 200ms wait lands a file or
+      // two into ten. The event cap matters - uncapped, the final transfer is a
+      // thousand progress events and took longer than its budget on CI even
+      // though it finished in seconds locally.
       .setSpeedMultiplier(5)
+      .setMaxEventsPerFile(10)
     await mock.setup()
 
     const buildPage = new BuildProjectPage(page)
@@ -377,12 +384,14 @@ test.describe('Memory Stability - Stress Tests', { tag: '@slow' }, () => {
       await mock.injectMocks()
     }
 
-    // Final successful operation
+    // The claim: after all that, a build still runs to completion. 60s rather
+    // than the 30s this shipped with, because the ubuntu runner is several times
+    // slower than a dev machine and 30s left no margin there.
     await buildPage.fillProjectDetails('Final Stress', 2)
     await buildPage.clickSelectDestination()
     await buildPage.clickSelectFiles()
     await buildPage.clickCreateProject()
-    await buildPage.waitForCompletion(30000)
+    await buildPage.waitForCompletion(60000)
 
     await expect(buildPage.successMessage).toBeVisible()
   })
