@@ -39,3 +39,66 @@ pub fn open_folder(path: String) {
             .wait();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    /// B1.1, B1.2 - one answer per path, in the order asked.
+    #[test]
+    fn answers_each_path_in_order() {
+        let dir = std::env::temp_dir().join("bucket_paths_exist_order");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let present = dir.join("present.mov");
+        fs::write(&present, b"x").unwrap();
+        let absent = dir.join("absent.mov");
+
+        let answers = paths_exist(vec![
+            absent.to_string_lossy().into_owned(),
+            present.to_string_lossy().into_owned(),
+            dir.to_string_lossy().into_owned(),
+        ]);
+
+        assert_eq!(answers, vec![false, true, true]);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// B1.3 - an empty list is not an error.
+    #[test]
+    fn answers_an_empty_list_with_an_empty_result() {
+        assert_eq!(paths_exist(vec![]), Vec::<bool>::new());
+    }
+
+    /// B1.4 - a path that cannot be probed reports not-found rather than
+    /// erroring, matching what `Settings/api.ts:directoryExists` does
+    /// deliberately for #166: a check that cannot run is not evidence of
+    /// presence.
+    #[test]
+    fn reports_not_found_for_a_path_that_cannot_be_probed() {
+        let answers = paths_exist(vec![
+            "".to_string(),
+            "/this/does/not/exist/\0invalid".to_string(),
+        ]);
+
+        assert_eq!(answers, vec![false, false]);
+    }
+
+    /// B1.5 - duplicates answer independently and nothing panics.
+    #[test]
+    fn answers_duplicate_paths_independently() {
+        let dir = std::env::temp_dir().join("bucket_paths_exist_dupes");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.to_string_lossy().into_owned();
+
+        assert_eq!(
+            paths_exist(vec![path.clone(), path.clone(), "/nope/nope".to_string()]),
+            vec![true, true, false]
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
