@@ -18,7 +18,9 @@ describe('validateCustomTheme (B2)', () => {
     })
 
     expect(result.success).toBe(false)
-    expect(result.error).toContain('name')
+    // Asserts the "<path>: <message>" shape, not merely that the field is named,
+    // so a fix that dropped either half would still fail here.
+    expect(result.error).toMatch(/name: .*expected string/i)
   })
 
   it('accepts a well-formed theme definition', () => {

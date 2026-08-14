@@ -58,7 +58,7 @@ describe('Register validation messages (B1)', () => {
     ).toBeInTheDocument()
   })
 
-  it('writes no user record and does not navigate when validation fails (B1.3)', async () => {
+  it('stores no user and does not navigate when validation fails (B1.3)', async () => {
     renderRegister()
 
     submit('ab', 'longenough')
