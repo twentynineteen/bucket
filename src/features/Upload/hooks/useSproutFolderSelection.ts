@@ -20,12 +20,11 @@
  */
 import { useApiKeys } from '@shared/hooks'
 import { useAppStore } from '@shared/store'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import type { DefaultFolderStatus } from '../internal/defaultFolder'
-import { resolveDefaultFolder } from '../internal/defaultFolder'
 import type { SelectedSproutFolder } from '../types'
-import { useSavedFolderIndex } from './useSavedFolderIndex'
+import { useDefaultSproutFolder } from './useDefaultSproutFolder'
 
 interface UseSproutFolderSelectionReturn {
   /** The folder to upload into, or null for the account root. */
@@ -62,25 +61,15 @@ export function useSproutFolderSelection(): UseSproutFolderSelectionReturn {
   // would make Root unselectable whenever a default exists.
   const [chosen, setChosen] = useState<SelectedSproutFolder | null | undefined>(undefined)
 
-  const { index, isPending: indexPending } = useSavedFolderIndex(
-    apiKeys?.sproutVideo ?? null
-  )
-
-  const storedId = apiKeys?.sproutDefaultFolderId
-  const storedName = apiKeys?.sproutDefaultFolderName
-
-  const resolvedDefault = useMemo(
-    () =>
-      resolveDefaultFolder({
-        settingsPending: Boolean(settingsPending),
-        settingsError: Boolean(settingsError),
-        storedId,
-        storedName,
-        index,
-        indexPending
-      }),
-    [settingsPending, settingsError, storedId, storedName, index, indexPending]
-  )
+  // Shared with the Settings panel, which shows the same default and must not
+  // classify it differently (#169 follow-up).
+  const resolvedDefault = useDefaultSproutFolder({
+    apiKey: apiKeys?.sproutVideo ?? null,
+    storedId: apiKeys?.sproutDefaultFolderId,
+    storedName: apiKeys?.sproutDefaultFolderName,
+    settingsPending: Boolean(settingsPending),
+    settingsError: Boolean(settingsError)
+  })
 
   const selectedFolder =
     chosen !== undefined ? chosen : (recentFolders[0] ?? resolvedDefault.folder)

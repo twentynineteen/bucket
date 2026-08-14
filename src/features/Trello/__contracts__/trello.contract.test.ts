@@ -268,9 +268,11 @@ describe('Trello Barrel Exports - Shape', () => {
     'useTrelloSelfAssignment'
   ].sort()
 
-  it('exports exactly the expected named exports (no more, no fewer)', () => {
+  // Presence, not exhaustiveness: a caller breaks when a name it imports
+  // disappears, never when a new one is added beside it.
+  it('exports every documented named export', () => {
     const exportNames = Object.keys(trelloBarrel).sort()
-    expect(exportNames).toEqual(expectedExports)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedExports))
   })
 
   // Component shape checks

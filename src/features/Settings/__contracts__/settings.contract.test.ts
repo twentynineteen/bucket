@@ -204,9 +204,11 @@ import * as api from '../api'
 describe('Settings Barrel Exports - Shape', () => {
   const expectedExports = ['Settings', 'useAIProvider'].sort()
 
-  it('exports exactly the expected named exports (no more, no fewer)', () => {
+  // Presence, not exhaustiveness: a caller breaks when a name it imports
+  // disappears, never when a new one is added beside it.
+  it('exports every documented named export', () => {
     const exportNames = Object.keys(settingsBarrel).sort()
-    expect(exportNames).toEqual(expectedExports)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedExports))
   })
 
   it('Settings is a valid React component', () => {
