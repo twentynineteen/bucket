@@ -169,7 +169,7 @@ test.describe('Error Recovery - Complete Failure', () => {
 })
 
 test.describe('Error Recovery - User Experience', () => {
-  test.skip('allows retry after complete failure', async ({ page }) => {
+  test('allows retry after complete failure', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
       .setScenario(SCENARIOS.SMOKE_TEST)
@@ -194,11 +194,12 @@ test.describe('Error Recovery - User Experience', () => {
     // Wait for failure
     await expect(page.getByText(ERROR_TOAST_TEXT)).toBeVisible({ timeout: 30000 })
 
-    // Clear failure injection and reset
+    // Take the failure back out. `injectMocks()` is what makes that take effect
+    // in the page, and it has to happen before the retry starts - until issue
+    // #200 it could not take effect at all, which is why this test was parked.
     mock.clearFailure()
     await mock.reset()
 
-    // Clear UI and retry - Re-inject mocks BEFORE selecting files
     await buildPage.clickClearAll()
     await mock.injectMocks()
     await buildPage.fillProjectDetails('Retry After Failure', 2)
@@ -211,7 +212,7 @@ test.describe('Error Recovery - User Experience', () => {
     await expect(buildPage.successMessage).toBeVisible()
   })
 
-  test.skip('user can clear and start new project after failure', async ({ page }) => {
+  test('user can clear and start new project after failure', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
       .setScenario(SCENARIOS.SMOKE_TEST)
@@ -242,11 +243,11 @@ test.describe('Error Recovery - User Experience', () => {
     expect(await buildPage.getTitle()).toBe('')
     expect(await buildPage.getNumCameras()).toBe(2)
 
-    // Remove failure injection and reset
+    // Remove failure injection and push that into the page (see issue #200)
     mock.clearFailure()
     await mock.reset()
 
-    // Second attempt (should succeed) - Re-inject mocks BEFORE selecting files
+    // Second attempt, which should succeed
     await mock.injectMocks()
     await buildPage.fillProjectDetails('Successful Project', 2)
     await buildPage.clickSelectDestination()

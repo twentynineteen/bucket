@@ -110,6 +110,35 @@ function invokedProjects(): string[] {
   return [...names]
 }
 
+/**
+ * Every unconditionally skipped test declaration under `tests/e2e`, as
+ * `file:line`, that does not have a reason recorded in a comment above it.
+ *
+ * Only the declaration form is looked for - a `.skip` whose first argument is a
+ * string literal. `test.skip(condition, reason)` inside a test body is a
+ * conditional skip that already states its reason and is not in scope.
+ *
+ * "Recorded reason" means an issue reference in the five lines above the
+ * declaration. A prose comment alone is not enough: #90 left
+ * `// This test is skipped by default as it's intensive`, which explained the
+ * intent and still left nobody able to run the test or find the discussion.
+ */
+function undocumentedSkips(): string[] {
+  const declaration = /^\s*(?:test|it)(?:\.describe)?\.skip\(\s*['"`]/
+  const offences: string[] = []
+
+  for (const file of specFilesOnDisk()) {
+    const lines = readFileSync(path.join(e2eRoot, file), 'utf8').split('\n')
+    lines.forEach((line, index) => {
+      if (!declaration.test(line)) return
+      const preamble = lines.slice(Math.max(0, index - 5), index).join('\n')
+      if (!/#\d+/.test(preamble)) offences.push(`${file}:${index + 1}`)
+    })
+  }
+
+  return offences
+}
+
 /** Any `--config <path>` a workflow names that is not on disk. */
 function missingWorkflowConfigs(): string[] {
   const missing = new Set<string>()
@@ -159,5 +188,15 @@ describe('E2E spec discovery', () => {
 
   it('points every workflow --config at a config that exists', () => {
     expect(missingWorkflowConfigs()).toEqual([])
+  })
+
+  // Issue #200: five tests were committed already skipped and had never run in
+  // any form, so whether the application passed them could not be answered from
+  // history. Four of the five recorded no reason at all. A skip with a reason
+  // and an issue behind it is a decision; a bare one is a deferral that looks
+  // like coverage in the file, and the cost of tolerating it is what took that
+  // count to five.
+  it('records a reason for every unconditionally skipped test', () => {
+    expect(undocumentedSkips()).toEqual([])
   })
 })

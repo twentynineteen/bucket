@@ -103,9 +103,12 @@ export class TauriE2EMock {
 
   /**
    * Clear failure injection
+   *
+   * Deletes rather than assigning `undefined`, so that `injectMocks()` can
+   * re-sync the in-page config by key and the key genuinely disappears.
    */
   clearFailure(): this {
-    this.config.failureInjection = undefined
+    delete this.config.failureInjection
     return this
   }
 
@@ -637,17 +640,27 @@ export class TauriE2EMock {
   }
 
   /**
-   * Inject mocks after the page has loaded (now optional - for updating config)
-   * This is now mainly used to update the config if needed after page load
+   * Push the current config into an already-loaded page.
+   *
+   * `setup()` installs the mock as an init script that closes over the config
+   * object it was handed, and stores that same object on
+   * `window.__E2E_CONFIG__`. The two are one reference, so this must **mutate**
+   * that object rather than replace it: reassigning `__E2E_CONFIG__` leaves the
+   * mock reading the old object and every setter called after `setup()` -
+   * `clearFailure()` above, most importantly - silently does nothing (issue
+   * #200). Own keys are cleared first so that a key removed from the config,
+   * such as `failureInjection`, is really gone in the page.
    */
   async injectMocks(): Promise<void> {
-    // Config is already set in setup(), but we can update it here if needed
     await this.page.evaluate((config) => {
-      const win = window as Window & { __E2E_CONFIG__?: typeof config }
-      if (win.__E2E_CONFIG__) {
-        win.__E2E_CONFIG__ = config
-        console.log('[E2E Mock] Config updated')
+      const win = window as Window & { __E2E_CONFIG__?: Record<string, unknown> }
+      const live = win.__E2E_CONFIG__
+      if (!live) return
+      for (const key of Object.keys(live)) {
+        delete live[key]
       }
+      Object.assign(live, config)
+      console.log('[E2E Mock] Config updated')
     }, this.config)
   }
 
@@ -698,7 +711,7 @@ export class TauriE2EMock {
       win.__E2E_CANCELLED__ = false
       win.__E2E_OPERATION_IN_PROGRESS__ = false
     })
-    this.config.failureInjection = undefined
+    delete this.config.failureInjection
   }
 
   /**
