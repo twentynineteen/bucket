@@ -1,13 +1,19 @@
 /**
- * Button Animation Tests
- * Phase 1.1: Button Micro-interactions
+ * Button Tests
  *
- * Tests for hover, press, and disabled state animations
- * Following TDD methodology - these should fail initially
+ * Moved from `tests/unit/components/ui/button.test.tsx` (legacy location) to the
+ * colocated position beside `button.tsx`, per the testing policy.
+ *
+ * The `describe('Animation Constants')` block was removed under issue #236: it
+ * asserted the contents of the `BUTTON_ANIMATIONS` object directly, jsdom applied
+ * no styling, so nothing rendered was checked. The same reasoning removed twelve
+ * animation-constant exports in #219 and the Baker equivalents in #220/#233.
+ *
+ * The disabled-opacity constant assertion (`BUTTON_ANIMATIONS.disabled.opacity`)
+ * was the same pattern in a different describe and went for the same reason.
  */
 
 import { Button } from '@shared/ui/button'
-import { BUTTON_ANIMATIONS } from '@shared/constants/animations'
 import { render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockReducedMotion } from '@tests/utils/animation-testing'
@@ -83,31 +89,6 @@ describe('Button Animations', () => {
     })
   })
 
-  describe('Animation Constants', () => {
-    it('should use BUTTON_ANIMATIONS.hover.scale constant', () => {
-      expect(BUTTON_ANIMATIONS.hover.scale).toBe(1.02)
-    })
-
-    it('should use BUTTON_ANIMATIONS.press.scale constant', () => {
-      expect(BUTTON_ANIMATIONS.press.scale).toBe(0.98)
-    })
-
-    // `DURATION` and `EASING` stopped being exported under issue #219 - they are
-    // internal to `shared/constants/animations.ts` now, so these compare against the
-    // values they used to read out of them.
-    it('should use a fast duration for hover animation', () => {
-      expect(BUTTON_ANIMATIONS.hover.duration).toBe(150)
-    })
-
-    it('should use an instant duration for press animation', () => {
-      expect(BUTTON_ANIMATIONS.press.duration).toBe(0)
-    })
-
-    it('should use an ease-out curve for hover', () => {
-      expect(BUTTON_ANIMATIONS.hover.easing).toContain('cubic-bezier')
-    })
-  })
-
   describe('Disabled State', () => {
     it('should have reduced opacity when disabled', () => {
       const { getByRole } = render(<Button disabled>Disabled</Button>)
@@ -116,10 +97,6 @@ describe('Button Animations', () => {
       expect(button).toBeDisabled()
       // Opacity should be applied via Tailwind classes
       expect(button.className).toContain('disabled:opacity')
-    })
-
-    it('should use disabled opacity constant', () => {
-      expect(BUTTON_ANIMATIONS.disabled.opacity).toBe(0.5)
     })
   })
 
