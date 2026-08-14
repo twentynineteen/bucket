@@ -34,12 +34,12 @@
  * reset()
  */
 
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { useMachine } from '@xstate/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { logger } from '@shared/utils'
 
+import { listenFileTransferProgress } from '../api'
 import {
   buildProjectMachine,
   type BuildProjectContext,
@@ -181,7 +181,7 @@ export function useBuildProject(): UseBuildProjectReturn {
   // itself (via the `file-transfer-complete` event), so no completion listener
   // is needed at the hook level.
   const listenersRef = useRef<{
-    progress: UnlistenFn | null
+    progress: (() => void) | null
   }>({
     progress: null
   })
@@ -202,20 +202,17 @@ export function useBuildProject(): UseBuildProjectReturn {
     isListenerSetup.current = true
 
     let isMounted = true
-    let progressUnlisten: UnlistenFn | null = null
+    let progressUnlisten: (() => void) | null = null
 
     const setupListeners = async () => {
       try {
         // Forward throttled progress events from the new Rust transfer command
         // (`transfer_files_with_progress`) into the state machine as
         // PROGRESS_UPDATE so `context.progress` stays current during a transfer.
-        progressUnlisten = await listen<FileTransferProgress>(
-          'file-transfer-progress',
-          (event) => {
-            if (!isMounted) return
-            send({ type: 'PROGRESS_UPDATE', progress: event.payload.percentage })
-          }
-        )
+        progressUnlisten = await listenFileTransferProgress((event) => {
+          if (!isMounted) return
+          send({ type: 'PROGRESS_UPDATE', progress: event.payload.percentage })
+        })
         listenersRef.current.progress = progressUnlisten
       } catch (error) {
         logger.warn('[useBuildProject] Failed to setup Tauri listeners:', error)

@@ -7,9 +7,9 @@
  * Compatible with XState v5 fromPromise actors.
  */
 
-import { exists } from '@tauri-apps/plugin-fs'
 import { fromPromise } from 'xstate'
 
+import { pathExists } from '../api'
 import {
   createStageFailure,
   createStageSuccess,
@@ -222,8 +222,8 @@ async function validateOutputPath(outputPath: string): Promise<ValidationError |
 
   // Check if the path exists
   try {
-    const pathExists = await exists(outputPath)
-    if (!pathExists) {
+    const outputPathExists = await pathExists(outputPath)
+    if (!outputPathExists) {
       return {
         field: 'outputPath',
         message: `Output path does not exist: ${outputPath}`,

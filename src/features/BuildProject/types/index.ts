@@ -1,8 +1,8 @@
 /**
  * BuildProject Types - Barrel Export
  *
- * Re-exports all types from the build-project feature module.
- * Import from this file for convenient access to all types.
+ * Re-exports every type in the BuildProject feature module. Import from here
+ * rather than reaching into the individual files.
  *
  * @example
  * import {
@@ -11,8 +11,14 @@
  *   FileTransferProgress,
  *   BuildProjectError,
  *   ErrorKind
- * } from '@/features/build-project/types'
+ * } from '../types'
  */
+
+// ============================================================================
+// Page + Consumer Data Types
+// ============================================================================
+
+export type { FootageFile, VideoInfoData } from './project'
 
 // ============================================================================
 // Stage Types
@@ -46,7 +52,10 @@ export {
 // ============================================================================
 
 export type {
+  FileTransferItem,
   FileTransferProgress,
+  TransferCompleteEvent,
+  TransferRequest,
   StageStartEvent,
   StageCompleteEvent,
   StageErrorEvent,

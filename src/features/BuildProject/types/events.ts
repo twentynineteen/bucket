@@ -44,6 +44,38 @@ export interface FileTransferProgress {
   estimatedTimeRemaining: number
 }
 
+/**
+ * A single file to transfer, matching the Rust backend's struct.
+ */
+export interface FileTransferItem {
+  /** Source file path */
+  source: string
+  /** Destination file path */
+  destination: string
+}
+
+/**
+ * Request payload for `transfer_files_with_progress`.
+ */
+export interface TransferRequest {
+  /** List of files to transfer */
+  files: FileTransferItem[]
+}
+
+/**
+ * Transfer complete event payload from the Rust backend.
+ */
+export interface TransferCompleteEvent {
+  /** Unique operation identifier */
+  operationId: string
+  /** Whether the transfer completed successfully */
+  success: boolean
+  /** Number of files successfully transferred */
+  filesTransferred: number
+  /** Error message if the transfer failed */
+  error: string | null
+}
+
 // ============================================================================
 // Stage Events (Discriminated Union)
 // ============================================================================

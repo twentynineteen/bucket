@@ -11,10 +11,7 @@ import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 import { createActor } from 'xstate'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  buildProjectMachine,
-  type BuildProjectInput
-} from '../machine/buildProjectMachine'
+import { buildProjectMachine, type BuildProjectInput } from './buildProjectMachine'
 
 // Mock Tauri APIs
 vi.mock('@tauri-apps/api/core', () => ({
