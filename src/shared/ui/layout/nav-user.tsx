@@ -15,10 +15,10 @@ import {
 } from '@shared/ui/sidebar/SidebarMenu'
 import { useSidebar } from '@shared/ui/use-sidebar'
 import { CACHE } from '@shared/constants'
+import { appVersionQueryOptions } from '@shared/lib/app-version-query'
 import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { core } from '@tauri-apps/api'
-import { getVersion } from '@tauri-apps/api/app'
 import { ChevronsUpDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -35,24 +35,7 @@ export function NavUser({ user, onUpdateClicked }: Props) {
   const { isMobile } = useSidebar()
 
   // Use React Query for app version fetching
-  const { data: version } = useQuery({
-    ...createQueryOptions(
-      queryKeys.user.profile(),
-      async () => {
-        try {
-          return await getVersion()
-        } catch (error) {
-          throw createQueryError(`Failed to get app version: ${error}`, 'SYSTEM_INFO')
-        }
-      },
-      'STATIC',
-      {
-        staleTime: CACHE.MEDIUM, // 10 minutes - version doesn't change often
-        gcTime: CACHE.GC_EXTENDED, // Keep cached for 30 minutes
-        retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
-      }
-    )
-  })
+  const { data: version } = useQuery(appVersionQueryOptions())
 
   // Use React Query for username fetching
   const { data: username } = useQuery({

@@ -60,10 +60,15 @@ export const queryKeys = {
       ['trello', 'paths-present', fingerprint(paths.join('\n'))] as const
   },
 
+  // App domain
+  app: {
+    all: ['app'] as const,
+    version: () => ['app', 'version'] as const
+  },
+
   // User domain
   user: {
     all: ['user'] as const,
-    profile: () => ['user', 'profile'] as const,
     preferences: () => ['user', 'preferences'] as const,
     /**
      * The OS account name, from the `get_username` command. Called
@@ -209,10 +214,10 @@ export const invalidationRules: InvalidationRule[] = [
     strategy: 'prefix'
   },
 
-  // User profile updates
+  // User data updates
   {
     trigger: ['user', 'profile-update'],
-    invalidates: [queryKeys.user.profile(), queryKeys.user.breadcrumb()],
+    invalidates: [queryKeys.user.breadcrumb()],
     strategy: 'exact'
   },
 
@@ -273,6 +278,7 @@ export function validateQueryKey(key: QueryKey): boolean {
 
   const [domain, action] = key
   const validDomains = [
+    'app',
     'projects',
     'trello',
     'files',

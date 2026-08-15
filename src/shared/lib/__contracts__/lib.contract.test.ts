@@ -71,7 +71,7 @@ describe('@shared/lib barrel contract', () => {
       expect(queryKeys.projects.detail('123')).toEqual(['projects', 'detail', '123'])
       expect(queryKeys.sprout.all).toEqual(['sprout'])
       expect(queryKeys.trello.card('abc')).toEqual(['trello', 'card', 'abc'])
-      expect(queryKeys.user.profile()).toEqual(['user', 'profile'])
+      expect(queryKeys.app.version()).toEqual(['app', 'version'])
       expect(queryKeys.settings.apiKeys()).toEqual(['settings', 'api-keys'])
       expect(queryKeys.files.tree('/path')).toEqual(['files', 'tree', '/path'])
       expect(queryKeys.camera.all).toEqual(['camera'])
@@ -110,6 +110,7 @@ describe('@shared/lib barrel contract', () => {
     test('validateQueryKey validates structure', () => {
       expect(validateQueryKey(['projects', 'list'])).toBe(true)
       expect(validateQueryKey(['projects', 'list', '123'])).toBe(true)
+      expect(validateQueryKey(['app', 'version'])).toBe(true)
       expect(validateQueryKey(['invalid-domain', 'list'])).toBe(false)
       expect(validateQueryKey([])).toBe(false)
       expect(validateQueryKey(['projects'])).toBe(false)

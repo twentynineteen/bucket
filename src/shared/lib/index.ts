@@ -4,6 +4,10 @@
  * Re-exports all query infrastructure modules.
  */
 
+// App-level query factories
+/** Shared query-options factory for the Tauri app version (#242) */
+export { appVersionQueryOptions } from './app-version-query'
+
 // Query keys factory
 /** Structured query key factory organized by domain -- trello, sprout, baker, etc. */
 export { queryKeys } from './query-keys'
