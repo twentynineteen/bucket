@@ -66,18 +66,21 @@ export const queryKeys = {
     version: () => ['app', 'version'] as const
   },
 
-  // User domain
-  user: {
-    all: ['user'] as const,
-    preferences: () => ['user', 'preferences'] as const,
+  // OS/environment domain (#249 - was `user`, which implied app-domain user
+  // attributes the app does not have: #199 removed auth, #206 the last consumer)
+  os: {
+    all: ['os'] as const,
     /**
      * The OS account name, from the `get_username` command. Called
-     * `authentication()` until #223, which named a capability the app does not
-     * have: #199 removed the mock auth surface and #206 removed the last
-     * `useAuth` consumer, leaving a display-name lookup under an auth name.
+     * `authentication()` until #223, then `user.username()` until #249.
      */
-    username: () => ['user', 'username'] as const,
-    breadcrumb: () => ['user', 'breadcrumb'] as const
+    username: () => ['os', 'username'] as const
+  },
+
+  // Navigation/UI state domain (#249 - breadcrumb is navigation state, not a user attribute)
+  navigation: {
+    all: ['navigation'] as const,
+    breadcrumb: () => ['navigation', 'breadcrumb'] as const
   },
 
   // Settings domain
@@ -214,13 +217,6 @@ export const invalidationRules: InvalidationRule[] = [
     strategy: 'prefix'
   },
 
-  // User data updates
-  {
-    trigger: ['user', 'profile-update'],
-    invalidates: [queryKeys.user.breadcrumb()],
-    strategy: 'exact'
-  },
-
   // Settings changes
   {
     trigger: ['settings', 'update'],
@@ -282,7 +278,8 @@ export function validateQueryKey(key: QueryKey): boolean {
     'projects',
     'trello',
     'files',
-    'user',
+    'os',
+    'navigation',
     'settings',
     'upload',
     'images',

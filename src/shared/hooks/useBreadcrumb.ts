@@ -23,7 +23,7 @@ export const useBreadcrumb = (items: BreadcrumbItem[]) => {
    * Both of these must be keyed on **content**, not on identity, because both
    * are dependencies of the write below and a write triggers a render.
    *
-   * `queryKeys.user.breadcrumb()` allocates a new array on every call, and
+   * `queryKeys.navigation.breadcrumb()` allocates a new array on every call, and
    * every caller writes its items array inline, so before this the write ran on
    * every render, and each write - `setQueryData` with a fresh `updatedAt`, and
    * a Zustand `set` the layout subscribes to - re-rendered the tree, which ran
@@ -31,7 +31,7 @@ export const useBreadcrumb = (items: BreadcrumbItem[]) => {
    * second, and the sidebar's vibrancy effect turned each one into two Tauri
    * IPC calls. See issue #228.
    */
-  const queryKey = useMemo(() => queryKeys.user.breadcrumb(), [])
+  const queryKey = useMemo(() => queryKeys.navigation.breadcrumb(), [])
   const itemsSignature = JSON.stringify(items)
   const stableItems = useMemo(
     () => JSON.parse(itemsSignature) as BreadcrumbItem[],
