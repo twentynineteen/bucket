@@ -6,81 +6,29 @@ This document provides complete reference documentation for all Tauri commands e
 
 **Target audience:** Frontend developers building features that interact with the Rust backend.
 
-**Last updated:** July 2026 (v0.16.0)
+**Last updated:** August 2026 (v0.17.0)
 
 ---
 
 ## Table of Contents
 
-1. [Authentication](#authentication)
-2. [System Utilities](#system-utilities)
-3. [File Operations (BuildProject)](#file-operations-buildproject)
-4. [Baker: Scanning](#baker-scanning)
-5. [Baker: Breadcrumbs](#baker-breadcrumbs)
-6. [Baker: Video Links](#baker-video-links)
-7. [Baker: Trello Cards](#baker-trello-cards)
-8. [Trello Boards](#trello-boards)
-9. [Sprout Video](#sprout-video)
-10. [DOCX Processing](#docx-processing)
-11. [AI Provider Validation](#ai-provider-validation)
-12. [RAG: Script Similarity Search](#rag-script-similarity-search)
-13. [RAG: Example Management](#rag-example-management)
-14. [Adobe Premiere Integration](#adobe-premiere-integration)
-15. [Premiere Pro Plugin Management](#premiere-pro-plugin-management)
-
----
-
-## Authentication
-
-Simple token-based authentication for user sessions.
-
-### `check_auth`
-
-**Purpose:** Verify if a token is valid.
-
-**Rust signature:**
-
-```rust
-pub fn check_auth(token: String, state: State<AuthState>) -> String
-```
-
-**Parameters:**
-
-| Parameter | Type     | Description                    |
-| --------- | -------- | ------------------------------ |
-| `token`   | `String` | Authentication token to verify |
-
-**Returns:** `String` -- `"authenticated"` or `"unauthorized"`
-
-**Frontend usage** (`Auth/api.ts`):
-
-```typescript
-const result = await invoke<string>('check_auth', { token })
-```
-
-### `add_token`
-
-**Purpose:** Add a token to the authenticated tokens list.
-
-**Rust signature:**
-
-```rust
-pub fn add_token(token: String, state: State<AuthState>)
-```
-
-**Parameters:**
-
-| Parameter | Type     | Description                       |
-| --------- | -------- | --------------------------------- |
-| `token`   | `String` | Token to add to valid tokens list |
-
-**Returns:** `void`
-
-**Frontend usage** (`Auth/api.ts`):
-
-```typescript
-await invoke('add_token', { token })
-```
+1. [System Utilities](#system-utilities)
+2. [File Operations (BuildProject)](#file-operations-buildproject)
+3. [Baker: Scanning](#baker-scanning)
+4. [Baker: Breadcrumbs](#baker-breadcrumbs)
+5. [Baker: Video Links](#baker-video-links)
+6. [Baker: Trello Cards](#baker-trello-cards)
+7. [Trello Boards](#trello-boards)
+8. [Sprout Video](#sprout-video)
+9. [Poster Frames](#poster-frames)
+10. [Video Metadata](#video-metadata)
+11. [DOCX Processing](#docx-processing)
+12. [AI Provider Validation](#ai-provider-validation)
+13. [RAG: Script Similarity Search](#rag-script-similarity-search)
+14. [RAG: Example Management](#rag-example-management)
+15. [Adobe Premiere Integration](#adobe-premiere-integration)
+16. [Premiere Pro Plugin Management](#premiere-pro-plugin-management)
+17. [Video Quality Control (Kavanagh)](#video-quality-control-kavanagh)
 
 ---
 
@@ -130,6 +78,32 @@ pub fn open_folder(path: String)
 
 ```typescript
 await invoke('open_folder', { path })
+```
+
+### `paths_exist`
+
+**Purpose:** Batch-check whether each of the given filesystem paths exists on this machine. Returns one boolean per path in the order asked. Batched deliberately: the Baker detail panel renders one path per footage file, so probing a path at a time would be one IPC message per row.
+
+**Rust signature:**
+
+```rust
+pub fn paths_exist(paths: Vec<String>) -> Vec<bool>
+```
+
+**Parameters:**
+
+| Parameter | Type           | Description            |
+| --------- | -------------- | ---------------------- |
+| `paths`   | `Vec<String>`  | Paths to check         |
+
+**Returns:** `Vec<bool>` -- One answer per path, in the same order
+
+**Note:** `Path::exists()` collapses every IO error to `false`. Callers should phrase the result as "not found on this machine" rather than asserting the path is gone - these paths are routinely authored on another machine.
+
+**Frontend usage** (`Baker/api.ts`, `Trello/api.ts`):
+
+```typescript
+const results = await invoke<boolean[]>('paths_exist', { paths })
 ```
 
 ### `open_resource_file`
@@ -537,6 +511,60 @@ pub async fn baker_scan_current_files(project_path: String) -> Result<Vec<FileIn
 const files = await invoke<FileInfo[]>('baker_scan_current_files', { projectPath })
 ```
 
+### `baker_update_breadcrumbs_sizes`
+
+**Purpose:** Rewrite only the `folderSizeBytes` and `lastModified` fields of each project's `breadcrumbs.json`, recalculating the folder size live. Narrower than `baker_update_breadcrumbs`: the file is edited as raw JSON so every other field - including unknown or drifted ones - is preserved untouched.
+
+**Rust signature:**
+
+```rust
+pub async fn baker_update_breadcrumbs_sizes(
+    project_paths: Vec<String>,
+) -> Result<BatchUpdateResult, String>
+```
+
+**Parameters:**
+
+| Parameter       | Type          | Description                           |
+| --------------- | ------------- | ------------------------------------- |
+| `project_paths` | `Vec<String>` | List of project directories to update |
+
+**Returns:** `Result<BatchUpdateResult, String>`
+
+**Frontend usage** (`Baker/api.ts`):
+
+```typescript
+const result = await invoke<BatchUpdateResult>('baker_update_breadcrumbs_sizes', {
+  projectPaths
+})
+```
+
+### `baker_repair_breadcrumbs`
+
+**Purpose:** Regenerate a single project's `breadcrumbs.json` from the folder contents, salvaging user-managed link fields (`trelloCards`, `videoLinks`) from the old file. Always backs the existing file up to `breadcrumbs.json.bak` first. Allowed for any folder with a `Footage/` directory or an existing breadcrumbs file.
+
+**Rust signature:**
+
+```rust
+pub async fn baker_repair_breadcrumbs(
+    project_path: String,
+) -> Result<BreadcrumbsFile, String>
+```
+
+**Parameters:**
+
+| Parameter      | Type     | Description           |
+| -------------- | -------- | --------------------- |
+| `project_path` | `String` | Project directory path |
+
+**Returns:** `Result<BreadcrumbsFile, String>` -- The regenerated breadcrumbs
+
+**Frontend usage** (`Baker/api.ts`):
+
+```typescript
+const repaired = await invoke<BreadcrumbsFile>('baker_repair_breadcrumbs', { projectPath })
+```
+
 ### `get_folder_size`
 
 **Purpose:** Calculate the total size of a directory in bytes.
@@ -887,70 +915,165 @@ const boards = await invoke<TrelloBoard[]>('fetch_trello_boards', { apiKey, apiT
 
 ### `get_folders`
 
-**Purpose:** List folders from the Sprout Video API.
+**Purpose:** List folders from the Sprout Video API. Paginates internally (up to 10 pages of 100) so the frontend never sees pages. Returns rate-limit headers for the frontend's budget guard.
 
 **Rust signature:**
 
 ```rust
 pub async fn get_folders(
     api_key: String,
-    folder_id: Option<String>,
-) -> Result<serde_json::Value, String>
+    parent_id: Option<String>,
+) -> Result<SproutFoldersPage, String>
 ```
 
 **Parameters:**
 
-| Parameter   | Type             | Description                          |
-| ----------- | ---------------- | ------------------------------------ |
-| `api_key`   | `String`         | Sprout Video API key                 |
-| `folder_id` | `Option<String>` | Optional parent folder ID to filter  |
+| Parameter   | Type             | Description                                    |
+| ----------- | ---------------- | ---------------------------------------------- |
+| `api_key`   | `String`         | Sprout Video API key                           |
+| `parent_id` | `Option<String>` | Parent folder ID, or `None` for root folders   |
 
-**Returns:** `Result<Value, String>` -- Raw JSON response from Sprout Video API
+**Returns:** `Result<SproutFoldersPage, String>`
+
+**SproutFoldersPage structure:**
+
+```typescript
+interface SproutFoldersPage {
+  folders: Array<{
+    id: string
+    name: string
+    parent_id: string | null
+  }>
+  total: number | null          // Sprout's total for this level
+  truncated: boolean            // true when the page cap stopped pagination early
+  rate_limit_remaining: number | null  // X-RateLimit-Remaining from last page
+  rate_limit_reset: number | null      // X-RateLimit-Reset (UTC epoch seconds)
+}
+```
 
 **Frontend usage** (`Upload/api.ts`):
 
 ```typescript
-const folders = await invoke<GetFoldersResponse>('get_folders', {
+const result = await invoke<SproutFoldersPage>('get_folders', {
   apiKey,
-  parent_id: parentId
+  parentId
 })
 ```
 
 ### `upload_video`
 
-**Purpose:** Upload a video file to Sprout Video with progress tracking. Runs asynchronously in the background; emits progress events.
+**Purpose:** Upload a video file to Sprout Video with progress tracking, cancellation support and stall detection. Returns an operation ID the upload can be addressed by (for cancellation via `cancel_upload`). Files over 5 GiB are rejected before any bytes are streamed.
 
 **Rust signature:**
 
 ```rust
-pub fn upload_video(
+pub async fn upload_video(
     app_handle: AppHandle,
+    registry: State<'_, OperationRegistry>,
     file_path: String,
     api_key: String,
     folder_id: Option<String>,
-)
+    title: Option<String>,
+) -> Result<String, String>
 ```
 
 **Parameters:**
 
-| Parameter   | Type             | Description                        |
-| ----------- | ---------------- | ---------------------------------- |
-| `file_path` | `String`         | Full path to video file            |
-| `api_key`   | `String`         | Sprout Video API key               |
-| `folder_id` | `Option<String>` | Optional destination folder ID     |
+| Parameter   | Type             | Description                                     |
+| ----------- | ---------------- | ----------------------------------------------- |
+| `file_path` | `String`         | Full path to video file                         |
+| `api_key`   | `String`         | Sprout Video API key                            |
+| `folder_id` | `Option<String>` | Optional destination folder ID                  |
+| `title`     | `Option<String>` | Optional title (otherwise Sprout derives one from the filename) |
 
-**Returns:** `void` (returns immediately; upload runs in background)
+**Returns:** `Result<String, String>` -- Operation ID (upload runs in background)
 
 **Events emitted:**
 
-- `upload_progress` -- Percentage complete (0-100)
-- `upload_complete` -- JSON response from Sprout Video API
-- `upload_error` -- Error message string
+- `upload_progress` -- Throttled progress updates (every 100ms)
+
+  ```typescript
+  interface UploadProgressEvent {
+    operationId: string
+    bytesSent: number
+    totalBytes: number
+    percentage: number  // 0-100
+  }
+  ```
+
+- `upload_complete` -- Upload succeeded
+
+  ```typescript
+  interface UploadCompleteEvent {
+    operationId: string
+    video: object  // Raw Sprout Video API response
+  }
+  ```
+
+- `upload_error` -- Upload failed (classified error message)
+
+  ```typescript
+  interface UploadErrorEvent {
+    operationId: string
+    message: string
+  }
+  ```
+
+- `upload_cancelled` -- User cancelled the upload
+
+  ```typescript
+  interface UploadCancelledEvent {
+    operationId: string
+    bytesSent: number
+    totalBytes: number
+  }
+  ```
+
+- `upload_stall_warning` -- Non-terminal warning that no data has reached Sprout for a while (raised at ~35s, terminal stall at ~70s). `message` is `null` when the warning is being withdrawn because progress resumed.
+
+  ```typescript
+  interface UploadStallWarningEvent {
+    operationId: string
+    bytesSent: number
+    totalBytes: number
+    silentForSeconds: number
+    message: string | null
+  }
+  ```
 
 **Frontend usage** (`Upload/api.ts`):
 
 ```typescript
-await invoke('upload_video', { filePath, apiKey, folderId })
+const operationId = await invoke<string>('upload_video', {
+  filePath, apiKey, folderId, title
+})
+```
+
+### `cancel_upload`
+
+**Purpose:** Signal cancellation for a running Sprout upload. Returns `false` when the operation is not found, which is the normal outcome when the upload had already finished.
+
+**Rust signature:**
+
+```rust
+pub async fn cancel_upload(
+    registry: State<'_, OperationRegistry>,
+    operation_id: String,
+) -> Result<bool, String>
+```
+
+**Parameters:**
+
+| Parameter      | Type     | Description                                |
+| -------------- | -------- | ------------------------------------------ |
+| `operation_id` | `String` | Operation ID returned by `upload_video`    |
+
+**Returns:** `Result<bool, String>` -- `true` if cancellation was signalled
+
+**Frontend usage** (`Upload/api.ts`):
+
+```typescript
+await invoke<boolean>('cancel_upload', { operationId })
 ```
 
 ### `fetch_sprout_video_details`
@@ -982,6 +1105,115 @@ const details = await invoke<SproutVideoDetails>('fetch_sprout_video_details', {
   videoId,
   apiKey
 })
+```
+
+---
+
+## Poster Frames
+
+Commands for uploading branded poster frames to Sprout Video and saving local copies.
+
+### `set_sprout_poster_frame`
+
+**Purpose:** Upload a custom poster frame image for an existing Sprout video. The image is generated on the frontend canvas; this command only moves the bytes to Sprout's API.
+
+**Rust signature:**
+
+```rust
+pub async fn set_sprout_poster_frame(
+    video_id: String,
+    api_key: String,
+    image_bytes: Vec<u8>,
+    file_name: Option<String>,
+) -> Result<(), PosterFrameError>
+```
+
+**Parameters:**
+
+| Parameter     | Type             | Description                                    |
+| ------------- | ---------------- | ---------------------------------------------- |
+| `video_id`    | `String`         | Sprout Video video ID                          |
+| `api_key`     | `String`         | Sprout Video API key                           |
+| `image_bytes` | `Vec<u8>`        | JPEG image bytes                               |
+| `file_name`   | `Option<String>` | Filename for the upload (default: `posterframe.jpg`) |
+
+**Returns:** `Result<(), PosterFrameError>`
+
+**PosterFrameError structure:**
+
+```typescript
+interface PosterFrameError {
+  status: number | null  // HTTP status, or null for transport errors
+  message: string
+}
+```
+
+**Frontend usage** (`Upload/api.ts`):
+
+```typescript
+await invoke('set_sprout_poster_frame', {
+  videoId, apiKey, imageBytes, fileName
+})
+```
+
+### `save_poster_frame_copy`
+
+**Purpose:** Write a copy of the poster frame into `<project_path>/Graphics/`, creating the folder if needed. Never overwrites existing files - auto-suffixes with `-2`, `-3`, etc.
+
+**Rust signature:**
+
+```rust
+pub fn save_poster_frame_copy(
+    project_path: String,
+    file_stem: String,
+    image_bytes: Vec<u8>,
+) -> Result<String, String>
+```
+
+**Parameters:**
+
+| Parameter      | Type      | Description                              |
+| -------------- | --------- | ---------------------------------------- |
+| `project_path` | `String`  | Project directory path                   |
+| `file_stem`    | `String`  | Filename stem (e.g. `posterframe-Managing_Change`) |
+| `image_bytes`  | `Vec<u8>` | JPEG image bytes                         |
+
+**Returns:** `Result<String, String>` -- The path that was written
+
+**Frontend usage** (`Upload/api.ts`):
+
+```typescript
+const writtenPath = await invoke<string>('save_poster_frame_copy', {
+  projectPath, fileStem, imageBytes
+})
+```
+
+---
+
+## Video Metadata
+
+### `get_video_duration`
+
+**Purpose:** Read the duration (in seconds) of a local MP4/MOV file by parsing the `moov/mvhd` box directly, without any external media dependencies. Used as a fallback when Sprout Video has not finished processing an upload and cannot report a duration yet.
+
+**Rust signature:**
+
+```rust
+pub fn get_video_duration(file_path: String) -> Result<f64, String>
+```
+
+**Parameters:**
+
+| Parameter   | Type     | Description           |
+| ----------- | -------- | --------------------- |
+| `file_path` | `String` | Path to MP4/MOV file  |
+
+**Returns:** `Result<f64, String>` -- Duration in seconds
+
+**Frontend usage** (`Upload/api.ts`):
+
+```typescript
+const seconds = await invoke<number>('get_video_duration', { filePath })
 ```
 
 ---
@@ -1571,9 +1803,168 @@ await invoke('open_cep_folder')
 
 ---
 
+## Video Quality Control (Kavanagh)
+
+Commands for automated video quality control: watermark presence, closing transition (tail/sting) analysis. Requires ffmpeg and ffprobe on the system.
+
+### `kavanagh_detect_ffmpeg`
+
+**Purpose:** Check whether ffmpeg and ffprobe are available and runnable. Probes a configured custom directory first, then standard locations (`/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`). Does not use `which` because a Tauri app launched from Finder does not inherit the shell PATH.
+
+**Rust signature:**
+
+```rust
+pub fn kavanagh_detect_ffmpeg(custom_dir: Option<String>) -> FfmpegAvailability
+```
+
+**Parameters:**
+
+| Parameter    | Type             | Description                                       |
+| ------------ | ---------------- | ------------------------------------------------- |
+| `custom_dir` | `Option<String>` | Directory configured in Settings, or `None` for defaults |
+
+**Returns:** `FfmpegAvailability` (tagged union, serialised with `status` discriminator)
+
+**FfmpegAvailability structure:**
+
+```typescript
+type FfmpegAvailability =
+  | { status: 'ready'; ffmpeg: string; ffprobe: string }
+  | { status: 'notFound'; missing: string[]; searched: string[] }
+  | { status: 'notExecutable'; path: string }
+```
+
+**Frontend usage** (`Kavanagh/api.ts`):
+
+```typescript
+const availability = await invoke<FfmpegAvailability>('kavanagh_detect_ffmpeg', {
+  customDir
+})
+```
+
+### `kavanagh_run_check`
+
+**Purpose:** Run the full quality control suite over one video: watermark presence check, closing transition (tail) analysis, and sting verification. Only one run at a time is allowed; a second request is rejected rather than queued.
+
+**Rust signature:**
+
+```rust
+pub async fn kavanagh_run_check(
+    app: AppHandle,
+    registry: State<'_, OperationRegistry>,
+    runs: State<'_, KavanaghRunState>,
+    request: WatermarkCheckRequest,
+) -> Result<CheckReport, KavanaghError>
+```
+
+**Parameters:**
+
+| Parameter | Type                    | Description          |
+| --------- | ----------------------- | -------------------- |
+| `request` | `WatermarkCheckRequest` | Check configuration  |
+
+**WatermarkCheckRequest structure:**
+
+```typescript
+interface WatermarkCheckRequest {
+  videoPath: string
+  referenceFiles: string[]         // Watermark pool files
+  stingReferenceFiles?: string[]   // Sting pool files (defaults to [])
+  ffmpegDirectory?: string | null  // Settings ffmpeg directory override
+  matchThreshold?: number | null   // Advanced: custom match threshold
+}
+```
+
+**Returns:** `Result<CheckReport, KavanaghError>`
+
+**Events emitted:**
+
+- `kavanagh-progress` -- Progress updates throughout the run
+
+  ```typescript
+  interface KavanaghProgressEvent {
+    operationId: string
+    phase: string       // "probe" | "tail" | "watermark"
+    percentage: number  // 0-100, never decreases
+    detail: string
+  }
+  ```
+
+**Frontend usage** (`Kavanagh/api.ts`):
+
+```typescript
+const report = await invoke<KavanaghCheckReport>('kavanagh_run_check', { request })
+```
+
+### `kavanagh_cancel_run`
+
+**Purpose:** Cancel the quality control run in flight, if there is one. Takes no argument because only one run can exist at a time.
+
+**Rust signature:**
+
+```rust
+pub async fn kavanagh_cancel_run(
+    registry: State<'_, OperationRegistry>,
+    runs: State<'_, KavanaghRunState>,
+) -> Result<bool, KavanaghError>
+```
+
+**Parameters:** None
+
+**Returns:** `Result<bool, KavanaghError>` -- `true` if a run was cancelled, `false` if nothing was running
+
+**Frontend usage** (`Kavanagh/api.ts`):
+
+```typescript
+await invoke<boolean>('kavanagh_cancel_run')
+```
+
+### `kavanagh_save_evidence`
+
+**Purpose:** Write a report's failure thumbnails (JPEG) into a folder the operator chose. Never overwrites existing files. Returns the paths that were written.
+
+**Rust signature:**
+
+```rust
+pub fn kavanagh_save_evidence(
+    folder: String,
+    prefix: String,
+    items: Vec<EvidenceItem>,
+) -> Result<Vec<String>, KavanaghError>
+```
+
+**Parameters:**
+
+| Parameter | Type               | Description                              |
+| --------- | ------------------ | ---------------------------------------- |
+| `folder`  | `String`           | Destination folder path                  |
+| `prefix`  | `String`           | Filename prefix (e.g. `kavanagh-render`) |
+| `items`   | `Vec<EvidenceItem>` | Thumbnails to save                       |
+
+**EvidenceItem structure:**
+
+```typescript
+interface EvidenceItem {
+  label: string   // Human-readable label (used in filename)
+  jpeg: number[]  // JPEG image bytes
+}
+```
+
+**Returns:** `Result<Vec<String>, KavanaghError>` -- Paths of the written files
+
+**Frontend usage** (`Kavanagh/api.ts`):
+
+```typescript
+const paths = await invoke<string[]>('kavanagh_save_evidence', {
+  folder, prefix, items
+})
+```
+
+---
+
 ## Error Handling
 
-All Tauri commands return `Result<T, String>` (or `Result<T, FileTransferError>` for transfer commands) where the error variant is a string message. Commands that return `void` (no Result) do not propagate errors to the frontend.
+All Tauri commands return `Result<T, String>` (or `Result<T, FileTransferError>` for transfer commands, `Result<T, KavanaghError>` for QC commands, `Result<T, PosterFrameError>` for poster frame commands) where the error variant is a string message or a structured error. Commands that return `void` (no Result) do not propagate errors to the frontend.
 
 **Frontend error handling pattern:**
 
@@ -1593,6 +1984,6 @@ try {
 
 ---
 
-**Document Version:** 2.0.0
-**Last Updated:** July 2026
-**Applies to:** Bucket v0.16.0
+**Document Version:** 3.0.0
+**Last Updated:** August 2026
+**Applies to:** Bucket v0.17.0
