@@ -238,7 +238,6 @@ export async function installBackgroundMocks(
       }
 
       if (cmd === 'get_username') return 'E2E User'
-      if (cmd === 'get_version') return '0.0.0-e2e'
 
       // join must genuinely concatenate. The catch-all below would break the
       // cabrito probe above by returning a constant (issue #167).

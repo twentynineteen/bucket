@@ -25,9 +25,12 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
+  REPO_ROOT,
+  handledCommandsIn,
   invokeSites,
   invokeSitesIn,
   registeredCommands,
+  walkFiles,
   type InvokeSite
 } from './internal/tauri-command-surface'
 
@@ -209,5 +212,94 @@ describe('every invoked Tauri command is registered in the Rust handler list', (
       notRegistered,
       'These are not in generate_handler![...] at all. Delete them from UNINVOKED_COMMANDS.'
     ).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// E2E fixture guard: every handled command exists (issue #241)
+// ---------------------------------------------------------------------------
+
+/**
+ * Commands the IPC envelope uses. `case 'tauri':` in a fixture routes into a
+ * nested dispatch for `plugin:path|...` etc. - it is the IPC wrapper itself,
+ * not a command registered in `generate_handler!`.
+ */
+const ENVELOPE_COMMANDS = new Set(['tauri'])
+
+describe('E2E fixtures handle only commands that exist in the Rust handler list', () => {
+  const registered = registeredCommands()
+  const fixtureDir = join(REPO_ROOT, 'tests/e2e/fixtures')
+  const fixtureFiles = walkFiles(fixtureDir, /\.tsx?$/)
+  const handled = handledCommandsIn(fixtureFiles)
+
+  it('reads the fixture surface (guards a vacuous pass)', () => {
+    // Without this, a wrong path or a broken extractor makes every assertion
+    // below pass by comparing against an empty list.
+    expect(fixtureFiles.length).toBeGreaterThan(2)
+    expect(handled.length).toBeGreaterThan(10)
+    expect(handled.map((h) => h.command)).toContain('get_username')
+  })
+
+  it('every static command a fixture handles is registered in generate_handler!', () => {
+    const known = new Set(registered)
+
+    const phantoms = handled
+      .filter((h) => h.kind === 'static')
+      .filter((h) => !ENVELOPE_COMMANDS.has(h.command))
+      .filter((h) => !known.has(h.command))
+      .map(
+        (h) =>
+          `${h.file}:${h.line} handles '${h.command}', which is not in ` +
+          'generate_handler![...] in src-tauri/src/main.rs'
+      )
+
+    expect(
+      phantoms,
+      'A mock that answers a command the backend does not have implies a contract ' +
+        'that does not exist. Any test relying on it is testing nothing. Remove the ' +
+        'handler, or register the command in the crate.'
+    ).toEqual([])
+  })
+
+  it('reads case labels and cmd comparisons from fixture source (extractor fixture)', () => {
+    // Proves the extractor reads both patterns the E2E fixtures use:
+    // `case 'label':` from switch statements and `cmd === 'literal'` from if chains.
+    const dir = mkdtempSync(join(tmpdir(), 'handled-commands-'))
+    const file = join(dir, 'mock.ts')
+
+    try {
+      writeFileSync(
+        file,
+        [
+          'switch (cmd) {',
+          "  case 'baker_start_scan':",
+          "    return 'scan-1'",
+          "  case 'plugin:fs|exists':",
+          '    return true',
+          "  case 'tauri':",
+          '    return null',
+          '}',
+          "if (cmd === 'get_username') return 'test'",
+          "if (cmd === 'plugin:path|join') return '/'",
+          // Should NOT match: different variable, not cmd
+          "if (windowCmd === 'outer_position') return { x: 0, y: 0 }"
+        ].join('\n')
+      )
+
+      const found = handledCommandsIn([file])
+
+      expect(found.map((h) => [h.kind, h.command])).toEqual([
+        ['static', 'baker_start_scan'],
+        ['plugin', 'plugin:fs|exists'],
+        ['static', 'tauri'],
+        ['static', 'get_username'],
+        ['plugin', 'plugin:path|join']
+      ])
+
+      // windowCmd comparisons are not extracted.
+      expect(found.map((h) => h.command)).not.toContain('outer_position')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

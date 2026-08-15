@@ -128,7 +128,6 @@ export async function setupSproutMocks(
       if (cmd === 'get_video_duration') return 120
       if (cmd === 'upload_video') return null
       if (cmd === 'get_username') return 'E2E User'
-      if (cmd === 'get_version') return '0.0.0-e2e'
 
       // Settings live in api_keys.json, read through the fs plugin.
       if (cmd === 'plugin:fs|exists') {

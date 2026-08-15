@@ -222,12 +222,8 @@ export async function setupTauriMocks(
       const payload = (args ?? {}) as Record<string, unknown>
 
       switch (cmd) {
-        case 'get_version':
-          return '0.0.0-e2e'
         case 'get_username':
           return 'Test User'
-        case 'get_preferences':
-          return { defaultPath: '/Users/test', theme: 'system' }
 
         // Example Embeddings. Must be an array: the page filters it directly,
         // so null crashes the render into the error boundary.
