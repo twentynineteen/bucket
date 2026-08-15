@@ -144,6 +144,36 @@ const isTransportError = (error: unknown): boolean =>
   (error instanceof Error && error.name === 'NetworkError') ||
   errorMessage(error).toLowerCase().includes('network')
 
+/**
+ * Whether the error carries a typed `QueryError['type']` matching `expected`.
+ *
+ * `createQueryError` stores the category in a structured field, but until #240
+ * every retry condition and `classifyError` grepped the message instead and
+ * never consulted the field. This helper lets conditions check the type first,
+ * falling back to message inspection only for errors that did not come from
+ * `createQueryError`.
+ */
+export function hasErrorType(error: unknown, expected: QueryError['type']): boolean {
+  if (error && typeof error === 'object' && 'type' in error) {
+    return (error as { type: unknown }).type === expected
+  }
+  return false
+}
+
+/**
+ * Returns the `QueryError['type']` field if the error carries one, else `null`.
+ *
+ * Used by retry conditions to decide whether to trust the typed field (and skip
+ * message inspection) or fall back to message grepping for untyped errors.
+ */
+function queryErrorType(error: unknown): QueryError['type'] | null {
+  if (error && typeof error === 'object' && 'type' in error) {
+    const type = (error as { type: unknown }).type
+    if (typeof type === 'string') return type as QueryError['type']
+  }
+  return null
+}
+
 export const retryStrategies: Record<string, RetryConfiguration> = {
   network: {
     attempts: RETRY.DEFAULT_ATTEMPTS,
@@ -156,6 +186,8 @@ export const retryStrategies: Record<string, RetryConfiguration> = {
     condition: (error: unknown) => {
       const status = httpStatus(error)
       if (status !== null) return status >= 500
+      const type = queryErrorType(error)
+      if (type !== null) return type === 'server'
       return errorMessage(error).toLowerCase().includes('server')
     }
   },
@@ -168,6 +200,8 @@ export const retryStrategies: Record<string, RetryConfiguration> = {
     attempts: 2,
     delay: (attempt: number) => 500 * attempt,
     condition: (error: unknown) => {
+      const type = queryErrorType(error)
+      if (type !== null) return type === 'system'
       const message = errorMessage(error).toLowerCase()
       return message.includes('system') || message.includes('app version')
     }
@@ -175,7 +209,11 @@ export const retryStrategies: Record<string, RetryConfiguration> = {
   auth: {
     attempts: 1,
     delay: () => SECONDS,
-    condition: (error: unknown) => errorMessage(error).toLowerCase().includes('auth')
+    condition: (error: unknown) => {
+      const type = queryErrorType(error)
+      if (type !== null) return type === 'authentication'
+      return errorMessage(error).toLowerCase().includes('auth')
+    }
   },
   external: {
     attempts: RETRY.DEFAULT_ATTEMPTS,
@@ -352,8 +390,11 @@ export function createQueryError(
   code?: number,
   context?: Record<string, unknown>
 ): QueryError {
-  // If typeOrInfo is a recognized error type, use it directly
-  const validTypes = [
+  // Normalise to lowercase before comparing: the QueryError['type'] union is
+  // lowercase, but every call site historically passed UPPERCASE ('AUTHENTICATION',
+  // 'SYSTEM_INFO', 'SERVER'). The explicit-type branch was never taken because
+  // validTypes.includes('AUTHENTICATION') is false. Fixed by #240.
+  const validTypes: QueryError['type'][] = [
     'network',
     'server',
     'validation',
@@ -362,9 +403,11 @@ export function createQueryError(
     'system',
     'unknown'
   ]
-  const type = validTypes.includes(typeOrInfo as string)
-    ? (typeOrInfo as QueryError['type'])
-    : inferErrorType(typeOrInfo || message)
+  const normalised = typeof typeOrInfo === 'string' ? typeOrInfo.toLowerCase() : undefined
+  const type =
+    normalised && validTypes.includes(normalised as QueryError['type'])
+      ? (normalised as QueryError['type'])
+      : inferErrorType(typeOrInfo || message)
 
   return {
     type,

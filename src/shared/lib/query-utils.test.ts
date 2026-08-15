@@ -1,9 +1,11 @@
 import {
   calculateProgress,
   createQueryError,
+  hasErrorType,
   inferErrorType,
   isAuthError,
   isRateLimited,
+  retryStrategies,
   shouldRetry,
   shouldRetryRequest
 } from '@shared/lib/query-utils'
@@ -195,6 +197,111 @@ describe('Query Utils', () => {
     it('should handle retryable error types', () => {
       const error = createQueryError('Server error', 'server')
       expect(error.retryable).toBe(true)
+    })
+
+    it('normalises uppercase types to the lowercase union (#240)', () => {
+      // Every call site historically passed UPPERCASE ('AUTHENTICATION',
+      // 'SERVER', etc.) but the validTypes array is lowercase, so the
+      // explicit-type branch was never taken.
+      expect(createQueryError('API key missing', 'AUTHENTICATION').type).toBe(
+        'authentication'
+      )
+      expect(createQueryError('Internal error', 'SERVER').type).toBe('server')
+      expect(createQueryError('Timed out', 'TIMEOUT').type).toBe('timeout')
+      expect(createQueryError('Bad input', 'VALIDATION').type).toBe('validation')
+      expect(createQueryError('IPC error', 'SYSTEM').type).toBe('system')
+      expect(createQueryError('Offline', 'NETWORK').type).toBe('network')
+      expect(createQueryError('Hmm', 'UNKNOWN').type).toBe('unknown')
+    })
+
+    it('falls through to inferErrorType for unrecognised type strings', () => {
+      // Strings like 'SYSTEM_INFO', 'SETTINGS_LOAD', 'DRAW_OPERATION' are not
+      // members of the QueryError['type'] union even after lowercasing. They
+      // reach inferErrorType which does its best with substring matching.
+      const sysInfo = createQueryError('Failed to get app version', 'SYSTEM_INFO')
+      expect(sysInfo.type).toBe('system') // inferred from 'app version'
+
+      const settingsLoad = createQueryError(
+        'Failed to load API keys: permission denied',
+        'SETTINGS_LOAD'
+      )
+      expect(settingsLoad.type).toBe('unknown') // no matching substring
+    })
+  })
+
+  describe('hasErrorType', () => {
+    it('returns true when the error has a matching type field', () => {
+      const error = createQueryError('API key missing', 'authentication')
+      expect(hasErrorType(error, 'authentication')).toBe(true)
+    })
+
+    it('returns false for a plain Error without a type field', () => {
+      expect(hasErrorType(new Error('something broke'), 'authentication')).toBe(false)
+    })
+
+    it('returns false for a bare string', () => {
+      expect(hasErrorType('auth failure', 'authentication')).toBe(false)
+    })
+
+    it('returns false when the type does not match', () => {
+      const error = createQueryError('server error', 'server')
+      expect(hasErrorType(error, 'authentication')).toBe(false)
+    })
+  })
+
+  // #240: the auth strategy could never fire because its condition grepped the
+  // error message for 'auth', while createQueryError stores the category in a
+  // typed field and never in the message.
+  describe('auth strategy fires for typed errors (#240)', () => {
+    it('fires for a type-authentication error whose message has no auth substring', () => {
+      // The exact shape raised by useTrelloBoard: 'API key or token missing'
+      // contains no 'auth' substring, so the pre-#240 condition was false.
+      const error = createQueryError('API key or token missing', 'authentication')
+      expect(shouldRetry(error, 0, 'auth')).toBe(true)
+    })
+
+    it('fires for an UPPERCASE type string (normalised by createQueryError)', () => {
+      const error = createQueryError('API key or token missing', 'AUTHENTICATION')
+      expect(shouldRetry(error, 0, 'auth')).toBe(true)
+    })
+
+    it('still fires for a plain message containing auth', () => {
+      // Fallback path: untyped errors are matched by message as before.
+      expect(shouldRetry('auth token expired', 0, 'auth')).toBe(true)
+    })
+
+    it('does not fire for an error with a different type', () => {
+      const error = createQueryError('server crashed', 'server')
+      expect(shouldRetry(error, 0, 'auth')).toBe(false)
+    })
+
+    it('reads the typed field, not the message', () => {
+      // The condition must check the type, not the message. An error with type
+      // 'system' whose message coincidentally contains 'auth' must NOT match.
+      const error = { type: 'system', message: 'auth proxy restart', retryable: false }
+      expect(retryStrategies.auth.condition(error)).toBe(false)
+    })
+  })
+
+  describe('system strategy fires for typed errors (#240)', () => {
+    it('fires for a type-system error whose message has no system substring', () => {
+      const error = createQueryError('Failed to fetch username: IPC error', 'system')
+      expect(shouldRetry(error, 0, 'system')).toBe(true)
+    })
+
+    it('still fires for a plain message containing system', () => {
+      expect(shouldRetry('system configuration error', 0, 'system')).toBe(true)
+    })
+  })
+
+  describe('server strategy fires for typed errors (#240)', () => {
+    it('fires for a type-server error whose message has no server substring', () => {
+      const error = createQueryError('Internal processing failed', 'server')
+      expect(shouldRetry(error, 0, 'server')).toBe(true)
+    })
+
+    it('still checks httpStatus first', () => {
+      expect(shouldRetry({ status: 503, message: 'bad gateway' }, 0, 'server')).toBe(true)
     })
   })
 

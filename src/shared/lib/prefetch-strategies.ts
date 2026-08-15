@@ -69,14 +69,14 @@ export class QueryPrefetchManager {
           try {
             return await core.invoke<string>('get_username')
           } catch (error) {
-            throw createQueryError(`Failed to fetch username: ${error}`, 'AUTHENTICATION')
+            throw createQueryError(`Failed to fetch username: ${error}`, 'system')
           }
         },
         'STATIC',
         {
           staleTime: CACHE.STANDARD, // 5 minutes
           gcTime: CACHE.GC_LONG, // Keep cached for 15 minutes
-          retry: (failureCount, error) => shouldRetry(error, failureCount, 'auth')
+          retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
         }
       )
     })
