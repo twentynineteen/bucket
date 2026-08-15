@@ -2,7 +2,7 @@
 
 A desktop video-production workflow app built with Tauri 2 (Rust + React/TypeScript). Bucket streamlines footage ingest, project creation, and integration with Adobe Premiere, Trello, and Sprout Video.
 
-**Version:** 0.16.0  
+**Version:** 0.19.0  
 **Platform:** macOS (primary)  
 **License:** UNLICENSED (proprietary)
 
@@ -11,12 +11,12 @@ A desktop video-production workflow app built with Tauri 2 (Rust + React/TypeScr
 Bucket is a single desktop app that ties together the repetitive steps of a video-production pipeline:
 
 - **BuildProject** -- Select footage files, assign camera numbers, and generate an organised folder structure with an Adobe Premiere project in one step. File operations run in the Rust backend with real-time progress tracking.
-- **Baker** -- Scan a drive for project folders, validate their structure (Footage, Graphics, Renders, Projects, Scripts), and create or update `breadcrumbs.json` metadata files in batch. Recent updates added a full-height layout, diff-row previews, and a rebuilt batch dialog.
+- **Baker** -- Scan a drive for project folders, validate their structure (Footage, Graphics, Renders, Projects, Scripts), and create or update `breadcrumbs.json` metadata files in batch.
 - **Upload** -- Publish videos to Sprout Video, generate custom posterframes, and manage hosting metadata.
-- **Trello** -- Link projects to Trello cards, sync breadcrumbs metadata, and self-assign to cards via a toggle (added in v0.16.0).
+- **Trello** -- Link projects to Trello cards, sync breadcrumbs metadata, and self-assign to cards.
 - **Premiere** -- Install and update Premiere Pro CEP extension plugins (BreadcrumbsPremiere, Boring) with one click.
 - **AI Tools** -- AI-powered script formatting for autocue/teleprompter use, powered by local Ollama models via the Vercel AI SDK.
-- **Auth** -- Login, registration, and token management with argon2 hashing and Tauri Stronghold secure storage.
+- **Kavanagh** -- Automated QC checks on rendered videos: watermark presence detection and closing sting validation, powered by ffmpeg.
 - **Settings** -- Per-domain configuration tabs covering Trello boards, Ollama connection, and app preferences. Thirteen themes available (System, Light, Dark, Dracula, Tokyo Night, Catppuccin variants, Solarized Light, GitHub Light, Nord Light, One Light).
 
 ## Getting Bucket
@@ -88,8 +88,8 @@ GitHub Actions workflows run on every push and PR to `master` and `release`:
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| **CI** (`ci.yml`) | Push/PR to `master`, `release` | Lint, unit tests, frontend build |
-| **E2E Tests** (`e2e-tests.yml`) | PRs touching BuildProject or e2e paths | Playwright end-to-end tests |
+| **CI** (`ci.yml`) | Push/PR to `master`, `release` | Lint, unit + Rust tests, E2E tests, macOS build |
+| **E2E Slow Suite** (`e2e-tests.yml`) | Push to `master`, `release` | The `@slow` E2E specs (large transfer simulations) |
 | **Publish** (`publish.yml`) | Push to `release` | Build app, create GitHub release, upload artifacts |
 
 ## Tech Stack
@@ -97,7 +97,7 @@ GitHub Actions workflows run on every push and PR to `master` and `release`:
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 19.2 + TypeScript 5.9 + Vite 7.3 |
-| Backend | Tauri 2.0 (Rust 2021 edition) |
+| Backend | Tauri 2 (Rust 2021 edition) |
 | UI | TailwindCSS 4 + Radix UI + Lucide icons |
 | State | Zustand + TanStack React Query |
 | State machines | XState (BuildProject workflow) |
@@ -111,9 +111,9 @@ GitHub Actions workflows run on every push and PR to `master` and `release`:
 src/
   features/
     AITools/        Script formatting + embeddings
-    Auth/           Login, registration, token management
     Baker/          Drive scanning, breadcrumbs management
     BuildProject/   File ingest, camera assignment, project creation
+    Kavanagh/       Render QC (watermark + closing sting)
     Premiere/       Premiere Pro plugin management
     Settings/       App configuration
     Trello/         Trello card management, video links
@@ -147,9 +147,9 @@ Each feature module follows a strict convention: an `api.ts` I/O boundary wrappi
 ## Version Bumping
 
 ```bash
-bun run version:patch   # 0.16.0 -> 0.16.1
-bun run version:minor   # 0.16.0 -> 0.17.0
-bun run version:major   # 0.16.0 -> 1.0.0
+bun run version:patch   # 0.19.0 -> 0.19.1
+bun run version:minor   # 0.19.0 -> 0.20.0
+bun run version:major   # 0.19.0 -> 1.0.0
 ```
 
 These scripts update `package.json`, `Cargo.toml`, and `tauri.conf.json` in one step.
