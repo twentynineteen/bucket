@@ -63,23 +63,24 @@ npx npm-check-updates -u             # Update all dependencies to latest
 ```
 src/
 +-- features/
-|   +-- AITools/       # ScriptFormatter + ExampleEmbeddings (api.ts, 2 barrel exports)
-|   +-- Baker/         # Drive scanning, breadcrumbs management (api.ts, 24 barrel exports)
+|   +-- AITools/       # ScriptFormatter + ExampleEmbeddings (api.ts)
+|   +-- Baker/         # Drive scanning, breadcrumbs management (api.ts)
 |   +-- BuildProject/  # File ingest, camera assignment, XState machine + stages (api.ts)
-|   +-- Premiere/      # Adobe Premiere plugin management (api.ts, 1 barrel export)
-|   +-- Settings/      # App configuration with per-domain tabs (api.ts, 3 barrel exports)
-|   +-- Trello/        # Trello card management, video links (api.ts, 29 barrel exports)
-|   +-- Upload/        # Sprout Video, Posterframe, Otter (api.ts, 17 barrel exports)
+|   +-- Kavanagh/      # Video QC: watermark presence + closing sting validation via ffmpeg (api.ts)
+|   +-- Premiere/      # Adobe Premiere plugin management (api.ts)
+|   +-- Settings/      # App configuration with per-domain tabs (api.ts)
+|   +-- Trello/        # Trello card management, video links (api.ts)
+|   +-- Upload/        # Sprout Video, Posterframe, Otter (api.ts)
 |
 +-- shared/
-|   +-- constants/     # Timing, animation, project constants (26 exports)
-|   +-- hooks/         # Cross-feature hooks: breadcrumb, search, API keys, mobile (8 exports)
-|   +-- lib/           # Query infrastructure: keys, client, utils, prefetch, perf (50 exports)
-|   +-- services/      # ProgressTracker, feedback, cache services (5 exports)
-|   +-- store/         # Zustand stores: appStore, breadcrumbStore (3 exports)
-|   +-- types/         # Shared domain types: media, script, breadcrumbs (41 exports)
+|   +-- constants/     # Timing, animation, project, QC threshold constants
+|   +-- hooks/         # Cross-feature hooks: breadcrumb, search, API keys, mobile
+|   +-- lib/           # Query infrastructure: keys, client, utils, prefetch, perf
+|   +-- services/      # ProgressTracker, feedback, cache services
+|   +-- store/         # Zustand stores: appStore, breadcrumbStore
+|   +-- types/         # Shared domain types: media, script, breadcrumbs
 |   +-- ui/            # Radix primitives, sidebar, theme, layout (direct imports, NO barrel)
-|   +-- utils/         # Logger, storage, validation, cn(), breadcrumbs utils (29 exports)
+|   +-- utils/         # Logger, storage, validation, cn(), breadcrumbs utils
 
 src-tauri/
 +-- src/               # Rust backend with file operations, API integrations
@@ -109,8 +110,12 @@ Shared modules NEVER import from features.
   |  |   Trello -------> Upload (Sprout hooks)         |
   |  |   Baker ---------> Trello (integration hooks)   |
   |  |   Baker ---------> BuildProject (FootageFile)   |
+  |  |   Baker ---------> Upload (SproutFolderPicker)  |
   |  |   Upload --------> Baker (VideoLink type)       |
+  |  |   Upload --------> Kavanagh (QC hooks)          |
   |  |   Settings ------> Trello (TrelloBoardSelector) |
+  |  |   Settings ------> Upload (SproutFolderPicker)  |
+  |  |   Settings ------> Kavanagh (availability)      |
   |  |   AITools -------> Settings (useAIProvider)     |
   |  |   BuildProject --> Trello (TrelloCardsManager)  |
   |  |                                                 |
@@ -328,6 +333,25 @@ only through `BuildProject/api.ts`.
 2. **Structure Validation**: Identify BuildProject-compatible folders (Footage/, Graphics/, Renders/, Projects/, Scripts/)
 3. **Breadcrumbs Management**: Update existing or create missing breadcrumbs.json files
 4. **Batch Operations**: Apply changes to multiple project folders with progress tracking
+
+### Kavanagh QC Workflow
+
+Video quality control for rendered exports, checking two properties via ffmpeg:
+
+1. **Watermark Presence**: Detect whether the branded watermark is present throughout the
+   render (excluding the closing dip to white), which corner it occupies, and whether it
+   shifts mid-video. Reference images come from a configured pool folder.
+2. **Closing Sting Validation**: Measure the dip-to-white ramp, the sting duration, and
+   whether the sting matches a known reference. Reports problems like a missing peak,
+   a ramp that is too short or too long, or trailing content after the sting.
+3. **Evidence Export**: Failure thumbnails are held in memory and written to disk only when
+   the operator asks, keeping the run non-destructive by default.
+
+The page composes the workflow through `useKavanaghCheck`; all Tauri calls go through
+`Kavanagh/api.ts`, which wraps four backend commands (`kavanagh_detect_ffmpeg`,
+`kavanagh_run_check`, `kavanagh_cancel_run`, `kavanagh_save_evidence`). Settings exposes
+the ffmpeg directory and reference pool configuration; Upload integrates Kavanagh as an
+optional post-upload QC step via `useKavanaghForUpload`.
 
 ### External Integrations
 
