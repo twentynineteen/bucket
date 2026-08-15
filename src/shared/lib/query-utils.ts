@@ -62,6 +62,8 @@ export interface QueryError {
     | 'timeout'
     | 'authentication'
     | 'system'
+    | 'canvas'
+    | 'settings'
     | 'unknown'
   message: string
   code?: number
@@ -224,6 +226,8 @@ export const retryStrategies: Record<string, RetryConfiguration> = {
     attempts: 2,
     delay: (attempt: number) => SECONDS * attempt,
     condition: (error: unknown) => {
+      const type = queryErrorType(error)
+      if (type !== null) return type === 'canvas'
       const message = errorMessage(error).toLowerCase()
       return message.includes('canvas') || message.includes('render')
     }
@@ -232,6 +236,8 @@ export const retryStrategies: Record<string, RetryConfiguration> = {
     attempts: 1,
     delay: () => 500,
     condition: (error: unknown) => {
+      const type = queryErrorType(error)
+      if (type !== null) return type === 'settings'
       const message = errorMessage(error).toLowerCase()
       return message.includes('read') || message.includes('parse')
     }
@@ -401,6 +407,8 @@ export function createQueryError(
     'timeout',
     'authentication',
     'system',
+    'canvas',
+    'settings',
     'unknown'
   ]
   const normalised = typeof typeOrInfo === 'string' ? typeOrInfo.toLowerCase() : undefined
