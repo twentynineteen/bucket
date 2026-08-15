@@ -288,10 +288,13 @@ describe('useBreadcrumb', () => {
       )
 
       await waitFor(() => {
-        expect(queryClient.getQueryData(['user', 'breadcrumb'])).toBeDefined()
+        expect(queryClient.getQueryData(['navigation', 'breadcrumb'])).toBeDefined()
       })
 
-      const before = queryClient.getQueryState(['user', 'breadcrumb'])?.dataUpdateCount
+      const before = queryClient.getQueryState([
+        'navigation',
+        'breadcrumb'
+      ])?.dataUpdateCount
 
       rerender()
       rerender()
@@ -300,9 +303,9 @@ describe('useBreadcrumb', () => {
         await Promise.resolve()
       })
 
-      expect(queryClient.getQueryState(['user', 'breadcrumb'])?.dataUpdateCount).toBe(
-        before
-      )
+      expect(
+        queryClient.getQueryState(['navigation', 'breadcrumb'])?.dataUpdateCount
+      ).toBe(before)
     })
   })
 
@@ -317,7 +320,7 @@ describe('useBreadcrumb', () => {
       renderHookWithClient(items)
 
       await waitFor(() => {
-        const cachedData = queryClient.getQueryData(['user', 'breadcrumb'])
+        const cachedData = queryClient.getQueryData(['navigation', 'breadcrumb'])
         expect(cachedData).toBeDefined()
       })
     })
@@ -328,7 +331,7 @@ describe('useBreadcrumb', () => {
       renderHookWithClient(items)
 
       await waitFor(() => {
-        const queryState = queryClient.getQueryState(['user', 'breadcrumb'])
+        const queryState = queryClient.getQueryState(['navigation', 'breadcrumb'])
         expect(queryState).toBeDefined()
       })
     })
@@ -348,7 +351,7 @@ describe('useBreadcrumb', () => {
       })
 
       // Get the fetch status before focus
-      const queryStateBefore = queryClient.getQueryState(['user', 'breadcrumb'])
+      const queryStateBefore = queryClient.getQueryState(['navigation', 'breadcrumb'])
       const fetchStatusBefore = queryStateBefore?.fetchStatus
 
       // Simulate window focus
@@ -359,7 +362,7 @@ describe('useBreadcrumb', () => {
       })
 
       // Query should not be fetching after focus (refetchOnWindowFocus: false)
-      const queryStateAfter = queryClient.getQueryState(['user', 'breadcrumb'])
+      const queryStateAfter = queryClient.getQueryState(['navigation', 'breadcrumb'])
       const fetchStatusAfter = queryStateAfter?.fetchStatus
 
       // The fetch status should remain idle (not fetching)
@@ -399,7 +402,7 @@ describe('useBreadcrumb', () => {
         expect(mockSetBreadcrumbs).toHaveBeenCalledWith(items)
       })
 
-      const cachedData = queryClient.getQueryData(['user', 'breadcrumb'])
+      const cachedData = queryClient.getQueryData(['navigation', 'breadcrumb'])
       expect(cachedData).toBeDefined()
     })
   })

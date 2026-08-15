@@ -36,7 +36,7 @@ describe('CacheInvalidationService', () => {
       await service.invalidateUserData()
 
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: queryKeys.user.username()
+        queryKey: queryKeys.os.username()
       })
     })
 

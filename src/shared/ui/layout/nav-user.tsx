@@ -40,7 +40,7 @@ export function NavUser({ user, onUpdateClicked }: Props) {
   // Use React Query for username fetching
   const { data: username } = useQuery({
     ...createQueryOptions(
-      queryKeys.user.username(),
+      queryKeys.os.username(),
       async () => {
         try {
           return await core.invoke<string>('get_username')

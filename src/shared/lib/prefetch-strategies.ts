@@ -64,7 +64,7 @@ export class QueryPrefetchManager {
   async prefetchUsername() {
     return this.queryClient.prefetchQuery({
       ...createQueryOptions(
-        queryKeys.user.username(),
+        queryKeys.os.username(),
         async () => {
           try {
             return await core.invoke<string>('get_username')
