@@ -1,5 +1,6 @@
 mod premiere_test;
 mod rag_db_tests;
+mod rag_merge_tests;
 mod rag_validation_tests;
 mod sprout_upload_tests;
 
