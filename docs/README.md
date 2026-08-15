@@ -44,10 +44,9 @@ bun run build:tauri
 ### Verify It's Working
 
 1. **Launch Bucket** from your Applications folder
-2. **Create an account** or log in
-3. **Navigate to Build Project** from the sidebar
-4. **Select some video files** to verify file selection works
-5. You should see your selected files listed with camera assignment options
+2. **Navigate to Build Project** from the sidebar
+3. **Select some video files** to verify file selection works
+4. You should see your selected files listed with camera assignment options
 
 ### Development Setup
 
@@ -71,9 +70,9 @@ bucket/
 ├── src/                           # Frontend React/TypeScript code
 │   ├── features/                  # Feature modules (each with api.ts, index.ts, types.ts)
 │   │   ├── AITools/               # ScriptFormatter + ExampleEmbeddings
-│   │   ├── Auth/                  # Login, registration, token management
 │   │   ├── Baker/                 # Drive scanning, breadcrumbs management
 │   │   ├── BuildProject/          # File ingest, camera assignment, XState
+│   │   ├── Kavanagh/              # Video QC (watermark + quality checks via ffmpeg)
 │   │   ├── Premiere/              # Adobe Premiere plugin management
 │   │   ├── Settings/              # App configuration with per-domain tabs
 │   │   ├── Trello/                # Trello card management, video links
@@ -93,25 +92,28 @@ bucket/
 ├── src-tauri/                     # Rust backend (Tauri)
 │   ├── src/
 │   │   ├── commands/              # Tauri command handlers
-│   │   │   ├── auth.rs            # User authentication (argon2 + JWT)
-│   │   │   ├── premiere.rs        # Adobe Premiere integration
-│   │   │   ├── sprout_upload.rs   # Sprout Video API
+│   │   │   ├── ai_provider.rs     # AI provider management
 │   │   │   ├── docx.rs            # Word document processing
+│   │   │   ├── plugins.rs         # Premiere CEP extension management
+│   │   │   ├── poster_frame.rs    # Sprout Video poster frame upload
+│   │   │   ├── premiere.rs        # Adobe Premiere project generation
 │   │   │   ├── rag.rs             # RAG embeddings for script formatting
-│   │   │   └── ai_provider.rs     # AI provider management
+│   │   │   ├── sprout_upload.rs   # Sprout Video API
+│   │   │   ├── system.rs          # OS-level utilities (username, open folder)
+│   │   │   └── video_meta.rs      # Local video duration extraction
 │   │   ├── baker/                 # Baker workflow logic
 │   │   ├── build_project/         # Build project file operations
-│   │   ├── state/                 # Shared state management
+│   │   ├── kavanagh/              # Video QC engine (ffmpeg-based checks)
 │   │   ├── utils/                 # Rust utility functions
-│   │   └── media.rs               # Media file handling
+│   │   └── media.rs               # Shared data types (VideoLink, TrelloCard, etc.)
 │   ├── Cargo.toml                 # Rust dependencies
 │   ├── tauri.conf.json            # Tauri app configuration
 │   └── resources/                 # Bundled resources
-│       └── embeddings/            # Pre-computed script examples database
+│       ├── embeddings/            # Pre-computed script examples database
+│       └── examples/              # Example scripts for RAG training
 │
 ├── tests/                         # Vitest test suite
 ├── .claude/                       # Claude Code configuration
-│   └── skills/                    # Custom Claude skills
 └── docs/                          # Additional documentation
 ```
 
@@ -121,7 +123,7 @@ bucket/
 
 **src/shared/** - Cross-feature code. Shared modules never import from features. Contains constants, hooks, lib (query infrastructure), services, store, types, ui (Radix primitives), and utils.
 
-**src-tauri/src/commands/** - Rust functions exposed to the frontend via Tauri's IPC bridge. Each module represents a functional domain (authentication, AI, Premiere, etc.). Add new commands here for any Rust-side functionality.
+**src-tauri/src/commands/** - Rust functions exposed to the frontend via Tauri's IPC bridge. Each module represents a functional domain (AI providers, Premiere, Sprout Video, poster frames, RAG, etc.). Add new commands here for any Rust-side functionality.
 
 **src/shared/store/** - Zustand stores for global state management. Currently contains breadcrumbs state and app-wide settings. Prefer local state or React Query for component-specific data.
 
@@ -142,14 +144,18 @@ bucket/
 
 ```json
 {
-  "version": "2.0.0",
-  "title": "Conference Keynote 2024",
-  "shoot_date": "2024-03-15",
-  "num_cameras": 3,
+  "projectTitle": "Conference Keynote 2024",
+  "numberOfCameras": 3,
+  "files": [
+    { "camera": 1, "name": "clip1.mov", "path": "Footage/Camera 1/clip1.mov" }
+  ],
+  "parentFolder": "/Volumes/Media/Projects",
+  "createdBy": "alice",
+  "creationDateTime": "2024-03-15T14:30:00Z",
   "videoLinks": [
     {
-      "video_id": "abc123",
-      "embed_code": "<iframe...>",
+      "url": "https://sproutvideo.com/videos/abc123",
+      "sproutVideoId": "abc123",
       "title": "Full Event",
       "thumbnailUrl": "https://..."
     }
@@ -157,8 +163,9 @@ bucket/
   "trelloCards": [
     {
       "url": "https://trello.com/c/xyz789",
+      "cardId": "xyz789",
       "title": "Q1 Marketing Event",
-      "cached_at": "2024-03-20T10:30:00Z"
+      "lastFetched": "2024-03-20T10:30:00Z"
     }
   ]
 }
@@ -311,7 +318,7 @@ Not currently used. Configuration is stored in Tauri's app data directory and ma
 # Run all tests (Vitest)
 bun run test
 
-# Run tests in watch mode
+# Run tests with browser UI
 bun run test:ui
 
 # Run tests with coverage
@@ -498,20 +505,24 @@ chmod u+w /path/to/destination
 
 **Solution:**
 
-Baker requires folders to have this structure to be detected as valid projects:
+Baker validates projects against five standard subfolders. A folder with all five present and some content is detected as a valid project; a folder with an existing `breadcrumbs.json` is also picked up regardless of structure:
 
 ```
 ProjectFolder/
 ├── Footage/
+├── Graphics/
+├── Renders/
 ├── Projects/
+├── Scripts/
 └── breadcrumbs.json (optional - created if missing)
 ```
 
 **Fix:**
 
-1. Ensure folders have at least `Footage/` and `Projects/` subdirectories
+1. Ensure folders have all five standard subdirectories (`Footage/`, `Graphics/`, `Renders/`, `Projects/`, `Scripts/`)
 2. Folder names are case-sensitive on Linux/macOS
-3. Try scanning a parent directory that contains multiple project folders
+3. Folders with an existing `breadcrumbs.json` are also detected even if the structure is incomplete
+4. Try scanning a parent directory that contains multiple project folders
 
 ## Additional Documentation
 
@@ -548,6 +559,6 @@ This project is proprietary software. All rights reserved. Unauthorized copying,
 
 ---
 
-**Version:** 0.16.0
-**Last Updated:** July 2026
+**Version:** 0.19.0
+**Last Updated:** August 2026
 **Platform Support:** macOS, Windows, Linux
