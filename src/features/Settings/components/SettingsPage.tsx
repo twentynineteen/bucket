@@ -34,7 +34,7 @@ const SettingsPageContent: React.FC = () => {
         try {
           return await loadSettingsApiKeys()
         } catch (error) {
-          throw createQueryError(`Failed to load API keys: ${error}`, 'SETTINGS_LOAD')
+          throw createQueryError(`Failed to load API keys: ${error}`, 'settings')
         }
       },
       'DYNAMIC',

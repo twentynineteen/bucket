@@ -212,6 +212,8 @@ describe('Query Utils', () => {
       expect(createQueryError('IPC error', 'SYSTEM').type).toBe('system')
       expect(createQueryError('Offline', 'NETWORK').type).toBe('network')
       expect(createQueryError('Hmm', 'UNKNOWN').type).toBe('unknown')
+      expect(createQueryError('Draw failed', 'CANVAS').type).toBe('canvas')
+      expect(createQueryError('Keys missing', 'SETTINGS').type).toBe('settings')
     })
 
     it('falls through to inferErrorType for unrecognised type strings', () => {
@@ -302,6 +304,110 @@ describe('Query Utils', () => {
 
     it('still checks httpStatus first', () => {
       expect(shouldRetry({ status: 503, message: 'bad gateway' }, 0, 'server')).toBe(true)
+    })
+  })
+
+  // #252: the canvas strategy could never fire because its condition grepped the
+  // error message for 'canvas' or 'render', while usePosterframeAutoRedraw throws
+  // 'Failed to draw posterframe: ...' which contains neither substring. The typed
+  // field was 'DRAW_OPERATION', not a union member, so it resolved to 'unknown'.
+  describe('canvas strategy fires for typed errors (#252)', () => {
+    it('fires for a type-canvas error whose message has no canvas/render substring', () => {
+      // The exact shape raised by usePosterframeAutoRedraw after the fix:
+      // 'Failed to draw posterframe: ...' contains neither 'canvas' nor 'render'.
+      const error = createQueryError('Failed to draw posterframe: timeout', 'canvas')
+      expect(shouldRetry(error, 0, 'canvas')).toBe(true)
+    })
+
+    it('fires for an UPPERCASE type string (normalised by createQueryError)', () => {
+      const error = createQueryError('Failed to draw posterframe: timeout', 'CANVAS')
+      expect(shouldRetry(error, 0, 'canvas')).toBe(true)
+    })
+
+    it('still fires for a plain message containing canvas', () => {
+      // Fallback path: untyped errors are matched by message as before.
+      expect(shouldRetry('canvas context lost', 0, 'canvas')).toBe(true)
+    })
+
+    it('still fires for a plain message containing render', () => {
+      expect(shouldRetry('render pipeline failed', 0, 'canvas')).toBe(true)
+    })
+
+    it('does not fire for an error with a different type', () => {
+      const error = createQueryError('server crashed', 'server')
+      expect(shouldRetry(error, 0, 'canvas')).toBe(false)
+    })
+
+    it('reads the typed field, not the message', () => {
+      // An error with type 'server' whose message coincidentally contains
+      // 'canvas' must NOT match the canvas strategy.
+      const error = { type: 'server', message: 'canvas proxy down', retryable: false }
+      expect(retryStrategies.canvas.condition(error)).toBe(false)
+    })
+
+    it('respects the attempt budget (2 attempts)', () => {
+      const error = createQueryError('Failed to draw posterframe: timeout', 'canvas')
+      expect(shouldRetry(error, 0, 'canvas')).toBe(true)
+      expect(shouldRetry(error, 1, 'canvas')).toBe(true)
+      expect(shouldRetry(error, 2, 'canvas')).toBe(false)
+    })
+  })
+
+  // #253: the settings strategy could never fire because its condition grepped the
+  // error message for 'read' or 'parse', while both consumers throw
+  // 'Failed to load API keys: ...' which contains neither substring. The typed
+  // field was 'SETTINGS_LOAD', not a union member, so it resolved to 'unknown'.
+  describe('settings strategy fires for typed errors (#253)', () => {
+    it('fires for a type-settings error whose message has no read/parse substring', () => {
+      // The exact shape raised by SettingsPage and prefetchApiKeys after the fix:
+      // 'Failed to load API keys: ...' contains neither 'read' nor 'parse'.
+      const error = createQueryError(
+        'Failed to load API keys: permission denied',
+        'settings'
+      )
+      expect(shouldRetry(error, 0, 'settings')).toBe(true)
+    })
+
+    it('fires for an UPPERCASE type string (normalised by createQueryError)', () => {
+      const error = createQueryError(
+        'Failed to load API keys: permission denied',
+        'SETTINGS'
+      )
+      expect(shouldRetry(error, 0, 'settings')).toBe(true)
+    })
+
+    it('still fires for a plain message containing read', () => {
+      // Fallback path: untyped errors are matched by message as before.
+      expect(shouldRetry('failed to read config file', 0, 'settings')).toBe(true)
+    })
+
+    it('still fires for a plain message containing parse', () => {
+      expect(shouldRetry('could not parse JSON', 0, 'settings')).toBe(true)
+    })
+
+    it('does not fire for an error with a different type', () => {
+      const error = createQueryError('network down', 'network')
+      expect(shouldRetry(error, 0, 'settings')).toBe(false)
+    })
+
+    it('reads the typed field, not the message', () => {
+      // An error with type 'network' whose message coincidentally contains
+      // 'read' must NOT match the settings strategy.
+      const error = {
+        type: 'network',
+        message: 'read timeout on socket',
+        retryable: false
+      }
+      expect(retryStrategies.settings.condition(error)).toBe(false)
+    })
+
+    it('respects the attempt budget (1 attempt)', () => {
+      const error = createQueryError(
+        'Failed to load API keys: permission denied',
+        'settings'
+      )
+      expect(shouldRetry(error, 0, 'settings')).toBe(true)
+      expect(shouldRetry(error, 1, 'settings')).toBe(false)
     })
   })
 

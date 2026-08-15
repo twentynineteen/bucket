@@ -49,7 +49,7 @@ export function usePosterframeAutoRedraw({
             drawnAt: new Date().toISOString()
           }
         } catch (error) {
-          throw createQueryError(`Failed to draw posterframe: ${error}`, 'DRAW_OPERATION')
+          throw createQueryError(`Failed to draw posterframe: ${error}`, 'canvas')
         }
       },
       'STATIC', // Use static profile for draw operations
