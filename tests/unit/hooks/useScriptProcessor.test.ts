@@ -7,6 +7,7 @@
  * IMPORTANT: Use MockLanguageModelV3 from ai/test for deterministic, fast tests
  */
 
+import type { LanguageModelV3StreamPart } from '@ai-sdk/provider'
 import { renderHook, waitFor } from '@testing-library/react'
 import { MockLanguageModelV3, simulateReadableStream } from 'ai/test'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -16,20 +17,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock language model for testing
 const createMockModel = () => {
+  const chunks: LanguageModelV3StreamPart[] = [
+    { type: 'text-delta', id: 'text-1', delta: 'Formatted ' },
+    { type: 'text-delta', id: 'text-1', delta: 'script ' },
+    { type: 'text-delta', id: 'text-1', delta: 'content' },
+    {
+      type: 'finish',
+      finishReason: { unified: 'stop', raw: undefined },
+      usage: {
+        inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+        outputTokens: { total: 20, text: 20, reasoning: 0 }
+      }
+    }
+  ]
   return new MockLanguageModelV3({
     doStream: async () => ({
-      stream: simulateReadableStream({
-        chunks: [
-          { type: 'text-delta', id: 'text-1', delta: 'Formatted ' },
-          { type: 'text-delta', id: 'text-1', delta: 'script ' },
-          { type: 'text-delta', id: 'text-1', delta: 'content' },
-          {
-            type: 'finish',
-            finishReason: 'stop',
-            usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 }
-          }
-        ]
-      })
+      stream: simulateReadableStream({ chunks })
     })
   })
 }
@@ -178,24 +181,34 @@ describe('useScriptProcessor - Contract Tests (T021)', () => {
   it('should use tool calling for agent-based formatting', async () => {
     // Contract: Hook must pass autocue formatting tools to AI SDK
 
+    const toolChunks: LanguageModelV3StreamPart[] = [
+      {
+        type: 'tool-input-start',
+        id: 'call-1',
+        toolName: 'formatParagraph'
+      },
+      {
+        type: 'tool-input-delta',
+        id: 'call-1',
+        delta: JSON.stringify({ originalText: 'test' })
+      },
+      {
+        type: 'tool-input-end',
+        id: 'call-1'
+      },
+      { type: 'text-delta', id: 'text-1', delta: 'Formatted with tools' },
+      {
+        type: 'finish',
+        finishReason: { unified: 'stop', raw: undefined },
+        usage: {
+          inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 20, text: 20, reasoning: 0 }
+        }
+      }
+    ]
     const mockModelWithTools = new MockLanguageModelV3({
       doStream: async () => ({
-        stream: simulateReadableStream({
-          chunks: [
-            {
-              type: 'tool-call',
-              toolCallId: 'call-1',
-              toolName: 'formatParagraph',
-              input: JSON.stringify({ originalText: 'test' })
-            },
-            { type: 'text-delta', id: 'text-1', delta: 'Formatted with tools' },
-            {
-              type: 'finish',
-              finishReason: 'stop',
-              usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 }
-            }
-          ]
-        })
+        stream: simulateReadableStream({ chunks: toolChunks })
       })
     })
 

@@ -1,96 +1,32 @@
-name: E2E Tests
+name: E2E Slow Suite
 
+# The @slow half of the E2E suite: 250GB transfer simulations, cancellation and
+# multi-minute operation states. Everything without a @slow tag runs on every
+# pull request in ci.yml's e2e job, so this workflow deliberately covers only
+# the expensive remainder (issue #171).
+#
+# There is one Playwright config and no per-spec project list, so nothing needs
+# adding here when a spec is added. Tag a spec @slow and it moves to this job;
+# leave it untagged and ci.yml runs it. The two are complements, so a spec can
+# never fall out of both.
 on:
-  pull_request:
-    paths:
-      - 'src/features/build-project/**'
-      - 'src/features/BuildProject/**'
-      - 'tests/e2e/**'
-      - 'playwright.config.ts'
-      - '.github/workflows/e2e-tests.yml'
   push:
     branches:
       - master
       - release
     paths:
-      - 'src/features/build-project/**'
-      - 'src/features/BuildProject/**'
+      - 'src/**'
       - 'tests/e2e/**'
       - 'playwright.config.ts'
       - '.github/workflows/e2e-tests.yml'
-  # Manual full-suite runs from the Actions tab (the large-file job below is
-  # push/dispatch-gated, so this is the way to exercise it on a branch)
+  # Manual full-suite runs from the Actions tab, for exercising this on a branch
   workflow_dispatch:
 
 jobs:
-  e2e-tests:
-    name: E2E Tests
-    runs-on: ubuntu-24.04  # Use Linux (10x cheaper than macOS)
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lockb') }}
-          restore-keys: ${{ runner.os }}-playwright-
-
-      - name: Install Playwright browsers
-        run: bunx playwright install --with-deps chromium
-
-      # Dev server is started automatically by Playwright via webServer config
-      - name: Run E2E tests (smoke)
-        run: bun run test:e2e -- --project=smoke
-        env:
-          CI: true
-
-      - name: Run E2E tests (progress)
-        run: bun run test:e2e -- --project=progress
-        env:
-          CI: true
-
-      - name: Run E2E tests (memory)
-        run: bun run test:e2e -- --project=memory
-        env:
-          CI: true
-
-      - name: Run E2E tests (errors)
-        run: bun run test:e2e -- --project=errors
-        env:
-          CI: true
-
-      - name: Upload Playwright report
-        if: failure()
-        uses: actions/upload-artifact@v5
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 7
-
-      - name: Upload test screenshots
-        if: failure()
-        uses: actions/upload-artifact@v5
-        with:
-          name: test-screenshots
-          path: test-results/
-          retention-days: 7
-
-  e2e-large-files:
-    name: E2E Large File Tests (250GB Simulation)
-    runs-on: ubuntu-24.04  # Use Linux (10x cheaper than macOS)
+  e2e-slow:
+    name: E2E Slow Suite (250GB Simulation)
+    runs-on: ubuntu-24.04 # Use Linux (10x cheaper than macOS)
     timeout-minutes: 90
-    # Run only on push to main branches, not on every PR
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
@@ -113,29 +49,16 @@ jobs:
         run: bunx playwright install --with-deps chromium
 
       # Dev server is started automatically by Playwright via webServer config
-      - name: Run large file E2E tests (realistic progress)
-        run: bun run test:e2e -- --project=large-files
+      - name: Run E2E tests (@slow)
+        run: bunx playwright test --project=slow
         env:
           CI: true
-          E2E_SPEED_MULTIPLIER: 100
-
-      - name: Run cancellation tests
-        run: bun run test:e2e -- --project=cancellation
-        env:
-          CI: true
-          E2E_SPEED_MULTIPLIER: 50
-
-      - name: Run long operation tests
-        run: bun run test:e2e -- --project=long-operations
-        env:
-          CI: true
-          E2E_SPEED_MULTIPLIER: 100
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v5
         with:
-          name: playwright-report-large-files
+          name: playwright-report-slow
           path: playwright-report/
           retention-days: 7
 

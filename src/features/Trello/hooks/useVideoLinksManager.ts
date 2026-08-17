@@ -57,6 +57,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     videoLinks,
     isLoading,
     error,
+    refetch: refetchVideoLinks,
     addVideoLink,
     removeVideoLink,
     reorderVideoLinks,
@@ -76,13 +77,15 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     localDuration,
     selectFile,
     uploadFile,
+    cancelUpload,
     resetUploadState
   } = useFileUpload()
 
   // Destination folder, resolved once: session last-used -> default -> root.
   const { selectedFolder, selectFolder, recentFolders, commitFolder } =
     useSproutFolderSelection()
-  const { progress, message, setMessage } = useUploadEvents()
+  const { progress, bytesSent, totalBytes, stallWarning, message, setMessage } =
+    useUploadEvents()
 
   // UI state
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -144,7 +147,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
   })
 
   // Derive upload success from state
-  const uploadSuccess = response && !uploading && addMode === 'upload'
+  // !!response, not response: the bare `&&` yielded `null` when there was no
+  // response, and AddVideoDialog's uploadSuccess prop is a boolean (#210).
+  const uploadSuccess = !!response && !uploading && addMode === 'upload'
 
   // Nothing may be closed or reset while the poster frame request is running
   const posterFrameWorking = posterFrame.enabled && posterFrame.status === 'working'
@@ -361,6 +366,16 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     // Closing mid-poster-frame would tear down the in-flight request
     if (!open && posterFrameWorking) return
 
+    // Dismissal cancels (#225 UP-24). The alternative - a dialog announcing that
+    // the upload continues in the background - needs a background progress
+    // surface the app does not have, so the user would be told a multi-gigabyte
+    // transfer is still running with nowhere to watch it and nothing to stop it.
+    // That is the orphaning defect with better wording. Every dismissal route
+    // funnels through here, so Escape and an overlay click behave like the button.
+    if (!open && uploading) {
+      void cancelUpload()
+    }
+
     setIsDialogOpen(open)
 
     if (!open) {
@@ -402,6 +417,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     videoLinks,
     isLoading,
     error,
+    refetchVideoLinks,
     addError,
     trelloCards,
 
@@ -415,6 +431,11 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     selectedFile,
     uploading,
     progress,
+    /** Bytes transferred and the file total, so a slow upload is not a frozen one */
+    bytesSent,
+    totalBytes,
+    /** Non-terminal "this looks stalled" text, or null (#225) */
+    stallWarning,
     message,
     uploadSuccess,
 

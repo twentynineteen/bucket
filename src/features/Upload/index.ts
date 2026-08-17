@@ -37,6 +37,8 @@ export { useSproutFolders } from './hooks/useSproutFolders'
 export { useSproutFolderSelection } from './hooks/useSproutFolderSelection'
 /** Hook owning the saved folder index that makes search cover unopened folders */
 export { useSproutFolderIndex } from './hooks/useSproutFolderIndex'
+/** Hook validating the stored default folder against the saved index, no requests */
+export { useDefaultSproutFolder } from './hooks/useDefaultSproutFolder'
 
 // Types (re-export for consumers)
 /** Sprout Video upload response with video ID, embed code, and status */
@@ -49,6 +51,8 @@ export type { SproutFolder } from './types'
 export type { SproutVideoDetails } from './types'
 /** Outcome of setting a branded poster frame on an uploaded Sprout video */
 export type { PosterFrameRunResult } from './types'
+/** Which branding template lays a poster frame out - Classic or Rebrand (issue #189) */
+export type { PosterframeTemplateId } from './types'
 /** Progress of the poster frame step within an upload */
 export type { PosterFrameStatus } from './types'
 /** Severity of an upload status message -- info, success, or error */
@@ -57,3 +61,17 @@ export type { UploadMessageSeverity } from './types'
 export type { UploadMessage } from './types'
 /** A folder chosen as an upload destination, with its breadcrumb path */
 export type { SelectedSproutFolder } from './types'
+/** One progress sample, carrying bytes transferred as well as a float percentage */
+export type { UploadProgressEvent } from './types'
+/** A successful upload, correlated to the operation it belongs to */
+export type { UploadCompleteEvent } from './types'
+/** A failed upload, correlated to the operation it belongs to */
+export type { UploadErrorEvent } from './types'
+/** A user-cancelled upload -- a terminal outcome that is not a failure (#225) */
+export type { UploadCancelledEvent } from './types'
+/** The non-terminal stall warning, raised at half the terminal window (#225) */
+export type { UploadStallWarningEvent } from './types'
+
+// Formatting
+/** Renders a transfer byte count in the decimal units the backend messages use */
+export { formatTransferredBytes } from './internal/formatTransferredBytes'

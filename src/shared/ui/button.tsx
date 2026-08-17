@@ -36,8 +36,29 @@ const buttonVariants = cva(
   }
 )
 
+/**
+ * framer-motion redefines the drag and animation handlers with its own event
+ * shapes, so a plain React.ComponentProps<'button'> cannot be spread onto
+ * motion.button. They are omitted rather than cast: the motion element owns
+ * them, and a caller's React-shaped handler would never have been called with
+ * a React event.
+ */
+type ConflictingMotionHandlers =
+  | 'onDrag'
+  | 'onDragStart'
+  | 'onDragEnd'
+  | 'onDragEnter'
+  | 'onDragExit'
+  | 'onDragLeave'
+  | 'onDragOver'
+  | 'onAnimationStart'
+  | 'onAnimationEnd'
+  | 'onAnimationIteration'
+
 interface ButtonProps
-  extends React.ComponentProps<'button'>, VariantProps<typeof buttonVariants> {
+  extends
+    Omit<React.ComponentProps<'button'>, ConflictingMotionHandlers>,
+    VariantProps<typeof buttonVariants> {
   asChild?: boolean
   animationStyle?: 'scale' | 'lift' | 'glow' | 'none'
 }

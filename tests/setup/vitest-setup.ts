@@ -138,7 +138,12 @@ const createMockWindow = () => ({
 })
 
 vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: vi.fn(() => createMockWindow())
+  getCurrentWindow: vi.fn(() => createMockWindow()),
+  // useMacOSEffects maps effect names through these enums. Without them in the
+  // mock the lookup throws and the hook's catch swallows it, which is how the
+  // wrong effect casing survived in the first place (#178).
+  Effect: { Sidebar: 'sidebar' },
+  EffectState: { Active: 'active', Inactive: 'inactive' }
 }))
 
 // Mock Tauri APIs
@@ -186,11 +191,21 @@ const mockTauriApis = () => {
   }))
 
   // Mock Tauri path APIs (used by storage utilities)
+  //
+  // None of the directory getters returns a trailing separator, matching the
+  // real API. A file-level vi.mock replaces this factory wholesale, so any
+  // test file declaring its own must supply `join` too (issue #167).
+  // Plain functions rather than vi.fn: vitest.config.ts sets `mockReset`, so a
+  // vi.fn's implementation is wiped before every test after the first, leaving
+  // appDataDir() returning undefined. Files that need to assert on these calls
+  // declare their own factory, which replaces this one wholesale.
   vi.mock('@tauri-apps/api/path', () => ({
-    appDataDir: vi.fn().mockResolvedValue('/mock/app/data'),
-    appConfigDir: vi.fn().mockResolvedValue('/mock/app/config'),
-    appCacheDir: vi.fn().mockResolvedValue('/mock/app/cache'),
-    appLocalDataDir: vi.fn().mockResolvedValue('/mock/app/local-data')
+    appDataDir: async () => '/mock/app/data',
+    appConfigDir: async () => '/mock/app/config',
+    appCacheDir: async () => '/mock/app/cache',
+    appLocalDataDir: async () => '/mock/app/local-data',
+    fontDir: async () => '/mock/fonts',
+    join: async (...parts: string[]) => parts.join('/').replace(/\/{2,}/g, '/')
   }))
 
   // Mock window API for useWindowState and useSystemTheme hooks
@@ -258,6 +273,18 @@ const mockBrowserApis = () => {
   // Mock Element.prototype.scrollTo for smooth scrolling in tests
   if (typeof Element.prototype.scrollTo === 'undefined') {
     Element.prototype.scrollTo = vi.fn()
+  }
+
+  // Radix Select calls these on open/highlight; jsdom implements neither.
+  // Without them a click on a Select trigger throws and the option list
+  // never opens, so select wiring was untestable (issue #189, review round).
+  if (typeof Element.prototype.hasPointerCapture === 'undefined') {
+    Element.prototype.hasPointerCapture = vi.fn(() => false)
+    Element.prototype.setPointerCapture = vi.fn()
+    Element.prototype.releasePointerCapture = vi.fn()
+  }
+  if (typeof Element.prototype.scrollIntoView === 'undefined') {
+    Element.prototype.scrollIntoView = vi.fn()
   }
 
   // Mock fetch if not available

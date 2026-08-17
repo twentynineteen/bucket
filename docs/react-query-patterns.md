@@ -26,6 +26,7 @@ src/shared/
 │   ├── query-keys.ts           # Centralized query key factory
 │   ├── prefetch-strategies.ts  # Intelligent prefetching
 │   ├── query-client-config.ts  # Advanced cache configuration
+│   ├── app-version-query.ts    # Shared query-options factory for app version
 │   └── performance-monitor.ts  # Performance monitoring
 ├── services/
 │   └── cache-invalidation.ts   # Cache management service
@@ -36,48 +37,58 @@ src/shared/
 
 ### Key Principles
 
-1. **Centralized Query Keys**: All query keys are managed through a factory pattern
-2. **Consistent Error Handling**: Standardized error types and retry logic
+1. **Centralised Query Keys**: All query keys are managed through a factory pattern
+2. **Consistent Error Handling**: Standardised error types and retry logic
 3. **Smart Caching**: Different cache strategies based on data characteristics
-4. **Performance Monitoring**: Built-in metrics collection and optimization insights
+4. **Performance Monitoring**: Built-in metrics collection and optimisation insights
 5. **Type Safety**: Full TypeScript support throughout
 
 ## Query Patterns
 
-### Basic Query Pattern
+### Query-Options Factory Pattern
+
+For queries used in more than one place, extract a shared query-options factory so
+the key, `queryFn`, cache timings and retry policy are defined once. The app version
+query is the canonical example - it was previously duplicated in `NavUser` and
+`QueryPrefetchManager` with the same key, same function, and same stale/gc times:
 
 ```typescript
-import { queryKeys } from '@shared/lib/query-keys'
-import { createQueryError, createQueryOptions, shouldRetry } from '@shared/lib/query-utils'
-import { useQuery } from '@tanstack/react-query'
+// src/shared/lib/app-version-query.ts
+import { CACHE } from '@shared/constants'
+import { getVersion } from '@tauri-apps/api/app'
 
-function useUserData(userId: string) {
-  return useQuery({
-    ...createQueryOptions(
-      queryKeys.user.profile(userId),
-      async () => {
-        try {
-          const response = await fetch(`/api/users/${userId}`)
-          if (!response.ok) throw new Error(`HTTP ${response.status}`)
-          return await response.json()
-        } catch (error) {
-          throw createQueryError(`Failed to fetch user data: ${error}`, 'USER_FETCH')
-        }
-      },
-      'DYNAMIC', // Cache strategy
-      {
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        gcTime: 15 * 60 * 1000, // 15 minutes
-        retry: (failureCount, error) => shouldRetry(error, failureCount, 'user')
+import { queryKeys } from './query-keys'
+import { createQueryError, createQueryOptions, shouldRetry } from './query-utils'
+
+export function appVersionQueryOptions() {
+  return createQueryOptions(
+    queryKeys.app.version(),
+    async () => {
+      try {
+        return await getVersion()
+      } catch (error) {
+        throw createQueryError(`Failed to get app version: ${error}`, 'system')
       }
-    )
-  })
+    },
+    'STATIC',
+    {
+      staleTime: CACHE.MEDIUM, // 10 minutes - version does not change while the app runs
+      gcTime: CACHE.GC_EXTENDED, // Keep cached for 30 minutes
+      retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
+    }
+  )
 }
 ```
 
+Consumers then call `useQuery(appVersionQueryOptions())` or
+`queryClient.prefetchQuery(appVersionQueryOptions())` without repeating any of the
+configuration.
+
 ### Tauri Integration Pattern
 
-For Tauri backend calls:
+For Tauri backend calls, all I/O goes through the feature's `api.ts` and errors are
+wrapped with `createQueryError`. The type string must be **lowercase** and a member
+of the `QueryError['type']` union (see [Error Types](#error-types)):
 
 ```typescript
 import { invoke } from '@tauri-apps/api/core'
@@ -94,7 +105,7 @@ function useFolders(apiKey: string, parentId: string | null) {
           })
           return result.folders
         } catch (error) {
-          throw createQueryError(`Failed to fetch folders: ${error}`, 'FOLDERS_FETCH')
+          throw createQueryError(`Failed to fetch folders: ${error}`, 'network')
         }
       },
       'DYNAMIC',
@@ -102,7 +113,7 @@ function useFolders(apiKey: string, parentId: string | null) {
         enabled: !!apiKey, // Only run if apiKey is available
         staleTime: 2 * 60 * 1000, // 2 minutes
         gcTime: 5 * 60 * 1000,
-        retry: (failureCount, error) => shouldRetry(error, failureCount, 'sprout')
+        retry: (failureCount, error) => shouldRetry(error, failureCount, 'external')
       }
     )
   })
@@ -120,12 +131,10 @@ function useImageRefresh(imagePath: string) {
       queryKeys.images.refresh(imagePath),
       async () => {
         try {
-          const response = await fetch(
-            `/api/images/refresh?path=${encodeURIComponent(imagePath)}`
-          )
-          return await response.json()
+          // Fetch via Tauri backend
+          return await invoke('refresh_image', { path: imagePath })
         } catch (error) {
-          throw createQueryError(`Failed to refresh image: ${error}`, 'IMAGE_REFRESH')
+          throw createQueryError(`Failed to refresh image: ${error}`, 'system')
         }
       },
       'REALTIME',
@@ -156,63 +165,19 @@ function useSaveSettings() {
         await saveApiKeys(settings)
         return settings
       } catch (error) {
-        throw createQueryError(`Failed to save settings: ${error}`, 'SETTINGS_SAVE')
+        throw createQueryError(`Failed to save settings: ${error}`, 'settings')
       }
     },
-    onSuccess: savedSettings => {
+    onSuccess: (savedSettings) => {
       // Update the cache with new data
       queryClient.setQueryData(queryKeys.settings.apiKeys(), savedSettings)
 
       // Or invalidate to refetch
-      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all })
     },
-    onError: error => {
+    onError: (error) => {
       console.error('Settings save failed:', error)
       // Could show toast notification here
-    }
-  })
-}
-```
-
-### Optimistic Updates Pattern
-
-```typescript
-function useUpdateUserProfile() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (updates: Partial<UserProfile>) => {
-      const response = await fetch('/api/user/profile', {
-        method: 'PATCH',
-        body: JSON.stringify(updates)
-      })
-      if (!response.ok) throw new Error('Update failed')
-      return response.json()
-    },
-    onMutate: async updates => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: queryKeys.user.profile() })
-
-      // Snapshot previous value
-      const previousData = queryClient.getQueryData(queryKeys.user.profile())
-
-      // Optimistically update
-      queryClient.setQueryData(queryKeys.user.profile(), old => ({
-        ...old,
-        ...updates
-      }))
-
-      return { previousData }
-    },
-    onError: (err, updates, context) => {
-      // Rollback on error
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.user.profile(), context.previousData)
-      }
-    },
-    onSettled: () => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: queryKeys.user.profile() })
     }
   })
 }
@@ -222,25 +187,34 @@ function useUpdateUserProfile() {
 
 ### Error Types
 
-The application uses a standardized error system:
+The application uses a standardised error system. Error types are **lowercase**
+strings. `createQueryError` normalises uppercase inputs to lowercase before matching,
+so both `'authentication'` and `'AUTHENTICATION'` resolve to the same type - but
+prefer lowercase in new code:
 
 ```typescript
-export type QueryErrorType =
-  | 'NETWORK_ERROR'
-  | 'AUTHENTICATION'
-  | 'AUTHORIZATION'
-  | 'VALIDATION'
-  | 'NOT_FOUND'
-  | 'SERVER_ERROR'
-  | 'TIMEOUT'
-  | 'UNKNOWN'
-
-export interface QueryError extends Error {
-  type: QueryErrorType
-  originalError?: Error
-  context?: Record<string, any>
+export interface QueryError {
+  type:
+    | 'network'
+    | 'server'
+    | 'validation'
+    | 'timeout'
+    | 'authentication'
+    | 'system'
+    | 'canvas'
+    | 'settings'
+    | 'unknown'
+  message: string
+  code?: number
+  retryable: boolean
+  context?: Record<string, unknown>
 }
 ```
+
+If the type string is not a member of the union (e.g. `'SYSTEM_INFO'`,
+`'FOLDERS_FETCH'`), `createQueryError` falls back to `inferErrorType`, which does
+substring matching on the message. Prefer using a valid union member so the type is
+determined explicitly rather than by accident.
 
 ### Global Error Boundary
 
@@ -266,69 +240,149 @@ export interface QueryError extends Error {
 
 ### Retry Strategies
 
-```typescript
-// Smart retry logic based on error type
-const shouldRetry = (error: Error, failureCount: number, context: string): boolean => {
-  // Don't retry client errors (4xx)
-  if (error.message.includes('4')) return false
+Retry conditions are **type-first**: they read the `QueryError['type']` field and
+only fall back to message inspection for errors that did not come from
+`createQueryError`. This matters because the error message rarely contains the
+category substring the condition is searching for - a `createQueryError('API key
+missing', 'authentication')` error has type `'authentication'` but the word "auth"
+never appears in the message. Before this was fixed (#240, #252, #253), several
+retry strategies could never fire at all:
 
-  // Different retry limits for different contexts
-  const maxRetries = context === 'auth' ? 1 : 3
-  return failureCount < maxRetries
+```typescript
+// How retry strategies work (from query-utils.ts):
+const retryStrategies = {
+  auth: {
+    attempts: 1,
+    delay: () => SECONDS,
+    condition: (error: unknown) => {
+      // 1. Check the typed field first
+      const type = queryErrorType(error)
+      if (type !== null) return type === 'authentication'
+      // 2. Fall back to message inspection for untyped errors
+      return errorMessage(error).toLowerCase().includes('auth')
+    }
+  }
+  // server, system, canvas, settings all follow the same pattern
 }
+
+// Usage in a query:
+retry: (failureCount, error) => shouldRetry(error, failureCount, 'auth')
 ```
+
+Available strategies: `network`, `server`, `validation`, `system`, `auth`,
+`external`, `canvas`, `settings`, `trello`. There is deliberately no `sprout`
+strategy - see issue #155.
+
+Two helpers support the type-first pattern:
+
+- `hasErrorType(error, 'authentication')` - returns `true` if the error carries a
+  matching `QueryError['type']` field
+- `queryErrorType(error)` (internal) - returns the typed field if present, else
+  `null`, letting the condition choose between the type path and the message path
 
 ## Caching Strategies
 
-### Cache Strategy Types
+### Query Profiles
 
-1. **STATIC**: Long-lived data (app version, user profile)
-2. **DYNAMIC**: Frequently changing data (API responses, lists)
+Queries use one of four named profiles, passed as the third argument to
+`createQueryOptions`. Each profile sets default `staleTime`, `cacheTime`, `retry`
+and `refetchOnWindowFocus` values that can be overridden per-query:
+
+1. **STATIC**: Long-lived data (app version, OS username)
+2. **DYNAMIC**: Frequently changing data (API keys, lists)
 3. **REALTIME**: Data that needs frequent updates (live status, progress)
+4. **EXTERNAL**: Third-party API data (Trello, Sprout)
 
 ```typescript
-const CacheStrategies = {
+export const QUERY_PROFILES = {
   STATIC: {
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    gcTime: 60 * 60 * 1000, // 1 hour
+    staleTime: CACHE.STANDARD, // 5 minutes
+    cacheTime: CACHE.MEDIUM, // 10 minutes
+    retry: RETRY.DEFAULT_ATTEMPTS, // 3
     refetchOnWindowFocus: false
   },
   DYNAMIC: {
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes
-    refetchOnWindowFocus: false
+    staleTime: 1 * MINUTES, // 1 minute
+    cacheTime: CACHE.GC_STANDARD, // 5 minutes
+    retry: 2,
+    refetchOnWindowFocus: true
   },
   REALTIME: {
-    staleTime: 0, // Always stale
-    gcTime: 2 * 60 * 1000, // 2 minutes
-    refetchInterval: 30000, // 30 seconds
-    refetchIntervalInBackground: true
+    staleTime: CACHE.SHORT, // 30 seconds
+    cacheTime: CACHE.GC_SHORT, // 2 minutes
+    retry: 1,
+    refetchOnWindowFocus: true
+  },
+  EXTERNAL: {
+    staleTime: 2 * MINUTES, // 2 minutes
+    cacheTime: CACHE.GC_STANDARD, // 5 minutes
+    retry: RETRY.DEFAULT_ATTEMPTS, // 3
+    refetchOnWindowFocus: false
   }
 }
 ```
 
 ### Query Keys Structure
 
-Hierarchical query keys for efficient invalidation:
+Hierarchical query keys for efficient invalidation, organised by domain:
 
 ```typescript
 export const queryKeys = {
-  user: {
-    all: () => ['user'] as const,
-    profile: (id?: string) => [...queryKeys.user.all(), 'profile', id] as const,
-    authentication: () => [...queryKeys.user.all(), 'auth'] as const
+  app: {
+    all: ['app'] as const,
+    version: () => ['app', 'version'] as const
+  },
+  os: {
+    all: ['os'] as const,
+    username: () => ['os', 'username'] as const
+  },
+  navigation: {
+    all: ['navigation'] as const,
+    breadcrumb: () => ['navigation', 'breadcrumb'] as const
   },
   settings: {
-    all: () => ['settings'] as const,
-    apiKeys: () => [...queryKeys.settings.all(), 'apiKeys'] as const
+    all: ['settings'] as const,
+    apiKeys: () => ['settings', 'api-keys'] as const
+    // preferences, configuration, theme, integrations, backgroundFolderPresent...
   },
   trello: {
-    all: () => ['trello'] as const,
-    board: (boardId: string) => [...queryKeys.trello.all(), 'board', boardId] as const,
-    card: (cardId: string) => [...queryKeys.trello.all(), 'card', cardId] as const
+    all: ['trello'] as const,
+    board: (boardId: string) => ['trello', 'board', boardId] as const,
+    card: (cardId: string) => ['trello', 'card', cardId] as const
+    // boards, cards, lists, integration, cardDetailsSync, me, pathsPresent...
+  },
+  sprout: {
+    all: ['sprout'] as const,
+    folders: (apiKey: string, parentId: string | null) =>
+      ['sprout', 'folders', fingerprint(apiKey), parentId || 'root'] as const
+    // videos, video...
+  },
+  projects: {
+    /* all, lists, list, details, detail, status */
+  },
+  files: {
+    /* all, selections, selection, tree, progress, autoSelection */
+  },
+  upload: {
+    /* all, events, event, progress, status, backgroundFolder, sprout */
+  },
+  baker: {
+    /* all, pathsPresent */
+  },
+  kavanagh: {
+    /* all, ffmpeg, referencePool, referenceFolderPresent */
+  },
+  images: {
+    /* all, refresh, zoomPan, posterframe */
+  },
+  camera: {
+    /* all, mapping, autoRemap, assignment */
   }
 }
 ```
+
+Credentials (Trello API keys, Sprout tokens) are fingerprinted in query keys using
+a non-reversible 8-character hash, never embedded verbatim - see issue #158.
 
 ## Performance Optimization
 
@@ -357,6 +411,10 @@ await prefetchManager.smartPrefetch({
 })
 ```
 
+Sprout folders are deliberately **not** prefetched. Sprout allows 200 requests per
+minute per account, shared with uploads - speculative folder fetches spend budget an
+in-flight upload may need. See issue #155.
+
 ### Memory Management
 
 ```typescript
@@ -380,14 +438,14 @@ const performanceMonitor = getPerformanceMonitor()
 
 // Get insights
 const insights = performanceMonitor.getPerformanceInsights()
-insights.forEach(insight => {
+insights.forEach((insight) => {
   console.log(`${insight.type}: ${insight.message}`)
 })
 
 // Measure specific queries
 const { data, metrics } = await performanceMonitor.measureQueryPerformance(
-  ['user', 'profile'],
-  () => fetchUserProfile()
+  ['app', 'version'],
+  () => getVersion()
 )
 ```
 
@@ -398,7 +456,6 @@ const { data, metrics } = await performanceMonitor.measureQueryPerformance(
 ```typescript
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useUserProfile } from './useUserProfile'
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -415,13 +472,13 @@ const createWrapper = () => {
   )
 }
 
-test('should fetch user profile', async () => {
-  const { result } = renderHook(() => useUserProfile('123'), {
+test('should fetch app version', async () => {
+  const { result } = renderHook(() => useQuery(appVersionQueryOptions()), {
     wrapper: createWrapper()
   })
 
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
-  expect(result.current.data).toEqual(mockUserProfile)
+  expect(result.current.data).toBe('1.2.3')
 })
 ```
 
@@ -433,10 +490,6 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
 export const server = setupServer(
-  http.get('/api/user/:id', ({ params }) => {
-    return HttpResponse.json({ id: params.id, name: 'Test User' })
-  }),
-
   http.get('https://api.trello.com/*', () => {
     return HttpResponse.json({ lists: [], cards: [] })
   })
@@ -459,8 +512,7 @@ useEffect(() => {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch('/api/data')
-      const result = await response.json()
+      const result = await invoke('get_data', { id: dependency })
       setData(result)
     } catch (err) {
       setError(err)
@@ -478,16 +530,18 @@ useEffect(() => {
 ```typescript
 const { data, isLoading, error } = useQuery({
   ...createQueryOptions(
-    queryKeys.data.list(dependency),
+    queryKeys.projects.detail(dependency),
     async () => {
-      const response = await fetch('/api/data')
-      if (!response.ok) throw new Error('Failed to fetch')
-      return response.json()
+      try {
+        return await invoke('get_data', { id: dependency })
+      } catch (error) {
+        throw createQueryError(`Failed to fetch project: ${error}`, 'system')
+      }
     },
     'DYNAMIC',
     {
       staleTime: 5 * 60 * 1000,
-      retry: (failureCount, error) => shouldRetry(error, failureCount, 'data')
+      retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
     }
   )
 })
@@ -498,23 +552,18 @@ const { data, isLoading, error } = useQuery({
 - [ ] Replace manual loading/error states with React Query
 - [ ] Use query key factory for all queries
 - [ ] Implement proper error handling with `createQueryError`
-- [ ] Choose appropriate cache strategy (STATIC/DYNAMIC/REALTIME)
+- [ ] Choose appropriate query profile (STATIC/DYNAMIC/REALTIME/EXTERNAL)
 - [ ] Add retry logic with `shouldRetry`
 - [ ] Remove unused useState and useEffect hooks
 - [ ] Update component props to use React Query state
 - [ ] Add error boundaries where appropriate
 - [ ] Test cache invalidation flows
-- [ ] Verify no memory leaks with optimization tools
+- [ ] Verify no memory leaks with optimisation tools
 
 ### Validation
 
-Run the migration validation script:
-
-```bash
-npx ts-node scripts/validate-migration.ts
-```
-
-This will check for:
+The one-off migration validation script (`scripts/validate-migration.ts`) has been
+removed now that the migration is complete. The checks it performed:
 
 - Proper React Query usage
 - Remaining legacy patterns
@@ -525,10 +574,10 @@ This will check for:
 ## Best Practices
 
 1. **Always use the query key factory** - Ensures consistency and enables proper cache invalidation
-2. **Choose appropriate cache strategies** - Match cache settings to data characteristics
-3. **Handle errors properly** - Use standardized error types and global error boundaries
+2. **Choose appropriate query profiles** - Match cache settings to data characteristics
+3. **Handle errors properly** - Use standardised error types and global error boundaries
 4. **Monitor performance** - Use built-in monitoring tools to identify bottlenecks
-5. **Test thoroughly** - Include cache behavior in your testing strategy
+5. **Test thoroughly** - Include cache behaviour in your testing strategy
 6. **Keep queries focused** - One query per data concern for better cache management
 7. **Use prefetching strategically** - Improve perceived performance without over-fetching
 8. **Clean up unused data** - Implement memory management for large datasets
@@ -545,7 +594,7 @@ This will check for:
 
 **Memory leaks:**
 
-- Use optimization tools to monitor cache size
+- Use optimisation tools to monitor cache size
 - Implement cleanup strategies for large datasets
 - Check for proper component unmounting
 
@@ -554,12 +603,10 @@ This will check for:
 - Review prefetching strategies
 - Monitor query performance metrics
 - Consider pagination for large datasets
-- Optimize query key structure
+- Optimise query key structure
 
 **TypeScript errors:**
 
 - Ensure proper typing for query functions
 - Use createQueryOptions for type safety
 - Check query key factory types
-
-For more detailed troubleshooting, refer to the performance monitoring insights and validation script output.

@@ -95,6 +95,9 @@ export async function setupSproutMocks(
     const installedAt = Date.now()
     win.__sproutFolderCalls__ = []
 
+    /** No trailing separator, matching the real appDataDir (issue #167). */
+    const APP_DATA_DIR = '/tmp/bucket-e2e'
+
     // plugin:fs|read_text_file returns BYTES, which the plugin then decodes.
     // Returning a string here yields garbage after Uint8Array.from().
     const apiKeysBytes = Array.from(
@@ -125,11 +128,21 @@ export async function setupSproutMocks(
       if (cmd === 'get_video_duration') return 120
       if (cmd === 'upload_video') return null
       if (cmd === 'get_username') return 'E2E User'
-      if (cmd === 'get_version') return '0.0.0-e2e'
 
       // Settings live in api_keys.json, read through the fs plugin.
       if (cmd === 'plugin:fs|exists') {
         const path = String((payload.path as string) ?? '')
+        // A path beside the app data directory rather than inside it is the
+        // pre-#167 layout. E2E runs start already migrated. The directory
+        // itself must still report as present, or every run takes the mkdir
+        // branch.
+        if (
+          path !== APP_DATA_DIR &&
+          path.startsWith(APP_DATA_DIR) &&
+          !path.startsWith(`${APP_DATA_DIR}/`)
+        ) {
+          return false
+        }
         // No saved index at start, so tests exercise building one.
         return !path.includes('sprout-folder-index')
       }
@@ -142,13 +155,25 @@ export async function setupSproutMocks(
       if (cmd === 'plugin:fs|write_text_file') return null
       if (cmd === 'plugin:fs|read_dir') return []
 
+      // join must genuinely concatenate. Answering it with the catch-all
+      // constant below would collapse api_keys.json and the folder index onto
+      // one path (issue #167).
+      if (cmd === 'plugin:path|join') {
+        const parts = (payload.paths as string[]) ?? []
+        return parts.join('/').replace(/\/{2,}/g, '/')
+      }
+
       if (cmd === 'tauri' && payload && typeof payload === 'object') {
         const inner = (payload as { cmd?: string }).cmd
-        if (inner?.startsWith('plugin:path|')) return '/tmp/bucket-e2e/'
+        if (inner === 'plugin:path|join') {
+          const parts = ((payload as { paths?: string[] }).paths as string[]) ?? []
+          return parts.join('/').replace(/\/{2,}/g, '/')
+        }
+        if (inner?.startsWith('plugin:path|')) return APP_DATA_DIR
         return null
       }
 
-      if (cmd.startsWith('plugin:path|')) return '/tmp/bucket-e2e/'
+      if (cmd.startsWith('plugin:path|')) return APP_DATA_DIR
       if (cmd.startsWith('plugin:')) return null
 
       return null

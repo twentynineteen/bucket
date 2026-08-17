@@ -1,9 +1,9 @@
 import { CACHE } from '@shared/constants'
 import { QueryClient } from '@tanstack/react-query'
 import { core } from '@tauri-apps/api'
-import { getVersion } from '@tauri-apps/api/app'
 import { createNamespacedLogger, loadApiKeys } from '@shared/utils'
 
+import { appVersionQueryOptions } from './app-version-query'
 import { queryKeys } from './query-keys'
 import { createQueryError, createQueryOptions, shouldRetry } from './query-utils'
 
@@ -45,7 +45,7 @@ export class QueryPrefetchManager {
   }
 
   /**
-   * Prefetch user-specific data after authentication
+   * Prefetch the data the chrome needs: the OS username and the stored API keys.
    */
   async prefetchUserData() {
     return Promise.allSettled([this.prefetchUsername(), this.prefetchApiKeys()])
@@ -55,24 +55,7 @@ export class QueryPrefetchManager {
    * Prefetch app version (static data with long cache time)
    */
   async prefetchAppVersion() {
-    return this.queryClient.prefetchQuery({
-      ...createQueryOptions(
-        queryKeys.user.profile(),
-        async () => {
-          try {
-            return await getVersion()
-          } catch (error) {
-            throw createQueryError(`Failed to get app version: ${error}`, 'SYSTEM_INFO')
-          }
-        },
-        'STATIC',
-        {
-          staleTime: CACHE.MEDIUM, // 10 minutes
-          gcTime: CACHE.GC_EXTENDED, // Keep cached for 30 minutes
-          retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
-        }
-      )
-    })
+    return this.queryClient.prefetchQuery(appVersionQueryOptions())
   }
 
   /**
@@ -81,19 +64,19 @@ export class QueryPrefetchManager {
   async prefetchUsername() {
     return this.queryClient.prefetchQuery({
       ...createQueryOptions(
-        queryKeys.user.authentication(),
+        queryKeys.os.username(),
         async () => {
           try {
             return await core.invoke<string>('get_username')
           } catch (error) {
-            throw createQueryError(`Failed to fetch username: ${error}`, 'AUTHENTICATION')
+            throw createQueryError(`Failed to fetch username: ${error}`, 'system')
           }
         },
         'STATIC',
         {
           staleTime: CACHE.STANDARD, // 5 minutes
           gcTime: CACHE.GC_LONG, // Keep cached for 15 minutes
-          retry: (failureCount, error) => shouldRetry(error, failureCount, 'auth')
+          retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
         }
       )
     })
@@ -110,7 +93,7 @@ export class QueryPrefetchManager {
           try {
             return await loadApiKeys()
           } catch (error) {
-            throw createQueryError(`Failed to load API keys: ${error}`, 'SETTINGS_LOAD')
+            throw createQueryError(`Failed to load API keys: ${error}`, 'settings')
           }
         },
         'DYNAMIC',

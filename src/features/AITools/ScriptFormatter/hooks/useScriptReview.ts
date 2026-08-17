@@ -13,21 +13,13 @@
 import { createNamespacedLogger } from '@shared/utils'
 import { useCallback, useMemo, useState } from 'react'
 
-import type { ProcessedOutput } from '@shared/types'
+import type { Edit, ProcessedOutput } from '@shared/types'
 
 const log = createNamespacedLogger('ScriptReview')
 
 interface UseScriptReviewOptions {
   initialOutput?: ProcessedOutput | null
   onChange?: (newText: string) => void
-}
-
-interface EditHistoryEntry {
-  timestamp: Date
-  type: 'manual' | 'ai-generated'
-  changeDescription: string
-  previousValue: string
-  newValue: string
 }
 
 export function useScriptReview(options?: UseScriptReviewOptions) {
@@ -40,7 +32,7 @@ export function useScriptReview(options?: UseScriptReviewOptions) {
   const [modifiedText, setModifiedText] = useState(
     () => initialOutput?.formattedText || ''
   )
-  const [editHistory, setEditHistory] = useState<EditHistoryEntry[]>(
+  const [editHistory, setEditHistory] = useState<Edit[]>(
     () => initialOutput?.editHistory || []
   )
   const [undoStack, setUndoStack] = useState<string[]>([])
@@ -74,7 +66,7 @@ export function useScriptReview(options?: UseScriptReviewOptions) {
       setIsSaved(false)
 
       // Add to edit history
-      const historyEntry: EditHistoryEntry = {
+      const historyEntry: Edit = {
         timestamp: new Date(),
         type: 'manual',
         changeDescription: 'Manual edit',
@@ -132,15 +124,13 @@ export function useScriptReview(options?: UseScriptReviewOptions) {
     setIsSaved(false)
   }, [redoStack, modifiedText])
 
-  const getUpdatedOutput = useCallback((): ProcessedOutput => {
+  // Null with no initialOutput: there is nothing to produce an updated copy
+  // of. The previous code returned a five-field object cast as a whole
+  // ProcessedOutput, so any caller reading id, requestId, formattedHtml or
+  // diffData from it got undefined (#178).
+  const getUpdatedOutput = useCallback((): ProcessedOutput | null => {
     if (!initialOutput) {
-      return {
-        formattedText: modifiedText,
-        generationTimestamp: new Date(),
-        examplesCount: 0,
-        editHistory,
-        isEdited: hasChanges
-      }
+      return null
     }
 
     return {

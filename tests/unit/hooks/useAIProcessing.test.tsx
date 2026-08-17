@@ -52,7 +52,7 @@ describe('useAIProcessing', () => {
     status: 'configured' as const,
     configuration: {
       serviceUrl: 'https://api.openai.com',
-      connectionStatus: 'connected' as const
+      connectionStatus: 'configured' as const
     }
   }
 
@@ -67,7 +67,17 @@ describe('useAIProcessing', () => {
   ]
 
   const mockProcessedOutput: ProcessedOutput = {
+    id: 'test-output-1',
+    requestId: 'test-request-1',
+    formattedHtml: '<p>Formatted script content</p>',
     formattedText: 'Formatted script content',
+    diffData: {
+      additions: [],
+      deletions: [],
+      modifications: [],
+      originalLineCount: 1,
+      modifiedLineCount: 1
+    },
     generationTimestamp: new Date(),
     examplesCount: 2,
     editHistory: [],

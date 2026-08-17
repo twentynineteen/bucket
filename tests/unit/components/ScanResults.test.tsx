@@ -133,7 +133,7 @@ describe('ScanResults Component', () => {
   describe('Rendering States', () => {
     test('returns null when no scan result', () => {
       // Arrange & Act
-      const { container } = render(<ScanResults scanResult={null} isScanning={false} />)
+      const { container } = render(<ScanResults scanResult={null} isScanning={false} scanStartTime={null} />)
 
       // Assert
       expect(container.firstChild).toBeNull()
@@ -141,7 +141,7 @@ describe('ScanResults Component', () => {
 
     test('shows progress display when scanning', () => {
       // Arrange & Act
-      render(<ScanResults scanResult={mockScanResult} isScanning={true} />)
+      render(<ScanResults scanResult={mockScanResult} isScanning={true} scanStartTime={Date.now()} />)
 
       // Assert
       expect(screen.getByText('Scanning…')).toBeInTheDocument()
@@ -152,7 +152,7 @@ describe('ScanResults Component', () => {
 
     test('shows results summary when scan complete', () => {
       // Arrange & Act
-      render(<ScanResults scanResult={mockScanResult} isScanning={false} />)
+      render(<ScanResults scanResult={mockScanResult} isScanning={false} scanStartTime={null} />)
 
       // Assert - Check for compact inline stats labels
       expect(screen.queryByText('Scanning…')).not.toBeInTheDocument()
@@ -172,7 +172,7 @@ describe('ScanResults Component', () => {
     test('displays spinner animation during scan', () => {
       // Arrange & Act
       const { container } = render(
-        <ScanResults scanResult={mockScanResult} isScanning={true} />
+        <ScanResults scanResult={mockScanResult} isScanning={true} scanStartTime={Date.now()} />
       )
 
       // Assert - Check for spinner class
@@ -189,7 +189,7 @@ describe('ScanResults Component', () => {
       }
 
       // Act
-      render(<ScanResults scanResult={inProgressResult} isScanning={true} />)
+      render(<ScanResults scanResult={inProgressResult} isScanning={true} scanStartTime={Date.now()} />)
 
       // Assert
       expect(screen.getByText('50')).toBeInTheDocument()
@@ -204,7 +204,7 @@ describe('ScanResults Component', () => {
   describe('Results Summary', () => {
     test('displays total folders scanned', () => {
       // Arrange & Act
-      render(<ScanResults scanResult={mockScanResult} isScanning={false} />)
+      render(<ScanResults scanResult={mockScanResult} isScanning={false} scanStartTime={null} />)
 
       // Assert - Check for compact inline format
       expect(screen.getByText('100')).toBeInTheDocument()
@@ -213,7 +213,7 @@ describe('ScanResults Component', () => {
 
     test('displays valid projects count', () => {
       // Arrange & Act
-      render(<ScanResults scanResult={mockScanResult} isScanning={false} />)
+      render(<ScanResults scanResult={mockScanResult} isScanning={false} scanStartTime={null} />)
 
       // Assert - Check for compact inline format with success color
       const validProjectsElement = screen.getByText('3')
@@ -224,7 +224,7 @@ describe('ScanResults Component', () => {
 
     test('displays total folder size formatted', () => {
       // Arrange & Act
-      render(<ScanResults scanResult={mockScanResult} isScanning={false} />)
+      render(<ScanResults scanResult={mockScanResult} isScanning={false} scanStartTime={null} />)
 
       // Assert - Check for compact inline format
       expect(screen.getByText('5.00 GB')).toBeInTheDocument()
@@ -234,7 +234,7 @@ describe('ScanResults Component', () => {
     test('displays error count', () => {
       // Arrange & Act
       const { container } = render(
-        <ScanResults scanResult={mockScanResult} isScanning={false} />
+        <ScanResults scanResult={mockScanResult} isScanning={false} scanStartTime={null} />
       )
 
       // Assert - Find the error count element by its destructive color class
@@ -253,7 +253,7 @@ describe('ScanResults Component', () => {
   describe('Statistics Calculations', () => {
     test('correctly calculates valid breadcrumbs count', () => {
       // Arrange & Act
-      render(<ScanResults scanResult={mockScanResult} isScanning={false} />)
+      render(<ScanResults scanResult={mockScanResult} isScanning={false} scanStartTime={null} />)
 
       // Assert - Should count projects with breadcrumbs AND not invalid
       // mockProjects has 2 valid breadcrumbs (project1 and project2)
@@ -264,7 +264,7 @@ describe('ScanResults Component', () => {
 
     test('correctly calculates invalid breadcrumbs count', () => {
       // Arrange & Act
-      const { container } = render(<ScanResults scanResult={mockScanResult} isScanning={false} />)
+      const { container } = render(<ScanResults scanResult={mockScanResult} isScanning={false} scanStartTime={null} />)
 
       // Assert - Should count projects with invalidBreadcrumbs = true
       // mockProjects has 1 invalid breadcrumbs (project4)
@@ -285,7 +285,7 @@ describe('ScanResults Component', () => {
       }
 
       // Act
-      render(<ScanResults scanResult={noErrorsResult} isScanning={false} />)
+      render(<ScanResults scanResult={noErrorsResult} isScanning={false} scanStartTime={null} />)
 
       // Assert - When there are no errors, the Errors section is not rendered at all
       expect(screen.queryByText('Errors:')).not.toBeInTheDocument()

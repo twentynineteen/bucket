@@ -112,6 +112,34 @@ test.describe('BuildProject E2E Workflow', () => {
     await expect(buildPage.successMessage).toBeVisible()
   })
 
+  // Issue #212. The success screen embeds the Trello cards section, and the mock
+  // fixture had no handler for `baker_get_trello_cards`, so every run above
+  // finished with a destructive alert reading "data is undefined" sitting next
+  // to "Project Created Successfully!" - and passed. Asserting the absence is
+  // the only thing that makes an unimplemented mock command fail loudly.
+  test('reaches the success screen with no Trello error alert', async ({ page }) => {
+    const buildPage = new BuildProjectPage(page)
+    await buildPage.goto()
+
+    await buildPage.fillProjectDetails(
+      TEST_PROJECTS.BASIC.title,
+      TEST_PROJECTS.BASIC.numCameras
+    )
+    await buildPage.clickSelectDestination()
+    await buildPage.clickSelectFiles()
+    await buildPage.clickCreateProject()
+    await buildPage.waitForCompletion(60000)
+
+    await expect(buildPage.successMessage).toBeVisible()
+
+    // A newly created project has no linked cards, so the section shows its
+    // empty state...
+    await expect(page.locator('[data-test="trello-cards-empty"]')).toBeVisible()
+
+    // ...and nothing on a success screen may be a destructive failure alert.
+    await expect(page.locator('[data-test="trello-cards-error"]')).toHaveCount(0)
+  })
+
   test('shows progress bar during file operation', async ({ page }) => {
     const buildPage = new BuildProjectPage(page)
     await buildPage.goto()

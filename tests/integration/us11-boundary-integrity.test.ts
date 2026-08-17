@@ -117,13 +117,10 @@ describe('US-11a — @tauri-apps imports confined to api.ts boundary files', () 
     const featureNames = getFeatureNames()
     const violations: string[] = []
 
-    // src/features/build-project/ (lowercase) is an internal implementation module
-    // that pre-dates the api.ts convention. Exclude from this check.
-    const EXCLUDED_FEATURES = ['build-project']
-
+    // No exclusions: src/features/build-project/ was the one module that
+    // pre-dated the api.ts convention, and it has been merged into
+    // BuildProject/ with its I/O routed through api.ts (#208).
     for (const feature of featureNames) {
-      if (EXCLUDED_FEATURES.includes(feature)) continue
-
       const hooksDir = join(FEATURES_DIR, feature, 'hooks')
       const hookFiles = collectFiles(hooksDir)
 
@@ -222,7 +219,6 @@ describe('US-11a — @tauri-apps imports confined to api.ts boundary files', () 
     // The following features are expected to have api.ts based on CLAUDE.md
     const EXPECTED_FEATURES_WITH_API = [
       'AITools',
-      'Auth',
       'Baker',
       'BuildProject',
       'Premiere',
@@ -296,7 +292,7 @@ describe('US-11c — Feature barrel files use named exports only', () => {
   it('feature barrel files should have at least one named export', () => {
     const featuresMissingExports: string[] = []
 
-    const EXPECTED_FEATURES = ['AITools', 'Auth', 'Baker', 'BuildProject', 'Premiere', 'Settings', 'Trello', 'Upload']
+    const EXPECTED_FEATURES = ['AITools', 'Baker', 'BuildProject', 'Premiere', 'Settings', 'Trello', 'Upload']
 
     for (const feature of EXPECTED_FEATURES) {
       const barrelPath = join(FEATURES_DIR, feature, 'index.ts')
@@ -392,14 +388,11 @@ describe('US-11f — No broken @/ path alias imports in source files', () => {
     const allSrcFiles = collectFiles(SRC_DIR)
     const violations: string[] = []
 
-    // src/features/build-project/ (internal module, lowercase) has legacy @/ imports
-    // that predate the alias convention. Exclude it from this check.
-    const EXCLUDED_PATHS = ['src/features/build-project/']
-
+    // No exclusions: the last `@/` references lived in
+    // src/features/build-project/, whose merge into BuildProject/ removed them
+    // (#208).
     for (const file of allSrcFiles) {
       const relativePath = file.replace(PROJECT_ROOT + '/', '')
-      if (EXCLUDED_PATHS.some((exc) => relativePath.startsWith(exc))) continue
-
       const content = readFile(file)
       // Match `from '@/...'` but not `from '@features/...'` or `from '@shared/...'`
       if (/from ['"]@\//.test(content) || /require\(['"]@\//.test(content)) {

@@ -13,7 +13,9 @@ const logger = createNamespacedLogger('useProjectState')
  */
 export function useProjectState() {
   const [title, setTitle] = useState('')
-  const [numCameras, setNumCameras] = useState(PROJECT_LIMITS.DEFAULT_CAMERAS)
+  // Explicit number: PROJECT_LIMITS is `as const`, so inference would pin the
+  // state to the literal 2 and reject every other camera count.
+  const [numCameras, setNumCameras] = useState<number>(PROJECT_LIMITS.DEFAULT_CAMERAS)
   const [files, setFiles] = useState<FootageFile[]>([])
   const [selectedFolder, setSelectedFolder] = useState<string>('')
   const [titleSanitized, setTitleSanitized] = useState(false)

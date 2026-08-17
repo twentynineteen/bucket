@@ -10,8 +10,7 @@
  * account-wide** budget shared with uploads, so it is always explicit, paced,
  * cancellable, and done once rather than per search.
  */
-import { CACHE } from '@shared/constants'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 
 import {
@@ -41,11 +40,10 @@ import {
 } from '../internal/folderIndexTransfer'
 import { remainingBudget } from '../internal/sproutRateBudget'
 import type { SelectedSproutFolder } from '../types'
+import { folderIndexQueryKey, useSavedFolderIndex } from './useSavedFolderIndex'
 
 /** Suggest a rebuild past this age; folder structures drift slowly. */
 export const INDEX_STALE_AFTER_DAYS = 14
-
-const indexQueryKey = (account: string) => ['sprout', 'folder-index', account] as const
 
 export interface UseSproutFolderIndexResult {
   /** Indexed folders with breadcrumb paths, empty when there is no index. */
@@ -82,16 +80,9 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
   const [incompleteReason, setIncompleteReason] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
-  const indexQuery = useQuery({
-    queryKey: indexQueryKey(apiKey ?? ''),
-    queryFn: async () => parseFolderIndex(await readFolderIndex(), apiKey as string),
-    enabled: Boolean(apiKey),
-    // The file only changes when this hook writes it, so re-reading is waste.
-    staleTime: CACHE.STANDARD,
-    gcTime: CACHE.GC_MEDIUM,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false
-  })
+  // Shared with the destination resolver (#169) rather than read twice: the same
+  // query, the same key, one file read however many consumers are mounted.
+  const { index, isPending: isReadingIndex } = useSavedFolderIndex(apiKey)
 
   const buildMutation = useMutation({
     mutationFn: async () => {
@@ -138,7 +129,7 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
       return { index, stoppedBecause: result.stoppedBecause, error: result.error }
     },
     onSuccess: ({ index, stoppedBecause, error }) => {
-      queryClient.setQueryData(indexQueryKey(apiKey ?? ''), index)
+      queryClient.setQueryData(folderIndexQueryKey(apiKey ?? ''), index)
       setIncompleteReason(describeStop(stoppedBecause, error))
     },
     onSettled: () => {
@@ -213,7 +204,7 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
     onSuccess: (result) => {
       setTransferFailed(false)
       if (!result) return
-      queryClient.setQueryData(indexQueryKey(apiKey ?? ''), result.merged)
+      queryClient.setQueryData(folderIndexQueryKey(apiKey ?? ''), result.merged)
       setTransferMessage(result.message)
     },
     onError: (error: Error) => {
@@ -222,10 +213,6 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
     }
   })
 
-  // Validated rather than trusted: the query cache can be seeded or mocked with
-  // anything, and a shape mismatch must not throw during render.
-  const raw = indexQuery.data
-  const index: FolderIndex | null = Array.isArray(raw?.folders) ? raw : null
   // Captured once per mount rather than read during render: Date.now() in render
   // is impure, and "3 days ago" does not need to tick while the menu is open.
   const ageInDays = index ? indexAgeInDays(index, mountedAt) : null
@@ -237,7 +224,7 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
     index,
     ageInDays,
     isStale: index !== null && ageInDays !== null && ageInDays >= INDEX_STALE_AFTER_DAYS,
-    isLoading: indexQuery.isLoading,
+    isLoading: isReadingIndex,
     isBuilding: buildMutation.isPending,
     progress,
     incompleteReason,

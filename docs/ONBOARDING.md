@@ -19,7 +19,7 @@ Before starting, ensure you have:
 
 - **macOS, Windows, or Linux** (primary development on macOS)
 - **Bun** (required -- the project's standard package manager)
-- **Rust** 1.70+ ([install from rustup.rs](https://rustup.rs))
+- **Rust** 1.77.2+ ([install via rustup](https://rustup.rs))
 - **Git** for version control
 - **Code editor** (VS Code recommended with Rust Analyzer extension)
 
@@ -54,7 +54,7 @@ This installs:
 ### Verify Rust Installation
 
 ```bash
-rustc --version  # Should be 1.70+
+rustc --version  # Should be 1.77.2+
 cargo --version
 ```
 
@@ -104,8 +104,8 @@ This will:
 ```
 bucket/
 ├── src/                        # React frontend (TypeScript)
-│   ├── features/               # Feature modules (AITools, Auth, Baker,
-│   │                           #   BuildProject, Premiere, Settings, Trello, Upload)
+│   ├── features/               # Feature modules (AITools, Baker, BuildProject,
+│   │                           #   Kavanagh, Premiere, Settings, Trello, Upload)
 │   ├── shared/                 # Cross-feature code
 │   │   ├── constants/          # Timing, animation, project constants
 │   │   ├── hooks/              # Cross-feature hooks
@@ -120,7 +120,9 @@ bucket/
 │
 ├── src-tauri/                  # Rust backend
 │   ├── src/commands/           # Tauri commands (API for frontend)
-│   ├── src/state/              # Shared Rust state
+│   ├── src/baker/              # Baker drive-scanning logic
+│   ├── src/build_project/      # File transfer and project creation
+│   ├── src/kavanagh/           # Video QC (ffmpeg checks)
 │   └── Cargo.toml              # Rust dependencies
 │
 └── docs/                       # Documentation
@@ -301,6 +303,7 @@ bun run eslint:fix
 - 90 character line width
 - Single quotes
 - No semicolons
+- No trailing commas
 - 2-space indentation
 
 ### Run Tests
@@ -443,7 +446,7 @@ See CLAUDE.md section "How to Add a New Feature Module" for the full checklist. 
    )
    ```
 
-3. **Add to sidebar** in `src/shared/ui/sidebar/SidebarMenu.tsx`
+3. **Add to sidebar** in `src/shared/ui/layout/app-sidebar.tsx`
 
 ### Adding a New Tauri Command
 
@@ -477,18 +480,14 @@ cargo add crate-name
 
 **Frontend debugging:**
 
-- Right-click in app → Inspect Element
-- Use React DevTools (installed automatically in dev mode)
-- Check TanStack Query DevTools (bottom-left icon)
+- Right-click in app → Inspect Element (opens a web inspector)
+- Check TanStack Query DevTools (bottom-left icon in the app)
 
 **Backend debugging:**
 
 ```bash
 # Enable detailed Rust logs
 RUST_LOG=debug bun run dev:tauri
-
-# View logs for specific module
-RUST_LOG=app_lib::commands=debug bun run dev:tauri
 ```
 
 **Common issues:**
@@ -577,7 +576,12 @@ Write tests for:
 - Custom hooks (recommended)
 - Complex components (recommended)
 
-**Example test:**
+**Where to put tests:** Colocate unit tests beside the source file (e.g.
+`src/shared/utils/myFunction.test.ts` next to `myFunction.ts`). Contract tests go in
+`src/features/<Name>/__contracts__/`, integration tests in `tests/integration/`, and E2E
+tests in `tests/e2e/`. See CLAUDE.md's testing policy for the full rules.
+
+**Example test** (saved as `src/shared/utils/myFunction.test.ts`):
 
 ```typescript
 import { myFunction } from '@shared/utils/myFunction'
@@ -695,6 +699,6 @@ Happy coding! 🚀
 
 ---
 
-**Document Version:** 1.1.0
-**Last Updated:** July 2026
+**Document Version:** 1.2.0
+**Last Updated:** August 2026
 **Maintainer:** Check GitHub for current maintainers

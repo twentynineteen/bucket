@@ -81,6 +81,10 @@ const data = {
         {
           title: 'Trello',
           url: '/upload/trello'
+        },
+        {
+          title: 'Kavanagh',
+          url: '/upload/kavanagh'
         }
         // 'Transcription' (/upload/otter) hidden from sidebar — feature currently unused.
         // Route remains registered in AppRouter so it can be re-enabled by restoring this item.
@@ -127,17 +131,19 @@ const data = {
         {
           title: 'Trello',
           url: '/settings/general#trello'
+        },
+        {
+          title: 'Kavanagh',
+          url: '/settings/general#kavanagh'
         }
       ]
     }
   ]
 }
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  onLogout?: () => void
-}
+type AppSidebarProps = React.ComponentProps<typeof Sidebar>
 
-export function AppSidebar({ onLogout, ...props }: AppSidebarProps) {
+export function AppSidebar(props: AppSidebarProps) {
   const { data: username } = useUsername()
 
   // Apply macOS sidebar vibrancy effect
@@ -168,7 +174,7 @@ export function AppSidebar({ onLogout, ...props }: AppSidebarProps) {
         </SidebarContent>
         <SidebarFooter>
           <ThemeToggle />
-          <NavUser user={user} onLogout={onLogout} onUpdateClicked={onUpdateClicked} />
+          <NavUser user={user} onUpdateClicked={onUpdateClicked} />
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>

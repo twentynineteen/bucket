@@ -11,7 +11,7 @@ import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
 import { SCENARIOS, generateMockFiles } from '../utils/large-file-simulator'
 import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 
-test.describe('Transfer Cancellation - User Initiated', () => {
+test.describe('Transfer Cancellation - User Initiated', { tag: '@slow' }, () => {
   test('can cancel operation mid-transfer via mock', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -62,7 +62,12 @@ test.describe('Transfer Cancellation - User Initiated', () => {
       .setScenario(SCENARIOS.SMOKE_TEST)
       .setMockFiles(generateMockFiles(20, 4, SCENARIOS.SMOKE_TEST))
       .setSelectedFolder(TEST_PROJECTS.PROFESSIONAL.folder)
-      .setSpeedMultiplier(30) // Slow enough to see progress before cancellation
+      // Slow enough to see progress before cancellation. This has to be the
+      // mock's own timers, not the app being slow: at 30x the 200 events took
+      // seconds only because of the render loop fixed in #228, and the transfer
+      // now finishes well inside the 2s this test waits before cancelling. 2x
+      // gives a five-second transfer.
+      .setSpeedMultiplier(2)
       .setMaxEventsPerFile(10)
     await mock.setup()
 
@@ -150,7 +155,7 @@ test.describe('Transfer Cancellation - User Initiated', () => {
   })
 })
 
-test.describe('Transfer Cancellation - Page Navigation', () => {
+test.describe('Transfer Cancellation - Page Navigation', { tag: '@slow' }, () => {
   test('navigation away cleans up listeners', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -226,7 +231,7 @@ test.describe('Transfer Cancellation - Page Navigation', () => {
   })
 })
 
-test.describe('Transfer Cancellation - Browser Refresh', () => {
+test.describe('Transfer Cancellation - Browser Refresh', { tag: '@slow' }, () => {
   test('refresh during transfer resets state', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -274,7 +279,7 @@ test.describe('Transfer Cancellation - Browser Refresh', () => {
   })
 })
 
-test.describe('Transfer Cancellation - Partial Completion', () => {
+test.describe('Transfer Cancellation - Partial Completion', { tag: '@slow' }, () => {
   test('cancel at 25% shows partial progress', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -362,7 +367,7 @@ test.describe('Transfer Cancellation - Partial Completion', () => {
   })
 })
 
-test.describe('Transfer Cancellation - State Cleanup', () => {
+test.describe('Transfer Cancellation - State Cleanup', { tag: '@slow' }, () => {
   test('event listeners are cleaned up after cancellation', async ({ page }) => {
     const mock = createTauriMock(page)
     mock
@@ -453,7 +458,7 @@ test.describe('Transfer Cancellation - State Cleanup', () => {
   })
 })
 
-test.describe('Transfer Cancellation - Rapid Cancellation', () => {
+test.describe('Transfer Cancellation - Rapid Cancellation', { tag: '@slow' }, () => {
   test('immediate cancellation after start', async ({ page }) => {
     const mock = createTauriMock(page)
     mock

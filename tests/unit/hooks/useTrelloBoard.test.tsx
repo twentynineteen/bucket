@@ -161,10 +161,9 @@ describe('useTrelloBoard', () => {
     })
 
     test('handles missing API credentials', async () => {
-      vi.mocked(loadApiKeys).mockResolvedValue({
-        trello: null,
-        trelloToken: null
-      })
+      // Absent, not null: ApiKeys records an unset credential by omitting the
+      // key, which is what JSON.stringify writes for undefined (#210).
+      vi.mocked(loadApiKeys).mockResolvedValue({})
 
       const { result } = renderHook(() => useTrelloBoard('board123'), {
         wrapper: createWrapper()
@@ -278,8 +277,8 @@ describe('useTrelloBoard', () => {
 
     test('updates when board ID changes', async () => {
       const { result, rerender } = renderHook<
-        { boardId: string },
-        ReturnType<typeof useTrelloBoard>
+        ReturnType<typeof useTrelloBoard>,
+        { boardId: string }
       >(({ boardId }) => useTrelloBoard(boardId), {
         wrapper: createWrapper(),
         initialProps: { boardId: 'board1' }

@@ -5,7 +5,7 @@
  * transferringFiles stage, I see real-time progress updates as files are copied.
  *
  * Tests the transferFiles stage function and createTransferItems utility from
- * src/features/build-project/stages/fileTransfer.ts.
+ * src/features/BuildProject/stages/fileTransfer.ts.
  *
  * Mocking strategy: mock @tauri-apps/api/core (invoke) and @tauri-apps/api/event
  * (listen) since the stage function is a pure function that orchestrates Tauri calls.
@@ -19,7 +19,7 @@ import {
   formatBytes,
   formatTimeRemaining,
   transferFiles
-} from '../../src/features/build-project/stages/fileTransfer'
+} from '../../src/features/BuildProject/stages/fileTransfer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock Tauri core — transferFiles calls invoke('transfer_files_with_progress', ...)
@@ -228,7 +228,7 @@ describe('US-03 — File Transfer Progress', () => {
     const result = await transferFiles({ files: mockFiles })
 
     expect(result.ok).toBe(false)
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.kind).toBe('InsufficientSpace')
     }
   })
@@ -240,7 +240,7 @@ describe('US-03 — File Transfer Progress', () => {
     const result = await transferFiles({ files: mockFiles })
 
     expect(result.ok).toBe(false)
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.kind).toBe('Permission')
     }
   })
@@ -268,7 +268,7 @@ describe('US-03 — File Transfer Progress', () => {
     const result = await transferPromise
 
     expect(result.ok).toBe(false)
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.message).toContain('IO error during copy')
     }
   })
@@ -288,7 +288,7 @@ describe('US-03 — File Transfer Progress', () => {
     })
 
     expect(result.ok).toBe(false)
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.kind).toBe('Cancelled')
     }
   })

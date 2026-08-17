@@ -2,82 +2,176 @@
  * RAG Validation Tests
  * Feature: 007-frontend-script-example
  *
- * Unit tests for validation functions that don't require AppHandle
+ * Unit tests for the validation helpers in `commands::rag` that need no AppHandle.
  */
+use crate::commands::rag::{
+    calculate_word_count, validate_category, validate_embedding_dimensions, validate_text_content,
+    validate_title,
+};
 
-// Note: The validation functions are private, so we'll test them through the public API
-// For now, these are placeholder tests showing the validation contracts
+// ============================================================================
+// validate_title
+// ============================================================================
 
 #[test]
-fn test_validation_title_length() {
-    // Contract: Title must be 1-200 chars
-    // This will be validated when upload_example is called
-
-    // Valid title
-    let valid_title = "Test Example Title";
-    assert!(valid_title.len() <= 200);
-    assert!(!valid_title.is_empty());
-
-    // Too long (would fail validation)
-    let long_title = "A".repeat(201);
-    assert!(long_title.len() > 200); // Would fail validation
+fn validate_title_rejects_titles_over_200_chars() {
+    let error = validate_title(&"A".repeat(201)).expect_err("201 chars should be rejected");
+    assert!(
+        error.contains("Title too long"),
+        "expected a length error, got: {error}"
+    );
 }
 
 #[test]
-fn test_validation_categories() {
-    // Contract: Category must be valid enum value
-    const VALID_CATEGORIES: &[&str] = &[
+fn validate_title_accepts_exactly_200_chars() {
+    assert!(validate_title(&"A".repeat(200)).is_ok());
+}
+
+#[test]
+fn validate_title_rejects_empty_and_whitespace_only() {
+    for title in ["", "   ", "\t "] {
+        let error = validate_title(title).expect_err("blank title should be rejected");
+        assert!(
+            error.contains("Title cannot be empty"),
+            "expected an empty-title error for {title:?}, got: {error}"
+        );
+    }
+}
+
+#[test]
+fn validate_title_rejects_newlines() {
+    for title in ["Line one\nLine two", "Carriage\rreturn"] {
+        let error = validate_title(title).expect_err("newline in title should be rejected");
+        assert!(
+            error.contains("Title cannot contain newlines"),
+            "expected a newline error for {title:?}, got: {error}"
+        );
+    }
+}
+
+// ============================================================================
+// validate_category
+// ============================================================================
+
+#[test]
+fn validate_category_accepts_every_documented_category() {
+    for category in [
         "educational",
         "business",
         "narrative",
         "interview",
         "documentary",
         "user-custom",
-    ];
-
-    assert!(VALID_CATEGORIES.contains(&"educational"));
-    assert!(VALID_CATEGORIES.contains(&"user-custom"));
-    assert!(!VALID_CATEGORIES.contains(&"invalid-category"));
+    ] {
+        assert!(
+            validate_category(category).is_ok(),
+            "{category} should be a valid category"
+        );
+    }
 }
 
 #[test]
-fn test_validation_content_length() {
-    // Contract: Content must be 50-100k chars
-    let min_length = 50;
-    let max_length = 100_000;
+fn validate_category_rejects_unknown_category() {
+    let error =
+        validate_category("invalid-category").expect_err("unknown category should be rejected");
+    assert!(
+        error.contains("Invalid category"),
+        "expected a category error, got: {error}"
+    );
+    assert!(
+        error.contains("educational"),
+        "error should list the valid options, got: {error}"
+    );
+}
 
-    let too_short = "Short".repeat(5); // ~25 chars
-    let valid = "Valid content ".repeat(10); // ~140 chars
-    let too_long = "A".repeat(100_001);
+// ============================================================================
+// validate_text_content
+// ============================================================================
 
-    assert!(too_short.len() < min_length); // Would fail
-    assert!(valid.len() >= min_length); // Would pass
-    assert!(too_long.len() > max_length); // Would fail
+#[test]
+fn validate_text_content_rejects_content_under_50_chars() {
+    let error = validate_text_content("Too short", "Before content")
+        .expect_err("9 chars should be rejected");
+    assert!(
+        error.contains("too short"),
+        "expected a length error, got: {error}"
+    );
+    assert!(
+        error.contains("Before content"),
+        "error should name the field it was given, got: {error}"
+    );
 }
 
 #[test]
-fn test_validation_embedding_dimensions() {
-    // Contract: Embedding must be exactly 384 dimensions
-    const EXPECTED_DIMENSIONS: usize = 384;
-
-    let valid_embedding: Vec<f32> = (0..384).map(|i| i as f32 * 0.01).collect();
-    let invalid_embedding: Vec<f32> = (0..128).map(|i| i as f32 * 0.01).collect();
-
-    assert_eq!(valid_embedding.len(), EXPECTED_DIMENSIONS);
-    assert_ne!(invalid_embedding.len(), EXPECTED_DIMENSIONS);
+fn validate_text_content_accepts_exactly_50_chars() {
+    assert!(validate_text_content(&"A".repeat(50), "Before content").is_ok());
 }
 
 #[test]
-fn test_word_count_calculation() {
-    // Contract: Word count = whitespace-separated tokens
-    let text = "This is a test with five words";
-    let words: Vec<&str> = text.split_whitespace().collect();
-    assert_eq!(words.len(), 7); // "with" and "words" make it 7
-
-    let text2 = "Word1 Word2 Word3";
-    let words2: Vec<&str> = text2.split_whitespace().collect();
-    assert_eq!(words2.len(), 3);
+fn validate_text_content_measures_length_after_trimming() {
+    // 40 characters padded to 60 with whitespace is still too short.
+    let padded = format!("{}{}{}", " ".repeat(10), "A".repeat(40), " ".repeat(10));
+    let error = validate_text_content(&padded, "After content")
+        .expect_err("padding should not satisfy the minimum");
+    assert!(
+        error.contains("too short"),
+        "expected a length error, got: {error}"
+    );
 }
+
+#[test]
+fn validate_text_content_rejects_content_over_100k_chars() {
+    let error = validate_text_content(&"A".repeat(100_001), "Before content")
+        .expect_err("100,001 chars should be rejected");
+    assert!(
+        error.contains("too long"),
+        "expected a length error, got: {error}"
+    );
+}
+
+// ============================================================================
+// validate_embedding_dimensions
+// ============================================================================
+
+#[test]
+fn validate_embedding_dimensions_accepts_both_supported_widths() {
+    // 384 is all-MiniLM-L6-v2, 768 is nomic-embed-text. Both are in use, so both must pass.
+    for dimensions in [384, 768] {
+        let embedding: Vec<f32> = vec![0.1; dimensions];
+        assert!(
+            validate_embedding_dimensions(&embedding).is_ok(),
+            "{dimensions} dimensions should be accepted"
+        );
+    }
+}
+
+#[test]
+fn validate_embedding_dimensions_rejects_other_widths() {
+    for dimensions in [0, 128, 385, 1536] {
+        let embedding: Vec<f32> = vec![0.1; dimensions];
+        let error = validate_embedding_dimensions(&embedding)
+            .expect_err("unsupported width should be rejected");
+        assert!(
+            error.contains("Invalid embedding dimensions"),
+            "expected a dimension error for {dimensions}, got: {error}"
+        );
+    }
+}
+
+// ============================================================================
+// calculate_word_count
+// ============================================================================
+
+#[test]
+fn calculate_word_count_counts_whitespace_separated_tokens() {
+    assert_eq!(calculate_word_count("This is a test with seven words"), 7);
+    assert_eq!(calculate_word_count("  padded \t tokens\nhere  "), 3);
+    assert_eq!(calculate_word_count(""), 0);
+}
+
+// ============================================================================
+// Storage-format contracts
+// ============================================================================
 
 #[test]
 fn test_source_field_values() {
@@ -139,54 +233,17 @@ fn test_embedding_binary_conversion() {
 }
 
 // ============================================================================
-// Integration Contract Documentation
+// The gap this file used to record
 // ============================================================================
-
-/// Documents the contract for get_all_examples_with_metadata
-///
-/// Requirements:
-/// - Returns Vec<ExampleWithMetadata>
-/// - Includes source field ('bundled' or 'user-uploaded')
-/// - Converts comma-separated tags to Vec<String>
-/// - Orders by quality_score DESC, title ASC
-#[test]
-fn contract_get_all_examples_with_metadata() {
-    // Contract documented: get_all_examples_with_metadata returns all examples with full metadata
-    // Actual integration testing requires Tauri runtime
-}
-
-/// Documents the contract for upload_example
-///
-/// Requirements:
-/// - Validates all inputs
-/// - Generates UUID v4 for new ID
-/// - Sets source='user-uploaded'
-/// - Stores embedding as binary blob
-/// - Returns new example ID
-#[test]
-fn contract_upload_example() {
-    // Contract documented: upload_example validates, stores, and returns new UUID
-}
-
-/// Documents the contract for replace_example
-///
-/// Requirements:
-/// - Rejects bundled examples (source='bundled')
-/// - Updates content and embedding
-/// - Keeps same ID
-/// - Transaction-safe
-#[test]
-fn contract_replace_example() {
-    // Contract documented: replace_example updates user-uploaded examples only
-}
-
-/// Documents the contract for delete_example
-///
-/// Requirements:
-/// - Rejects bundled examples (source='bundled')
-/// - Cascades to embeddings table
-/// - Transaction-safe
-#[test]
-fn contract_delete_example() {
-    // Contract documented: delete_example removes user-uploaded examples only
-}
+//
+// This file previously ended with a "Known gap" listing the command-level contracts that had no
+// test, because `get_all_examples`, `get_all_examples_with_metadata`, `upload_example`,
+// `replace_example` and `delete_example` all resolved their database path through
+// `app.path().app_data_dir()` and so needed a `tauri::AppHandle` that the crate had no harness
+// for.
+//
+// That gap is closed in `rag_db_tests.rs` (issue #221). The SQL now lives in `db_*` functions
+// taking a database path, each command being a wrapper that resolves the path and delegates, so
+// the database invariants - the bundled-example protections, the embeddings cascade, transaction
+// safety, ordering, tag conversion, the source field and the embedding encoding - are tested
+// against a `tempdir` with no Tauri involved.

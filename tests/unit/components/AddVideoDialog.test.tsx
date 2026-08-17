@@ -5,8 +5,13 @@
  * TDD Phase: RED - These tests expect the new grouped parameter interface
  */
 
-import { AddVideoDialog } from '../../../src/features/Baker/components/AddVideoDialog'
+import {
+  AddVideoDialog,
+  type AddVideoDialogProps,
+  type PosterFrameDialogState
+} from '../../../src/features/Baker/components/AddVideoDialog'
 import { render as baseRender, screen } from '@testing-library/react'
+import type { RenderOptions } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { describe, expect, test, vi } from 'vitest'
@@ -18,7 +23,7 @@ import { createTestQueryClient } from '@tests/utils/queryClientWrapper'
  * AddVideoDialog now renders SproutFolderPicker, which reads folder levels
  * through React Query (issue #155). Every render needs a client in scope.
  */
-const render: typeof baseRender = (ui, options) =>
+const render = (ui: React.ReactElement, options?: RenderOptions) =>
   baseRender(ui, {
     wrapper: ({ children }) => (
       <QueryClientProvider client={createTestQueryClient()}>{children}</QueryClientProvider>
@@ -45,86 +50,8 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: any) => children
 }))
 
-// Type definitions for grouped parameters
-export interface DialogState {
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-  canAddVideo: boolean
-}
-
-export interface ModeState {
-  addMode: 'url' | 'upload'
-  onTabChange: (value: string) => void
-}
-
-export interface FormData {
-  url: string
-  title: string
-  thumbnailUrl: string
-  sproutVideoId: string
-}
-
-export interface FormState {
-  formData: FormData
-  onFormFieldChange: (field: keyof FormData, value: string) => void
-}
-
-export interface UrlModeState {
-  onFetchDetails: () => void
-  onAddVideo: () => void
-  isFetchingVideo: boolean
-  hasApiKey: boolean
-  fetchError: string | null
-}
-
-export interface UploadModeState {
-  selectedFile: string | null
-  uploading: boolean
-  progress: number
-  message: { text: string; severity: 'info' | 'success' | 'error' } | null
-  uploadSuccess: boolean
-  onSelectFile: () => void
-  onUploadAndAdd: () => void
-}
-
-export interface ErrorState {
-  validationErrors: string[]
-  addError: Error | null
-}
-
-// Refactored props interface with grouped parameters
-// Issue #140: branded poster frame options group
-export interface PosterFrameState {
-  available: boolean
-  unavailableReason: string | null
-  enabled: boolean
-  onEnabledChange: (enabled: boolean) => void
-  backgrounds: string[]
-  selectedBackground: string | null
-  onBackgroundChange: (path: string) => void
-  text: string
-  onTextChange: (text: string) => void
-  previewImageUrl: string | null
-  saveCopy: boolean
-  onSaveCopyChange: (saveCopy: boolean) => void
-  status: 'idle' | 'working' | 'success' | 'error'
-  error: string | null
-  onRetry: () => void
-}
-
-export interface AddVideoDialogPropsRefactored {
-  dialog: DialogState
-  mode: ModeState
-  form: FormState
-  urlMode: UrlModeState
-  uploadMode: UploadModeState
-  errors: ErrorState
-  posterFrame: PosterFrameState
-  posterFrameCanvasRef: React.RefObject<HTMLCanvasElement | null>
-}
-
 // Helper function to create default props
-function createDefaultProps(): AddVideoDialogPropsRefactored {
+function createDefaultProps(): AddVideoDialogProps {
   return {
     dialog: {
       isOpen: true,
@@ -155,10 +82,17 @@ function createDefaultProps(): AddVideoDialogPropsRefactored {
       selectedFile: null,
       uploading: false,
       progress: 0,
+      bytesSent: 0,
+      totalBytes: 0,
+      stallWarning: null,
       message: null,
       uploadSuccess: false,
       onSelectFile: vi.fn(),
-      onUploadAndAdd: vi.fn()
+      onUploadAndAdd: vi.fn(),
+      apiKey: 'test-api-key',
+      selectedFolder: null,
+      onSelectedFolderChange: vi.fn(),
+      recentFolders: []
     },
     errors: {
       validationErrors: [],
@@ -172,6 +106,9 @@ function createDefaultProps(): AddVideoDialogPropsRefactored {
       backgrounds: ['/backgrounds/wbs-blue.jpg'],
       selectedBackground: '/backgrounds/wbs-blue.jpg',
       onBackgroundChange: vi.fn(),
+      template: 'classic',
+      onTemplateChange: vi.fn(),
+      offAspect: false,
       text: '',
       onTextChange: vi.fn(),
       previewImageUrl: null,
@@ -538,67 +475,7 @@ describe('AddVideoDialog - Integration Tests', () => {
   })
 })
 
-describe('AddVideoDialog - Parameter Grouping Benefits', () => {
-  test('dialog state group provides clear dialog control', () => {
-    const props = createDefaultProps()
-    const { dialog } = props
-
-    expect(dialog).toHaveProperty('isOpen')
-    expect(dialog).toHaveProperty('onOpenChange')
-    expect(dialog).toHaveProperty('canAddVideo')
-    expect(Object.keys(dialog)).toHaveLength(3)
-  })
-
-  test('mode state group isolates tab switching logic', () => {
-    const props = createDefaultProps()
-    const { mode } = props
-
-    expect(mode).toHaveProperty('addMode')
-    expect(mode).toHaveProperty('onTabChange')
-    expect(Object.keys(mode)).toHaveLength(2)
-  })
-
-  test('form state group encapsulates form data and handlers', () => {
-    const props = createDefaultProps()
-    const { form } = props
-
-    expect(form).toHaveProperty('formData')
-    expect(form).toHaveProperty('onFormFieldChange')
-    expect(Object.keys(form)).toHaveLength(2)
-  })
-
-  test('urlMode state group groups all URL-related state', () => {
-    const props = createDefaultProps()
-    const { urlMode } = props
-
-    expect(urlMode).toHaveProperty('onFetchDetails')
-    expect(urlMode).toHaveProperty('onAddVideo')
-    expect(urlMode).toHaveProperty('isFetchingVideo')
-    expect(urlMode).toHaveProperty('hasApiKey')
-    expect(urlMode).toHaveProperty('fetchError')
-    expect(Object.keys(urlMode)).toHaveLength(5)
-  })
-
-  test('uploadMode state group groups all upload-related state', () => {
-    const props = createDefaultProps()
-    const { uploadMode } = props
-
-    expect(uploadMode).toHaveProperty('selectedFile')
-    expect(uploadMode).toHaveProperty('uploading')
-    expect(uploadMode).toHaveProperty('progress')
-    expect(uploadMode).toHaveProperty('message')
-    expect(uploadMode).toHaveProperty('uploadSuccess')
-    expect(uploadMode).toHaveProperty('onSelectFile')
-    expect(uploadMode).toHaveProperty('onUploadAndAdd')
-    expect(Object.keys(uploadMode)).toHaveLength(7)
-  })
-
-  test('error state group centralizes all error handling', () => {
-    const props = createDefaultProps()
-    const { errors } = props
-
-    expect(errors).toHaveProperty('validationErrors')
-    expect(errors).toHaveProperty('addError')
-    expect(Object.keys(errors)).toHaveLength(2)
-  })
-})
+// The "Parameter Grouping Benefits" describe block that used to sit here
+// contained only export-count assertions (Object.keys(x).toHaveLength) on test
+// fixture data. These break on every legitimate type addition and verify no
+// production behaviour, so they have been removed per the testing policy.

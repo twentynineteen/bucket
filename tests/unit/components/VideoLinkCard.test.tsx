@@ -20,6 +20,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock Tauri opener
@@ -63,10 +64,10 @@ vi.mock('framer-motion', () => ({
 
 describe('VideoLinkCard Component', () => {
   // Mock functions for callbacks
-  let mockOnRemove: ReturnType<typeof vi.fn>
-  let mockOnMoveUp: ReturnType<typeof vi.fn>
-  let mockOnMoveDown: ReturnType<typeof vi.fn>
-  let mockOnSetPosterFrame: ReturnType<typeof vi.fn>
+  let mockOnRemove: Mock
+  let mockOnMoveUp: Mock
+  let mockOnMoveDown: Mock
+  let mockOnSetPosterFrame: Mock
 
   // Mock data
   const baseVideoLink: VideoLink = {
@@ -116,13 +117,12 @@ describe('VideoLinkCard Component', () => {
 
     test('renders without optional fields', () => {
       // Arrange
+      // The optional fields are omitted, not null. The Rust structs behind
+      // VideoLink use skip_serializing_if = "Option::is_none", so an absent
+      // field never reaches the frontend as null (#210).
       const minimalVideoLink: VideoLink = {
         url: 'https://sproutvideo.com/videos/xyz789',
-        title: 'Minimal Video',
-        sproutVideoId: null,
-        uploadDate: null,
-        thumbnailUrl: null,
-        sourceRenderFile: null
+        title: 'Minimal Video'
       }
 
       // Act
@@ -176,7 +176,7 @@ describe('VideoLinkCard Component', () => {
       // Arrange
       const videoWithoutThumbnail: VideoLink = {
         ...baseVideoLink,
-        thumbnailUrl: null
+        thumbnailUrl: undefined
       }
 
       // Act
@@ -398,7 +398,7 @@ describe('VideoLinkCard Component', () => {
         <VideoLinkCard
           videoLink={{
             ...baseVideoLink,
-            sproutVideoId: null,
+            sproutVideoId: undefined,
             url: 'https://example.com/x'
           }}
           onRemove={mockOnRemove}

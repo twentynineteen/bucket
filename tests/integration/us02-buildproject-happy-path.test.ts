@@ -6,7 +6,7 @@
  * and click "Create Project", then the XState machine progresses through all
  * stages and a complete project folder structure is created on disk.
  *
- * Tests the actor-based BuildProject state machine (@features/build-project)
+ * Tests the actor-based BuildProject state machine (@features/BuildProject)
  * and the useBuildProject hook that drives it. The legacy manual-event machine
  * in @features/BuildProject was removed by the throttled native transfer
  * rework (#112), so this suite targets the replacement pipeline.
@@ -23,11 +23,11 @@ import { act } from 'react'
 import { createActor } from 'xstate'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useBuildProject } from '../../src/features/build-project/hooks/useBuildProject'
+import { useBuildProject } from '../../src/features/BuildProject/hooks/useBuildProject'
 import {
   buildProjectMachine,
   type BuildProjectInput
-} from '../../src/features/build-project/machine/buildProjectMachine'
+} from '../../src/features/BuildProject/machine/buildProjectMachine'
 
 // Mock Tauri APIs used by the stage actors
 vi.mock('@tauri-apps/api/core', () => ({

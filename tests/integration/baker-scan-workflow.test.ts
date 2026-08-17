@@ -20,6 +20,7 @@ import type {
 } from '../../src/features/Baker/types'
 import { useBakerScan } from '../../src/features/Baker/hooks/useBakerScan'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock Tauri invoke function
@@ -90,7 +91,7 @@ describe('Baker Scan Workflow Integration', () => {
   }
 
   let eventHandlers: Map<string, (event: { payload: unknown }) => void>
-  let mockUnlisten: ReturnType<typeof vi.fn>
+  let mockUnlisten: Mock
 
   beforeEach(async () => {
     eventHandlers = new Map()

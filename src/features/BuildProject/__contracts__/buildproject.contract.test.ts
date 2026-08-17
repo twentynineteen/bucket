@@ -1,18 +1,14 @@
 /**
  * BuildProject Contract Tests
  *
- * Verifies the shape and behavior of the (legacy) BuildProject feature
- * module's barrel exports. After the @features/build-project migration this
- * module exists only to host:
- *   - the page component still wired at /build (`BuildProjectPage.tsx`),
- *   - page-state helper hooks (`useProjectState`, `useCameraAutoRemap`,
- *     `useFileSelector`, `useVideoInfoBlock`) the page composes against the
- *     new module's hook,
- *   - data types still imported by Trello + Baker (`FootageFile`, `VideoInfoData`),
- *   - the I/O wrappers that the page (and some siblings) still call
- *     (`copyPremiereProject`, `showConfirmationDialog`, dialogs, plugin-fs
- *     helpers — minus the deleted `move_files` / `copy_progress` event
- *     plumbing).
+ * Verifies the shape and behaviour of the BuildProject feature module's barrel
+ * exports. The module holds the whole feature: the page wired at /build, its
+ * page-state helper hooks, the XState machine and its stage functions, the
+ * workflow types, and the `api.ts` every one of them reaches Tauri through.
+ *
+ * `src/features/build-project` was a second top-level module holding the
+ * machine, stages and types. It was merged in here (#208); the invariants its
+ * own contract test carried are folded in below.
  *
  * These tests lock down the public API and the no-direct-Tauri-import
  * boundary so downstream callers can rely on a stable surface.
@@ -31,18 +27,23 @@ describe('BuildProject Barrel Exports - Shape', () => {
   const expectedExports = [
     // Page component
     'BuildProjectPage',
+    // Workflow hook (the page's entry point into the machine)
+    'useBuildProject',
     // Hook (consumed by Trello module)
-    'useVideoInfoBlock'
+    'useVideoInfoBlock',
+    // Error surface consumers branch on
+    'BuildProjectError',
+    'ErrorKind',
+    'getErrorKindDisplayName',
+    'getUserFriendlyErrorMessage'
   ].sort()
 
-  it('exports exactly the expected named exports (no more, no fewer)', () => {
+  // Presence, not exhaustiveness: a caller breaks when a name it imports
+  // disappears, never when a new one is added beside it.
+  it('exports every documented named export', () => {
     // Filter out type-only exports (not visible at runtime)
     const exportNames = Object.keys(buildProjectBarrel).sort()
-    expect(exportNames).toEqual(expectedExports)
-  })
-
-  it('exports exactly 2 runtime members', () => {
-    expect(Object.keys(buildProjectBarrel)).toHaveLength(2)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedExports))
   })
 
   it('exports BuildProjectPage as a function (React component)', () => {
@@ -53,11 +54,54 @@ describe('BuildProject Barrel Exports - Shape', () => {
     expect(typeof buildProjectBarrel.useVideoInfoBlock).toBe('function')
   })
 
+  it('exports useBuildProject as a function (React hook)', () => {
+    expect(typeof buildProjectBarrel.useBuildProject).toBe('function')
+  })
+
+  it('BuildProjectError is a constructable class', () => {
+    expect(typeof buildProjectBarrel.BuildProjectError).toBe('function')
+    const err = new buildProjectBarrel.BuildProjectError(
+      buildProjectBarrel.ErrorKind.IO,
+      'validation',
+      'msg',
+      true
+    )
+    expect(err).toBeInstanceOf(buildProjectBarrel.BuildProjectError)
+  })
+
+  it('ErrorKind enum contains the categories consumers branch on', () => {
+    // These specific kinds appear in error-mapping logic and the UI should be
+    // able to distinguish them. Catching renames in this enum is the point.
+    expect(buildProjectBarrel.ErrorKind.Validation).toBeDefined()
+    expect(buildProjectBarrel.ErrorKind.IO).toBeDefined()
+    expect(buildProjectBarrel.ErrorKind.Permission).toBeDefined()
+    expect(buildProjectBarrel.ErrorKind.Timeout).toBeDefined()
+    expect(buildProjectBarrel.ErrorKind.Cancelled).toBeDefined()
+    expect(buildProjectBarrel.ErrorKind.NotFound).toBeDefined()
+  })
+
   it('does NOT export internal hooks', () => {
     const exportNames = Object.keys(buildProjectBarrel)
     expect(exportNames).not.toContain('useProjectState')
     expect(exportNames).not.toContain('useFileSelector')
     expect(exportNames).not.toContain('useCameraAutoRemap')
+    expect(exportNames).not.toContain('useStageExecution')
+  })
+
+  it('does NOT leak the machine, the transfer actor or the stage functions', () => {
+    // The machine owns the workflow; consumers drive it through
+    // useBuildProject. Exporting these would let a caller bypass it.
+    const exportNames = Object.keys(buildProjectBarrel)
+    expect(exportNames).not.toContain('buildProjectMachine')
+    expect(exportNames).not.toContain('fileTransferActor')
+    expect(exportNames).not.toContain('transferFiles')
+    expect(exportNames).not.toContain('startTransfer')
+    expect(exportNames).not.toContain('cancelTransfer')
+    expect(exportNames).not.toContain('createTransferItems')
+    expect(exportNames).not.toContain('validateInput')
+    expect(exportNames).not.toContain('createFolders')
+    expect(exportNames).not.toContain('copyTemplate')
+    expect(exportNames).not.toContain('saveBreadcrumbs')
   })
 
   it('does NOT export api layer functions directly', () => {
@@ -88,27 +132,29 @@ describe('BuildProject api.ts Exports - Shape', () => {
   // wrapper were all deleted. The path/remove helper was orphaned by the
   // simultaneous deletion of `useProjectValidation` and `useProjectFolders`.
   const expectedApiExports = [
-    // Tauri Commands (3)
+    // Tauri Commands
     'getFolderSize',
     'copyPremiereProject',
     'showConfirmationDialog',
-    // Dialog (3)
+    'transferFilesWithProgress',
+    'cancelFileTransfer',
+    // Event Listeners
+    'listenFileTransferProgress',
+    'listenFileTransferComplete',
+    // Dialog
     'openFileDialog',
     'openFolderDialog',
     'confirmDialog',
-    // File System (3)
+    // File System
     'createDirectory',
     'pathExists',
-    'writeTextFileContents'
+    'writeTextFileContents',
+    'removePath'
   ].sort()
 
-  it('exports exactly the expected I/O wrapper functions', () => {
+  it('exports every documented I/O wrapper function', () => {
     const exportNames = Object.keys(buildProjectApi).sort()
-    expect(exportNames).toEqual(expectedApiExports)
-  })
-
-  it('exports exactly 9 members', () => {
-    expect(Object.keys(buildProjectApi)).toHaveLength(9)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedApiExports))
   })
 
   for (const name of expectedApiExports) {
@@ -152,34 +198,113 @@ describe('BuildProject Module - No Direct Plugin Imports', () => {
     return files
   }
 
-  it('hooks/ directory has zero direct @tauri-apps imports', () => {
-    const hooksDir = path.join(modulePath, 'hooks')
-    const files = getFilesRecursive(hooksDir, ['.ts', '.tsx'])
-    for (const file of files) {
+  /**
+   * Walks the whole module rather than a hand-listed set of directories. The
+   * previous version named hooks/, components/ and the page, which is why the
+   * machine/ and stages/ directories that #208 merged in here could import
+   * Tauri directly for their whole life without a test noticing. A new
+   * subdirectory is covered the moment it exists.
+   */
+  it('no file outside api.ts imports @tauri-apps directly', () => {
+    const offenders: string[] = []
+    for (const file of getFilesRecursive(modulePath, ['.ts', '.tsx'])) {
+      if (file === path.join(modulePath, 'api.ts')) continue
+      if (/\.test\.tsx?$/.test(file)) continue
       const content = fs.readFileSync(file, 'utf-8')
-      const lines = content.split('\n')
-      const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
-      expect(tauriImports).toEqual([])
+      if (/(?:from\s*|import\s*\(\s*)['"]@tauri-apps\//.test(content)) {
+        offenders.push(path.relative(projectRoot, file))
+      }
     }
+    expect(
+      offenders,
+      'Route Tauri calls through BuildProject/api.ts rather than importing @tauri-apps here.'
+    ).toEqual([])
   })
 
-  it('components/ directory has zero direct @tauri-apps imports', () => {
-    const componentsDir = path.join(modulePath, 'components')
-    const files = getFilesRecursive(componentsDir, ['.ts', '.tsx'])
-    for (const file of files) {
-      const content = fs.readFileSync(file, 'utf-8')
-      const lines = content.split('\n')
-      const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
-      expect(tauriImports).toEqual([])
+  it('finds the module source (guards a vacuous pass)', () => {
+    // Without this, a wrong modulePath would make the assertion above pass by
+    // scanning nothing at all.
+    const files = getFilesRecursive(modulePath, ['.ts', '.tsx'])
+    expect(files.length).toBeGreaterThan(15)
+    expect(files).toContain(path.join(modulePath, 'machine/buildProjectMachine.ts'))
+    expect(files).toContain(path.join(modulePath, 'stages/fileTransfer.ts'))
+  })
+})
+
+// --- No-Bypass: Legacy IPC Names Must Not Reappear ---
+
+describe('BuildProject Module - no legacy IPC names', () => {
+  const projectRoot = path.resolve(__dirname, '../../../../')
+  const modulePath = path.resolve(projectRoot, 'src/features/BuildProject')
+
+  /** Walk .ts/.tsx files in the module, skipping tests and contract dirs. */
+  function getProductionFiles(): string[] {
+    const collected: string[] = []
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+          if (entry.name === '__contracts__' || entry.name === 'node_modules') continue
+          walk(full)
+          continue
+        }
+        if (/\.test\.tsx?$/.test(entry.name)) continue
+        if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
+          collected.push(full)
+        }
+      }
     }
+    walk(modulePath)
+    return collected
+  }
+
+  // `move_files` and its `copy_progress` / `copy_complete` events were the
+  // un-throttled IPC path that hung on large transfers (#112). The Rust command
+  // is gone, so a reference here means the transfer is wired to nothing.
+  for (const legacyName of ['move_files', 'copy_progress', 'copy_complete']) {
+    it(`contains no references to the deleted \`${legacyName}\``, () => {
+      const offenders = getProductionFiles()
+        .filter((file) => fs.readFileSync(file, 'utf-8').includes(legacyName))
+        .map((file) => path.relative(projectRoot, file))
+      expect(offenders).toEqual([])
+    })
+  }
+})
+
+// --- Module Layout: Load-Bearing File Locations ---
+
+describe('BuildProject Module - file layout invariants', () => {
+  const projectRoot = path.resolve(__dirname, '../../../../')
+  const modulePath = path.resolve(projectRoot, 'src/features/BuildProject')
+
+  it('has the XState machine at machine/buildProjectMachine.ts', () => {
+    expect(fs.existsSync(path.join(modulePath, 'machine/buildProjectMachine.ts'))).toBe(
+      true
+    )
   })
 
-  it('BuildProjectPage has zero direct @tauri-apps imports', () => {
-    const pageFile = path.join(modulePath, 'BuildProjectPage.tsx')
-    const content = fs.readFileSync(pageFile, 'utf-8')
-    const lines = content.split('\n')
-    const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
-    expect(tauriImports).toEqual([])
+  it('has the throttled transfer stage at stages/fileTransfer.ts', () => {
+    expect(fs.existsSync(path.join(modulePath, 'stages/fileTransfer.ts'))).toBe(true)
+  })
+
+  it('has its single I/O boundary at api.ts', () => {
+    expect(fs.existsSync(path.join(modulePath, 'api.ts'))).toBe(true)
+  })
+
+  it('is the only BuildProject feature module', () => {
+    // src/features/build-project held the machine, stages and types under a
+    // second top-level module with different casing (#208). Recreating it would
+    // put the feature back beyond the reach of this module's own guards.
+    expect(fs.existsSync(path.resolve(projectRoot, 'src/features/build-project'))).toBe(
+      false
+    )
+  })
+
+  it('does NOT contain the deleted useFileTransfer hook', () => {
+    // useFileTransfer.ts was a redundant pre-migration hook that still invoked
+    // the broken move_files command. It is intentionally removed; if anything
+    // re-creates this file, that is almost certainly a mistake.
+    expect(fs.existsSync(path.join(modulePath, 'hooks/useFileTransfer.ts'))).toBe(false)
   })
 })
 

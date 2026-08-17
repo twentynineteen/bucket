@@ -199,6 +199,66 @@ export class MemorySampler {
 }
 
 /**
+ * Force a garbage collection via the Chrome DevTools Protocol, so that a
+ * follow-up measurement reports retained heap rather than garbage that simply
+ * has not been collected yet. Resolves quietly where CDP is unavailable.
+ */
+export async function collectGarbage(page: Page): Promise<void> {
+  try {
+    const client = await page.context().newCDPSession(page)
+    // Two passes with a settle between them. One pass leaves a variable amount
+    // uncollected - locally it produced retained figures between 1.8MB and
+    // 12MB for the same operation - which is enough noise to make a threshold
+    // on the result flaky.
+    await client.send('HeapProfiler.collectGarbage')
+    await page.waitForTimeout(200)
+    await client.send('HeapProfiler.collectGarbage')
+    await client.detach()
+  } catch {
+    // No CDP session available (non-Chromium); callers treat GC as best effort.
+  }
+}
+
+/**
+ * Start recording, inside the page, the longest gap between consecutive
+ * animation frames.
+ *
+ * This is the direct measurement of a frozen UI: the browser cannot serve an
+ * animation frame while the main thread is executing, so a long task shows up
+ * as a long gap and nothing else does. Timing an interaction from the test
+ * process measures something different and much noisier - Playwright's
+ * actionability polling on a re-rendering page, plus a round trip per call
+ * (issue #200).
+ *
+ * Call `readLongestFrameGap` after the work under test to read the result.
+ */
+export async function startFrameGapProbe(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as Window & { __frameGap__?: { longest: number; last: number } }
+    const state = { longest: 0, last: performance.now() }
+    w.__frameGap__ = state
+    const tick = (now: number) => {
+      const gap = now - state.last
+      if (gap > state.longest) state.longest = gap
+      state.last = now
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+}
+
+/**
+ * Longest gap in milliseconds between animation frames since
+ * `startFrameGapProbe` was called. Returns 0 if the probe was never started.
+ */
+export async function readLongestFrameGap(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const w = window as Window & { __frameGap__?: { longest: number } }
+    return w.__frameGap__?.longest ?? 0
+  })
+}
+
+/**
  * Format bytes for display
  */
 export function formatMemory(bytes: number): string {
@@ -206,38 +266,16 @@ export function formatMemory(bytes: number): string {
   return `${mb.toFixed(2)} MB`
 }
 
-/**
- * Measure UI responsiveness by timing a simple interaction
- */
-export async function measureUIResponsiveness(
-  page: Page,
-  selector: string = 'body'
-): Promise<number> {
-  const start = Date.now()
-  await page.locator(selector).isVisible()
-  return Date.now() - start
-}
-
-/**
- * Check that UI remains responsive during operation
- * Returns array of response times for each check
- */
-export async function checkUIResponsivenessDuring(
-  page: Page,
-  durationMs: number,
-  checkIntervalMs: number = 500,
-  maxResponseTimeMs: number = 100
-): Promise<{ responseTimes: number[]; allResponsive: boolean }> {
-  const responseTimes: number[] = []
-  const start = Date.now()
-
-  while (Date.now() - start < durationMs) {
-    const responseTime = await measureUIResponsiveness(page)
-    responseTimes.push(responseTime)
-    await page.waitForTimeout(checkIntervalMs)
-  }
-
-  const allResponsive = responseTimes.every((t) => t < maxResponseTimeMs)
-
-  return { responseTimes, allResponsive }
-}
+// `measureUIResponsiveness` and `checkUIResponsivenessDuring` used to live here.
+// Both timed an `await` on a Playwright locator and compared the elapsed time to
+// a budget, which measures a round trip to the browser and the actionability
+// polling of a re-rendering page - the runner, in other words, and not
+// main-thread availability in the application. Three tests were built on them
+// and all three now use `startFrameGapProbe` above instead: #200 converted one,
+// #211 two, #229 the last. Deleted with no callers left, so the pattern is gone
+// rather than merely unused (issue #229).
+//
+// A fourth site had the same stopwatch written out inline and so was never a
+// caller of either - `external-drive.spec.ts`, converted in #229 as well. If you
+// are looking for a survivor, grep `tests/e2e` for `Date.now()` around an `await`
+// on a locator rather than for these names.

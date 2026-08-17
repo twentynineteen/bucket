@@ -24,7 +24,10 @@ import type { SproutUploadResponse } from '@shared/types'
 import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createFileUploadMock } from '@tests/factories/fileUploadMock'
+import {
+  createFileUploadMock,
+  createUploadEventsMock
+} from '@tests/factories/fileUploadMock'
 
 import type { VideoLink } from '../types'
 import { VideoLinksManager } from './VideoLinksManager'
@@ -141,6 +144,9 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       backgrounds: ['/backgrounds/wbs-blue.jpg'],
       selectedBackground: '/backgrounds/wbs-blue.jpg',
       setSelectedBackground: vi.fn(),
+      template: 'classic',
+      setTemplate: vi.fn(),
+      offAspect: false,
       text: 'Managing Change',
       setText: vi.fn(),
       previewImageUrl: 'blob:preview',
@@ -175,6 +181,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       videoLinks: [],
       isLoading: false,
       error: null,
+      refetch: vi.fn(),
       addVideoLink: mockAddVideoLink,
       addVideoLinkAsync: vi.fn(),
       removeVideoLink: mockRemoveVideoLink,
@@ -205,6 +212,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       trelloCards: [],
       isLoading: false,
       error: null,
+      refetch: vi.fn(),
       addTrelloCard: vi.fn(),
       addTrelloCardAsync: vi.fn(),
       removeTrelloCard: vi.fn(),
@@ -255,21 +263,18 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     )
 
     // Mock useUploadEvents
-    vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-      progress: 0,
-      uploading: false,
-      message: null,
-      setUploading: vi.fn(),
-      setProgress: vi.fn(),
-      setMessage: vi.fn()
-    })
+    vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+      createUploadEventsMock()
+    )
 
     // Mock useSproutFolderSelection (Issue #155)
     vi.mocked(useFileUploadModule.useSproutFolderSelection).mockReturnValue({
       selectedFolder: null,
       selectFolder: vi.fn(),
       recentFolders: [],
-      commitFolder: vi.fn()
+      commitFolder: vi.fn(),
+      defaultFolderStatus: 'not-configured',
+      defaultFolderReason: null
     })
 
     // Mock usePosterFrameForUpload (Issue #140)
@@ -623,14 +628,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 45,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 45,
+          uploading: true
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -672,14 +675,9 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: false,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock()
+      )
 
       const { rerender } = render(
         <QueryClientProvider client={queryClient}>
@@ -710,14 +708,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 50,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 50,
+          uploading: true
+        })
+      )
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -766,14 +762,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 100,
-        uploading: false,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 100
+        })
+      )
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -824,14 +817,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 25,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 25,
+          uploading: true
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -859,14 +850,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 67,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 67,
+          uploading: true
+        })
+      )
 
       renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
 
@@ -909,14 +898,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         })
       )
 
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          uploading: true
+        })
+      )
 
       const { rerender } = render(
         <QueryClientProvider client={queryClient}>
@@ -936,14 +922,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       expect(screen.getByRole('button', { name: /uploading.*0%/i })).toBeInTheDocument()
 
       // Progress update to 10%
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 10,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 10,
+          uploading: true
+        })
+      )
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -955,14 +939,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       expect(screen.getByText(/uploading:.*10%/i)).toBeInTheDocument()
 
       // Progress update to 50%
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 50,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 50,
+          uploading: true
+        })
+      )
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -974,14 +956,12 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       expect(screen.getByText(/uploading:.*50%/i)).toBeInTheDocument()
 
       // Progress update to 100%
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 100,
-        uploading: true,
-        message: null,
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          progress: 100,
+          uploading: true
+        })
+      )
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -1200,14 +1180,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
   // ==========================================
   describe('T007: Error states and retry', () => {
     it('should show error alert when upload fails (network error)', async () => {
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: false,
-        message: { text: 'Upload failed: Network error', severity: 'error' },
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          message: { text: 'Upload failed: Network error', severity: 'error' }
+        })
+      )
 
       vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
         createFileUploadMock({
@@ -1235,14 +1212,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should show error alert when upload times out', async () => {
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: false,
-        message: { text: 'Upload failed: Request timeout', severity: 'error' },
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          message: { text: 'Upload failed: Request timeout', severity: 'error' }
+        })
+      )
 
       vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
         createFileUploadMock({
@@ -1300,14 +1274,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should keep file selected after error (for retry)', async () => {
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: false,
-        message: { text: 'Upload failed: Network error', severity: 'error' },
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          message: { text: 'Upload failed: Network error', severity: 'error' }
+        })
+      )
 
       vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
         createFileUploadMock({
@@ -1336,14 +1307,11 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
     })
 
     it('should re-enable "Upload and Add" button after error', async () => {
-      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue({
-        progress: 0,
-        uploading: false,
-        message: { text: 'Upload failed', severity: 'error' },
-        setUploading: vi.fn(),
-        setProgress: vi.fn(),
-        setMessage: vi.fn()
-      })
+      vi.mocked(useUploadEventsModule.useUploadEvents).mockReturnValue(
+        createUploadEventsMock({
+          message: { text: 'Upload failed', severity: 'error' }
+        })
+      )
 
       vi.mocked(useFileUploadModule.useFileUpload).mockReturnValue(
         createFileUploadMock({
@@ -1654,22 +1622,18 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       sourceRenderFile: 'managing_change.mp4'
     }
 
+    // Absent optional fields are omitted, not null. The Rust structs behind
+    // VideoLink use skip_serializing_if = "Option::is_none", so a null never
+    // reaches the frontend for any of these (#210).
     const linkWithoutId: VideoLink = {
       url: 'https://videos.sproutvideo.com/embed/def456/tok',
       title: 'WBS - MSc - Leading Teams',
-      sproutVideoId: null,
-      thumbnailUrl: 'https://cdn.sproutvideo.com/poster/def456.jpg',
-      uploadDate: null,
-      sourceRenderFile: null
+      thumbnailUrl: 'https://cdn.sproutvideo.com/poster/def456.jpg'
     }
 
     const unlinkableLink: VideoLink = {
       url: 'https://example.com/not-a-sprout-video',
-      title: 'Somewhere else entirely',
-      sproutVideoId: null,
-      thumbnailUrl: null,
-      uploadDate: null,
-      sourceRenderFile: null
+      title: 'Somewhere else entirely'
     }
 
     const withVideoLinks = (links: VideoLink[]) => {
@@ -1677,6 +1641,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         videoLinks: links,
         isLoading: false,
         error: null,
+        refetch: vi.fn(),
         addVideoLink: mockAddVideoLink,
         addVideoLinkAsync: vi.fn(),
         removeVideoLink: mockRemoveVideoLink,
@@ -1954,6 +1919,126 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
           .mocked(usePosterFrameForUploadModule.usePosterFrameForUpload)
           .mock.calls.some(([options]) => options?.videoTitle === linkWithoutId.title)
       ).toBe(true)
+    })
+  })
+
+  // ==========================================
+  // Issue #226: a failure to read this project's video links must not put a raw
+  // backend string in front of the user.
+  //
+  // `baker_get_video_links` reads the project's local breadcrumbs.json and
+  // never contacts Sprout Video, so every failure it can produce is a problem
+  // reaching a file on this machine, and the three it can produce want three
+  // different things from the user. Errors cross the Tauri IPC boundary as
+  // plain strings rather than Error instances, which is why the cases below
+  // set a string.
+  // ==========================================
+  describe('#226: failure presentation', () => {
+    /** Puts the video links query into a failed state with the given error. */
+    const failWith = (error: unknown, refetch = vi.fn()) => {
+      vi.mocked(useBreadcrumbsVideoLinksModule.useBreadcrumbsVideoLinks).mockReturnValue({
+        videoLinks: [],
+        isLoading: false,
+        error,
+        refetch,
+        addVideoLink: mockAddVideoLink,
+        addVideoLinkAsync: vi.fn(),
+        removeVideoLink: mockRemoveVideoLink,
+        removeVideoLinkAsync: vi.fn(),
+        updateVideoLink: vi.fn(),
+        updateVideoLinkAsync: mockUpdateVideoLinkAsync,
+        reorderVideoLinks: mockReorderVideoLinks,
+        reorderVideoLinksAsync: vi.fn(),
+        isUpdating: false,
+        addError: null,
+        removeError: null,
+        updateError: null,
+        reorderError: null
+      } as unknown as ReturnType<
+        typeof useBreadcrumbsVideoLinksModule.useBreadcrumbsVideoLinks
+      >)
+      return refetch
+    }
+
+    /** The alert's headline - the one line a user is certain to read. */
+    const alertHeadline = async () => {
+      const alert = await screen.findByRole('alert')
+      return within(alert).getByRole('heading').textContent ?? ''
+    }
+
+    it('shows the empty state and no alert when the project has no video links', async () => {
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      expect(screen.getByText('No video links added yet')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('leads with the missing project folder, not the backend string', async () => {
+      failWith('Project path does not exist')
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      expect(await alertHeadline()).toBe('Project folder not found on this machine')
+
+      const alert = screen.getByRole('alert')
+      expect(alert).toHaveTextContent(/reconnect it/i)
+      expect(alert).not.toHaveTextContent('Failed to load video links')
+    })
+
+    it('names the breadcrumbs file when the file will not parse', async () => {
+      failWith('Failed to parse breadcrumbs file: expected value at line 1 column 1')
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      expect(await alertHeadline()).toBe(
+        "This project's breadcrumbs file could not be read"
+      )
+
+      const alert = screen.getByRole('alert')
+      expect(alert).toHaveTextContent(/not valid JSON/i)
+      expect(alert).toHaveTextContent(/Baker/)
+    })
+
+    it('tells the user to check the file when it cannot be opened', async () => {
+      failWith('Failed to read breadcrumbs file: permission denied')
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      expect(await alertHeadline()).toBe(
+        "This project's breadcrumbs file could not be read"
+      )
+      expect(screen.getByRole('alert')).toHaveTextContent(/open in another application/i)
+    })
+
+    it('gives an unrecognised failure an actionable headline rather than echoing it', async () => {
+      // The shape TanStack Query itself produces when a queryFn resolves
+      // undefined, which is what an unimplemented Tauri command looks like.
+      failWith(new Error('["breadcrumbs","videoLinks","/p"] data is undefined'))
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      const headline = await alertHeadline()
+      expect(headline).toBe('Linked videos could not be loaded')
+      expect(headline).not.toContain('data is undefined')
+
+      expect(screen.getByRole('alert')).toHaveTextContent(/unaffected on Sprout Video/i)
+    })
+
+    it('keeps the raw error reachable for diagnostics', async () => {
+      failWith('Failed to read breadcrumbs file: permission denied')
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      const alert = await screen.findByRole('alert')
+      expect(within(alert).getByText('Technical Details')).toBeInTheDocument()
+      expect(alert).toHaveTextContent(
+        'Failed to read breadcrumbs file: permission denied'
+      )
+    })
+
+    it('re-reads the video links when the user retries', async () => {
+      const refetch = failWith('Project path does not exist')
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      await screen.findByRole('alert')
+      await userEvent.click(screen.getByRole('button', { name: /retry/i }))
+
+      expect(refetch).toHaveBeenCalledTimes(1)
     })
   })
 })

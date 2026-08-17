@@ -4,19 +4,21 @@
 mod baker;
 mod build_project;
 mod commands;
-mod state;
+mod kavanagh;
 mod utils;
 
 // Imports
 use log::info;
 use simple_logger::SimpleLogger;
-use std::sync::Mutex;
 
 // Re-exports from modules
 use baker::*;
 use build_project::{transfer_files_with_progress, cancel_file_transfer, OperationRegistry};
 use commands::*;
-use state::AuthState;
+use kavanagh::{
+    kavanagh_cancel_run, kavanagh_detect_ffmpeg, kavanagh_run_check, kavanagh_save_evidence,
+    KavanaghRunState,
+};
 
 fn main() {
     SimpleLogger::new().init().unwrap();
@@ -32,26 +34,26 @@ fn main() {
 
             Ok(())
         })
-        .manage(AuthState {
-            tokens: Mutex::new(vec![]),
-        })
         .manage(baker::ScanState::new())
         .manage(OperationRegistry::new())
+        .manage(KavanaghRunState::new())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .invoke_handler(tauri::generate_handler![
             get_folders,
             upload_video,
-            graceful_restart,
-            check_auth,
-            add_token,
+            // Issue #225: a running Sprout upload can be addressed and stopped
+            cancel_upload,
             copy_premiere_project,
             show_confirmation_dialog,
             open_resource_file,
             get_username,
             open_folder,
+            // Issue #168: batched existence probe for stored breadcrumbs paths
+            paths_exist,
             baker_start_scan,
             baker_get_scan_status,
             baker_cancel_scan,
@@ -105,7 +107,12 @@ fn main() {
             open_cep_folder,
             // BuildProject: File transfer with progress and cancellation
             transfer_files_with_progress,
-            cancel_file_transfer
+            cancel_file_transfer,
+            // Issue #180: Video QC - ffmpeg discovery and the watermark check
+            kavanagh_detect_ffmpeg,
+            kavanagh_run_check,
+            kavanagh_cancel_run,
+            kavanagh_save_evidence
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");

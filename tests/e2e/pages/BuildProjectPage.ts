@@ -8,6 +8,35 @@
 import type { Page, Locator } from '@playwright/test'
 import { expect } from '@playwright/test'
 
+/**
+ * How long a navigation to this page may take to render, which is deliberately
+ * not the same budget as `expect.timeout` in `playwright.config.ts` (issue #227).
+ *
+ * That budget is the per-test action budget: what a claim about the application
+ * may take to come true. Getting the page rendered in the first place is not a
+ * claim about the application at all. It is served by one Vite dev server shared
+ * by every worker in the run, so it carries the load of the whole suite, and this
+ * helper is on the path of every spec - which is why #211 saw it, rather than
+ * anything it was testing, fail 1 of 14 local runs.
+ *
+ * Measured against a cold dev server on twelve workers, instrumenting every call:
+ *
+ *   whole `e2e` project      51-1934ms over 29 navigations, two runs
+ *   `tests/e2e/buildproject` 62-5096ms over 29 navigations, two runs
+ *
+ * The second is `bun run test:e2e:buildproject`, and it is the harsh case because
+ * it puts twelve transfer simulations in parallel where the whole project spreads
+ * the workers over lighter specs. Its 5096ms is contention between workers and has
+ * nothing to do with the application, and the old 10000 left it a factor of two -
+ * which, for a figure that is not an application property at all, is how you get a
+ * flake that moves around the suite as it is reordered. 30s is a factor of six.
+ *
+ * Vite's first compile used to be inside this figure too, and is not any more:
+ * `tests/e2e/global-setup.ts` pays for it once, before any test, and logs what it
+ * cost.
+ */
+const PAGE_READY_TIMEOUT_MS = 30_000
+
 export class BuildProjectPage {
   readonly page: Page
 
@@ -47,22 +76,31 @@ export class BuildProjectPage {
 
     // Success state
     this.successMessage = page.getByText('Project Created Successfully!')
-    this.trelloSection = page.getByText('Trello')
+    // Name the section's own heading. This was `getByText('Trello')`, a
+    // substring match, and it passed for the wrong reason: the E2E fixture did
+    // not implement `baker_get_trello_cards`, so the section rendered its error
+    // alert instead, and "Failed to load Trello cards: ..." was the only text
+    // on the page containing "Trello" (issue #212). Now that the real section
+    // renders, the loose locator matches three elements and trips strict mode.
+    this.trelloSection = page.getByRole('heading', { name: 'Trello Cards' })
 
     // Warnings
     this.sanitizationWarning = page.getByText(/characters were changed/i)
   }
 
   /**
-   * Navigate to the BuildProject page
-   * If already on the page, just waits for title to be visible
+   * Navigate to the BuildProject page.
+   * If already on the page, just waits for the title to be visible.
+   *
+   * Waits against `PAGE_READY_TIMEOUT_MS` rather than the suite's action budget -
+   * see that constant for why the two are different numbers (issue #227).
    */
   async goto(): Promise<void> {
     const currentUrl = this.page.url()
     if (!currentUrl.includes('/ingest/build')) {
       await this.page.goto('/ingest/build')
     }
-    await expect(this.pageTitle).toBeVisible({ timeout: 10000 })
+    await expect(this.pageTitle).toBeVisible({ timeout: PAGE_READY_TIMEOUT_MS })
   }
 
   /**

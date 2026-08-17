@@ -6,8 +6,11 @@ interface SuccessSectionProps {
   showSuccess: boolean
   selectedFolder: string
   title: string
-  trelloApiKey: string
-  trelloApiToken: string
+  // Optional: useTrelloApiKeys yields nothing until api_keys.json has been read,
+  // and nothing at all when Trello is not configured. TrelloCardsManager below
+  // already declares both as optional (#210).
+  trelloApiKey?: string
+  trelloApiToken?: string
   onStartNew: () => void
 }
 

@@ -14,37 +14,37 @@
  *   commands/sprout_upload.rs, poster_frame.rs, ... -> feature-owned
  *
  * `main.rs`'s `generate_handler![...]` is a flat list with no ownership
- * information, so it cannot answer this on its own.
+ * information, so it cannot answer this on its own. Whether an invoked command
+ * appears in that list at all is a separate rule, in `invoked-commands-exist`
+ * (#222).
+ *
+ * `auth.rs` was also permitted here until #206. It was deleted from the crate by
+ * #199, so the entry named a module that no longer existed.
+ *
+ * The tree walk and the invoke scanner live in `internal/tauri-command-surface`,
+ * shared with the two other contract tests that read the IPC boundary off disk.
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const REPO_ROOT = resolve(__dirname, '../../../..')
+import {
+  REPO_ROOT,
+  RUST_COMMANDS_DIR,
+  invokeSites,
+  walkFiles
+} from './internal/tauri-command-surface'
+
 const SHARED_DIR = join(REPO_ROOT, 'src/shared')
-const RUST_COMMANDS_DIR = join(REPO_ROOT, 'src-tauri/src/commands')
 
 /** Rust modules whose commands shared code may call directly. */
-const SHARED_PERMITTED_MODULES = new Set(['system.rs', 'auth.rs'])
-
-function walk(dir: string, match: RegExp): string[] {
-  const found: string[] = []
-  for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry)
-    if (statSync(full).isDirectory()) {
-      found.push(...walk(full, match))
-    } else if (match.test(entry)) {
-      found.push(full)
-    }
-  }
-  return found
-}
+const SHARED_PERMITTED_MODULES = new Set(['system.rs'])
 
 /** Maps each `#[command]` fn to the Rust file that defines it. */
 function buildCommandOwnership(): Map<string, string> {
   const ownership = new Map<string, string>()
 
-  for (const file of walk(RUST_COMMANDS_DIR, /\.rs$/)) {
+  for (const file of walkFiles(RUST_COMMANDS_DIR, /\.rs$/)) {
     const moduleName = relative(RUST_COMMANDS_DIR, file)
     const source = readFileSync(file, 'utf8')
 
@@ -60,10 +60,6 @@ function buildCommandOwnership(): Map<string, string> {
   return ownership
 }
 
-/** Every `invoke('cmd')` form used in this tree: bare, namespaced, generic. */
-const INVOKE_PATTERN =
-  /(?:^|[^\w.])(?:core\.)?invoke\s*(?:<[^>]*>)?\s*\(\s*['"`]([a-z_][a-z0-9_]*)['"`]/g
-
 describe('shared code does not invoke feature-owned Tauri commands', () => {
   const ownership = buildCommandOwnership()
 
@@ -78,24 +74,20 @@ describe('shared code does not invoke feature-owned Tauri commands', () => {
     const violations: string[] = []
     const seen: string[] = []
 
-    for (const file of walk(SHARED_DIR, /\.tsx?$/)) {
-      if (/\.test\.tsx?$|__contracts__/.test(file)) continue
+    for (const site of invokeSites(SHARED_DIR)) {
+      // A plugin-routed or runtime-built name has no owning module to check.
+      // Neither is a silent hole: `invoked-commands-exist` fails on a name it
+      // cannot read, so one cannot slip past both tests.
+      if (site.kind !== 'static') continue
 
-      const source = readFileSync(file, 'utf8')
-      INVOKE_PATTERN.lastIndex = 0
+      seen.push(site.command)
+      const owner = ownership.get(site.command)
+      if (!owner) continue // unknown command name -- not this test's business
+      if (SHARED_PERMITTED_MODULES.has(owner)) continue
 
-      let match: RegExpExecArray | null
-      while ((match = INVOKE_PATTERN.exec(source)) !== null) {
-        const command = match[1]
-        seen.push(command)
-        const owner = ownership.get(command)
-        if (!owner) continue // unknown command name -- not this test's business
-        if (SHARED_PERMITTED_MODULES.has(owner)) continue
-
-        violations.push(
-          `${relative(REPO_ROOT, file)} invokes '${command}' (owned by commands/${owner})`
-        )
-      }
+      violations.push(
+        `${site.file}:${site.line} invokes '${site.command}' (owned by commands/${owner})`
+      )
     }
 
     // Proves the scanner actually reads these files. Without this the rule

@@ -1,8 +1,15 @@
 // Target: @features/AppShell
 import { useEffect } from 'react'
-import { getCurrentWindow } from '@tauri-apps/api/window'
+import { Effect, EffectState, getCurrentWindow } from '@tauri-apps/api/window'
 import { useSystemTheme } from './useSystemTheme'
 
+/**
+ * Effect names as callers write them: the keys of Tauri's `Effect` enum, not
+ * its wire values. The two differ in case (`Sidebar` vs `"sidebar"`), and the
+ * strings used to be passed through unmapped, so the backend rejected every
+ * one of them and the bare catch below swallowed it. Vibrancy never applied
+ * (#178).
+ */
 export type MacOSEffect =
   | 'Sidebar'
   | 'ContentBackground'
@@ -59,8 +66,8 @@ export function useMacOSEffects({
         }
 
         await window.setEffects({
-          effects: activeEffects,
-          state: 'active',
+          effects: activeEffects.map((name) => Effect[name]),
+          state: EffectState.Active,
           radius: 0
         })
       } catch {

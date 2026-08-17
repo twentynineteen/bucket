@@ -49,16 +49,38 @@ export const queryKeys = {
         fingerprint(token ?? '')
       ] as const,
     me: (apiKey: string | null | undefined) =>
-      ['trello', 'me', fingerprint(apiKey ?? '')] as const
+      ['trello', 'me', fingerprint(apiKey ?? '')] as const,
+    /**
+     * Whether the paths recorded in a card's breadcrumbs block still resolve on
+     * this machine (issue #168). Its own key rather than sharing Baker's: the
+     * two probe different path sets, and one cache entry for both would mean
+     * whichever was checked last decided what both reported.
+     */
+    pathsPresent: (paths: string[]) =>
+      ['trello', 'paths-present', fingerprint(paths.join('\n'))] as const
   },
 
-  // User domain
-  user: {
-    all: ['user'] as const,
-    profile: () => ['user', 'profile'] as const,
-    preferences: () => ['user', 'preferences'] as const,
-    authentication: () => ['user', 'authentication'] as const,
-    breadcrumb: () => ['user', 'breadcrumb'] as const
+  // App domain
+  app: {
+    all: ['app'] as const,
+    version: () => ['app', 'version'] as const
+  },
+
+  // OS/environment domain (#249 - was `user`, which implied app-domain user
+  // attributes the app does not have: #199 removed auth, #206 the last consumer)
+  os: {
+    all: ['os'] as const,
+    /**
+     * The OS account name, from the `get_username` command. Called
+     * `authentication()` until #223, then `user.username()` until #249.
+     */
+    username: () => ['os', 'username'] as const
+  },
+
+  // Navigation/UI state domain (#249 - breadcrumb is navigation state, not a user attribute)
+  navigation: {
+    all: ['navigation'] as const,
+    breadcrumb: () => ['navigation', 'breadcrumb'] as const
   },
 
   // Settings domain
@@ -68,7 +90,10 @@ export const queryKeys = {
     configuration: () => ['settings', 'configuration'] as const,
     theme: () => ['settings', 'theme'] as const,
     integrations: () => ['settings', 'integrations'] as const,
-    apiKeys: () => ['settings', 'api-keys'] as const
+    apiKeys: () => ['settings', 'api-keys'] as const,
+    /** Whether the saved background folder is still on disk (issue #166). */
+    backgroundFolderPresent: (folderPath: string | null) =>
+      ['settings', 'background-folder-present', folderPath ?? 'none'] as const
   },
 
   // Sprout domain
@@ -89,12 +114,50 @@ export const queryKeys = {
     event: (eventId: string) => ['upload', 'event', eventId] as const,
     progress: (uploadId: string) => ['upload', 'progress', uploadId] as const,
     status: (uploadId: string) => ['upload', 'status', uploadId] as const,
+    /** Background folder listing, keyed on the folder being read (issue #166). */
+    backgroundFolder: (folderPath: string | null) =>
+      ['upload', 'background-folder', folderPath ?? 'none'] as const,
     sprout: {
       all: () => ['upload', 'sprout'] as const,
       video: (videoId: string) => ['upload', 'sprout', 'video', videoId] as const,
       posterframe: (videoId: string) =>
         ['upload', 'sprout', 'posterframe', videoId] as const
     }
+  },
+
+  // Baker domain
+  baker: {
+    all: ['baker'] as const,
+    /**
+     * Whether the paths stored in breadcrumbs.json still resolve on this
+     * machine (issue #168).
+     *
+     * Keyed on a fingerprint of the path list rather than the list itself. A
+     * project's footage runs to hundreds or thousands of paths, and React Query
+     * serialises the whole key on every cache lookup; the fingerprint keeps that
+     * bounded while still varying whenever the set of paths does.
+     */
+    pathsPresent: (paths: string[]) =>
+      ['baker', 'paths-present', fingerprint(paths.join('\n'))] as const
+  },
+
+  // Video QC domain (issue #180)
+  kavanagh: {
+    all: ['kavanagh'] as const,
+    /** ffmpeg discovery, keyed on the configured directory so changing it refetches. */
+    ffmpeg: (customDir: string | null) =>
+      ['kavanagh', 'ffmpeg', customDir ?? 'default'] as const,
+    /** Reference pool listing, keyed on the folder and which pool is being read. */
+    referencePool: (folderPath: string | null, pool: string) =>
+      ['kavanagh', 'reference-pool', folderPath ?? 'none', pool] as const,
+    /**
+     * Whether the configured QC reference folder is still on disk. Its own key
+     * rather than reusing `settings.backgroundFolderPresent`: two different
+     * folders sharing one cache entry means whichever is checked last decides
+     * what both report.
+     */
+    referenceFolderPresent: (folderPath: string | null) =>
+      ['kavanagh', 'reference-folder-present', folderPath ?? 'none'] as const
   },
 
   // Image/Canvas domain
@@ -154,13 +217,6 @@ export const invalidationRules: InvalidationRule[] = [
     strategy: 'prefix'
   },
 
-  // User profile updates
-  {
-    trigger: ['user', 'profile-update'],
-    invalidates: [queryKeys.user.profile(), queryKeys.user.breadcrumb()],
-    strategy: 'exact'
-  },
-
   // Settings changes
   {
     trigger: ['settings', 'update'],
@@ -218,10 +274,12 @@ export function validateQueryKey(key: QueryKey): boolean {
 
   const [domain, action] = key
   const validDomains = [
+    'app',
     'projects',
     'trello',
     'files',
-    'user',
+    'os',
+    'navigation',
     'settings',
     'upload',
     'images',

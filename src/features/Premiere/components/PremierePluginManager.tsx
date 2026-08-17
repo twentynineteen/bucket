@@ -6,6 +6,7 @@
  */
 
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +18,7 @@ import {
 } from '@shared/ui/alert-dialog'
 import { Button } from '@shared/ui/button'
 import { useBreadcrumb } from '@shared/hooks'
+import { logger } from '@shared/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
@@ -52,14 +54,33 @@ const PremierePluginManagerContent: React.FC = () => {
     installedPath: ''
   })
 
-  // Fetch available plugins
+  // Fetch available plugins.
+  //
+  // `get_available_plugins` returns a hardcoded list and swallows its only
+  // fallible call with `unwrap_or(false)`, so neither a missing plugin nor an
+  // absent Premiere install can make this reject - a missing plugin is simply
+  // `installed: false`. The only way to land in the error state is a failure of
+  // the IPC call itself: a frontend built against a backend that no longer
+  // registers the command, or the page rendered outside the Tauri shell. Rare,
+  // and all the more reason not to answer it with a raw internal string
+  // (issue #226).
   const {
     data: plugins,
     isLoading,
-    error
+    error,
+    refetch
   } = useQuery({
     queryKey: ['plugins'],
-    queryFn: getAvailablePlugins
+    queryFn: async () => {
+      try {
+        return await getAvailablePlugins()
+      } catch (err) {
+        // The user no longer sees this string as the headline, so log it once
+        // here, where it is still exact.
+        logger.error('Failed to load the bundled Premiere plugin list:', err)
+        throw err
+      }
+    }
   })
 
   // Install plugin mutation
@@ -140,17 +161,42 @@ const PremierePluginManagerContent: React.FC = () => {
               </div>
             )}
 
-            {/* Error State */}
+            {/* Error State. The plugins are bundled with Bucket, so a failure
+                here says nothing about the user's Premiere install and nothing
+                about what is already installed. Say that, offer the one remedy
+                that helps, and keep the backend's words in the disclosure
+                rather than in the headline (issue #226). */}
             {error && (
-              <div className="bg-destructive/10 border-destructive/30 mt-3 rounded-lg border p-4">
-                <div className="flex items-center">
-                  <AlertTriangle className="text-destructive mr-2 h-4 w-4 flex-shrink-0" />
-                  <span className="text-destructive text-sm">
-                    Error loading plugins:{' '}
-                    {error instanceof Error ? error.message : 'Unknown error'}
-                  </span>
-                </div>
-              </div>
+              <Alert variant="destructive" className="mt-3" data-test="plugins-error">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>The bundled plugin list could not be loaded</AlertTitle>
+                <AlertDescription className="mt-2 space-y-3">
+                  <p>
+                    Bucket could not read the list of plugins it ships with. Plugins
+                    already installed in Premiere Pro are unaffected and will keep
+                    working. Retry, and if that does not help, restart Bucket.
+                  </p>
+
+                  <details className="bg-muted/50 border-border rounded-md border p-3 text-left text-xs">
+                    <summary className="text-foreground cursor-pointer font-medium">
+                      Technical Details
+                    </summary>
+                    <p className="text-muted-foreground mt-2 break-words">
+                      {error instanceof Error ? error.message : String(error)}
+                    </p>
+                  </details>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => refetch()}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
             )}
 
             {/* Plugin List */}

@@ -5,8 +5,8 @@
 
 import { useAppendVideoInfo } from '@features/Trello/hooks/useAppendVideoInfo'
 import { useTrelloVideoInfo } from '@features/Trello'
+import { createDefaultSproutUploadResponse } from '@features/Trello/types'
 import { useVideoInfoBlock } from '@features/BuildProject'
-import { appStore } from '@shared/store'
 import type { TrelloCard } from '@features/Trello'
 import type { SproutUploadResponse } from '@shared/types/types'
 import { act, renderHook, waitFor } from '@testing-library/react'
@@ -25,9 +25,16 @@ vi.mock('@features/BuildProject', async () => {
   }
 })
 
+// vi.hoisted so the fn is available inside the hoisted vi.mock factory.
+// Locally scoped to avoid the full AppState type constraint - the test
+// only exercises the latestSproutUpload slice of the store.
+const { mockGetState } = vi.hoisted(() => ({
+  mockGetState: vi.fn()
+}))
+
 vi.mock('@shared/store/useAppStore', () => ({
   appStore: {
-    getState: vi.fn()
+    getState: mockGetState
   }
 }))
 
@@ -39,20 +46,18 @@ const mockCard: TrelloCard = {
 }
 
 const mockUploadedVideo: SproutUploadResponse = {
+  ...createDefaultSproutUploadResponse(),
   id: 'video123',
   title: 'Test Video',
   privacy: 2,
-  embedCode: '<iframe></iframe>',
-  duration: 120,
-  assets: {
-    thumbnails: [{ url: 'https://example.com/thumb.jpg' }],
-    videos: []
-  }
+  duration: 120
 }
 
 const mockVideoInfoData = {
   title: 'Test Video',
-  duration: 120
+  duration: '2:00',
+  uploaded: '2024-01-15',
+  url: 'https://sproutvideo.com/videos/video123'
 }
 
 const mockVideoInfoBlock = '**Video Info:**\nTitle: Test Video\nDuration: 2:00'
@@ -70,7 +75,7 @@ describe('useTrelloVideoInfo', () => {
       videoInfoData: mockVideoInfoData,
       videoInfoBlock: mockVideoInfoBlock
     })
-    vi.mocked(appStore.getState).mockReturnValue({
+    mockGetState.mockReturnValue({
       latestSproutUpload: mockUploadedVideo
     })
   })
@@ -85,7 +90,7 @@ describe('useTrelloVideoInfo', () => {
     })
 
     test('returns null when no video in app store', () => {
-      vi.mocked(appStore.getState).mockReturnValue({
+      mockGetState.mockReturnValue({
         latestSproutUpload: null
       })
 
@@ -155,7 +160,7 @@ describe('useTrelloVideoInfo', () => {
     })
 
     test('does nothing when no uploaded video', async () => {
-      vi.mocked(appStore.getState).mockReturnValue({
+      mockGetState.mockReturnValue({
         latestSproutUpload: null
       })
 
@@ -192,8 +197,8 @@ describe('useTrelloVideoInfo', () => {
   describe('video info parsing', () => {
     test('updates when card description changes', () => {
       const { result, rerender } = renderHook<
-        { card: TrelloCard | null },
-        ReturnType<typeof useTrelloVideoInfo>
+        ReturnType<typeof useTrelloVideoInfo>,
+        { card: TrelloCard | null }
       >(({ card }) => useTrelloVideoInfo('api-key', 'token', card, mockRefetchCard), {
         initialProps: { card: mockCard }
       })
@@ -241,7 +246,7 @@ describe('useTrelloVideoInfo', () => {
         title: 'Partial'
       }
 
-      vi.mocked(appStore.getState).mockReturnValue({
+      mockGetState.mockReturnValue({
         latestSproutUpload: partialVideo
       })
 
@@ -253,9 +258,12 @@ describe('useTrelloVideoInfo', () => {
     })
 
     test('handles card without video info block', () => {
+      // null, not '': useVideoInfoBlock returns null for both fields when the
+      // description has no VIDEO_INFO block, and a non-empty string plus data
+      // when it has one. '' was a third shape the hook cannot produce (#210).
       vi.mocked(useVideoInfoBlock).mockReturnValue({
         videoInfoData: null,
-        videoInfoBlock: ''
+        videoInfoBlock: null
       })
 
       const { result } = renderHook(() =>
@@ -263,7 +271,7 @@ describe('useTrelloVideoInfo', () => {
       )
 
       expect(result.current.videoInfoData).toBeNull()
-      expect(result.current.videoInfoBlock).toBe('')
+      expect(result.current.videoInfoBlock).toBeNull()
     })
 
     test('handles multiple rapid append calls', async () => {
@@ -291,7 +299,7 @@ describe('useTrelloVideoInfo', () => {
       )
 
       expect(result.current.uploadedVideo).toEqual(mockUploadedVideo)
-      expect(appStore.getState).toHaveBeenCalled()
+      expect(mockGetState).toHaveBeenCalled()
     })
   })
 

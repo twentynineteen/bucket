@@ -5,6 +5,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { logger } from '@shared/utils'
+
 import type { BreadcrumbsFile, TrelloCard } from '@features/Baker'
 
 import {
@@ -29,11 +31,20 @@ export function useBreadcrumbsTrelloCards({
   const {
     data: trelloCards = [],
     isLoading,
-    error
+    error,
+    refetch
   } = useQuery({
     queryKey: ['breadcrumbs', 'trelloCards', projectPath],
     queryFn: async () => {
-      return (await bakerGetTrelloCards(projectPath)) as TrelloCard[]
+      try {
+        return (await bakerGetTrelloCards(projectPath)) as TrelloCard[]
+      } catch (err) {
+        // What the user is shown is deliberately not the raw message any more
+        // (issue #212), so log the backend's own words once, here, where they
+        // are still exact.
+        logger.error('Failed to read Trello cards from breadcrumbs:', projectPath, err)
+        throw err
+      }
     },
     enabled: enabled && !!projectPath
   })
@@ -90,6 +101,8 @@ export function useBreadcrumbsTrelloCards({
     trelloCards,
     isLoading,
     error,
+    /** Re-runs the breadcrumbs read, so a failure can offer the user a retry. */
+    refetch,
     addTrelloCard: addTrelloCard.mutate,
     addTrelloCardAsync: addTrelloCard.mutateAsync,
     removeTrelloCard: removeTrelloCard.mutate,

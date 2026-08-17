@@ -1,15 +1,30 @@
 import { CACHE, getBackoffDelay, RETRY, SECONDS } from '@shared/constants'
 import { QueryClient } from '@tanstack/react-query'
 import { persistQueryClient } from '@tanstack/react-query-persist-client'
+import type { PersistedClient, Persister } from '@tanstack/react-query-persist-client'
 import { createNamespacedLogger } from '@shared/utils'
+import { shouldRetryRequest } from './query-utils'
 
 // Lazy-load Tauri plugin-store to avoid crashing test environments
 // when the @shared/lib barrel is imported. The module specifier is
 // constructed via a variable to prevent Vite's static import analysis
 // from resolving it at build/test time.
 const TAURI_STORE_MODULE = '@tauri-apps/plugin-store'
-async function getTauriStore() {
-  const { del, get, set } = await import(/* @vite-ignore */ TAURI_STORE_MODULE)
+
+/**
+ * The dynamic specifier defeats static analysis on purpose, so the import is
+ * untyped. Declare the three functions we use rather than let `any` spread.
+ */
+interface TauriStoreApi {
+  del: (key: string) => Promise<boolean>
+  get: <T>(key: string) => Promise<T | undefined>
+  set: (key: string, value: unknown) => Promise<void>
+}
+
+async function getTauriStore(): Promise<TauriStoreApi> {
+  const { del, get, set } = (await import(
+    /* @vite-ignore */ TAURI_STORE_MODULE
+  )) as TauriStoreApi
   return { del, get, set }
 }
 
@@ -29,7 +44,7 @@ const logger = createNamespacedLogger('QueryClient')
  * Tauri Store Persister for React Query
  * Uses Tauri's secure store plugin for cross-platform persistence
  */
-class TauriStorePersister {
+class TauriStorePersister implements Persister {
   private storeName: string
   private maxAge: number
 
@@ -39,7 +54,7 @@ class TauriStorePersister {
     this.maxAge = maxAge
   }
 
-  async persistClient(persistedClient: unknown) {
+  async persistClient(persistedClient: PersistedClient) {
     try {
       const { set } = await getTauriStore()
       const dataToStore = {
@@ -53,13 +68,13 @@ class TauriStorePersister {
     }
   }
 
-  async restoreClient(): Promise<unknown | undefined> {
+  async restoreClient(): Promise<PersistedClient | undefined> {
     try {
       const { get } = await getTauriStore()
       const stored = await get<string>(this.storeName)
       if (!stored) return undefined
 
-      const data = JSON.parse(stored)
+      const data = JSON.parse(stored) as PersistedClient
 
       // Check if data is expired
       if (data.timestamp && Date.now() - data.timestamp > this.maxAge) {
@@ -67,9 +82,9 @@ class TauriStorePersister {
         return undefined
       }
 
-      // Remove timestamp before returning (was used for age validation above)
-      const { ...clientData } = data
-      return clientData
+      // timestamp stays: persistClient sets it to the write time, which is
+      // exactly what PersistedClient.timestamp means to React Query.
+      return data
     } catch (error) {
       logger.error('Failed to restore query client:', error)
       // Clean up corrupted data
@@ -124,21 +139,10 @@ export function createPersistedQueryClient(
         staleTime: CACHE.BRIEF,
         // Default garbage collection time - keep unused data for 5 minutes
         gcTime: CACHE.GC_STANDARD,
-        // Enhanced retry configuration
-        retry: (failureCount, error) => {
-          // Don't retry on 4xx errors (client errors)
-          if (error instanceof Error) {
-            const message = error.message.toLowerCase()
-            if (
-              message.includes('4') ||
-              message.includes('unauthorized') ||
-              message.includes('forbidden')
-            ) {
-              return false
-            }
-          }
-          return failureCount < RETRY.DEFAULT_ATTEMPTS
-        },
+        // Never retries a 4xx -- including a 429 into a closed rate-limit
+        // window. Handles Tauri's bare-string rejections; see #156.
+        retry: (failureCount, error) =>
+          shouldRetryRequest(error, failureCount, RETRY.DEFAULT_ATTEMPTS),
         // Exponential backoff with jitter
         retryDelay: (attemptIndex) => {
           const baseDelay = getBackoffDelay(attemptIndex, RETRY.MAX_DELAY_DEFAULT)
@@ -152,19 +156,8 @@ export function createPersistedQueryClient(
       },
       mutations: {
         // Fewer retries for mutations to avoid duplicate operations
-        retry: (failureCount, error) => {
-          if (error instanceof Error) {
-            const message = error.message.toLowerCase()
-            if (
-              message.includes('4') ||
-              message.includes('unauthorized') ||
-              message.includes('forbidden')
-            ) {
-              return false
-            }
-          }
-          return failureCount < 2
-        },
+        retry: (failureCount, error) =>
+          shouldRetryRequest(error, failureCount, RETRY.MUTATION_ATTEMPTS),
         retryDelay: (attemptIndex) => {
           const baseDelay = getBackoffDelay(attemptIndex, RETRY.MAX_DELAY_MUTATION)
           const jitter = Math.random() * 0.3 * baseDelay
@@ -181,12 +174,17 @@ export function createPersistedQueryClient(
       persistenceConfig.maxAge
     )
 
-    return persistQueryClient({
+    // persistQueryClient returns [unsubscribe, restorePromise]. It is not a
+    // promise, so the previous `.then()` here threw a TypeError on the first
+    // call. Nothing called it, which is how it survived; see #156 and #178.
+    const [, restored] = persistQueryClient({
       queryClient,
       persister,
       maxAge: persistenceConfig.maxAge,
       buster: persistenceConfig.buster
-    }).then(() => queryClient)
+    })
+
+    return restored.then(() => queryClient)
   }
 
   return Promise.resolve(queryClient)

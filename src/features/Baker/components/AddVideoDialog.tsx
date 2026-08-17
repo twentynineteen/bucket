@@ -6,6 +6,7 @@
 
 import {
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Image as ImageIcon,
   Loader2,
@@ -14,8 +15,12 @@ import {
 } from 'lucide-react'
 import type { RefObject } from 'react'
 
-import type { SelectedSproutFolder, UploadMessage } from '@features/Upload'
-import { SproutFolderPicker } from '@features/Upload'
+import type {
+  PosterframeTemplateId,
+  SelectedSproutFolder,
+  UploadMessage
+} from '@features/Upload'
+import { formatTransferredBytes, SproutFolderPicker } from '@features/Upload'
 
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
@@ -76,6 +81,19 @@ export interface UploadModeState {
   selectedFile: string | null
   uploading: boolean
   progress: number
+  /**
+   * Bytes transferred and the file's total (#225 UP-30). A percentage alone
+   * cannot tell 3% of 200 MB from 3% of 12 GB, which is exactly the judgement a
+   * user makes when deciding whether a slow upload is worth waiting for.
+   */
+  bytesSent: number
+  totalBytes: number
+  /**
+   * The non-terminal "this transfer looks stalled" text, or null (#225 UP-26).
+   * Distinct from `message`: it does not mean the upload is over, and it is
+   * withdrawn if the transfer recovers.
+   */
+  stallWarning: string | null
   message: UploadMessage | null
   uploadSuccess: boolean
   onSelectFile: () => void
@@ -108,6 +126,11 @@ export interface PosterFrameDialogState {
   backgrounds: string[]
   selectedBackground: string | null
   onBackgroundChange: (path: string) => void
+  /** Which branding template lays the thumbnail out (issue #189). */
+  template: PosterframeTemplateId
+  onTemplateChange: (template: PosterframeTemplateId) => void
+  /** The previewed background deviates from 16:9, so text may sit oddly. */
+  offAspect: boolean
   text: string
   onTextChange: (text: string) => void
   previewImageUrl: string | null
@@ -213,12 +236,19 @@ export function AddVideoDialog({
             )
           ) : (
             <>
+              {/*
+                Dismissal cancels the upload (#225 UP-24), so while one is running
+                the button has to say so - "Cancel" beside a progress bar reads as
+                "cancel adding the link" and used to orphan a multi-gigabyte
+                transfer. The handler is unchanged: Escape and an overlay click go
+                through the same onOpenChange, so all three routes behave alike.
+              */}
               <Button
                 variant="outline"
                 onClick={() => dialog.onOpenChange(false)}
                 disabled={posterFrameWorking}
               >
-                Cancel
+                {uploadMode.uploading ? 'Cancel upload' : 'Cancel'}
               </Button>
               <Button
                 onClick={uploadMode.onUploadAndAdd}
@@ -389,6 +419,24 @@ function PosterFrameContent({
       {posterFrame.enabled && (
         <div className="space-y-3">
           <div className="space-y-2">
+            <Label htmlFor="poster-frame-template">Template</Label>
+            <Select
+              value={posterFrame.template}
+              onValueChange={(value) =>
+                posterFrame.onTemplateChange(value as PosterframeTemplateId)
+              }
+            >
+              <SelectTrigger id="poster-frame-template" className="w-full">
+                <SelectValue placeholder="Select a template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="classic">Classic</SelectItem>
+                <SelectItem value="rebrand">Rebrand</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="poster-frame-background">Background</Label>
             <Select
               value={posterFrame.selectedBackground ?? ''}
@@ -437,6 +485,15 @@ function PosterFrameContent({
                 className="aspect-video w-full"
               />
             </div>
+          )}
+
+          {/* A warning, not a block: the layout scales by height and still
+              renders, but the design assumes 16:9 (issue #189 B4.2). */}
+          {posterFrame.offAspect && (
+            <p role="alert" className="text-warning text-xs">
+              This background is not 16:9, so the title text may sit oddly on the final
+              thumbnail.
+            </p>
           )}
 
           <div className="flex items-start gap-2">
@@ -576,6 +633,13 @@ function UploadContent({
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
               Uploading: {uploadMode.progress}%
+              {uploadMode.totalBytes > 0 && (
+                <>
+                  {' '}
+                  ({formatTransferredBytes(uploadMode.bytesSent)} of{' '}
+                  {formatTransferredBytes(uploadMode.totalBytes)})
+                </>
+              )}
             </span>
           </div>
           <div className="bg-secondary h-2 w-full overflow-hidden rounded-full">
@@ -588,6 +652,18 @@ function UploadContent({
               aria-valuemax={100}
             />
           </div>
+          {/*
+            Non-terminal, so nothing else about the dialog changes: the bar stays,
+            the upload keeps going, and the terminal verdict is still 35 seconds
+            away. What it adds is the answer to "wait or cancel?" while there is
+            still a choice (#225 UP-26).
+          */}
+          {uploadMode.stallWarning && (
+            <p role="status" className="text-warning flex items-start gap-1.5 text-xs">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{uploadMode.stallWarning}</span>
+            </p>
+          )}
         </div>
       )}
 

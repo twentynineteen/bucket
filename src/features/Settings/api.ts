@@ -5,6 +5,7 @@
  * are wrapped here. Mock this one file to isolate the entire module.
  */
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
+import { exists } from '@tauri-apps/plugin-fs'
 import { open as openShell } from '@tauri-apps/plugin-shell'
 
 import { providerRegistry } from '@shared/services/ai/providerConfig'
@@ -20,6 +21,24 @@ export type { ApiKeys } from '@shared/utils'
 export async function openFolderPicker(): Promise<string | null> {
   const result = await openDialog({ directory: true, multiple: false })
   return typeof result === 'string' ? result : null
+}
+
+// --- Filesystem ---
+
+/**
+ * Whether a saved directory is still present (issue #166).
+ *
+ * Settings printed stored paths verbatim, so a folder that had been moved or
+ * deleted was presented as valid configuration. A failed probe reports false:
+ * from the user's point of view a folder that cannot be checked is not one they
+ * should be told is fine.
+ */
+export async function directoryExists(path: string): Promise<boolean> {
+  try {
+    return await exists(path)
+  } catch {
+    return false
+  }
 }
 
 // --- Shell ---

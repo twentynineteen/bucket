@@ -63,28 +63,28 @@ npx npm-check-updates -u             # Update all dependencies to latest
 ```
 src/
 +-- features/
-|   +-- AITools/       # ScriptFormatter + ExampleEmbeddings (api.ts, 2 barrel exports)
-|   +-- Auth/          # Login, registration, token management (api.ts, 6 barrel exports)
-|   +-- Baker/         # Drive scanning, breadcrumbs management (api.ts, 24 barrel exports)
-|   +-- BuildProject/  # File ingest, camera assignment, XState (api.ts, 4 barrel exports)
-|   +-- Premiere/      # Adobe Premiere plugin management (api.ts, 1 barrel export)
-|   +-- Settings/      # App configuration with per-domain tabs (api.ts, 3 barrel exports)
-|   +-- Trello/        # Trello card management, video links (api.ts, 29 barrel exports)
-|   +-- Upload/        # Sprout Video, Posterframe, Otter (api.ts, 17 barrel exports)
+|   +-- AITools/       # ScriptFormatter + ExampleEmbeddings (api.ts)
+|   +-- Baker/         # Drive scanning, breadcrumbs management (api.ts)
+|   +-- BuildProject/  # File ingest, camera assignment, XState machine + stages (api.ts)
+|   +-- Kavanagh/      # Video QC: watermark presence + closing sting validation via ffmpeg (api.ts)
+|   +-- Premiere/      # Adobe Premiere plugin management (api.ts)
+|   +-- Settings/      # App configuration with per-domain tabs (api.ts)
+|   +-- Trello/        # Trello card management, video links (api.ts)
+|   +-- Upload/        # Sprout Video, Posterframe, Otter (api.ts)
 |
 +-- shared/
-|   +-- constants/     # Timing, animation, project constants (26 exports)
-|   +-- hooks/         # Cross-feature hooks: breadcrumb, search, API keys, mobile (8 exports)
-|   +-- lib/           # Query infrastructure: keys, client, utils, prefetch, perf (50 exports)
-|   +-- services/      # ProgressTracker, feedback, cache services (5 exports)
-|   +-- store/         # Zustand stores: appStore, breadcrumbStore (3 exports)
-|   +-- types/         # Shared domain types: media, script, breadcrumbs (41 exports)
+|   +-- constants/     # Timing, animation, project, QC threshold constants
+|   +-- hooks/         # Cross-feature hooks: breadcrumb, search, API keys, mobile
+|   +-- lib/           # Query infrastructure: keys, client, utils, prefetch, perf
+|   +-- services/      # ProgressTracker, feedback, cache services
+|   +-- store/         # Zustand stores: appStore, breadcrumbStore
+|   +-- types/         # Shared domain types: media, script, breadcrumbs
 |   +-- ui/            # Radix primitives, sidebar, theme, layout (direct imports, NO barrel)
-|   +-- utils/         # Logger, storage, validation, cn(), breadcrumbs utils (29 exports)
+|   +-- utils/         # Logger, storage, validation, cn(), breadcrumbs utils
 
 src-tauri/
 +-- src/               # Rust backend with file operations, API integrations
-+-- Cargo.toml         # Rust dependencies (tokio, reqwest, serde, argon2, etc.)
++-- Cargo.toml         # Rust dependencies (tauri, tokio, reqwest, serde, etc.)
 +-- tauri.conf.json    # Tauri app configuration
 ```
 
@@ -110,8 +110,12 @@ Shared modules NEVER import from features.
   |  |   Trello -------> Upload (Sprout hooks)         |
   |  |   Baker ---------> Trello (integration hooks)   |
   |  |   Baker ---------> BuildProject (FootageFile)   |
+  |  |   Baker ---------> Upload (SproutFolderPicker)  |
   |  |   Upload --------> Baker (VideoLink type)       |
+  |  |   Upload --------> Kavanagh (QC hooks)          |
   |  |   Settings ------> Trello (TrelloBoardSelector) |
+  |  |   Settings ------> Upload (SproutFolderPicker)  |
+  |  |   Settings ------> Kavanagh (availability)      |
   |  |   AITools -------> Settings (useAIProvider)     |
   |  |   BuildProject --> Trello (TrelloCardsManager)  |
   |  |                                                 |
@@ -134,6 +138,13 @@ Each feature module in `src/features/<Name>/` follows this structure:
 +-- hooks/              # React hooks
 +-- internal/           # Internal utilities (NOT exported from barrel)
 ```
+
+A feature may add subdirectories of its own beneath this -- `BuildProject/` has `machine/`
+(its XState machine), `stages/` (the workflow stage functions) and a `types/` directory in
+place of `types.ts`. What it may **not** do is become a second top-level module: one feature,
+one directory under `src/features/`, PascalCase, with a single `api.ts` at its root. A feature
+spread over two modules puts half of itself outside the reach of its own contract tests, which
+is exactly how a module with seven direct `@tauri-apps` imports went unnoticed (#208).
 
 ### Import Rules
 
@@ -160,11 +171,113 @@ Only three aliases exist in tsconfig.json:
 
 ### Contract Tests
 
-Each feature has `__contracts__/` with three test types:
+Each feature has `__contracts__/` verifying the module boundary. Keep these thin -- they guard
+the architecture, not the features.
 
-- **Shape tests**: Verify export counts and type signatures from the barrel
-- **Behavioral tests**: Verify hooks return expected shapes, api.ts calls correct functions
+- **Shape tests**: Verify the barrel exports the names other modules import, and their type
+  signatures. Assert named exports individually. Never assert a total export count.
+- **Behavioural tests**: Verify hooks return the documented shape and that `api.ts` calls the
+  correct Tauri command.
 - **No-bypass tests**: Grep source files to ensure zero direct `@tauri-apps` imports (all I/O through api.ts)
+
+A contract test earns its place only if breaking it means another module breaks. If it would
+only break a refactor, it belongs in a unit test, or nowhere.
+
+## Testing Policy
+
+The suite is green and runs in under 30 seconds. Protect both properties. Every rule here
+exists because of something already in this repo, not as general advice.
+
+### The proportionality question
+
+Before writing a test, answer this: **what behaviour breaks for a user if this test is
+deleted?** If the answer is "nothing, but a refactor would have to update it", do not write it.
+Tests that describe the current shape of the code make refactoring expensive and catch no
+defects.
+
+The suite is currently around 54k lines of test against 40k lines of source. That ratio is not
+a target to defend or to grow. Prefer deleting a weak test over adding a second one beside it.
+
+### Where tests live
+
+One location per kind. Do not introduce a new convention.
+
+| Kind        | Location                                        | Purpose                          |
+| ----------- | ----------------------------------------------- | -------------------------------- |
+| Unit        | Colocated `*.test.ts(x)` beside the source file  | One module's behaviour           |
+| Contract    | `src/features/<Name>/__contracts__/`             | Module boundary guarantees       |
+| Integration | `tests/integration/`                             | Two or more modules together     |
+| E2E         | `tests/e2e/`                                     | Playwright, against the real app |
+
+`tests/unit/`, `tests/component/`, `tests/lib/`, `tests/contract/` and `__tests__/` are legacy
+locations that predate this policy. Do not add files to them. When you are already editing a
+file that has a test in a legacy location, move that test to the colocated position rather than
+growing it in place.
+
+### Do not write these
+
+Each pattern below exists in the repo today and each is a net negative.
+
+**Export-count assertions.** A legitimate new export should never fail a test.
+
+```typescript
+// BAD -- breaks on every legitimate addition, verifies no behaviour
+expect(Object.keys(bakerApi)).toHaveLength(29)
+
+// GOOD -- asserts the guarantee that actually matters to callers
+expect(typeof bakerApi.scanDrive).toBe('function')
+```
+
+**Tests that mock every child they render.** If everything is mocked, the assertion only proves
+the mocks were called. It passes when the real component is broken.
+
+```typescript
+// BAD -- mocks AppSidebar, then asserts the mock rendered
+vi.mock('@shared/ui/layout/app-sidebar', () => ({ AppSidebar: () => <div>AppSidebar</div> }))
+expect(screen.getByText('AppSidebar')).toBeInTheDocument()
+
+// GOOD -- mock only the I/O boundary, then assert what a user would see
+vi.mock('@tauri-apps/api', () => ({ core: { invoke: async () => 'alice' } }))
+expect(await screen.findByRole('button', { name: /alice/i })).toBeInTheDocument()
+```
+
+**Soft checks.** A test that logs violations and passes regardless is not a test. Either assert
+the rule or delete the test. `tests/integration/us11-boundary-integrity.test.ts` currently does
+this and should be fixed rather than copied.
+
+**"Renders without crashing" as the only assertion.** Name what it should render.
+
+**A second test file for a unit that already has one.** The sidebar currently has five files and
+roughly 3,900 lines across two locations. Extend the existing file instead.
+
+### Mocks must resolve
+
+`vi.mock()` pointed at a path that no longer exists fails silently and the test still passes.
+Only the `@features/*`, `@shared/*` and `@tests/*` aliases exist; `@/` was removed and
+`src/pages/` no longer exists. Confirm the module is really there before mocking it.
+
+### Deleting tests
+
+Delete a test when it asserts a shape rather than a behaviour, duplicates an existing test,
+mocks the thing it claims to verify, or has needed updating more than once for reasons
+unrelated to a real defect. Removing such a test is a fix, not a regression -- say so plainly in
+the PR body.
+
+Do not delete a test because it is failing. A failing test is either a real defect or a wrong
+assertion, and you must state which before touching it.
+
+### Before calling test work done
+
+Walk this list and say which entries applied:
+
+1. Does a test already exist for this unit? Extend it rather than adding a file.
+2. Is every `vi.mock()` path resolvable?
+3. Does each new test actually fail when you break the behaviour it names? Verify by breaking it.
+4. Is the test in the correct location from the table above?
+5. Does `bun run test:run` still finish in under 30 seconds?
+
+These are good defaults, not hard rules. A developer's explicit instruction overrides anything
+in this section.
 
 ## How to Add a New Feature Module
 
@@ -173,7 +286,8 @@ Each feature has `__contracts__/` with three test types:
 3. **Create `types.ts`**: Define shared type definitions for the module
 4. **Create page/hook/component files** in `components/`, `hooks/` subdirectories
 5. **Create `index.ts` barrel**: Re-export public API with JSDoc on every export
-6. **Create `__contracts__/`** with shape + behavioral + no-bypass tests
+6. **Create `__contracts__/`** with shape + behavioural + no-bypass tests, following the
+   [Testing Policy](#testing-policy). Keep them thin and assert named exports, never counts
 7. **Add lazy route** in `AppRouter.tsx` using `React.lazy()` pattern:
    ```typescript
    const MyFeaturePage = React.lazy(() => import('@features/MyFeature').then(m => ({ default: m.MyFeaturePage })))
@@ -204,8 +318,14 @@ Each feature has `__contracts__/` with three test types:
 
 1. **File Selection**: Multi-select files via Tauri dialog (through `@features/BuildProject` api.ts)
 2. **Camera Assignment**: Validate and assign camera numbers to footage
-3. **Project Creation**: Generate folder structure + Adobe Premiere integration (XState machine)
-4. **Progress Tracking**: Real-time progress during file operations
+3. **Project Creation**: Generate folder structure + Adobe Premiere integration, orchestrated by
+   the XState machine in `BuildProject/machine/buildProjectMachine.ts` over the stage functions
+   in `BuildProject/stages/`
+4. **Progress Tracking**: Real-time progress during file operations, via the throttled
+   `transfer_files_with_progress` command and its `file-transfer-*` events
+
+The page composes the machine through `useBuildProject`; the machine and stages reach Tauri
+only through `BuildProject/api.ts`.
 
 ### Baker Workflow
 
@@ -213,6 +333,25 @@ Each feature has `__contracts__/` with three test types:
 2. **Structure Validation**: Identify BuildProject-compatible folders (Footage/, Graphics/, Renders/, Projects/, Scripts/)
 3. **Breadcrumbs Management**: Update existing or create missing breadcrumbs.json files
 4. **Batch Operations**: Apply changes to multiple project folders with progress tracking
+
+### Kavanagh QC Workflow
+
+Video quality control for rendered exports, checking two properties via ffmpeg:
+
+1. **Watermark Presence**: Detect whether the branded watermark is present throughout the
+   render (excluding the closing dip to white), which corner it occupies, and whether it
+   shifts mid-video. Reference images come from a configured pool folder.
+2. **Closing Sting Validation**: Measure the dip-to-white ramp, the sting duration, and
+   whether the sting matches a known reference. Reports problems like a missing peak,
+   a ramp that is too short or too long, or trailing content after the sting.
+3. **Evidence Export**: Failure thumbnails are held in memory and written to disk only when
+   the operator asks, keeping the run non-destructive by default.
+
+The page composes the workflow through `useKavanaghCheck`; all Tauri calls go through
+`Kavanagh/api.ts`, which wraps four backend commands (`kavanagh_detect_ffmpeg`,
+`kavanagh_run_check`, `kavanagh_cancel_run`, `kavanagh_save_evidence`). Settings exposes
+the ffmpeg directory and reference pool configuration; Upload integrates Kavanagh as an
+optional post-upload QC step via `useKavanaghForUpload`.
 
 ### External Integrations
 
@@ -225,6 +364,11 @@ Each feature has `__contracts__/` with three test types:
 - **Main Branch**: `master` (use for PRs)
 - **Package Manager**: Bun (used for all development and CI, replaces npm entirely)
 - **Platform**: Cross-platform desktop app, primary development on macOS
-- **Security**: Uses argon2 for password hashing, JWT for auth, Tauri stronghold for secure storage
+- **Security**: The app has **no authentication**. It is a single-user local desktop tool, there is
+  no login, no user account and no password anywhere in the codebase. Third-party credentials
+  (Sprout, Trello, AI providers) are stored **unencrypted** in `api_keys.json` in the app data
+  directory, protected only by the OS file permissions of the user's account. Do not assume
+  hashing, token signing or an encrypted keystore exists -- none does. Anything that needs one has
+  to add it.
 - **Themes**: 13 themes available (System, Light, Dark, Dracula, Tokyo Night, Catppuccin variants, Solarized Light, GitHub Light, Nord Light, One Light) via `@shared/ui/theme/`
 - **Window**: Native macOS title bar with traffic lights, vibrancy effects, window state persistence

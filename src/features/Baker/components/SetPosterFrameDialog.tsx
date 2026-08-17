@@ -11,6 +11,8 @@
 import { AlertCircle, Image as ImageIcon, Loader2 } from 'lucide-react'
 import type { RefObject } from 'react'
 
+import type { PosterframeTemplateId } from '@features/Upload'
+
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
 import { Checkbox } from '@shared/ui/checkbox'
@@ -39,6 +41,15 @@ export interface SetPosterFramePanelState {
   backgrounds: string[]
   selectedBackground: string | null
   onBackgroundChange: (path: string) => void
+  /**
+   * Which branding template lays the frame out (issue #189, amended). The
+   * value is the shared last-used choice; changing it here changes it for
+   * every surface, same as the other selectors.
+   */
+  template: PosterframeTemplateId
+  onTemplateChange: (template: PosterframeTemplateId) => void
+  /** The previewed background deviates from 16:9, so text may sit oddly. */
+  offAspect: boolean
   text: string
   onTextChange: (text: string) => void
   previewImageUrl: string | null
@@ -109,6 +120,25 @@ export function SetPosterFrameDialog({
           ) : (
             <>
               <div className="space-y-2">
+                <Label htmlFor="card-poster-frame-template">Template</Label>
+                <Select
+                  value={posterFrame.template}
+                  onValueChange={(value) =>
+                    posterFrame.onTemplateChange(value as PosterframeTemplateId)
+                  }
+                  disabled={working}
+                >
+                  <SelectTrigger id="card-poster-frame-template" className="w-full">
+                    <SelectValue placeholder="Select a template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="classic">Classic</SelectItem>
+                    <SelectItem value="rebrand">Rebrand</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="card-poster-frame-background">Background</Label>
                 <Select
                   value={posterFrame.selectedBackground ?? ''}
@@ -158,6 +188,15 @@ export function SetPosterFrameDialog({
                     className="aspect-video w-full"
                   />
                 </div>
+              )}
+
+              {/* A warning, not a block: the layout scales by height and still
+                  renders, but the design assumes 16:9 (issue #189 B4.2). */}
+              {posterFrame.offAspect && (
+                <p role="alert" className="text-warning text-xs">
+                  This background is not 16:9, so the title text may sit oddly on the
+                  final thumbnail.
+                </p>
               )}
 
               <div className="flex items-start gap-2">

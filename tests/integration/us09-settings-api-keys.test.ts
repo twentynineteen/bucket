@@ -130,7 +130,10 @@ describe('US-09 — Settings: AI Provider Management', () => {
     )
     vi.mocked(getDefaultConfig).mockImplementation((id: string) => ({
       apiKey: '',
-      serviceUrl: id === 'ollama' ? 'http://localhost:11434' : undefined,
+      // '' rather than undefined: the real getDefaultConfig returns
+      // `defaults.serviceUrl || ''`, and isProviderConfigured reads
+      // `config.serviceUrl.length` on the result (#210).
+      serviceUrl: id === 'ollama' ? 'http://localhost:11434' : '',
       connectionStatus: 'not-configured'
     }))
     vi.mocked(validateAIConnection).mockResolvedValue({
@@ -291,6 +294,7 @@ describe('US-09 — Settings: AI Provider Management', () => {
 
     await act(async () => {
       validationResult = await result.current.validateProvider('nonexistent', {
+        serviceUrl: '',
         apiKey: 'some-key',
         connectionStatus: 'not-configured'
       })

@@ -1,21 +1,28 @@
 /**
  * BuildProject API Layer
  *
- * Single I/O boundary wrapping the external calls still consumed by the
- * BuildProject page and its remaining helper hooks. The file-transfer
- * pipeline now lives in `@features/build-project` (see
- * `src/features/build-project/stages/fileTransfer.ts`), which calls the
- * throttled `transfer_files_with_progress` Tauri command directly — the
- * legacy `move_files` + `copy_*` event wrappers were removed alongside the
- * Rust command in Phase 5.
+ * Single I/O boundary for the whole feature: the page, its helper hooks, the
+ * XState machine in `machine/`, and the stage functions in `stages/` all reach
+ * Tauri exclusively through these wrappers. Nothing else in the module may
+ * import `@tauri-apps` — `src/shared/lib/__contracts__/feature-api-boundary.contract.test.ts`
+ * enforces that for every feature module, this one included (#208).
  *
- * All hooks and components in this module must use these wrappers instead of
- * direct plugin imports (invoke, dialog, fs).
+ * The throttled `transfer_files_with_progress` command replaced the legacy
+ * un-throttled move command and its copy-progress events, all deleted alongside
+ * the Rust command in Phase 5. Do not reintroduce wrappers for them - the
+ * contract test names them and fails if they reappear anywhere in the module.
  */
 
 import { invoke } from '@tauri-apps/api/core'
 import { confirm, open } from '@tauri-apps/plugin-dialog'
-import { exists, mkdir, writeTextFile } from '@tauri-apps/plugin-fs'
+import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
+import { listen } from '@tauri-apps/api/event'
+
+import type {
+  FileTransferProgress,
+  TransferCompleteEvent,
+  TransferRequest
+} from './types'
 
 // --- Tauri Commands ---
 
@@ -36,6 +43,39 @@ export async function showConfirmationDialog(
   destination: string
 ): Promise<void> {
   return invoke('show_confirmation_dialog', { message, title, destination })
+}
+
+/**
+ * Starts a throttled, cancellable file transfer in the Rust backend.
+ * Resolves with the operation id used to correlate progress and completion
+ * events, not with the transfer result — the caller awaits the events.
+ */
+export async function transferFilesWithProgress(
+  request: TransferRequest
+): Promise<string> {
+  return invoke<string>('transfer_files_with_progress', { request })
+}
+
+/**
+ * Signals cancellation of an in-flight transfer.
+ * Resolves false when the backend has no such operation.
+ */
+export async function cancelFileTransfer(operationId: string): Promise<boolean> {
+  return invoke<boolean>('cancel_file_transfer', { operationId })
+}
+
+// --- Event Listeners ---
+
+export async function listenFileTransferProgress(
+  callback: (event: { payload: FileTransferProgress }) => void
+): Promise<() => void> {
+  return listen<FileTransferProgress>('file-transfer-progress', callback)
+}
+
+export async function listenFileTransferComplete(
+  callback: (event: { payload: TransferCompleteEvent }) => void
+): Promise<() => void> {
+  return listen<TransferCompleteEvent>('file-transfer-complete', callback)
 }
 
 // --- Dialog ---
@@ -78,4 +118,11 @@ export async function writeTextFileContents(
   content: string
 ): Promise<void> {
   return writeTextFile(path, content)
+}
+
+export async function removePath(
+  path: string,
+  options?: { recursive?: boolean }
+): Promise<void> {
+  return remove(path, options)
 }

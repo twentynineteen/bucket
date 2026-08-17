@@ -47,13 +47,24 @@ jobs:
           # Get the latest tag
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-          # Generate changelog
+          # Pure version-bump commits tell a user nothing, so drop them. This
+          # matches only subjects that are *entirely* a bump; anything carrying
+          # extra content (e.g. "bump version to 0.8.0 and update dependencies")
+          # is kept, because that part is a real change.
+          BUMP_ONLY='^- ([a-z]+(\([^)]*\))?: )?(bump|update) version to v?[0-9]+\.[0-9]+\.[0-9]+( in [a-z0-9_., /-]+| across all relevant files| and update changelog)? \([0-9a-f]+\)$'
+
           if [ -z "$LATEST_TAG" ]; then
-            # First release - get all commits
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+            RANGE=""                      # First release - get all commits
           else
-            # Get commits since last tag
-            CHANGELOG=$(git log ${LATEST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            RANGE="${LATEST_TAG}..HEAD"   # Commits since last tag
+          fi
+
+          # `|| true` guards the case where every commit is filtered out: grep
+          # exits 1 on no matches, and a run step's default shell is `bash -e`.
+          CHANGELOG=$(git log ${RANGE} --pretty=format:"- %s (%h)" --no-merges | grep -ivE "$BUMP_ONLY" || true)
+
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- No user-facing changes since ${LATEST_TAG:-the start of the project}."
           fi
 
           # Create release body

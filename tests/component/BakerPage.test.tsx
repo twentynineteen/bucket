@@ -19,8 +19,10 @@ vi.mock('../../src/features/Baker/hooks/useBakerScan', () => ({
     scanResult: null,
     isScanning: false,
     error: null,
+    scanStartTime: null,
     startScan: vi.fn(),
     cancelScan: vi.fn(),
+    refreshProject: vi.fn(),
     clearResults: vi.fn()
   }))
 }))
@@ -145,8 +147,10 @@ describe('BakerPage Component', () => {
         scanResult: null,
         isScanning: true,
         error: null,
+        scanStartTime: Date.now(),
         startScan: vi.fn(),
         cancelScan: vi.fn(),
+        refreshProject: vi.fn(),
         clearResults: vi.fn()
       })
 
@@ -159,8 +163,10 @@ describe('BakerPage Component', () => {
         scanResult: null,
         isScanning: false,
         error: 'Failed to scan folder',
+        scanStartTime: null,
         startScan: vi.fn(),
         cancelScan: vi.fn(),
+        refreshProject: vi.fn(),
         clearResults: vi.fn()
       })
 
@@ -209,8 +215,10 @@ describe('BakerPage Component', () => {
         },
         isScanning: false,
         error: null,
+        scanStartTime: null,
         startScan: vi.fn(),
         cancelScan: vi.fn(),
+        refreshProject: vi.fn(),
         clearResults: vi.fn()
       })
 
@@ -248,8 +256,10 @@ describe('BakerPage Component', () => {
         },
         isScanning: false,
         error: null,
+        scanStartTime: null,
         startScan: vi.fn(),
         cancelScan: vi.fn(),
+        refreshProject: vi.fn(),
         clearResults: vi.fn()
       })
 

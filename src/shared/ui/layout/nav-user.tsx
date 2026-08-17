@@ -15,11 +15,11 @@ import {
 } from '@shared/ui/sidebar/SidebarMenu'
 import { useSidebar } from '@shared/ui/use-sidebar'
 import { CACHE } from '@shared/constants'
+import { appVersionQueryOptions } from '@shared/lib/app-version-query'
 import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { core } from '@tauri-apps/api'
-import { getVersion } from '@tauri-apps/api/app'
-import { ChevronsUpDown, LogOut } from 'lucide-react'
+import { ChevronsUpDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 type Props = {
@@ -27,50 +27,32 @@ type Props = {
     name: string
     avatar: string
   }
-  onLogout: () => void
   onUpdateClicked: () => void
   // isLoading: boolean
 }
 
-export function NavUser({ user, onLogout, onUpdateClicked }: Props) {
+export function NavUser({ user, onUpdateClicked }: Props) {
   const { isMobile } = useSidebar()
 
   // Use React Query for app version fetching
-  const { data: version } = useQuery({
-    ...createQueryOptions(
-      queryKeys.user.profile(),
-      async () => {
-        try {
-          return await getVersion()
-        } catch (error) {
-          throw createQueryError(`Failed to get app version: ${error}`, 'SYSTEM_INFO')
-        }
-      },
-      'STATIC',
-      {
-        staleTime: CACHE.MEDIUM, // 10 minutes - version doesn't change often
-        gcTime: CACHE.GC_EXTENDED, // Keep cached for 30 minutes
-        retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
-      }
-    )
-  })
+  const { data: version } = useQuery(appVersionQueryOptions())
 
   // Use React Query for username fetching
   const { data: username } = useQuery({
     ...createQueryOptions(
-      queryKeys.user.authentication(),
+      queryKeys.os.username(),
       async () => {
         try {
           return await core.invoke<string>('get_username')
         } catch (error) {
-          throw createQueryError(`Failed to fetch username: ${error}`, 'AUTHENTICATION')
+          throw createQueryError(`Failed to fetch username: ${error}`, 'system')
         }
       },
       'STATIC',
       {
         staleTime: CACHE.STANDARD, // 5 minutes - username rarely changes
         gcTime: CACHE.GC_LONG, // Keep cached for 15 minutes
-        retry: (failureCount, error) => shouldRetry(error, failureCount, 'auth')
+        retry: (failureCount, error) => shouldRetry(error, failureCount, 'system')
       }
     )
   })
@@ -138,13 +120,6 @@ export function NavUser({ user, onLogout, onUpdateClicked }: Props) {
                 </div>
               </DropdownMenuItem>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOut />
-              <Link to="#" onClick={onLogout}>
-                Log out
-              </Link>
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

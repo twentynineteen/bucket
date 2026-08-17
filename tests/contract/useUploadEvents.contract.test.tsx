@@ -192,9 +192,9 @@ describe('useUploadEvents Contract Tests', () => {
       queryClient.setQueryData(queryKey, { events: [] })
 
       // Simulate component unmount - events should stop updating
-      queryClient.removeQueries(queryKey)
+      queryClient.removeQueries({ queryKey })
 
-      const foundQuery = queryClient.getQueryCache().find(queryKey)
+      const foundQuery = queryClient.getQueryCache().find({ queryKey })
       expect(foundQuery).toBeUndefined()
     })
   })
@@ -270,9 +270,9 @@ describe('useUploadEvents Contract Tests', () => {
 
       // Simulate error using the working pattern
       const queryCache = queryClient.getQueryCache()
-      const query = queryCache.build(queryClient, {
+      const query = queryCache.build<unknown, Error>(queryClient, {
         queryKey,
-        queryFn: () => Promise.reject(setupError)
+        queryFn: (): Promise<unknown> => Promise.reject(setupError)
       })
 
       query.setData(undefined)
@@ -288,11 +288,10 @@ describe('useUploadEvents Contract Tests', () => {
         fetchFailureReason: setupError,
         fetchMeta: null,
         isInvalidated: false,
-        isPaused: false,
         fetchStatus: 'idle'
       })
 
-      const foundQuery = queryClient.getQueryCache().find(queryKey)
+      const foundQuery = queryClient.getQueryCache().find({ queryKey })
       expect(foundQuery?.state.status).toBe('error')
       expect(foundQuery?.state.error?.message).toBe('Failed to setup event listeners')
     })
@@ -327,7 +326,7 @@ describe('useUploadEvents Contract Tests', () => {
       const queryKey = queryKeys.upload.events()
       queryClient.setQueryData(queryKey, { events: [] })
 
-      const foundQuery = queryClient.getQueryCache().find(queryKey)
+      const foundQuery = queryClient.getQueryCache().find({ queryKey })
       expect(foundQuery?.state.data).toBeDefined()
     })
 

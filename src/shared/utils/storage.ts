@@ -1,7 +1,7 @@
 import { appStore } from '@shared/store'
-import { appDataDir } from '@tauri-apps/api/path'
 import { exists, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 
+import { removeMisplacedResidue, resolveAppDataFile } from './appDataPath'
 import { logger } from './logger'
 
 const setSproutVideoApiKey = (state: string) =>
@@ -19,34 +19,64 @@ export interface ApiKeys {
   trelloBoardId?: string // DEBT-014: Configurable Trello board ID
   // Add more services as needed.
   defaultBackgroundFolder?: string
+  /** Backgrounds for the Rebrand posterframe template (issue #189). The
+   * pre-existing defaultBackgroundFolder key serves the Classic template. */
+  rebrandBackgroundFolder?: string
   /** Default Sprout upload folder id (issue #155). Undefined means root. */
   sproutDefaultFolderId?: string
   /** Human-readable label for the default folder, so the UI can render it
    *  before the folder tree loads. */
   sproutDefaultFolderName?: string
   ollamaUrl?: string
+  /** Folder holding the QC reference pools, with `watermarks/` and `stings/`
+   *  subfolders (issue #180). Undefined means QC has nothing to compare against. */
+  kavanaghReferenceFolder?: string
+  /** Directory holding ffmpeg and ffprobe, when they are not in a standard
+   *  location (issue #180). Undefined searches /opt/homebrew/bin, /usr/local/bin
+   *  and /usr/bin. */
+  ffmpegDirectory?: string
+  /** Advanced override for the QC watermark match confidence (issue #180, D18).
+   *  Undefined uses the calibrated default in `@shared/constants`; a run under an
+   *  override says so in its report. */
+  kavanaghMatchThreshold?: number
 }
 
 const API_KEYS_FILE = 'api_keys.json' // New file for storing API keys as JSON
 
-// default background folder state
-const setDefaultBackgroundFolder = (path: string) =>
-  appStore.getState().setDefaultBackgroundFolder(path)
+/** Superseded by api_keys.json and read by nothing; swept up on the way past
+ *  (issue #167). */
+const LEGACY_API_KEY_FILE = 'api_key.txt'
+
+// Background folder state. Normalised to null: a settings file written
+// before a key existed hydrates `undefined`, which any `!== null` check
+// reads as "configured" (issue #189, review round finding 1).
+const setDefaultBackgroundFolder = (path: string | undefined) =>
+  appStore.getState().setDefaultBackgroundFolder(path ?? null)
+const setRebrandBackgroundFolder = (path: string | undefined) =>
+  appStore.getState().setRebrandBackgroundFolder(path ?? null)
 
 // Get full path for storing API keys.
+//
+// Joined rather than concatenated, and any copy an earlier build left beside
+// the app data directory is relocated first (issue #167).
 const getFilePath = async () => {
-  const dir = await appDataDir()
-  return `${dir}${API_KEYS_FILE}`
+  const path = await resolveAppDataFile(API_KEYS_FILE)
+  await removeMisplacedResidue(LEGACY_API_KEY_FILE)
+  return path
 }
 
 // Save API keys to a local file as JSON.
 export const saveApiKeys = async (apiKeys: ApiKeys): Promise<void> => {
   try {
-    setSproutVideoApiKey(apiKeys.sproutVideo)
-    setTrelloApiKey(apiKeys.trello)
-    setTrelloApiToken(apiKeys.trelloToken)
+    // The store declares these three as `string` and starts them at ''. An
+    // ApiKeys with the key absent used to put `undefined` in a slot the store's
+    // own type promises is a string (#210).
+    setSproutVideoApiKey(apiKeys.sproutVideo ?? '')
+    setTrelloApiKey(apiKeys.trello ?? '')
+    setTrelloApiToken(apiKeys.trelloToken ?? '')
     if (apiKeys.trelloBoardId !== undefined) setTrelloBoardId(apiKeys.trelloBoardId)
     setDefaultBackgroundFolder(apiKeys.defaultBackgroundFolder)
+    setRebrandBackgroundFolder(apiKeys.rebrandBackgroundFolder)
     if (apiKeys.ollamaUrl) setOllamaUrl(apiKeys.ollamaUrl)
 
     const filePath = await getFilePath()
@@ -69,16 +99,23 @@ export const loadApiKeys = async (): Promise<ApiKeys> => {
     const data = await readTextFile(filePath)
     const result = JSON.parse(data)
 
-    setSproutVideoApiKey(result.sproutVideo)
-    setTrelloApiKey(result.trello)
-    setTrelloApiToken(result.trelloToken)
+    setSproutVideoApiKey(result.sproutVideo ?? '')
+    setTrelloApiKey(result.trello ?? '')
+    setTrelloApiToken(result.trelloToken ?? '')
     if (result.trelloBoardId !== undefined) setTrelloBoardId(result.trelloBoardId)
     setDefaultBackgroundFolder(result.defaultBackgroundFolder)
+    setRebrandBackgroundFolder(result.rebrandBackgroundFolder)
     if (result.ollamaUrl) setOllamaUrl(result.ollamaUrl)
 
     return result
   } catch (error) {
     logger.error('Error loading API keys:', error)
-    return {}
+    // Rethrow, mirroring saveApiKeys above. Returning {} turned a failure into a
+    // success: every settings section rendered as never-configured and the
+    // Posterframe page claimed no background folder was set, while the file on
+    // disk was merely unreadable rather than lost (issue #166 B8.1). A genuinely
+    // absent file still returns {} at the exists() check above, because a first
+    // run is not a failure.
+    throw error
   }
 }

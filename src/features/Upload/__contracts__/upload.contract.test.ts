@@ -10,11 +10,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { renderHook } from '@testing-library/react'
+import type { Mock } from 'vitest'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock the api layer (single mock point for all Upload I/O)
 vi.mock('../api', () => ({
-  uploadVideo: vi.fn().mockResolvedValue(undefined),
+  uploadVideo: vi.fn().mockResolvedValue('op-1'),
+  cancelUpload: vi.fn().mockResolvedValue(true),
   getVideoDuration: vi.fn().mockResolvedValue(90),
   getFolders: vi.fn().mockResolvedValue({ folders: [] }),
   fetchSproutVideoDetails: vi.fn().mockResolvedValue({}),
@@ -22,12 +24,16 @@ vi.mock('../api', () => ({
   listenUploadProgress: vi.fn().mockResolvedValue(() => {}),
   listenUploadComplete: vi.fn().mockResolvedValue(() => {}),
   listenUploadError: vi.fn().mockResolvedValue(() => {}),
+  listenUploadCancelled: vi.fn().mockResolvedValue(() => {}),
+  listenUploadStallWarning: vi.fn().mockResolvedValue(() => {}),
   openFileDialog: vi.fn().mockResolvedValue(null),
   openFolderDialog: vi.fn().mockResolvedValue(null),
   saveFile: vi.fn().mockResolvedValue(undefined),
   readFileAsBytes: vi.fn().mockResolvedValue(new Uint8Array()),
-  listDirectory: vi.fn().mockResolvedValue([]),
-  getFontDir: vi.fn().mockResolvedValue('/fonts'),
+  // Tagged result since issue #166: a bare array would be read as a missing
+  // `status` and misclassify inside the test rather than failing loudly.
+  listDirectory: vi.fn().mockResolvedValue({ status: 'ok', files: [] }),
+  posterFrameFontPath: vi.fn().mockResolvedValue('/fonts/Cabrito.otf'),
   fileExists: vi.fn().mockResolvedValue(false),
   posterFrameFontAvailable: vi.fn().mockResolvedValue(false),
   setSproutPosterFrame: vi.fn().mockResolvedValue(undefined),
@@ -60,7 +66,18 @@ vi.mock('@shared/utils/logger', () => ({
 vi.mock('@shared/lib/query-keys', () => ({
   queryKeys: {
     upload: {
-      events: () => ['upload', 'events']
+      events: () => ['upload', 'events'],
+      // Issue #166: useBackgroundFolder keys its listing on the folder, and
+      // reads the settings query's status to tell "not configured" from
+      // "settings unreadable".
+      backgroundFolder: (folderPath: string | null) => [
+        'upload',
+        'background-folder',
+        folderPath ?? 'none'
+      ]
+    },
+    settings: {
+      apiKeys: () => ['settings', 'api-keys']
     },
     images: {
       refresh: (id: string) => ['images', 'refresh', id],
@@ -113,7 +130,19 @@ const mockMutateAsync = vi.fn().mockResolvedValue(undefined)
 const mockSetQueryData = vi.fn()
 const mockRemoveQueries = vi.fn()
 
-const mockUseQuery = vi.fn(() => ({
+// The generic, rather than an unused parameter, is what lets the vi.mock
+// factory below forward its arguments: spreading into a mock whose call
+// signature takes none is a type error.
+const mockUseQuery = vi.fn<
+  (options?: unknown) => {
+    data: undefined
+    isLoading: boolean
+    error: null
+    refetch: Mock
+    isRefetching: boolean
+    dataUpdatedAt: number
+  }
+>(() => ({
   data: undefined,
   isLoading: false,
   error: null,
@@ -122,7 +151,15 @@ const mockUseQuery = vi.fn(() => ({
   dataUpdatedAt: 0
 }))
 
-const mockUseMutation = vi.fn(() => ({
+const mockUseMutation = vi.fn<
+  (options?: unknown) => {
+    mutate: Mock
+    mutateAsync: Mock
+    isPending: boolean
+    error: null
+    data: null
+  }
+>(() => ({
   mutate: mockMutate,
   mutateAsync: mockMutateAsync,
   isPending: false,
@@ -182,16 +219,21 @@ describe('Upload Barrel Exports - Shape', () => {
     'usePosterFrameForUpload',
     'useSproutFolders',
     'useSproutFolderSelection',
-    'useSproutFolderIndex'
+    'useSproutFolderIndex',
+    'useDefaultSproutFolder'
   ].sort()
 
-  it('exports exactly the expected named exports (no more, no fewer)', () => {
+  /**
+   * Presence, not exhaustiveness. What a caller relies on is that the names it
+   * imports are there with the right types; it cannot break because a name it
+   * has never heard of was added beside them. The exact-list and count forms
+   * that used to live here failed on every legitimate addition instead -- they
+   * blocked the one-line Settings fix in #169 and pushed #142 into not
+   * exporting a hook at all.
+   */
+  it('exports every documented named export', () => {
     const exportNames = Object.keys(uploadBarrel).sort()
-    expect(exportNames).toEqual(expectedExports)
-  })
-
-  it('exports exactly 18 members (5 components + 13 hooks)', () => {
-    expect(Object.keys(uploadBarrel)).toHaveLength(18)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedExports))
   })
 
   // Component shape checks
@@ -220,7 +262,11 @@ describe('Upload Barrel Exports - Shape', () => {
     'usePosterframeAutoRedraw',
     'useFileSelection',
     'useZoomPan',
-    'usePosterFrameForUpload'
+    'usePosterFrameForUpload',
+    'useSproutFolders',
+    'useSproutFolderSelection',
+    'useSproutFolderIndex',
+    'useDefaultSproutFolder'
   ] as const
 
   for (const name of hookNames) {
@@ -367,13 +413,18 @@ describe('usePosterFrameForUpload - Behavior', () => {
       'error',
       'run',
       'retry',
-      'reset'
+      'reset',
+      // Issue #189: the Classic/Rebrand template choice, consumed by Baker's
+      // AddVideoDialog through this interface.
+      'template',
+      'setTemplate'
     ]) {
       expect(result.current).toHaveProperty(key)
     }
     expect(typeof result.current.run).toBe('function')
     expect(typeof result.current.retry).toBe('function')
     expect(typeof result.current.reset).toBe('function')
+    expect(typeof result.current.setTemplate).toBe('function')
   })
 
   it('starts idle with the option unticked', () => {

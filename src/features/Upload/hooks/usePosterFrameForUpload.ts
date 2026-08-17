@@ -14,12 +14,11 @@ import { logger, titleToPosterFrameText } from '@shared/utils'
 
 import type { PosterFrameRunResult, PosterFrameStatus } from '../types'
 import {
-  POSTER_FRAME_RETRY_DELAYS_MS,
-  describePosterFrameError,
-  exportCanvasJpeg,
-  isTransientPosterFrameError,
+  POSTER_FRAME_MAX_BYTES,
+  exportCanvasJpegUnder,
   posterFrameDelay,
-  posterFrameFileStem
+  posterFrameFileStem,
+  sendPosterFrameWithRetry
 } from '../internal/posterFrame'
 import {
   fetchSproutVideoDetails,
@@ -31,6 +30,7 @@ import { useBackgroundFolder } from './useBackgroundFolder'
 import { useFileSelection } from './useFileSelection'
 import { usePosterframeAutoRedraw } from './usePosterframeAutoRedraw'
 import { usePosterframeCanvas } from './usePosterframeCanvas'
+import { usePosterframeTemplate } from './usePosterframeTemplate'
 
 const PREFS_KEY = 'posterframe-upload-preferences'
 
@@ -87,22 +87,36 @@ export function usePosterFrameForUpload({
 
   const text = ownText ?? titleToPosterFrameText(videoTitle)
 
-  const {
-    files: backgrounds,
-    currentFolder,
-    isLoading: backgroundsLoading
-  } = useBackgroundFolder()
-  const { selectedFilePath, selectedFileBlob, selectFile } = useFileSelection()
-  const { canvasRef, draw } = usePosterframeCanvas()
+  // The Classic/Rebrand choice, shared with the Posterframe page (#189).
+  const { template, setTemplate } = usePosterframeTemplate()
 
-  const { data: fontAvailable, isPending: fontCheckPending } = useQuery({
+  // The folder path itself is no longer needed here: the hook reports its own
+  // reason, already worded with the path in it (issue #166 B6.1).
+  const { files: backgrounds, reason: folderReason } = useBackgroundFolder(template)
+  const { selectedFilePath, selectedFileBlob, selectFile, clearSelection } =
+    useFileSelection()
+  const { canvasRef, draw, offAspect } = usePosterframeCanvas()
+
+  const {
+    data: fontAvailable,
+    isPending: fontCheckPending,
+    isError: fontCheckFailed
+  } = useQuery({
     queryKey: ['posterframe', 'font-available'],
     queryFn: posterFrameFontAvailable,
-    staleTime: Infinity
+    staleTime: Infinity,
+    // A missing font file is as deterministic as a missing folder, so retrying
+    // only delays the message (issue #166 B6.6).
+    retry: false
   })
 
-  // Keep the preview in step with the chosen background and text (B4.2).
-  usePosterframeAutoRedraw({ draw, imageUrl: selectedFileBlob, title: text })
+  // Keep the preview in step with the chosen background, text and template.
+  usePosterframeAutoRedraw({
+    draw,
+    imageUrl: selectedFileBlob,
+    title: text,
+    templateId: template
+  })
 
   // Default to the first background in the folder (B2.2).
   useEffect(() => {
@@ -111,21 +125,31 @@ export function usePosterFrameForUpload({
     }
   }, [backgrounds, selectedFilePath, selectFile])
 
-  // Configuration problems are reported before the font check, and neither is
-  // claimed while its check is still in flight (B1.3-B1.5).
-  const unavailableReason = !currentFolder
-    ? 'No default background folder configured. Set one in Settings.'
-    : backgroundsLoading
-      ? null
-      : backgrounds.length === 0
-        ? 'The background folder contains no image files.'
-        : fontCheckPending
-          ? null
-          : !fontAvailable
-            ? 'Poster frame text requires Cabrito.otf in ~/Library/Fonts.'
-            : null
+  // Never hold a selection the folder no longer offers, or the dialog reports
+  // itself unavailable while still carrying a background (issue #166 B4.1).
+  useEffect(() => {
+    if (selectedFilePath && !backgrounds.includes(selectedFilePath)) {
+      clearSelection()
+    }
+  }, [backgrounds, selectedFilePath, clearSelection])
 
-  const available = unavailableReason === null && fontAvailable === true
+  // The folder hook already reports its own state, including which of "not
+  // configured", "cannot read" and "no images" applies; deriving it again from
+  // truthiness here is what made a missing folder report as empty (#166 B6.1).
+  // Font problems are reported only once the folder is known to be fine, and
+  // neither is claimed while its own check is in flight.
+  const unavailableReason =
+    folderReason ??
+    (fontCheckFailed
+      ? 'Could not check whether the poster frame font is installed.'
+      : fontCheckPending
+        ? null
+        : !fontAvailable
+          ? 'Poster frame text requires Cabrito.otf in ~/Library/Fonts.'
+          : null)
+
+  const available =
+    unavailableReason === null && fontAvailable === true && backgrounds.length > 0
 
   const setEnabled = useCallback((enabled: boolean) => {
     setPreferences((current) => {
@@ -183,9 +207,11 @@ export function usePosterFrameForUpload({
       let bytes: Uint8Array
       try {
         // The preview redraw is debounced, so repaint before snapshotting to
-        // be certain the export matches what the user just typed.
-        await draw(selectedFileBlob, text)
-        bytes = await exportCanvasJpeg(canvas)
+        // be certain the export matches what the user just typed. The export
+        // compresses down to Sprout's limit and throws before any request is
+        // made if even the quality floor cannot fit it (#189 B5.2, B5.3).
+        await draw(selectedFileBlob, text, template)
+        bytes = await exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES)
       } catch (renderError) {
         const message =
           renderError instanceof Error
@@ -199,51 +225,43 @@ export function usePosterFrameForUpload({
 
       const fileStem = posterFrameFileStem(text)
 
-      for (let attempt = 0; attempt <= POSTER_FRAME_RETRY_DELAYS_MS.length; attempt++) {
+      // The retry policy itself lives in internal/posterFrame so this flow and
+      // the Posterframe page's upload action share one copy of it (#142).
+      const outcome = await sendPosterFrameWithRetry(
+        bytes,
+        (payload) => setSproutPosterFrame(videoId, apiKey, payload, `${fileStem}.jpg`),
+        posterFrameDelay
+      )
+
+      if (!outcome.ok) {
+        logger.error('Poster frame upload failed:', outcome.error)
+        setStatus('error')
+        setError(outcome.error)
+        return { ok: false, posterFrameUrl: null, error: outcome.error }
+      }
+
+      // A failed local copy must not sink an accepted poster frame (B7.5).
+      if (preferences.saveCopy) {
         try {
-          await setSproutPosterFrame(videoId, apiKey, bytes, `${fileStem}.jpg`)
-
-          // A failed local copy must not sink an accepted poster frame (B7.5).
-          if (preferences.saveCopy) {
-            try {
-              await savePosterFrameCopy(projectPath, fileStem, bytes)
-            } catch (copyError) {
-              logger.warn('Could not save the local poster frame copy:', copyError)
-            }
-          }
-
-          let posterFrameUrl: string | null = null
-          try {
-            const details = await fetchSproutVideoDetails(videoId, apiKey)
-            posterFrameUrl = details.assets?.poster_frames?.[0] || null
-          } catch (detailsError) {
-            logger.warn('Could not re-read the Sprout poster frame URL:', detailsError)
-          }
-
-          setStatus('success')
-          setError(null)
-          return { ok: true, posterFrameUrl, error: null }
-        } catch (requestError) {
-          const message = describePosterFrameError(requestError, bytes.byteLength)
-          const canRetry =
-            isTransientPosterFrameError(requestError) &&
-            attempt < POSTER_FRAME_RETRY_DELAYS_MS.length
-
-          if (!canRetry) {
-            logger.error('Poster frame upload failed:', requestError)
-            setStatus('error')
-            setError(message)
-            return { ok: false, posterFrameUrl: null, error: message }
-          }
-
-          await posterFrameDelay(POSTER_FRAME_RETRY_DELAYS_MS[attempt])
+          await savePosterFrameCopy(projectPath, fileStem, bytes)
+        } catch (copyError) {
+          logger.warn('Could not save the local poster frame copy:', copyError)
         }
       }
 
-      // Unreachable: the loop either returns or exhausts its retries above.
-      return { ok: false, posterFrameUrl: null, error: 'Poster frame upload failed' }
+      let posterFrameUrl: string | null = null
+      try {
+        const details = await fetchSproutVideoDetails(videoId, apiKey)
+        posterFrameUrl = details.assets?.poster_frames?.[0] || null
+      } catch (detailsError) {
+        logger.warn('Could not re-read the Sprout poster frame URL:', detailsError)
+      }
+
+      setStatus('success')
+      setError(null)
+      return { ok: true, posterFrameUrl, error: null }
     },
-    [canvasRef, draw, preferences.saveCopy, projectPath, selectedFileBlob, text]
+    [canvasRef, draw, preferences.saveCopy, projectPath, selectedFileBlob, template, text]
   )
 
   const retry = useCallback(async (): Promise<PosterFrameRunResult> => {
@@ -262,6 +280,9 @@ export function usePosterFrameForUpload({
     backgrounds,
     selectedBackground: selectedFilePath,
     setSelectedBackground,
+    template,
+    setTemplate,
+    offAspect,
     text,
     setText,
     previewImageUrl: selectedFileBlob,

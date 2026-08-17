@@ -47,59 +47,6 @@ pub struct FileTransferError {
 }
 
 impl FileTransferError {
-    /// Create a new FileTransferError with all fields
-    pub fn new(kind: ErrorKind, message: impl Into<String>) -> Self {
-        let recoverable = matches!(kind, ErrorKind::Timeout | ErrorKind::Io);
-        Self {
-            kind,
-            message: message.into(),
-            file_path: None,
-            recoverable,
-        }
-    }
-
-    /// Create a new FileTransferError with a file path
-    pub fn with_path(mut self, path: impl Into<String>) -> Self {
-        self.file_path = Some(path.into());
-        self
-    }
-
-    /// Set the recoverable flag
-    pub fn with_recoverable(mut self, recoverable: bool) -> Self {
-        self.recoverable = recoverable;
-        self
-    }
-
-    /// Create an error for cancelled operations
-    pub fn cancelled() -> Self {
-        Self {
-            kind: ErrorKind::Cancelled,
-            message: "Operation was cancelled by user".to_string(),
-            file_path: None,
-            recoverable: false,
-        }
-    }
-
-    /// Create an error for timeout operations
-    pub fn timeout(file: &str) -> Self {
-        Self {
-            kind: ErrorKind::Timeout,
-            message: format!("Operation timed out while processing file: {}", file),
-            file_path: Some(file.to_string()),
-            recoverable: true,
-        }
-    }
-
-    /// Create an error for permission denied
-    pub fn permission(file: &str) -> Self {
-        Self {
-            kind: ErrorKind::Permission,
-            message: format!("Permission denied accessing file: {}", file),
-            file_path: Some(file.to_string()),
-            recoverable: false,
-        }
-    }
-
     /// Create an error for validation failures
     pub fn validation(msg: &str) -> Self {
         Self {
@@ -110,7 +57,53 @@ impl FileTransferError {
         }
     }
 
+    // ===== Retained but not yet called - see issue #172 =====
+    //
+    // `validation` above is the only constructor the app reaches today, because
+    // `FileTransferError` only ever leaves the backend as the synchronous
+    // rejection of `transfer_files_with_progress`, where the sole failures
+    // possible are the request validation checks in `commands.rs`.
+    //
+    // Every failure discovered after the transfer task is spawned is emitted as
+    // `TransferComplete { error: Some(String) }` instead, and the frontend
+    // recovers the category by substring-matching that message in
+    // `mapTransferError` (`src/features/build-project/stages/fileTransfer.ts`).
+    // That works today but is fragile: it depends on the wording of OS error
+    // text, and the macOS copy path discards a preserved `errno`
+    // (`CopyError::Io(e).raw_os_error()`) into an interpolated string.
+    //
+    // The three constructors below are the ones that would classify failures the
+    // transfer path either already detects (permission, I/O) or documents but
+    // does not implement (the "stall detection" claimed by the doc comment on
+    // `transfer_files_with_progress`, which lives only in the frontend). They are
+    // kept rather than deleted so that making the completion event structured
+    // stays a deliberate decision instead of a rediscovery. Deleting this block
+    // is a safe alternative if that decision goes the other way.
+
+    /// Create an error for timeout operations
+    #[allow(dead_code)]
+    pub fn timeout(file: &str) -> Self {
+        Self {
+            kind: ErrorKind::Timeout,
+            message: format!("Operation timed out while processing file: {}", file),
+            file_path: Some(file.to_string()),
+            recoverable: true,
+        }
+    }
+
+    /// Create an error for permission denied
+    #[allow(dead_code)]
+    pub fn permission(file: &str) -> Self {
+        Self {
+            kind: ErrorKind::Permission,
+            message: format!("Permission denied accessing file: {}", file),
+            file_path: Some(file.to_string()),
+            recoverable: false,
+        }
+    }
+
     /// Create an IO error with file path
+    #[allow(dead_code)]
     pub fn io(msg: impl Into<String>, file: &str) -> Self {
         Self {
             kind: ErrorKind::Io,
@@ -159,14 +152,6 @@ impl From<io::Error> for FileTransferError {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_cancelled_error() {
-        let error = FileTransferError::cancelled();
-        assert!(matches!(error.kind, ErrorKind::Cancelled));
-        assert!(!error.recoverable);
-        assert!(error.file_path.is_none());
-    }
 
     #[test]
     fn test_timeout_error() {
@@ -229,17 +214,6 @@ mod tests {
     }
 
     #[test]
-    fn test_builder_pattern() {
-        let error = FileTransferError::new(ErrorKind::Io, "Read failed")
-            .with_path("/data/video.mp4")
-            .with_recoverable(false);
-
-        assert!(matches!(error.kind, ErrorKind::Io));
-        assert_eq!(error.file_path, Some("/data/video.mp4".to_string()));
-        assert!(!error.recoverable);
-    }
-
-    #[test]
     fn test_serialization() {
         let error = FileTransferError::timeout("/path/to/file.mov");
         let json = serde_json::to_string(&error).expect("Serialization failed");
@@ -275,29 +249,6 @@ mod tests {
 
         assert!(matches!(error.kind, ErrorKind::Io));
         assert!(error.recoverable); // WouldBlock is recoverable
-    }
-
-    #[test]
-    fn test_recoverable_field_for_different_kinds() {
-        // Timeout and IO are recoverable
-        let timeout_err = FileTransferError::new(ErrorKind::Timeout, "timeout");
-        assert!(timeout_err.recoverable);
-
-        let io_err = FileTransferError::new(ErrorKind::Io, "io error");
-        assert!(io_err.recoverable);
-
-        // Validation, Permission, Cancelled, Unknown are not recoverable
-        let validation_err = FileTransferError::new(ErrorKind::Validation, "invalid");
-        assert!(!validation_err.recoverable);
-
-        let permission_err = FileTransferError::new(ErrorKind::Permission, "denied");
-        assert!(!permission_err.recoverable);
-
-        let cancelled_err = FileTransferError::new(ErrorKind::Cancelled, "cancelled");
-        assert!(!cancelled_err.recoverable);
-
-        let unknown_err = FileTransferError::new(ErrorKind::Unknown, "unknown");
-        assert!(!unknown_err.recoverable);
     }
 
     #[test]

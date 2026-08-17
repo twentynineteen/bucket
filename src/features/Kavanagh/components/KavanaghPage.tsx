@@ -1,0 +1,556 @@
+/**
+ * Kavanagh page (issue #180, stages 1-3)
+ *
+ * Pick a render, run it, watch the phases, read the report. One run covers both
+ * checks - the watermark throughout, and the closing dip to white into an
+ * approved sting - reduced to a single verdict (B7).
+ *
+ * The report leads with that verdict and the sentences behind it, then shows
+ * each check's own measurements underneath. Both halves are always rendered,
+ * whichever one decided the verdict: an operator should learn everything wrong
+ * with a render in one run rather than fixing one fault to discover the next.
+ *
+ * Failure thumbnails are held in memory and nothing is written to disk unless
+ * the operator uses "Save evidence…" (D15).
+ */
+
+import { useApiKeys, useBreadcrumb } from '@shared/hooks'
+import { Button } from '@shared/ui/button'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { logger } from '@shared/utils'
+import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import React from 'react'
+import { toast } from 'sonner'
+
+import { pickEvidenceFolder, pickVideoFile, saveKavanaghEvidence } from '../api'
+import { useKavanaghAvailability } from '../hooks/useKavanaghAvailability'
+import { useKavanaghCheck } from '../hooks/useKavanaghCheck'
+import { asKavanaghError } from '../internal/kavanaghError'
+import { REFERENCE_POOLS, type ReferencePoolStatus } from '../internal/referencePool'
+import {
+  bytesToBase64,
+  cornerLabel,
+  evidencePrefix,
+  formatTime,
+  phaseLabel
+} from '../internal/reportFormatting'
+import type {
+  KavanaghCheckReport,
+  KavanaghError,
+  KavanaghProgressEvent,
+  KavanaghStingReport,
+  KavanaghTailAnalysis,
+  KavanaghThumbnail,
+  KavanaghWatermarkReport
+} from '../types'
+
+const KavanaghContent: React.FC = () => {
+  useBreadcrumb([
+    { label: 'Upload content', href: '/upload/sprout' },
+    { label: 'Kavanagh' }
+  ])
+
+  const { available, reason, pending, pools, poolFiles } = useKavanaghAvailability()
+  const { data: settings } = useApiKeys()
+  const { isRunning, progress, report, error, run, cancel, reset } = useKavanaghCheck()
+
+  const [videoPath, setVideoPath] = React.useState<string | null>(null)
+
+  const chooseVideo = async () => {
+    const chosen = await pickVideoFile()
+    if (!chosen) return
+    setVideoPath(chosen)
+    // A new file makes the previous report meaningless, and leaving it on screen
+    // beside a different filename is how someone signs off the wrong render.
+    reset()
+  }
+
+  const start = () => {
+    if (!videoPath) return
+    void run({
+      videoPath,
+      referenceFiles: poolFiles.watermarks,
+      stingReferenceFiles: poolFiles.stings,
+      ffmpegDirectory: settings?.ffmpegDirectory ?? null,
+      matchThreshold: settings?.kavanaghMatchThreshold
+    })
+  }
+
+  return (
+    <div className="h-full w-full overflow-x-hidden overflow-y-auto">
+      <div className="w-full max-w-full pb-4">
+        <div className="border-border bg-card/50 border-b px-6 py-4">
+          <h1 className="text-foreground text-2xl font-bold">Kavanagh</h1>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            Check that a render carries its watermark throughout, and closes with a dip to
+            white into an approved logo sting.
+          </p>
+        </div>
+
+        <div className="space-y-6 px-6 py-6">
+          <PrerequisitesSection
+            pending={pending}
+            available={available}
+            reason={reason}
+            pools={pools}
+          />
+
+          <section aria-labelledby="kavanagh-render" className="space-y-3">
+            <h2 id="kavanagh-render" className="text-foreground text-sm font-semibold">
+              Render to check
+            </h2>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={chooseVideo} disabled={isRunning} variant="outline">
+                Choose video…
+              </Button>
+              <Button onClick={start} disabled={!available || !videoPath || isRunning}>
+                Run quality control
+              </Button>
+              {isRunning && (
+                <Button onClick={() => void cancel()} variant="outline">
+                  Cancel
+                </Button>
+              )}
+            </div>
+
+            {videoPath ? (
+              <p className="text-muted-foreground text-xs break-all">{videoPath}</p>
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                No render chosen yet. ffmpeg decides what it can decode, so any format it
+                supports is accepted.
+              </p>
+            )}
+
+            {isRunning && <RunProgress progress={progress} />}
+            {error && <RunFailure error={error} />}
+          </section>
+
+          {report && <CheckReportView report={report} videoPath={videoPath} />}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** ffmpeg and both reference pools, and what to do when one is missing. */
+const PrerequisitesSection: React.FC<{
+  pending: boolean
+  available: boolean
+  reason: string | null
+  pools: Record<
+    'watermarks' | 'stings',
+    { status: ReferencePoolStatus; reason: string | null }
+  >
+}> = ({ pending, available, reason, pools }) => (
+  <section aria-labelledby="kavanagh-prerequisites">
+    <h2
+      id="kavanagh-prerequisites"
+      className="text-foreground mb-3 text-sm font-semibold"
+    >
+      Prerequisites
+    </h2>
+
+    {pending ? (
+      <p role="status" className="text-muted-foreground flex items-center gap-2 text-sm">
+        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        Checking ffmpeg and reference images…
+      </p>
+    ) : available ? (
+      <p className="text-muted-foreground flex items-center gap-2 text-sm">
+        <CheckCircle2 className="size-4 text-emerald-500" aria-hidden="true" />
+        ffmpeg and both reference pools are ready.
+      </p>
+    ) : (
+      <div
+        role="alert"
+        className="border-destructive/40 bg-destructive/10 flex items-start gap-2 rounded-md border p-3 text-sm"
+      >
+        <AlertTriangle
+          className="text-destructive mt-0.5 size-4 shrink-0"
+          aria-hidden="true"
+        />
+        <span className="text-foreground">{reason}</span>
+      </div>
+    )}
+
+    {/* Both pools are listed regardless, so a second fault is visible without
+        having to fix the first one to discover it. */}
+    <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
+      {REFERENCE_POOLS.map((pool) => (
+        <div key={pool} className="border-border rounded-md border p-3">
+          <dt className="text-foreground font-medium capitalize">{pool}</dt>
+          <dd className="text-muted-foreground mt-0.5">
+            {pools[pool].reason ?? poolReadyLabel(pools[pool].status)}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  </section>
+)
+
+/** Phase and percentage for the run in flight. */
+const RunProgress: React.FC<{ progress: KavanaghProgressEvent | null }> = ({
+  progress
+}) => (
+  <div role="status" className="space-y-1">
+    <p className="text-muted-foreground flex items-center gap-2 text-sm">
+      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+      {progress ? `${phaseLabel(progress.phase)}: ${progress.detail}` : 'Starting…'}
+    </p>
+    <div
+      role="progressbar"
+      aria-valuenow={Math.round(progress?.percentage ?? 0)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      className="bg-muted h-1.5 w-full max-w-md overflow-hidden rounded-full"
+    >
+      <div
+        className="bg-primary h-full transition-all"
+        style={{ width: `${progress?.percentage ?? 0}%` }}
+      />
+    </div>
+  </div>
+)
+
+/** Why a run did not produce a report. */
+const RunFailure: React.FC<{ error: KavanaghError }> = ({ error }) => (
+  <div
+    role="alert"
+    className="border-destructive/40 bg-destructive/10 space-y-1 rounded-md border p-3 text-sm"
+  >
+    <p className="text-foreground flex items-start gap-2">
+      <AlertTriangle
+        className="text-destructive mt-0.5 size-4 shrink-0"
+        aria-hidden="true"
+      />
+      <span>{error.message}</span>
+    </p>
+    {/* ffmpeg's own words, size-limited, because "could not decode" tells nobody
+        which codec is missing (B11.3, B12.2). */}
+    {error.kind === 'ffmpeg' && error.stderr.trim() !== '' && (
+      <pre className="text-muted-foreground max-h-40 overflow-auto text-xs whitespace-pre-wrap">
+        {error.stderr}
+      </pre>
+    )}
+  </div>
+)
+
+/** The report for one completed run: the verdict, then each check underneath. */
+const CheckReportView: React.FC<{
+  report: KavanaghCheckReport
+  videoPath: string | null
+}> = ({ report, videoPath }) => (
+  <section aria-labelledby="kavanagh-report" className="space-y-4">
+    <h2 id="kavanagh-report" className="text-foreground text-sm font-semibold">
+      Report
+    </h2>
+
+    <VerdictBanner verdict={report.verdict} problems={report.problemMessages} />
+
+    <TailSection tail={report.tail} sting={report.sting} />
+
+    <WatermarkReportView report={report.watermark} videoPath={videoPath} />
+
+    {report.notes.length > 0 && (
+      <ul className="text-muted-foreground space-y-1 text-xs">
+        {report.notes.map((note, index) => (
+          <li key={`${index}-${note.slice(0, 24)}`}>{note}</li>
+        ))}
+      </ul>
+    )}
+  </section>
+)
+
+/**
+ * The one line an operator reads first, and the sentences behind it.
+ *
+ * Three renderings, not two. A warning is neither a pass nor a failure: an
+ * unrecognised sting means the references folder needs a new variant, which is
+ * housekeeping, and rendering it as a failure would train people to ignore
+ * failures (D8, B7.3).
+ */
+const VerdictBanner: React.FC<{
+  verdict: KavanaghCheckReport['verdict']
+  problems: string[]
+}> = ({ verdict, problems }) => {
+  const style =
+    verdict === 'pass'
+      ? 'border-emerald-500/40 bg-emerald-500/10'
+      : verdict === 'warning'
+        ? 'border-amber-500/40 bg-amber-500/10'
+        : 'border-destructive/40 bg-destructive/10'
+
+  const headline =
+    verdict === 'pass'
+      ? 'Passed. The watermark and the closing sting are both correct.'
+      : verdict === 'warning'
+        ? 'Passed with a warning.'
+        : 'Failed.'
+
+  return (
+    <div
+      role="status"
+      className={`flex items-start gap-2 rounded-md border p-3 text-sm ${style}`}
+    >
+      {verdict === 'pass' ? (
+        <CheckCircle2
+          className="mt-0.5 size-4 shrink-0 text-emerald-500"
+          aria-hidden="true"
+        />
+      ) : verdict === 'warning' ? (
+        <AlertTriangle
+          className="mt-0.5 size-4 shrink-0 text-amber-500"
+          aria-hidden="true"
+        />
+      ) : (
+        <XCircle className="text-destructive mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      )}
+      <div className="text-foreground">
+        <p className="font-medium">{headline}</p>
+        {problems.length > 0 && (
+          <ul className="text-muted-foreground mt-1 space-y-1 text-xs">
+            {problems.map((problem, index) => (
+              <li key={`${index}-${problem.slice(0, 24)}`}>{problem}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * What the closing tail measured, whatever the verdict.
+ *
+ * The measurements are shown on a pass as well as a failure. The whole point of
+ * the tolerances is that they are tight enough to catch preset drift, so an
+ * operator arguing with a verdict needs the number that produced it - "ramp
+ * 0.25s" is a diagnosis, "the ramp is wrong" is an argument.
+ */
+const TailSection: React.FC<{
+  tail: KavanaghTailAnalysis
+  sting: KavanaghStingReport | null
+}> = ({ tail, sting }) => (
+  <div>
+    <h3 className="text-foreground mb-1 text-xs font-semibold">Closing tail</h3>
+    <dl className="text-muted-foreground grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+      <dt>Dip to white</dt>
+      <dd>
+        {tail.peakAtSeconds === null
+          ? 'not found'
+          : `peaks at ${formatTime(tail.peakAtSeconds)}`}
+        {tail.rampSeconds !== null && `, over ${tail.rampSeconds.toFixed(2)}s`}
+      </dd>
+
+      <dt>Sting</dt>
+      <dd>
+        {tail.stingSeconds === null ? 'not measured' : `${tail.stingSeconds.toFixed(2)}s`}
+        {sting?.matchedReference
+          ? `, matching ${sting.matchedReference}`
+          : sting?.bestReference
+            ? `, closest ${sting.bestReference}`
+            : ''}
+        {sting && ` at ${sting.bestConfidence.toFixed(4)}`}
+      </dd>
+
+      {sting !== null && sting.freezeMad !== null && (
+        <>
+          <dt>Held steady</dt>
+          <dd>
+            {sting.framesCompared} frames, mean difference {sting.freezeMad.toFixed(2)}
+          </dd>
+        </>
+      )}
+    </dl>
+  </div>
+)
+
+/** What the watermark check measured. */
+const WatermarkReportView: React.FC<{
+  report: KavanaghWatermarkReport
+  videoPath: string | null
+}> = ({ report, videoPath }) => {
+  const passed = report.outcome === 'pass'
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-foreground mb-1 text-xs font-semibold">Watermark</h3>
+        <div className="text-foreground text-sm">
+          <p>
+            {passed
+              ? `Present throughout, ${cornerLabel(report.corner)}.`
+              : 'Missing for part of the render.'}
+          </p>
+          {/*
+            The scores are shown whatever the verdict. Two real renders with equally
+            visible watermarks score 0.983 and 0.389 through the same code, so a bare
+            pass or fail turns a threshold argument into an unanswerable one. The
+            closest reference is named even when nothing matched: that is how a
+            wrong-resolution watermark is told apart from a missing one.
+          */}
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            {report.matchedSamples} of {report.coarseSamples} samples matched
+            {report.matchedReference
+              ? ` against ${report.matchedReference}`
+              : report.bestReference
+                ? `. Closest reference ${report.bestReference}`
+                : ''}
+            . Confidence {report.weakestConfidence.toFixed(4)} to{' '}
+            {report.bestConfidence.toFixed(4)} against a threshold of{' '}
+            {report.threshold.toFixed(3)}
+            {report.thresholdIsDefault ? '' : ' (overridden)'}.
+          </p>
+        </div>
+      </div>
+
+      {report.gaps.length > 0 && (
+        <div>
+          <h3 className="text-foreground mb-1 text-xs font-semibold">
+            Missing watermark
+          </h3>
+          <ul className="text-muted-foreground space-y-1 text-xs">
+            {report.gaps.map((gap) => (
+              <li key={`${gap.startSeconds}-${gap.endSeconds}`}>
+                {formatTime(gap.startSeconds)} to {formatTime(gap.endSeconds)} (
+                {(gap.endSeconds - gap.startSeconds).toFixed(1)}s), best score{' '}
+                {gap.bestConfidence.toFixed(4)}
+                {gap.bestReference ? ` against ${gap.bestReference}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {report.cornerChanges.length > 0 && (
+        <div>
+          <h3 className="text-foreground mb-1 text-xs font-semibold">Corner changed</h3>
+          <ul className="text-muted-foreground space-y-1 text-xs">
+            {report.cornerChanges.map((change) => (
+              <li key={change.atSeconds}>
+                {formatTime(change.atSeconds)}: expected {cornerLabel(change.expected)},
+                found {cornerLabel(change.found)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {report.notes.length > 0 && (
+        <ul className="text-muted-foreground space-y-1 text-xs">
+          {report.notes.map((note, index) => (
+            <li key={`${index}-${note.slice(0, 24)}`}>{note}</li>
+          ))}
+        </ul>
+      )}
+
+      <p className="text-muted-foreground text-xs">
+        Checked {formatTime(report.span.startSeconds)} to{' '}
+        {formatTime(report.span.endSeconds)} of a{' '}
+        {formatTime(report.video.durationSeconds)} render at {report.video.width}x
+        {report.video.height}, against {report.referencesUsed} reference
+        {report.referencesUsed === 1 ? '' : 's'}.
+      </p>
+
+      {report.thumbnails.length > 0 && (
+        <EvidenceView thumbnails={report.thumbnails} videoPath={videoPath} />
+      )}
+    </div>
+  )
+}
+
+/** Failure thumbnails, and the one action that puts them on disk. */
+const EvidenceView: React.FC<{
+  thumbnails: KavanaghThumbnail[]
+  videoPath: string | null
+}> = ({ thumbnails, videoPath }) => {
+  const [saving, setSaving] = React.useState(false)
+
+  // Rebuilt only when the bytes change: every render would otherwise leak an
+  // object URL per thumbnail for as long as the page is open.
+  const sources = React.useMemo(
+    () =>
+      thumbnails.map(
+        (thumbnail) =>
+          `data:image/jpeg;base64,${bytesToBase64(Uint8Array.from(thumbnail.jpeg))}`
+      ),
+    [thumbnails]
+  )
+
+  const save = async () => {
+    const folder = await pickEvidenceFolder()
+    if (!folder) return
+
+    setSaving(true)
+    try {
+      const written = await saveKavanaghEvidence(
+        folder,
+        evidencePrefix(videoPath),
+        thumbnails
+      )
+      toast.success(
+        `Saved ${written.length} frame${written.length === 1 ? '' : 's'} to ${folder}`
+      )
+    } catch (raised) {
+      const failure = asKavanaghError(raised)
+      logger.error('QC evidence could not be saved:', failure.message)
+      toast.error(failure.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <h3 className="text-foreground text-xs font-semibold">Evidence</h3>
+        <Button
+          onClick={() => void save()}
+          disabled={saving}
+          variant="outline"
+          className="h-7 px-2 text-xs"
+        >
+          Save evidence…
+        </Button>
+      </div>
+      <p className="text-muted-foreground text-xs">
+        Held in memory only. Nothing is written to disk until you save it.
+      </p>
+      <ul className="flex flex-wrap gap-3">
+        {thumbnails.map((thumbnail, index) => (
+          // Indexed, because two failures rounding to the same tenth of a second
+          // would produce the same label and React would drop one of them.
+          <li key={`${index}-${thumbnail.label}`} className="space-y-1">
+            <img
+              src={sources[index]}
+              alt={`Frame at ${formatTime(thumbnail.atSeconds)} where the watermark check failed`}
+              className="border-border max-w-48 rounded border"
+            />
+            <p className="text-muted-foreground text-xs">
+              {formatTime(thumbnail.atSeconds)}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * Wording for a pool with no reason to report — only `ready`, `loading` and
+ * `unknown` reach here, since every other status carries its own reason. Typed
+ * to the status union so a new status cannot silently render as "Checking…".
+ */
+function poolReadyLabel(status: ReferencePoolStatus): string {
+  return status === 'ready' ? 'Ready' : 'Checking…'
+}
+
+const KavanaghPage: React.FC = () => (
+  <ErrorBoundary>
+    <KavanaghContent />
+  </ErrorBoundary>
+)
+
+export default KavanaghPage

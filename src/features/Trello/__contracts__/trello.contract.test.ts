@@ -105,34 +105,54 @@ vi.mock('@shared/utils/validation', () => ({
   validateVideoLink: vi.fn().mockReturnValue([])
 }))
 
-// Mock React Query
-const mockRefetch = vi.fn()
-const mockMutate = vi.fn()
-const mockMutateAsync = vi.fn().mockResolvedValue(undefined)
-const mockInvalidateQueries = vi.fn()
-const mockSetQueryData = vi.fn()
+// Mock React Query - vi.hoisted so the fns are available inside the
+// hoisted vi.mock factory that runs before normal top-level code.
+const {
+  mockInvalidateQueries,
+  mockSetQueryData,
+  mockUseQuery,
+  mockUseMutation,
+  mockUseQueries
+} = vi.hoisted(() => {
+  const mockRefetch = vi.fn()
+  const mockMutate = vi.fn()
+  const mockMutateAsync = vi.fn().mockResolvedValue(undefined)
+  const mockInvalidateQueries = vi.fn()
+  const mockSetQueryData = vi.fn()
 
-const mockUseQuery = vi.fn(() => ({
-  data: [],
-  isLoading: false,
-  error: null,
-  refetch: mockRefetch
-}))
+  const mockUseQuery = vi.fn(() => ({
+    data: [],
+    isLoading: false,
+    error: null,
+    refetch: mockRefetch
+  }))
 
-const mockUseMutation = vi.fn(() => ({
-  mutate: mockMutate,
-  mutateAsync: mockMutateAsync,
-  isPending: false,
-  error: null,
-  data: null
-}))
+  const mockUseMutation = vi.fn(() => ({
+    mutate: mockMutate,
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+    error: null,
+    data: null
+  }))
 
-const mockUseQueries = vi.fn(() => [] as unknown[])
+  const mockUseQueries = vi.fn(() => [] as unknown[])
+
+  return {
+    mockRefetch,
+    mockMutate,
+    mockMutateAsync,
+    mockInvalidateQueries,
+    mockSetQueryData,
+    mockUseQuery,
+    mockUseMutation,
+    mockUseQueries
+  }
+})
 
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: (...args: unknown[]) => mockUseQuery(...args),
-  useQueries: (...args: unknown[]) => mockUseQueries(...args),
-  useMutation: (...args: unknown[]) => mockUseMutation(...args),
+  useQuery: mockUseQuery,
+  useQueries: mockUseQueries,
+  useMutation: mockUseMutation,
   useQueryClient: () => ({
     invalidateQueries: mockInvalidateQueries,
     setQueryData: mockSetQueryData
@@ -248,13 +268,11 @@ describe('Trello Barrel Exports - Shape', () => {
     'useTrelloSelfAssignment'
   ].sort()
 
-  it('exports exactly the expected named exports (no more, no fewer)', () => {
+  // Presence, not exhaustiveness: a caller breaks when a name it imports
+  // disappears, never when a new one is added beside it.
+  it('exports every documented named export', () => {
     const exportNames = Object.keys(trelloBarrel).sort()
-    expect(exportNames).toEqual(expectedExports)
-  })
-
-  it('exports exactly 24 members', () => {
-    expect(Object.keys(trelloBarrel)).toHaveLength(24)
+    expect(exportNames).toEqual(expect.arrayContaining(expectedExports))
   })
 
   // Component shape checks

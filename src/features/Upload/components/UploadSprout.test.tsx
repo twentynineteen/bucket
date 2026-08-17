@@ -14,7 +14,7 @@
 import '@testing-library/jest-dom'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -32,6 +32,7 @@ vi.mock('@shared/hooks/useBreadcrumb', () => ({
 
 const mockSelectFile = vi.fn()
 const mockUploadFile = vi.fn()
+const mockCancelUpload = vi.fn()
 const mockSetProgress = vi.fn()
 const mockSetMessage = vi.fn()
 const mockSetUploading = vi.fn()
@@ -43,7 +44,8 @@ let mockFileUploadState = {
   selectedFile: null as string | null,
   response: null as unknown,
   selectFile: mockSelectFile,
-  uploadFile: mockUploadFile
+  uploadFile: mockUploadFile,
+  cancelUpload: mockCancelUpload
 }
 /**
  * Upload messages carry their own severity so nothing has to sniff the text.
@@ -54,24 +56,43 @@ type UploadMessage = {
   severity: 'error' | 'success' | 'info'
 }
 
-let mockUploadEventsState = {
+/**
+ * The idle shape of useUploadEvents. Cases below spread this and override the
+ * one or two fields they care about, so a new field on the hook does not have to
+ * be repeated at every assignment site.
+ */
+const idleUploadEvents = {
   progress: 0,
   uploading: false,
+  bytesSent: 0,
+  totalBytes: 0,
+  stallWarning: null as string | null,
   message: null as UploadMessage | null,
   setProgress: mockSetProgress,
   setMessage: mockSetMessage,
   setUploading: mockSetUploading
 }
+let mockUploadEventsState = { ...idleUploadEvents }
 let mockImageRefreshState = {
   thumbnailLoaded: false,
   refreshTimestamp: Date.now(),
   setThumbnailLoaded: mockSetThumbnailLoaded
 }
 
+// useSproutFolderSelection reads the Settings default -- and, since #169, the
+// settings query's failure -- through useApiKeys, so this is the boundary a test
+// moves to put the default folder into a given state.
+let mockApiKeysState: {
+  data: Record<string, unknown> | undefined
+  isLoading: boolean
+  isPending?: boolean
+  isError?: boolean
+  error: unknown
+} = { data: {}, isLoading: false, error: null }
+
 vi.mock('@shared/hooks/useApiKeys', () => ({
   useSproutVideoApiKey: vi.fn(() => mockApiKeyState),
-  // useSproutFolderSelection reads the Settings default through useApiKeys.
-  useApiKeys: vi.fn(() => ({ data: {}, isLoading: false, error: null })),
+  useApiKeys: vi.fn(() => mockApiKeysState),
   useTrelloApiKeys: vi.fn(() => ({}))
 }))
 
@@ -81,6 +102,30 @@ vi.mock('../hooks/useFileUpload', () => ({
 
 vi.mock('../hooks/useUploadEvents', () => ({
   useUploadEvents: vi.fn(() => mockUploadEventsState)
+}))
+
+// The Kavanagh gate is this page's other I/O boundary. Mocked here so the page's
+// own behaviour is under test; the policy it implements has its own tests in
+// useKavanaghForUpload.test.ts.
+const mockGate = vi.fn()
+const mockOverride = vi.fn()
+const mockDismiss = vi.fn()
+let mockKavanagh = {
+  enabled: false,
+  setEnabled: vi.fn(),
+  checking: false,
+  report: null as unknown,
+  block: null as unknown,
+  available: true,
+  unavailableReason: null as string | null,
+  gate: mockGate,
+  override: mockOverride,
+  dismiss: mockDismiss,
+  reset: vi.fn()
+}
+
+vi.mock('../hooks/useKavanaghForUpload', () => ({
+  useKavanaghForUpload: () => mockKavanagh
 }))
 
 vi.mock('../hooks/useImageRefresh', () => ({
@@ -110,26 +155,37 @@ describe('UploadSprout Page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset to default states
+    // The gate lets everything through unless a test says otherwise, which is
+    // what a switched-off check does (B9.1).
+    mockGate.mockResolvedValue(true)
+    mockKavanagh = {
+      enabled: false,
+      setEnabled: vi.fn(),
+      checking: false,
+      report: null,
+      block: null,
+      available: true,
+      unavailableReason: null,
+      gate: mockGate,
+      override: mockOverride,
+      dismiss: mockDismiss,
+      reset: vi.fn()
+    }
     mockApiKeyState = { apiKey: 'test-api-key', isLoading: false }
     mockFileUploadState = {
       selectedFile: null,
       response: null,
       selectFile: mockSelectFile,
-      uploadFile: mockUploadFile
+      uploadFile: mockUploadFile,
+      cancelUpload: mockCancelUpload
     }
-    mockUploadEventsState = {
-      progress: 0,
-      uploading: false,
-      message: null,
-      setProgress: mockSetProgress,
-      setMessage: mockSetMessage,
-      setUploading: mockSetUploading
-    }
+    mockUploadEventsState = { ...idleUploadEvents }
     mockImageRefreshState = {
       thumbnailLoaded: false,
       refreshTimestamp: Date.now(),
       setThumbnailLoaded: mockSetThumbnailLoaded
     }
+    mockApiKeysState = { data: {}, isLoading: false, error: null }
   })
 
   // ==========================================
@@ -277,7 +333,8 @@ describe('UploadSprout Page', () => {
         selectedFile: '/path/to/video.mp4',
         response: null,
         selectFile: mockSelectFile,
-        uploadFile: mockUploadFile
+        uploadFile: mockUploadFile,
+        cancelUpload: mockCancelUpload
       }
     })
 
@@ -287,6 +344,29 @@ describe('UploadSprout Page', () => {
       expect(screen.getByText(/video\.mp4/i)).toBeInTheDocument()
     })
 
+    // B5, issue #169: whatever the resolved default folder has to report has to
+    // be visible where the destination is chosen, or the page still looks
+    // confident about a destination it cannot vouch for.
+    it('B5.1 shows why the default folder is unusable beside the folder picker', () => {
+      mockApiKeysState = {
+        data: undefined,
+        isLoading: false,
+        isError: true,
+        error: new Error('api_keys.json is not readable')
+      }
+
+      renderUploadSprout()
+
+      expect(screen.getByText(/could not read your settings/i)).toBeInTheDocument()
+    })
+
+    it('B5.2 shows only the usual helper text when there is nothing to report', () => {
+      renderUploadSprout()
+
+      expect(screen.getByText(/Defaults to the account root/i)).toBeInTheDocument()
+      expect(screen.queryByText(/could not read your settings/i)).not.toBeInTheDocument()
+    })
+
     it('should enable Upload Video button when file is selected', () => {
       renderUploadSprout()
 
@@ -294,7 +374,82 @@ describe('UploadSprout Page', () => {
       expect(uploadButton).not.toBeDisabled()
     })
 
-    it('should call uploadFile when Upload Video button is clicked', () => {
+    it('B9.3 does not upload when the gate holds the render back', async () => {
+      mockGate.mockResolvedValue(false)
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /Upload Video/i }))
+
+      await waitFor(() => expect(mockGate).toHaveBeenCalled())
+      // Nothing reaches Sprout: the check runs before the upload, not beside it.
+      expect(mockUploadFile).not.toHaveBeenCalled()
+    })
+
+    it('B9.3 shows what failed, so the decision is an informed one', async () => {
+      mockKavanagh.block = {
+        report: {
+          verdict: 'fail',
+          problemMessages: ['The watermark is missing from 4:12 to 4:31.']
+        },
+        error: null
+      }
+      renderUploadSprout()
+
+      expect(screen.getByRole('alertdialog')).toHaveTextContent(/failed its checks/i)
+      expect(screen.getByText(/missing from 4:12 to 4:31/i)).toBeInTheDocument()
+    })
+
+    it('B9.4 uploads the render the block interrupted when overridden', async () => {
+      mockKavanagh.block = {
+        report: { verdict: 'fail', problemMessages: ['Something is wrong.'] },
+        error: null
+      }
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /upload anyway/i }))
+
+      // Overriding uploads, rather than only closing the dialog and asking the
+      // operator to press Upload a second time.
+      expect(mockOverride).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(mockUploadFile).toHaveBeenCalledWith('test-api-key', '', null)
+      )
+    })
+
+    it('B9.5 uploads nothing when the block is dismissed', async () => {
+      mockKavanagh.block = {
+        report: { verdict: 'fail', problemMessages: ['Something is wrong.'] },
+        error: null
+      }
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /do not upload/i }))
+
+      expect(mockDismiss).toHaveBeenCalled()
+      expect(mockUploadFile).not.toHaveBeenCalled()
+    })
+
+    it('B9.6 shows a warning without ever asking to confirm', async () => {
+      mockKavanagh.report = {
+        verdict: 'warning',
+        problemMessages: ['The sting matches nothing in the folder.']
+      }
+      renderUploadSprout()
+
+      expect(screen.getByRole('status')).toHaveTextContent(/uploaded with a warning/i)
+      // No dialog at all: a warning is housekeeping, not a decision (D14).
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+
+    it('says why the check cannot run rather than offering it silently', async () => {
+      mockKavanagh.available = false
+      mockKavanagh.unavailableReason = 'Kavanagh needs ffprobe, which could not be found.'
+      renderUploadSprout()
+
+      expect(screen.getByText(/needs ffprobe/i)).toBeInTheDocument()
+    })
+
+    it('should call uploadFile when Upload Video button is clicked', async () => {
       renderUploadSprout()
 
       const uploadButton = screen.getByRole('button', { name: /Upload Video/i })
@@ -302,7 +457,11 @@ describe('UploadSprout Page', () => {
 
       // The destination is passed explicitly (issue #155) -- null is the account
       // root, which is what a fresh session with no default resolves to.
-      expect(mockUploadFile).toHaveBeenCalledWith('test-api-key', '', null)
+      // Awaited because the upload now passes the Kavanagh gate first, which is
+      // a promise even when the check is switched off.
+      await waitFor(() =>
+        expect(mockUploadFile).toHaveBeenCalledWith('test-api-key', '', null)
+      )
     })
   })
 
@@ -315,15 +474,15 @@ describe('UploadSprout Page', () => {
         selectedFile: '/path/to/video.mp4',
         response: null,
         selectFile: mockSelectFile,
-        uploadFile: mockUploadFile
+        uploadFile: mockUploadFile,
+        cancelUpload: mockCancelUpload
       }
       mockUploadEventsState = {
-        progress: 45,
+        ...idleUploadEvents,
+        progress: 41,
         uploading: true,
-        message: null,
-        setProgress: mockSetProgress,
-        setMessage: mockSetMessage,
-        setUploading: mockSetUploading
+        bytesSent: 1_680_000_000,
+        totalBytes: 4_100_000_000
       }
     })
 
@@ -336,7 +495,56 @@ describe('UploadSprout Page', () => {
     it('should show upload percentage', () => {
       renderUploadSprout()
 
-      expect(screen.getByText(/45%/i)).toBeInTheDocument()
+      expect(screen.getByText(/41%/i)).toBeInTheDocument()
+    })
+
+    it('shows bytes transferred against the total, not only a percentage', () => {
+      // UP-30 (issue #225). A percentage alone cannot tell 3% of 200 MB from 3% of
+      // 12 GB, which is the judgement a user makes when deciding whether a slow
+      // upload is worth waiting for.
+      renderUploadSprout()
+
+      expect(screen.getByText(/1\.68 GB of 4\.10 GB/)).toBeInTheDocument()
+    })
+
+    it('offers a way to cancel, which this page did not have at all', () => {
+      // UP-25 (issue #225). Before this the only way to end an upload was to quit
+      // the app.
+      renderUploadSprout()
+
+      expect(screen.getByRole('button', { name: /cancel upload/i })).toBeInTheDocument()
+    })
+
+    it('cancels through the hook that owns the operation id', async () => {
+      // UP-20. The page must not invent its own teardown - the operation id lives
+      // in useFileUpload, which is the only thing that can name the upload.
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /cancel upload/i }))
+
+      await waitFor(() => {
+        expect(mockCancelUpload).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('shows the soft stall warning without ending the upload', () => {
+      // UP-26. Non-terminal: the progress bar and the cancel button both stay.
+      mockUploadEventsState = {
+        ...mockUploadEventsState,
+        stallWarning:
+          'No data has reached Sprout for 35s. The transfer is at 1.68 GB of 4.10 GB (41%).'
+      }
+      renderUploadSprout()
+
+      expect(screen.getByRole('status')).toHaveTextContent(/35s/)
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /cancel upload/i })).toBeEnabled()
+    })
+
+    it('shows no stall warning while the transfer is moving', () => {
+      renderUploadSprout()
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
 
     it('should show Uploading... button text when uploading', () => {
@@ -373,7 +581,8 @@ describe('UploadSprout Page', () => {
         selectedFile: '/path/to/video.mp4',
         response: mockResponse,
         selectFile: mockSelectFile,
-        uploadFile: mockUploadFile
+        uploadFile: mockUploadFile,
+        cancelUpload: mockCancelUpload
       }
       mockImageRefreshState = {
         thumbnailLoaded: true,
@@ -414,12 +623,9 @@ describe('UploadSprout Page', () => {
   describe('with success message', () => {
     beforeEach(() => {
       mockUploadEventsState = {
+        ...idleUploadEvents,
         progress: 100,
-        uploading: false,
-        message: { text: 'Upload successful!', severity: 'success' },
-        setProgress: mockSetProgress,
-        setMessage: mockSetMessage,
-        setUploading: mockSetUploading
+        message: { text: 'Upload successful!', severity: 'success' }
       }
     })
 
@@ -436,12 +642,8 @@ describe('UploadSprout Page', () => {
   describe('with error message', () => {
     beforeEach(() => {
       mockUploadEventsState = {
-        progress: 0,
-        uploading: false,
-        message: { text: 'Upload failed: Network error', severity: 'error' },
-        setProgress: mockSetProgress,
-        setMessage: mockSetMessage,
-        setUploading: mockSetUploading
+        ...idleUploadEvents,
+        message: { text: 'Upload failed: Network error', severity: 'error' }
       }
     })
 
@@ -465,12 +667,8 @@ describe('UploadSprout Page', () => {
 
     beforeEach(() => {
       mockUploadEventsState = {
-        progress: 0,
-        uploading: false,
-        message: { text: ADVERSARIAL_TEXT, severity: 'error' },
-        setProgress: mockSetProgress,
-        setMessage: mockSetMessage,
-        setUploading: mockSetUploading
+        ...idleUploadEvents,
+        message: { text: ADVERSARIAL_TEXT, severity: 'error' }
       }
     })
 
@@ -492,12 +690,8 @@ describe('UploadSprout Page', () => {
 
     beforeEach(() => {
       mockUploadEventsState = {
-        progress: 0,
-        uploading: false,
-        message: { text: HTTP_413_TEXT, severity: 'error' },
-        setProgress: mockSetProgress,
-        setMessage: mockSetMessage,
-        setUploading: mockSetUploading
+        ...idleUploadEvents,
+        message: { text: HTTP_413_TEXT, severity: 'error' }
       }
     })
 
@@ -524,7 +718,8 @@ describe('UploadSprout Page', () => {
         selectedFile: '/path/to/video.mp4',
         response: null,
         selectFile: mockSelectFile,
-        uploadFile: mockUploadFile
+        uploadFile: mockUploadFile,
+        cancelUpload: mockCancelUpload
       }
     })
 

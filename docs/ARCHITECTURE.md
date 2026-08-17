@@ -6,7 +6,7 @@ This document explains the high-level architecture of Bucket, including how diff
 
 **Target audience:** Developers who need to understand the system design before making significant changes or adding new features.
 
-**Last updated:** July 2026 (v0.16.0)
+**Last updated:** August 2026 (v0.19.0)
 
 ## System Design
 
@@ -90,15 +90,6 @@ bucket/
 │   │   │   ├── ScriptFormatter/    # RAG-based script formatting UI
 │   │   │   └── ExampleEmbeddings/  # Manage RAG examples UI
 │   │   │
-│   │   ├── Auth/                   # Login, registration, token management
-│   │   │   ├── api.ts
-│   │   │   ├── AuthContext.ts
-│   │   │   ├── AuthProvider.tsx
-│   │   │   ├── index.ts
-│   │   │   ├── __contracts__/
-│   │   │   ├── components/         # Login.tsx, Register.tsx
-│   │   │   └── hooks/
-│   │   │
 │   │   ├── Baker/                  # Drive scanning, breadcrumbs management
 │   │   │   ├── api.ts
 │   │   │   ├── types.ts
@@ -112,12 +103,14 @@ bucket/
 │   │   │
 │   │   ├── BuildProject/           # File ingest, camera assignment, XState
 │   │   │   ├── api.ts
-│   │   │   ├── types.ts
 │   │   │   ├── BuildProjectPage.tsx
 │   │   │   ├── index.ts
 │   │   │   ├── __contracts__/
 │   │   │   ├── components/
-│   │   │   └── hooks/
+│   │   │   ├── hooks/
+│   │   │   ├── machine/            # XState state machine
+│   │   │   ├── stages/             # Workflow stage functions
+│   │   │   └── types/              # Type definitions (directory, not types.ts)
 │   │   │
 │   │   ├── Premiere/               # Adobe Premiere plugin management
 │   │   │   ├── api.ts
@@ -125,6 +118,15 @@ bucket/
 │   │   │   ├── index.ts
 │   │   │   ├── __contracts__/
 │   │   │   └── components/
+│   │   │
+│   │   ├── Kavanagh/               # Video QC - watermark and tail-sting checks
+│   │   │   ├── api.ts
+│   │   │   ├── types.ts
+│   │   │   ├── index.ts
+│   │   │   ├── __contracts__/
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   └── internal/
 │   │   │
 │   │   ├── Settings/               # App configuration with per-domain tabs
 │   │   │   ├── api.ts
@@ -183,24 +185,24 @@ bucket/
 │   │   │   ├── mod.rs
 │   │   │   ├── commands.rs         # transfer_files_with_progress, cancel_file_transfer
 │   │   │   ├── error.rs            # Error types
-│   │   │   ├── registry.rs         # Operation registry (Arc<DashMap>)
-│   │   │   └── transfer.rs         # File copy logic
+│   │   │   └── registry.rs         # Operation registry (HashMap + tokio watch)
 │   │   │
 │   │   ├── commands/               # General Tauri command modules
 │   │   │   ├── mod.rs              # Command exports
-│   │   │   ├── auth.rs             # Authentication (argon2, JWT)
-│   │   │   ├── plugins.rs          # Premiere CEP plugin management
-│   │   │   ├── premiere.rs         # Premiere Pro template operations
-│   │   │   ├── sprout_upload.rs    # Sprout Video API client
-│   │   │   ├── docx.rs             # Word document processing
-│   │   │   ├── rag.rs              # RAG embeddings + vector search
 │   │   │   ├── ai_provider.rs      # AI provider management
+│   │   │   ├── docx.rs             # Word document processing
+│   │   │   ├── plugins.rs          # Premiere CEP plugin management
+│   │   │   ├── poster_frame.rs     # Sprout Video poster frame upload
+│   │   │   ├── premiere.rs         # Premiere Pro template operations
+│   │   │   ├── rag.rs              # RAG embeddings + vector search
+│   │   │   ├── sprout_upload.rs    # Sprout Video API client
 │   │   │   ├── system.rs           # System utilities
+│   │   │   ├── video_meta.rs       # Video duration/metadata probing
 │   │   │   └── tests/              # Rust unit tests
 │   │   │
-│   │   ├── state/                  # Shared state (Arc<Mutex<T>>)
+│   │   ├── kavanagh/               # Video QC - watermark and tail-sting checks
 │   │   │   ├── mod.rs
-│   │   │   └── auth.rs             # Authentication state
+│   │   │   └── ...                 # ffmpeg discovery, sampling, matching, verdicts
 │   │   │
 │   │   ├── utils/                  # Rust utilities
 │   │   │   ├── mod.rs
@@ -283,9 +285,9 @@ bucket/
 
 - `baker/` -- Baker scanning and breadcrumbs commands
 - `build_project/` -- File transfer with progress and cancellation
-- `commands/` -- General commands (auth, premiere, docx, rag, sprout, AI provider, plugins, system)
-- `state/` -- Shared state (Arc<Mutex<T>>)
-- `utils/` -- Rust utilities (macOS-optimized file copying)
+- `commands/` -- General commands (premiere, docx, rag, sprout, poster frame, AI provider, plugins, video metadata, system)
+- `kavanagh/` -- Video QC checks (watermark detection, tail-sting validation)
+- `utils/` -- Rust utilities (macOS-optimised file copying)
 
 **Naming convention:** Functions are annotated with `#[tauri::command]` and use snake_case (e.g., `transfer_files_with_progress`, `baker_start_scan`).
 
@@ -431,7 +433,7 @@ Application State
    - Automatically caches responses
    - Handles loading/error states
    - Supports optimistic updates
-   - Example: `useQuery({ queryKey: queryKeys.breadcrumbs(filePath), queryFn: () => api.readBreadcrumbs(filePath) })`
+   - Example: `useQuery({ queryKey: ['breadcrumbs', 'videoLinks', projectPath], queryFn: () => api.getVideoLinks(projectPath) })`
 
 3. **Local state (useState):** Use for component-specific UI state
    - Form inputs before submission
@@ -507,7 +509,7 @@ const [loading, setLoading] = useState(true)
 const [error, setError] = useState(null)
 
 useEffect(() => {
-  invoke('read_breadcrumbs', { filePath })
+  invoke('baker_read_breadcrumbs', { projectPath })
     .then(data => {
       setBreadcrumbs(data)
       setLoading(false)
@@ -516,16 +518,16 @@ useEffect(() => {
       setError(err)
       setLoading(false)
     })
-}, [filePath])
+}, [projectPath])
 
 // NEW: React Query (current) -- invoked via feature api.ts
 const {
-  data: breadcrumbs,
+  data: videoLinks,
   isLoading,
   error
 } = useQuery({
-  queryKey: queryKeys.breadcrumbs(filePath),
-  queryFn: () => api.readBreadcrumbs(filePath)
+  queryKey: ['breadcrumbs', 'videoLinks', projectPath],
+  queryFn: () => api.getVideoLinks(projectPath)
 })
 ```
 
@@ -556,11 +558,12 @@ const {
 **Implementation:**
 
 ```rust
-// Custom cosine similarity in SQLite
-pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
-    let dot_product: f32 = a.iter().zip(b).map(|(x, y)| x * y).sum();
+// Custom cosine similarity in commands/rag.rs
+fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    let dot_product: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
     let magnitude_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
     let magnitude_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+    if magnitude_a == 0.0 || magnitude_b == 0.0 { return 0.0; }
     dot_product / (magnitude_a * magnitude_b)
 }
 
@@ -656,7 +659,7 @@ shared/
 
 | Package                   | Version  | Used For                 | Notes                                            |
 | ------------------------- | -------- | ------------------------ | ------------------------------------------------ |
-| **@tauri-apps/api**       | ~2.10.1  | Tauri IPC bridge         | Invoke Rust commands from React                  |
+| **@tauri-apps/api**       | ~2.11.1  | Tauri IPC bridge         | Invoke Rust commands from React                  |
 | **@tanstack/react-query** | ^5.90.3  | Async state management   | Replaces useEffect for data fetching             |
 | **zustand**               | ^5.0.8   | Global state             | Lightweight alternative to Redux                 |
 | **@radix-ui/react-\***    | 1.x--2.x | Accessible UI primitives | Headless components for dialogs, dropdowns, etc. |
@@ -677,9 +680,10 @@ Key Rust crates:
 - `tokio`: Async runtime
 - `reqwest`: HTTP client (Trello, Sprout Video APIs)
 - `rusqlite`: SQLite database (embeddings)
-- `serde`/`serde_json`: JSON serialization
-- `argon2`: Password hashing
-- `jsonwebtoken`: JWT authentication
+- `serde`/`serde_json`: JSON serialisation
+- `chrono`: Date/time handling
+- `uuid`: Unique operation IDs
+- `regex`: Pattern matching (scanning, parsing)
 
 ## Extension Points
 
@@ -859,46 +863,19 @@ Examples are bundled with the app in the resources directory.
 
 ## Security Architecture
 
-### Authentication Flow
+Bucket is a **single-user local desktop tool** with no authentication, no user accounts and no passwords. Issue #199 removed the earlier mock auth surface and #206 removed the last consumer.
 
-1. **User registers** (Register.tsx)
-   - Enters username + password
-   - Frontend calls `invoke('register_user', { username, password })`
-   - Backend hashes password with argon2 (32-byte salt, 19 MiB memory, 2 iterations)
-   - Stores hash in Tauri's stronghold (secure encrypted storage)
+### Credential Storage
 
-2. **User logs in** (Login.tsx)
-   - Enters username + password
-   - Frontend calls `invoke('login_user', { username, password })`
-   - Backend verifies password against stored hash
-   - Issues JWT token (signed with HS256, 24-hour expiration)
-   - Frontend stores token in memory (not localStorage - security)
-
-3. **Authenticated requests**
-   - Frontend includes JWT in Tauri command arguments
-   - Backend validates JWT signature + expiration
-   - Returns error if invalid/expired
+Third-party API credentials (Trello API key/token, Sprout Video API token, AI provider keys) are stored **unencrypted** in `api_keys.json` in the app data directory, protected only by the OS file permissions of the user's account. There is no keychain integration, no encrypted keystore and no token signing.
 
 ### Data Security
 
-- **Password storage:** Argon2id hashing (OWASP recommended)
-- **Sensitive data:** Stored in Tauri's stronghold plugin (OS-level encryption)
-- **API keys:** Encrypted in app data directory (not plain text)
 - **File access:** Restricted to user-selected folders (Tauri security model)
-- **IPC:** Tauri validates all command arguments (type safety + allowlist)
-
-### Threat Model
-
-**Trusted:**
-
-- User's file system
-- Locally running Ollama instance
-
-**Untrusted:**
-
-- External APIs (Trello, Sprout Video) - use HTTPS, validate responses
-- User-uploaded files - validate file types, sanitize filenames
-- AI model outputs - sanitize before rendering (XSS protection)
+- **IPC:** Tauri validates all command arguments (type safety)
+- **External APIs:** Trello and Sprout Video calls use HTTPS via `reqwest`
+- **User-uploaded files:** File types validated, filenames sanitised
+- **AI model outputs:** Sanitised before rendering (XSS protection)
 
 ## Deployment Architecture
 
@@ -933,7 +910,7 @@ bun run build:tauri
 
 **Build artifacts:**
 
-- macOS: `src-tauri/target/release/bundle/dmg/Bucket_<version>_universal.dmg`
+- macOS: `src-tauri/target/release/bundle/dmg/Bucket_<version>_aarch64.dmg`
 - Windows: `src-tauri/target/release/bundle/msi/Bucket_<version>_x64_en-US.msi`
 - Linux: `src-tauri/target/release/bundle/appimage/bucket_<version>_amd64.AppImage`
 
@@ -1043,6 +1020,6 @@ Currently no telemetry/metrics collection (privacy-focused desktop app).
 
 ---
 
-**Document Version:** 2.0.0
-**Last Updated:** July 2026
-**Applies to:** Bucket v0.16.0
+**Document Version:** 2.1.0
+**Last Updated:** August 2026
+**Applies to:** Bucket v0.19.0

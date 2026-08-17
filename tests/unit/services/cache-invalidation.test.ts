@@ -30,15 +30,24 @@ describe('CacheInvalidationService', () => {
   // ============================================================================
 
   describe('invalidateUserData', () => {
-    it('should invalidate user profile and authentication queries', async () => {
+    it('should invalidate the username query', async () => {
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       await service.invalidateUserData()
 
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.user.profile() })
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: queryKeys.user.authentication()
+        queryKey: queryKeys.os.username()
       })
+    })
+
+    it('should not discard the app version (#242)', async () => {
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+      await service.invalidateUserData()
+
+      const calls = invalidateSpy.mock.calls.map(([arg]) => arg)
+      const invalidatedKeys = calls.map((c) => (c as { queryKey: unknown }).queryKey)
+      expect(invalidatedKeys).not.toContainEqual(queryKeys.app.version())
     })
   })
 

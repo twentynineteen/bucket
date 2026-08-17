@@ -5,15 +5,13 @@ import { toast } from 'sonner'
 
 import { useBreadcrumb, useUsername } from '@shared/hooks'
 
-import { useBuildProject } from '@features/build-project'
 import { Button } from '@shared/ui/button'
 
+import { useBuildProject } from './hooks/useBuildProject'
 import { useCameraAutoRemap } from './hooks/useCameraAutoRemap'
 import { useProjectState } from './hooks/useProjectState'
-// `showConfirmationDialog` is the only piece of the legacy api.ts the page still
-// needs (post-success "open project folder?" Finder prompt). It will move into
-// `@features/build-project` itself in Phase 5, along with the legacy module's
-// deletion.
+// `showConfirmationDialog` drives the post-success "open project folder?"
+// Finder prompt.
 import { showConfirmationDialog } from './api'
 
 import { AddFootageStep } from './components/AddFootageStep'
@@ -44,10 +42,10 @@ const BuildProject: React.FC = () => {
     clearAllFields
   } = useProjectState()
 
-  // Drive the BuildProject workflow via the throttled, cancellable hook from
-  // @features/build-project. The new machine owns the entire pipeline including
-  // Premiere template creation — there's no longer a separate
-  // `usePostProjectCompletion` step to wire up at the page level.
+  // Drive the BuildProject workflow via the throttled, cancellable hook. The
+  // machine owns the entire pipeline including Premiere template creation —
+  // there's no longer a separate `usePostProjectCompletion` step to wire up at
+  // the page level.
   const { context, progress, startBuild, cancel, reset, isComplete, isBuilding } =
     useBuildProject()
   const { error, projectFolder } = context
@@ -67,7 +65,11 @@ const BuildProject: React.FC = () => {
   useBreadcrumb(breadcrumbItems)
 
   const username = useUsername()
-  const { apiKey, apiToken } = useTrelloApiKeys()
+  // useTrelloApiKeys normalises absent credentials to `null`; SuccessSection and
+  // everything under it model absence as an omitted optional prop (#210).
+  const { apiKey: apiKeyOrNull, apiToken: apiTokenOrNull } = useTrelloApiKeys()
+  const apiKey = apiKeyOrNull ?? undefined
+  const apiToken = apiTokenOrNull ?? undefined
 
   // Auto-remap camera assignments when numCameras changes
   useCameraAutoRemap(files, numCameras, setFiles)

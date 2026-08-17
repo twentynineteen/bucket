@@ -5,7 +5,7 @@
 use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::Manager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -130,9 +130,11 @@ fn get_or_initialize_database(app: &tauri::AppHandle) -> Result<PathBuf, String>
     Ok(db_path)
 }
 
-/// Merge new bundled examples into the active database
-/// This runs on app startup after updates to add new bundled examples
-fn merge_bundled_examples(app: &tauri::AppHandle, active_db_path: &PathBuf) -> Result<(), String> {
+/// Merge new bundled examples into the active database.
+/// This runs on app startup after updates to add new bundled examples.
+/// Resolves the bundled database path from the app handle and delegates to
+/// [`db_merge_bundled_examples`].
+fn merge_bundled_examples(app: &tauri::AppHandle, active_db_path: &Path) -> Result<(), String> {
     // Get bundled database path
     let resource_path = app
         .path()
@@ -144,8 +146,32 @@ fn merge_bundled_examples(app: &tauri::AppHandle, active_db_path: &PathBuf) -> R
         return Ok(()); // No bundled database, nothing to merge
     }
 
+    db_merge_bundled_examples(active_db_path, &bundled_db_path)
+}
+
+/// The SQL behind [`merge_bundled_examples`], separated from path resolution so it is testable
+/// without a `tauri::AppHandle` (issue #234).
+///
+/// Each `db_*` function opens its own connections rather than borrowing them, so the connections'
+/// lifetimes still end when the operation does. That matters for the transaction: a failed
+/// transaction is rolled back when the local `Connection` drops, and would stay open if the caller
+/// owned it.
+///
+/// The merge walks the bundled database and, for each example:
+/// - **Exists in active as `bundled`**: updates the example and its embedding from the shipped copy.
+/// - **Exists in active as `user-uploaded`**: skips it, preserving the user's work.
+/// - **Not in active**: inserts it with its embedding.
+///
+/// Bundled examples that exist in the active database but are absent from the shipped database are
+/// **left in place**. Removing content that a user may have been relying on silently degrades RAG
+/// search quality, and there is no UI to undo it. An explicit "prune retired examples" operation
+/// would be the right way to handle that if it ever matters.
+pub(crate) fn db_merge_bundled_examples(
+    active_db_path: &Path,
+    bundled_db_path: &Path,
+) -> Result<(), String> {
     // Open both databases
-    let bundled_conn = Connection::open(&bundled_db_path)
+    let bundled_conn = Connection::open(bundled_db_path)
         .map_err(|e| format!("Failed to open bundled database: {}", e))?;
     let active_conn = Connection::open(active_db_path)
         .map_err(|e| format!("Failed to open active database: {}", e))?;
@@ -528,8 +554,19 @@ pub async fn get_all_examples(app: tauri::AppHandle) -> Result<Vec<SimilarExampl
     // Get or initialize database (persists across updates)
     let db_path = get_or_initialize_database(&app)?;
 
+    db_get_all_examples(&db_path)
+}
+
+/// The SQL behind [`get_all_examples`], separated from path resolution so it is testable
+/// without a `tauri::AppHandle` (issue #221).
+///
+/// Each `db_*` function opens its own connection rather than borrowing one, so a connection's
+/// lifetime still ends when the operation does. That matters for the writers below: they roll a
+/// failed transaction back by closing the connection, and would leave it open if the caller owned
+/// it.
+pub(crate) fn db_get_all_examples(db_path: &Path) -> Result<Vec<SimilarExample>, String> {
     // Open database connection
-    let conn = Connection::open(&db_path)
+    let conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Fetch all examples
@@ -567,8 +604,15 @@ pub async fn get_all_examples_with_metadata(
     // Get or initialize database (persists across updates)
     let db_path = get_or_initialize_database(&app)?;
 
+    db_get_all_examples_with_metadata(&db_path)
+}
+
+/// The SQL behind [`get_all_examples_with_metadata`]. See [`db_get_all_examples`].
+pub(crate) fn db_get_all_examples_with_metadata(
+    db_path: &Path,
+) -> Result<Vec<ExampleWithMetadata>, String> {
     // Open database connection
-    let conn = Connection::open(&db_path)
+    let conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Fetch all examples with metadata
@@ -617,7 +661,7 @@ pub async fn get_all_examples_with_metadata(
 // ============================================================================
 
 /// Validate example title
-fn validate_title(title: &str) -> Result<(), String> {
+pub(crate) fn validate_title(title: &str) -> Result<(), String> {
     let trimmed = title.trim();
     if trimmed.is_empty() {
         return Err("Title cannot be empty".to_string());
@@ -632,7 +676,7 @@ fn validate_title(title: &str) -> Result<(), String> {
 }
 
 /// Validate category enum
-fn validate_category(category: &str) -> Result<(), String> {
+pub(crate) fn validate_category(category: &str) -> Result<(), String> {
     const VALID_CATEGORIES: &[&str] = &[
         "educational",
         "business",
@@ -653,7 +697,7 @@ fn validate_category(category: &str) -> Result<(), String> {
 }
 
 /// Validate text content length
-fn validate_text_content(text: &str, field_name: &str) -> Result<(), String> {
+pub(crate) fn validate_text_content(text: &str, field_name: &str) -> Result<(), String> {
     let trimmed = text.trim();
     if trimmed.len() < 50 {
         return Err(format!(
@@ -673,7 +717,7 @@ fn validate_text_content(text: &str, field_name: &str) -> Result<(), String> {
 }
 
 /// Validate embedding dimensions
-fn validate_embedding_dimensions(embedding: &[f32]) -> Result<(), String> {
+pub(crate) fn validate_embedding_dimensions(embedding: &[f32]) -> Result<(), String> {
     // Support both all-MiniLM-L6-v2 (384) and nomic-embed-text (768)
     const VALID_DIMENSIONS: &[usize] = &[384, 768];
     if !VALID_DIMENSIONS.contains(&embedding.len()) {
@@ -688,7 +732,7 @@ fn validate_embedding_dimensions(embedding: &[f32]) -> Result<(), String> {
 }
 
 /// Calculate word count
-fn calculate_word_count(text: &str) -> i32 {
+pub(crate) fn calculate_word_count(text: &str) -> i32 {
     text.split_whitespace().count() as i32
 }
 
@@ -708,17 +752,28 @@ pub async fn upload_example(
     validate_text_content(&request.after_content, "After content")?;
     validate_embedding_dimensions(&request.embedding)?;
 
+    // Get or initialize database (persists across updates)
+    let db_path = get_or_initialize_database(&app)?;
+
+    db_upload_example(&db_path, request)
+}
+
+/// The SQL behind [`upload_example`]. See [`db_get_all_examples`].
+///
+/// Input validation stays in the command so an invalid request still fails before the database is
+/// touched or initialised.
+pub(crate) fn db_upload_example(
+    db_path: &Path,
+    request: UploadExampleRequest,
+) -> Result<String, String> {
     // Generate UUID for new example
     let new_id = uuid::Uuid::new_v4().to_string();
 
     // Calculate word count
     let word_count = calculate_word_count(&request.before_content);
 
-    // Get or initialize database (persists across updates)
-    let db_path = get_or_initialize_database(&app)?;
-
     // Open database connection
-    let conn = Connection::open(&db_path)
+    let conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Begin transaction
@@ -788,8 +843,18 @@ pub async fn replace_example(
     // Get or initialize database (persists across updates)
     let db_path = get_or_initialize_database(&app)?;
 
+    db_replace_example(&db_path, &id, request)
+}
+
+/// The SQL behind [`replace_example`], including the refusal to overwrite bundled content.
+/// See [`db_get_all_examples`].
+pub(crate) fn db_replace_example(
+    db_path: &Path,
+    id: &str,
+    request: ReplaceExampleRequest,
+) -> Result<(), String> {
     // Open database connection
-    let conn = Connection::open(&db_path)
+    let conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Check if example exists and is user-uploaded
@@ -854,8 +919,14 @@ pub async fn delete_example(app: tauri::AppHandle, id: String) -> Result<(), Str
     // Get or initialize database (persists across updates)
     let db_path = get_or_initialize_database(&app)?;
 
+    db_delete_example(&db_path, &id)
+}
+
+/// The SQL behind [`delete_example`], including the refusal to delete bundled content and the
+/// removal of the example's embedding alongside it. See [`db_get_all_examples`].
+pub(crate) fn db_delete_example(db_path: &Path, id: &str) -> Result<(), String> {
     // Open database connection
-    let conn = Connection::open(&db_path)
+    let conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
 
     // Check if example exists and is user-uploaded

@@ -14,28 +14,118 @@ import { useSproutVideoApiKey } from '@shared/hooks'
 import { useBreadcrumb } from '@shared/hooks'
 import { fileNameToTitle } from '@shared/utils'
 import { useFileUpload } from '../hooks/useFileUpload'
+import { useKavanaghForUpload } from '../hooks/useKavanaghForUpload'
+import { KavanaghBlockDialog, KavanaghGateControls } from './KavanaghUploadGate'
 import { useSproutFolderSelection } from '../hooks/useSproutFolderSelection'
 import { SproutFolderPicker } from './SproutFolderPicker'
 import { useImageRefresh } from '../hooks/useImageRefresh'
 import { useUploadEvents } from '../hooks/useUploadEvents'
+import { formatTransferredBytes } from '../internal/formatTransferredBytes'
 import EmbedCodeInput from '@shared/ui/EmbedCodeInput'
 import ExternalLink from '@shared/ui/ExternalLink'
 import FormattedDate from '@shared/ui/FormattedDate'
-import { AlertTriangle, RefreshCw, Sprout } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Sprout, X } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
+
+/**
+ * What the upload button says, given everything that can be happening to it.
+ *
+ * A function rather than nested ternaries in the tree: the page is already at
+ * the complexity the repo lints for, and this is the part of it that reads
+ * worst inline.
+ */
+function uploadButtonLabel(state: {
+  checking: boolean
+  uploading: boolean
+  apiKeyLoading: boolean
+}): string {
+  if (state.checking) return 'Checking with Kavanagh...'
+  if (state.uploading) return 'Uploading...'
+  if (state.apiKeyLoading) return 'Loading...'
+  return 'Upload Video'
+}
+
+/**
+ * What a transfer in flight looks like: how far it has got in both percent and
+ * bytes, whether it appears to have gone quiet, and the way to stop it.
+ *
+ * Its own component rather than inline, for the reason `uploadButtonLabel` above
+ * is: the page sits at the complexity the repo lints for, and three more
+ * conditional branches in the tree would push it over.
+ */
+const UploadInFlight: React.FC<{
+  progress: number
+  bytesSent: number
+  totalBytes: number
+  stallWarning: string | null
+  onCancel: () => void
+}> = ({ progress, bytesSent, totalBytes, stallWarning, onCancel }) => (
+  <div className="mb-4 space-y-2">
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-muted-foreground text-sm">
+        {/*
+          The absolute figures, not just the percentage: 3% of 200 MB and 3% of
+          12 GB are the same bar and completely different decisions (#225 UP-30).
+        */}
+        Uploading: {progress}%
+        {totalBytes > 0 && (
+          <>
+            {' '}
+            ({formatTransferredBytes(bytesSent)} of {formatTransferredBytes(totalBytes)})
+          </>
+        )}
+      </p>
+      {/*
+        Before #225 there was no way to end an upload short of quitting the app,
+        which is what made #204's stall report a dead end.
+      */}
+      <Button variant="outline" size="sm" onClick={onCancel}>
+        <X className="mr-1.5 h-3.5 w-3.5" />
+        Cancel upload
+      </Button>
+    </div>
+    <Progress value={progress} />
+    {/*
+      Non-terminal, so the bar and the cancel button both stay: a recoverable TCP
+      backoff is legitimate for tens of seconds, and the terminal verdict is still
+      35 seconds away (#225 UP-26).
+    */}
+    {stallWarning && (
+      <p role="status" className="text-warning flex items-start gap-1.5 text-xs">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>{stallWarning}</span>
+      </p>
+    )}
+  </div>
+)
 
 const UploadSproutContent: React.FC = () => {
   // Custom hooks
   const { apiKey, isLoading: apiKeyLoading } = useSproutVideoApiKey()
-  const { progress, uploading, message, setProgress, setMessage, setUploading } =
-    useUploadEvents()
-  const { selectedFile, response, selectFile, uploadFile } = useFileUpload()
+  const {
+    progress,
+    uploading,
+    bytesSent,
+    totalBytes,
+    stallWarning,
+    message,
+    setProgress,
+    setMessage,
+    setUploading
+  } = useUploadEvents()
+  const { selectedFile, response, selectFile, uploadFile, cancelUpload } = useFileUpload()
   // Destination folder, resolved once: session last-used -> default -> root.
-  const { selectedFolder, selectFolder, recentFolders, commitFolder } =
-    useSproutFolderSelection()
+  const {
+    selectedFolder,
+    selectFolder,
+    recentFolders,
+    commitFolder,
+    defaultFolderReason
+  } = useSproutFolderSelection()
   const { thumbnailLoaded, refreshTimestamp, setThumbnailLoaded } =
     useImageRefresh(response)
   const [title, setTitle] = useState('')
+  const kavanagh = useKavanaghForUpload()
 
   // Page label - shadcn breadcrumb component (memoized to prevent infinite re-renders)
   const breadcrumbItems = useMemo(
@@ -52,11 +142,13 @@ const UploadSproutContent: React.FC = () => {
     const file = await selectFile()
     if (file) {
       setTitle(fileNameToTitle(file))
+      // A previous render's verdict must not linger beside a different file.
+      kavanagh.reset()
     }
   }
 
-  // Handle upload with API key
-  const handleUpload = async () => {
+  // The upload itself, once anything gating it has let it through.
+  const performUpload = async () => {
     // Reset progress and message before starting upload
     setProgress(0)
     setMessage(null)
@@ -66,6 +158,21 @@ const UploadSproutContent: React.FC = () => {
     await uploadFile(apiKey, title, selectedFolder)
     // Only remember a folder an upload actually used.
     commitFolder(selectedFolder)
+  }
+
+  // Handle upload with API key
+  const handleUpload = async () => {
+    // Checked before anything reaches Sprout, not after (B9.3). A failure holds
+    // the upload here and opens the override dialog; a warning does not (D14).
+    if (selectedFile && !(await kavanagh.gate(selectedFile))) return
+    await performUpload()
+  }
+
+  // Proceeding past a failure is a deliberate act, so it runs the upload the
+  // block interrupted rather than asking the operator to press Upload again.
+  const handleOverride = async () => {
+    kavanagh.override()
+    await performUpload()
   }
 
   return (
@@ -131,9 +238,21 @@ const UploadSproutContent: React.FC = () => {
                       recentFolders={recentFolders}
                       disabled={uploading}
                     />
-                    <p className="text-muted-foreground text-xs">
-                      Where the video is filed on Sprout. Defaults to the account root.
-                    </p>
+                    {/*
+                      A saved default that cannot be vouched for says so here,
+                      beside the control that fixes it (#169). Silent otherwise:
+                      the picker's own label always states the real destination.
+                    */}
+                    {defaultFolderReason ? (
+                      <p className="text-destructive flex items-start gap-1.5 text-xs">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>{defaultFolderReason}</span>
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground text-xs">
+                        Where the video is filed on Sprout. Defaults to the account root.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -150,23 +269,32 @@ const UploadSproutContent: React.FC = () => {
             </div>
             <div className="p-4">
               {uploading && (
-                <div className="mb-4">
-                  <p className="text-muted-foreground mb-2 text-sm">
-                    Uploading: {progress}%
-                  </p>
-                  <Progress value={progress} />
-                </div>
+                <UploadInFlight
+                  progress={progress}
+                  bytesSent={bytesSent}
+                  totalBytes={totalBytes}
+                  stallWarning={stallWarning}
+                  onCancel={() => void cancelUpload()}
+                />
               )}
+              <KavanaghGateControls kavanagh={kavanagh} uploading={uploading} />
+
               <Button
                 onClick={handleUpload}
                 className="w-full"
-                disabled={!selectedFile || !apiKey || uploading || apiKeyLoading}
+                disabled={
+                  !selectedFile ||
+                  !apiKey ||
+                  uploading ||
+                  apiKeyLoading ||
+                  kavanagh.checking
+                }
               >
-                {uploading
-                  ? 'Uploading...'
-                  : apiKeyLoading
-                    ? 'Loading...'
-                    : 'Upload Video'}
+                {uploadButtonLabel({
+                  checking: kavanagh.checking,
+                  uploading,
+                  apiKeyLoading
+                })}
               </Button>
 
               {message && (
@@ -243,6 +371,8 @@ const UploadSproutContent: React.FC = () => {
           )}
         </div>
       </div>
+
+      <KavanaghBlockDialog kavanagh={kavanagh} onOverride={() => void handleOverride()} />
     </div>
   )
 }

@@ -19,13 +19,18 @@ export class CacheInvalidationService {
   }
 
   /**
-   * Invalidate all queries for a specific user
+   * Invalidate environment queries (OS username).
+   *
+   * The app version was previously invalidated here under `user.profile()`,
+   * but it is not a user concern - it cannot change while the app is running.
+   * Moved to `queryKeys.app.version()` by #242. The username moved from
+   * `user.username()` to `os.username()` by #249 - the app has no user
+   * accounts.
    */
   async invalidateUserData() {
-    await Promise.all([
-      this.queryClient.invalidateQueries({ queryKey: queryKeys.user.profile() }),
-      this.queryClient.invalidateQueries({ queryKey: queryKeys.user.authentication() })
-    ])
+    await this.queryClient.invalidateQueries({
+      queryKey: queryKeys.os.username()
+    })
   }
 
   /**

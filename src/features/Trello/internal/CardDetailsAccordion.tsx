@@ -11,7 +11,9 @@ interface Props {
   description: string
   breadcrumbsData?: Breadcrumb
   breadcrumbsBlock?: string
-  videoInfoBlock?: string
+  // Nullable, not merely optional: the caller derives this from a card
+  // description and passes `null` when the card has no video info block (#210).
+  videoInfoBlock?: string | null
   videoInfoData?: VideoInfoData | null
 }
 

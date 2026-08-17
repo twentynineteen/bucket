@@ -43,6 +43,8 @@ export type { FormattingMetadata } from './scriptFormatter'
 export type { ProviderConfiguration } from './scriptFormatter'
 /** Formatted script output with sections, cues, and timing marks */
 export type { ProcessedOutput } from './scriptFormatter'
+/** One entry in a ProcessedOutput's edit history */
+export type { Edit } from './scriptFormatter'
 /** AI provider instance with name, models, and connection status */
 export type { AIProvider } from './scriptFormatter'
 /** AI model metadata with name, capabilities, and context window size */

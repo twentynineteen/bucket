@@ -103,9 +103,12 @@ export class TauriE2EMock {
 
   /**
    * Clear failure injection
+   *
+   * Deletes rather than assigning `undefined`, so that `injectMocks()` can
+   * re-sync the in-page config by key and the key genuinely disappears.
    */
   clearFailure(): this {
-    this.config.failureInjection = undefined
+    delete this.config.failureInjection
     return this
   }
 
@@ -149,18 +152,23 @@ export class TauriE2EMock {
         transformCallback: (callback?: (response: unknown) => void, once?: boolean) => number
         convertFileSrc: (filePath: string, protocol?: string) => string
         unregisterCallback: (id: number) => void
-        metadata?: { target: string }
+        metadata?: {
+          target: string
+          currentWindow: { label: string }
+          currentWebview: { label: string; windowLabel: string }
+        }
       }
 
-      interface E2EWindow extends Window {
-        __E2E_CONFIG__: typeof cfg
-        __E2E_EVENTS__: Array<{ percent: number; fileIndex: number; fileProgress?: number }>
-        __E2E_LISTENERS__: Map<string, Map<number, EventCallback>>
-        __E2E_NEXT_EVENT_ID__: number
-        __E2E_NEXT_OPERATION_ID__: number
-        __E2E_CALLBACKS__: Record<number, (response: unknown) => void>
-        __E2E_CANCELLED__: boolean
-        __E2E_OPERATION_IN_PROGRESS__: boolean
+      // Properties added to window during E2E setup. Optional because they are
+      // populated progressively below; the cast targets this shape before any of
+      // them exist on the real window object.
+      type E2EExtras = {
+        __E2E_CONFIG__?: typeof cfg
+        __E2E_EVENTS__?: Array<{ percent: number; fileIndex: number; fileProgress?: number }>
+        __E2E_LISTENERS__?: Map<string, Map<number, EventCallback>>
+        __E2E_CALLBACKS__?: Record<number, (response: unknown) => void>
+        __E2E_CANCELLED__?: boolean
+        __E2E_OPERATION_IN_PROGRESS__?: boolean
         __TAURI_INTERNALS__?: TauriInternals
         __TAURI_EVENT_PLUGIN_INTERNALS__?: {
           unregisterListener: (event: string, eventId: number) => void
@@ -168,16 +176,37 @@ export class TauriE2EMock {
         isTauri?: boolean
       }
 
+      type E2EWindow = Window & E2EExtras
+
       const win = window as E2EWindow
 
       // Store config globally
       win.__E2E_CONFIG__ = cfg
-      win.__E2E_EVENTS__ = []
-      win.__E2E_LISTENERS__ = new Map()
-      win.__E2E_NEXT_EVENT_ID__ = 1
-      win.__E2E_NEXT_OPERATION_ID__ = 1
       win.__E2E_CANCELLED__ = false
       win.__E2E_OPERATION_IN_PROGRESS__ = false
+
+      // The listener registry and the two id counters are held as locals that the
+      // closures below capture. Reading them back off `win` inside a closure does
+      // not typecheck under strictNullChecks: they are declared optional and
+      // assignment narrowing is reset at every function boundary (#210). Only the
+      // registry needs to stay visible on `win`, for getListenerCount; the two
+      // counters are read nowhere outside this function, so they no longer sit on
+      // the window at all.
+      const eventListeners = new Map<string, Map<number, EventCallback>>()
+      win.__E2E_LISTENERS__ = eventListeners
+      let nextEventId = 1
+      let nextOperationId = 1
+
+      // Progress events cannot be captured the same way: TauriE2EMock.reset()
+      // replaces the array wholesale, so each push has to go through `win`.
+      win.__E2E_EVENTS__ = []
+      const recordEvent = (event: {
+        percent: number
+        fileIndex: number
+        fileProgress?: number
+      }) => {
+        ;(win.__E2E_EVENTS__ ??= []).push(event)
+      }
 
       // Callback registry for transformCallback
       let callbackId = 0
@@ -186,7 +215,7 @@ export class TauriE2EMock {
 
       // Helper to emit events - calls registered callbacks
       const emitEvent = (event: string, payload: unknown) => {
-        const listeners = win.__E2E_LISTENERS__.get(event)
+        const listeners = eventListeners.get(event)
         const count = listeners?.size || 0
         console.log('[E2E Mock] Emitting', event, 'to', count, 'listeners')
         if (listeners) {
@@ -203,7 +232,7 @@ export class TauriE2EMock {
       // Create event plugin internals
       win.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
         unregisterListener: (event: string, eventId: number) => {
-          const listeners = win.__E2E_LISTENERS__.get(event)
+          const listeners = eventListeners.get(event)
           if (listeners) {
             listeners.delete(eventId)
           }
@@ -235,14 +264,15 @@ export class TauriE2EMock {
             const handlerId = args?.handler as number
             console.log('[E2E Mock] Registering listener for:', eventName, 'handler:', handlerId)
 
-            const eventId = win.__E2E_NEXT_EVENT_ID__++
+            const eventId = nextEventId++
 
-            if (!win.__E2E_LISTENERS__.has(eventName)) {
-              win.__E2E_LISTENERS__.set(eventName, new Map())
+            let listeners = eventListeners.get(eventName)
+            if (!listeners) {
+              listeners = new Map()
+              eventListeners.set(eventName, listeners)
             }
 
             // Create a wrapper that will call the registered callback
-            const listeners = win.__E2E_LISTENERS__.get(eventName)!
             listeners.set(eventId, (event: { payload: unknown; id: number }) => {
               if (callbacks[handlerId]) {
                 callbacks[handlerId](event)
@@ -260,7 +290,7 @@ export class TauriE2EMock {
             const eventName = args?.event as string
             const eventId = args?.eventId as number
             console.log('[E2E Mock] Unregistering listener for:', eventName, 'id:', eventId)
-            const listeners = win.__E2E_LISTENERS__.get(eventName)
+            const listeners = eventListeners.get(eventName)
             if (listeners) {
               listeners.delete(eventId)
             }
@@ -286,7 +316,7 @@ export class TauriE2EMock {
               | { files: Array<{ source: string; destination: string }> }
               | undefined
             const requestFiles = request?.files ?? []
-            const operationId = `e2e-op-${win.__E2E_NEXT_OPERATION_ID__++}`
+            const operationId = `e2e-op-${nextOperationId++}`
             console.log(
               '[E2E Mock] Mocking transfer_files_with_progress:',
               operationId,
@@ -400,7 +430,7 @@ export class TauriE2EMock {
                     const fileProgress = (chunk + 1) / eventsPerFile
                     const overallProgress = ((fileIndex + fileProgress) / totalFiles) * 100
 
-                    win.__E2E_EVENTS__.push({
+                    recordEvent({
                       percent: overallProgress,
                       fileIndex,
                       fileProgress
@@ -420,7 +450,7 @@ export class TauriE2EMock {
                 } else {
                   // One event per file
                   const percent = ((fileIndex + 1) / totalFiles) * 100
-                  win.__E2E_EVENTS__.push({ percent, fileIndex })
+                  recordEvent({ percent, fileIndex })
                   emitProgress(currentFile, fileSize, fileSize, percent)
                 }
 
@@ -433,7 +463,7 @@ export class TauriE2EMock {
               }
 
               // Ensure we emit exactly 100% at the end, then the success event
-              win.__E2E_EVENTS__.push({ percent: 100, fileIndex: totalFiles - 1 })
+              recordEvent({ percent: 100, fileIndex: totalFiles - 1 })
               emitProgress('', 0, 0, 100)
               emitComplete(true, null)
               console.log(
@@ -462,6 +492,19 @@ export class TauriE2EMock {
             return cfg.scenario.totalSize
           }
 
+          // Reads the Trello cards recorded in the project's breadcrumbs.json.
+          // The real command returns an empty vector when there is no
+          // breadcrumbs file, so an empty array is the honest answer for a
+          // freshly created project. Until issue #212 this fell through to the
+          // `undefined` default below, which made TanStack Query reject with
+          // "data is undefined" and put a destructive error alert on the
+          // BuildProject success screen in every mocked run - silently, with no
+          // test noticing.
+          if (cmd === 'baker_get_trello_cards') {
+            console.log('[E2E Mock] Mocking baker_get_trello_cards')
+            return []
+          }
+
           // App plugin commands
           if (cmd === 'plugin:app|version') {
             console.log('[E2E Mock] Mocking app version')
@@ -484,15 +527,18 @@ export class TauriE2EMock {
             return 'test-user'
           }
 
-          if (cmd === 'check_authentication') {
-            console.log('[E2E Mock] Mocking check_authentication')
-            return { authenticated: true, user: 'test-user' }
-          }
-
           // Path plugin commands
           if (cmd === 'plugin:path|resolve_directory') {
             console.log('[E2E Mock] Mocking resolve_directory')
             return '/mock/app/data'
+          }
+
+          // Must genuinely concatenate: the app joins the app data directory
+          // to a filename, and a constant answer would collapse every settings
+          // file onto one path (issue #167).
+          if (cmd === 'plugin:path|join') {
+            const parts = (args?.paths as string[]) ?? []
+            return parts.join('/').replace(/\/{2,}/g, '/')
           }
 
           if (
@@ -503,7 +549,8 @@ export class TauriE2EMock {
             cmd === 'plugin:path|app_log_dir'
           ) {
             console.log('[E2E Mock] Mocking', cmd)
-            return '/mock/app/data/'
+            // No trailing separator, matching the real API (issue #167).
+            return '/mock/app/data'
           }
 
           if (
@@ -624,17 +671,27 @@ export class TauriE2EMock {
   }
 
   /**
-   * Inject mocks after the page has loaded (now optional - for updating config)
-   * This is now mainly used to update the config if needed after page load
+   * Push the current config into an already-loaded page.
+   *
+   * `setup()` installs the mock as an init script that closes over the config
+   * object it was handed, and stores that same object on
+   * `window.__E2E_CONFIG__`. The two are one reference, so this must **mutate**
+   * that object rather than replace it: reassigning `__E2E_CONFIG__` leaves the
+   * mock reading the old object and every setter called after `setup()` -
+   * `clearFailure()` above, most importantly - silently does nothing (issue
+   * #200). Own keys are cleared first so that a key removed from the config,
+   * such as `failureInjection`, is really gone in the page.
    */
   async injectMocks(): Promise<void> {
-    // Config is already set in setup(), but we can update it here if needed
     await this.page.evaluate((config) => {
-      const win = window as Window & { __E2E_CONFIG__?: typeof config }
-      if (win.__E2E_CONFIG__) {
-        win.__E2E_CONFIG__ = config
-        console.log('[E2E Mock] Config updated')
+      const win = window as Window & { __E2E_CONFIG__?: Record<string, unknown> }
+      const live = win.__E2E_CONFIG__
+      if (!live) return
+      for (const key of Object.keys(live)) {
+        delete live[key]
       }
+      Object.assign(live, config)
+      console.log('[E2E Mock] Config updated')
     }, this.config)
   }
 
@@ -685,7 +742,7 @@ export class TauriE2EMock {
       win.__E2E_CANCELLED__ = false
       win.__E2E_OPERATION_IN_PROGRESS__ = false
     })
-    this.config.failureInjection = undefined
+    delete this.config.failureInjection
   }
 
   /**

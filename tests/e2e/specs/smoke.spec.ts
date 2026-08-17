@@ -59,6 +59,58 @@ test.describe('Smoke Tests', () => {
     await appReady.setViewportSize({ width: 375, height: 667 })
     await expect(appReady.locator('body')).toBeVisible()
   })
+
+  /**
+   * An idle screen must be idle. Until issue #228 it was not: `useBreadcrumb`
+   * wrote to the store and the query cache on every render, and each write
+   * re-rendered the tree, so every page in the app spun at ~570 renders per
+   * second for as long as it was open. The sidebar's vibrancy effect turned
+   * each of those renders into two `plugin:window|set_effects` calls, and the
+   * backlog of queued renders is what made a file transfer's progress events
+   * get slower the longer it ran.
+   *
+   * IPC volume is the measurable signature, and it is not a timing assertion:
+   * an idle Build Project screen issues **0** commands over three seconds with
+   * the loop fixed, against ~1,650 with it present. The bound is 20 so that a
+   * legitimate background refetch could never fail this, and no plausible
+   * render loop could pass it.
+   */
+  test('an idle screen issues no Tauri IPC', async ({ page }) => {
+    await setupTauriMocks(page)
+    await page.addInitScript(() => {
+      const win = window as unknown as {
+        __IPC_LOG__: string[]
+        __TAURI_INTERNALS__?: {
+          invoke: (cmd: string, args?: unknown) => Promise<unknown>
+        }
+      }
+      win.__IPC_LOG__ = []
+      const internals = win.__TAURI_INTERNALS__
+      if (!internals) return
+      const original = internals.invoke
+      internals.invoke = (cmd: string, args?: unknown) => {
+        win.__IPC_LOG__.push(cmd)
+        return original(cmd, args)
+      }
+    })
+
+    await page.goto('/ingest/build')
+    await expect(page.getByRole('heading', { name: 'Build a Project' })).toBeVisible()
+
+    const readLog = () =>
+      page.evaluate(() => (window as unknown as { __IPC_LOG__: string[] }).__IPC_LOG__.length)
+
+    // Startup legitimately issues commands; measure only the idle window after.
+    await page.waitForTimeout(1000)
+    const before = await readLog()
+    await page.waitForTimeout(3000)
+    const after = await readLog()
+
+    const commands = await page.evaluate(() =>
+      (window as unknown as { __IPC_LOG__: string[] }).__IPC_LOG__.slice(-5)
+    )
+    expect(after - before, `commands seen while idle, last five: ${commands.join(', ')}`).toBeLessThan(20)
+  })
 })
 
 test.describe('Navigation', () => {

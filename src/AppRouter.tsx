@@ -1,10 +1,10 @@
 // tauri auto updater on app launch
 import { relaunch } from '@tauri-apps/plugin-process'
 import { check } from '@tauri-apps/plugin-updater'
+import type { DownloadEvent, Update } from '@tauri-apps/plugin-updater'
 import React, { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
-// The AppRouter component switches the display if the user is not logged in
 // The top level component, Page, acts as the provider for the layout
 // subsequent components are loaded within the page window via the Outlet component.
 
@@ -18,12 +18,6 @@ const ExampleEmbeddings = React.lazy(() =>
 )
 const ScriptFormatter = React.lazy(() =>
   import('@features/AITools').then((m) => ({ default: m.ScriptFormatter }))
-)
-const Login = React.lazy(() =>
-  import('@features/Auth').then((m) => ({ default: m.Login }))
-)
-const Register = React.lazy(() =>
-  import('@features/Auth').then((m) => ({ default: m.Register }))
 )
 const Baker = React.lazy(() =>
   import('@features/Baker').then((m) => ({ default: m.BakerPage }))
@@ -53,15 +47,13 @@ const PremierePluginManager = React.lazy(() =>
 const UploadTrello = React.lazy(() =>
   import('@features/Trello').then((m) => ({ default: m.UploadTrello }))
 )
+const KavanaghPage = React.lazy(() =>
+  import('@features/Kavanagh').then((m) => ({ default: m.KavanaghPage }))
+)
 
 const log = createNamespacedLogger('AppRouter')
 
 // Extract download event handler to reduce nesting
-type DownloadEvent = {
-  event: 'Started' | 'Progress' | 'Finished'
-  data: { contentLength?: number; chunkLength?: number }
-}
-
 function createDownloadHandler() {
   let downloaded = 0
   let contentLength = 0
@@ -86,10 +78,7 @@ function createDownloadHandler() {
 }
 
 // Extract update installation logic to reduce nesting
-async function installUpdateAndRelaunch(update: {
-  version: string
-  downloadAndInstall: (handler: (event: DownloadEvent) => void) => Promise<void>
-}) {
+async function installUpdateAndRelaunch(update: Update) {
   log.info(`Found update: ${update.version}`)
 
   const downloadHandler = createDownloadHandler()
@@ -122,65 +111,43 @@ async function checkAndInstallUpdates() {
 }
 
 export const AppRouter: React.FC = () => {
-  const isAuthenticated = true // Track authentication state
-
   useEffect(() => {
     checkAndInstallUpdates()
   }, [])
 
   return (
     <Routes>
-      {/* Ensure login and register routes are always accessible */}
+      {/* Default redirect to BuildProject */}
+      <Route path="/" element={<Navigate to="/ingest/build" replace />} />
 
-      {/* Protect all other routes */}
-      {!isAuthenticated ? (
-        <>
-          {/* <Route path="/" element={<Login />} /> */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          {/* <Route path="*" element={<Navigate to="/login" />} /> */}
-        </>
-      ) : (
-        <>
-          {/* Default redirect to BuildProject */}
-          <Route path="/" element={<Navigate to="/ingest/build" replace />} />
-
-          {/* <Route path="*" element={<Navigate to="/ingest/build" />} /> */}
-          <Route path="/" element={<Page />}>
-            <Route path="ingest">
-              <Route index element={<Navigate to="/ingest/build" replace />} />
-              <Route path="build" element={<BuildProjectPage />} />
-              <Route path="baker" element={<Baker />} />
-            </Route>
-            <Route path="ai-tools">
-              <Route
-                index
-                element={<Navigate to="/ai-tools/script-formatter" replace />}
-              />
-              <Route path="script-formatter" element={<ScriptFormatter />} />
-              <Route path="example-embeddings" element={<ExampleEmbeddings />} />
-            </Route>
-            <Route path="upload">
-              <Route index element={<Navigate to="/upload/sprout" replace />} />
-              <Route path="sprout" element={<UploadSprout />} />
-              <Route path="posterframe" element={<Posterframe />} />
-              <Route path="trello" element={<UploadTrello />} />
-              <Route path="otter" element={<UploadOtter />} />
-            </Route>
-            <Route path="premiere">
-              <Route
-                index
-                element={<Navigate to="/premiere/premiere-plugins" replace />}
-              />
-              <Route path="premiere-plugins" element={<PremierePluginManager />} />
-            </Route>
-            <Route path="settings">
-              <Route index element={<Navigate to="/settings/general" replace />} />
-              <Route path="general" element={<Settings />} />
-            </Route>
-          </Route>
-        </>
-      )}
+      <Route path="/" element={<Page />}>
+        <Route path="ingest">
+          <Route index element={<Navigate to="/ingest/build" replace />} />
+          <Route path="build" element={<BuildProjectPage />} />
+          <Route path="baker" element={<Baker />} />
+        </Route>
+        <Route path="ai-tools">
+          <Route index element={<Navigate to="/ai-tools/script-formatter" replace />} />
+          <Route path="script-formatter" element={<ScriptFormatter />} />
+          <Route path="example-embeddings" element={<ExampleEmbeddings />} />
+        </Route>
+        <Route path="upload">
+          <Route index element={<Navigate to="/upload/sprout" replace />} />
+          <Route path="sprout" element={<UploadSprout />} />
+          <Route path="posterframe" element={<Posterframe />} />
+          <Route path="trello" element={<UploadTrello />} />
+          <Route path="otter" element={<UploadOtter />} />
+          <Route path="kavanagh" element={<KavanaghPage />} />
+        </Route>
+        <Route path="premiere">
+          <Route index element={<Navigate to="/premiere/premiere-plugins" replace />} />
+          <Route path="premiere-plugins" element={<PremierePluginManager />} />
+        </Route>
+        <Route path="settings">
+          <Route index element={<Navigate to="/settings/general" replace />} />
+          <Route path="general" element={<Settings />} />
+        </Route>
+      </Route>
     </Routes>
   )
 }

@@ -26,11 +26,31 @@ vi.mock('@shared/utils/logger', () => ({
 
 describe('useScriptReview', () => {
   const initialProcessedOutput: ProcessedOutput = {
+    id: 'test-output-1',
+    requestId: 'test-request-1',
+    formattedHtml: '<p>Initial formatted text</p>',
     formattedText: 'Initial formatted text',
+    diffData: {
+      additions: [],
+      deletions: [],
+      modifications: [],
+      originalLineCount: 1,
+      modifiedLineCount: 1
+    },
     generationTimestamp: new Date('2024-01-01'),
     examplesCount: 2,
     editHistory: [],
     isEdited: false
+  }
+
+  // getUpdatedOutput returns null when the hook was given no initialOutput
+  // (#178). Every caller below does give it one, so a null here is a real
+  // failure and should say so rather than being asserted around (#210).
+  const requireOutput = (output: ProcessedOutput | null): ProcessedOutput => {
+    if (output === null) {
+      throw new Error('getUpdatedOutput returned null despite an initialOutput')
+    }
+    return output
   }
 
   describe('Initial State', () => {
@@ -226,7 +246,7 @@ describe('useScriptReview', () => {
         editHistory: [
           {
             timestamp: new Date('2024-01-01'),
-            type: 'ai-generated',
+            type: 'ai_regenerate',
             changeDescription: 'Initial AI formatting',
             previousValue: 'Raw text',
             newValue: 'Initial formatted text'
@@ -247,7 +267,7 @@ describe('useScriptReview', () => {
       })
 
       expect(result.current.editHistory).toHaveLength(2)
-      expect(result.current.editHistory[0].type).toBe('ai-generated')
+      expect(result.current.editHistory[0].type).toBe('ai_regenerate')
       expect(result.current.editHistory[1].type).toBe('manual')
     })
   })
@@ -372,7 +392,7 @@ describe('useScriptReview', () => {
         result.current.handleChange('Modified content')
       })
 
-      const updatedOutput = result.current.getUpdatedOutput()
+      const updatedOutput = requireOutput(result.current.getUpdatedOutput())
 
       expect(updatedOutput.formattedText).toBe('Modified content')
       expect(updatedOutput.isEdited).toBe(true)
@@ -390,7 +410,7 @@ describe('useScriptReview', () => {
         result.current.handleChange('Modified content')
       })
 
-      const updatedOutput = result.current.getUpdatedOutput()
+      const updatedOutput = requireOutput(result.current.getUpdatedOutput())
 
       expect(updatedOutput.generationTimestamp).toEqual(
         initialProcessedOutput.generationTimestamp
@@ -405,14 +425,14 @@ describe('useScriptReview', () => {
         })
       )
 
-      let updatedOutput = result.current.getUpdatedOutput()
+      let updatedOutput = requireOutput(result.current.getUpdatedOutput())
       expect(updatedOutput.isEdited).toBe(false)
 
       act(() => {
         result.current.handleChange('Modified content')
       })
 
-      updatedOutput = result.current.getUpdatedOutput()
+      updatedOutput = requireOutput(result.current.getUpdatedOutput())
       expect(updatedOutput.isEdited).toBe(true)
     })
   })
@@ -485,7 +505,17 @@ describe('useScriptReview', () => {
       )
 
       const newOutput: ProcessedOutput = {
+        id: 'test-output-2',
+        requestId: 'test-request-2',
+        formattedHtml: '<p>New formatted text</p>',
         formattedText: 'New formatted text',
+        diffData: {
+          additions: [],
+          deletions: [],
+          modifications: [],
+          originalLineCount: 1,
+          modifiedLineCount: 1
+        },
         generationTimestamp: new Date('2024-02-01'),
         examplesCount: 3,
         editHistory: [],
@@ -514,7 +544,17 @@ describe('useScriptReview', () => {
       expect(result.current.hasChanges).toBe(true)
 
       const newOutput: ProcessedOutput = {
+        id: 'test-output-3',
+        requestId: 'test-request-3',
+        formattedHtml: '<p>New formatted text</p>',
         formattedText: 'New formatted text',
+        diffData: {
+          additions: [],
+          deletions: [],
+          modifications: [],
+          originalLineCount: 1,
+          modifiedLineCount: 1
+        },
         generationTimestamp: new Date('2024-02-01'),
         examplesCount: 3,
         editHistory: [],

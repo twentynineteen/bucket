@@ -1,0 +1,235 @@
+import { AppRouter } from './AppRouter'
+import { render, screen, waitFor } from '@testing-library/react'
+import { BrowserRouter } from 'react-router-dom'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+// The updater's Update type is a class with private fields, so a plain object
+// literal is not assignable to it. `as never` stands in for the full instance
+// without reaching for `any`.
+type DownloadEvent = {
+  event: 'Started' | 'Progress' | 'Finished'
+  data?: { contentLength?: number; chunkLength?: number }
+}
+
+// Mock Tauri plugins
+vi.mock('@tauri-apps/plugin-process', () => ({
+  relaunch: vi.fn()
+}))
+
+vi.mock('@tauri-apps/plugin-updater', () => ({
+  check: vi.fn()
+}))
+
+// Mock all page components
+vi.mock('./app/dashboard/page', () => ({
+  default: () => <div data-testid="page-layout">Page Layout</div>
+}))
+
+vi.mock('@features/AITools', () => ({
+  ExampleEmbeddings: () => <div>Example Embeddings</div>,
+  ScriptFormatter: () => <div>Script Formatter</div>
+}))
+
+vi.mock('@features/Premiere', () => ({
+  PremierePluginManager: () => <div>Premiere Plugin Manager</div>
+}))
+
+vi.mock('@features/Baker', () => ({
+  BakerPage: () => <div>Baker</div>
+}))
+
+vi.mock('@features/BuildProject', () => ({
+  BuildProjectPage: () => <div data-testid="build-project">Build Project</div>
+}))
+
+vi.mock('@features/Upload', () => ({
+  Posterframe: () => <div>Posterframe</div>,
+  UploadOtter: () => <div>Upload Otter</div>,
+  UploadSprout: () => <div>Upload Sprout</div>
+}))
+
+vi.mock('@features/Settings', () => ({
+  Settings: () => <div>Settings</div>
+}))
+
+vi.mock('@features/Trello', () => ({
+  UploadTrello: () => <div>Upload Trello</div>
+}))
+
+describe('AppRouter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Set NODE_ENV to test to skip update logic
+    process.env.NODE_ENV = 'test'
+  })
+
+  describe('routing behavior', () => {
+    it('should redirect to /ingest/build when accessing root', async () => {
+      render(
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      )
+
+      await waitFor(() => {
+        expect(window.location.pathname).toBe('/ingest/build')
+      })
+    })
+
+    it('should render Page layout component when on protected routes', async () => {
+      window.history.pushState({}, 'Test page', '/ingest/build')
+
+      render(
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('page-layout')).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('auto-updater logic', () => {
+    it('should skip update check in development mode', async () => {
+      process.env.NODE_ENV = 'development'
+      const { check } = await import('@tauri-apps/plugin-updater')
+
+      render(
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      )
+
+      await waitFor(() => {
+        expect(check).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should check for updates in production mode', async () => {
+      process.env.NODE_ENV = 'production'
+      const { check } = await import('@tauri-apps/plugin-updater')
+      vi.mocked(check).mockResolvedValue(null)
+
+      render(
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      )
+
+      await waitFor(() => {
+        expect(check).toHaveBeenCalled()
+      })
+    })
+
+    it('should handle update available with download and install', async () => {
+      process.env.NODE_ENV = 'production'
+      const { check } = await import('@tauri-apps/plugin-updater')
+      const { relaunch } = await import('@tauri-apps/plugin-process')
+
+      const mockDownloadAndInstall = vi.fn(async (callback) => {
+        // Simulate download events
+        callback({ event: 'Started', data: { contentLength: 1000 } })
+        callback({ event: 'Progress', data: { chunkLength: 500 } })
+        callback({ event: 'Progress', data: { chunkLength: 500 } })
+        callback({ event: 'Finished' })
+      })
+
+      vi.mocked(check).mockResolvedValue({
+        version: '1.2.3',
+        downloadAndInstall: mockDownloadAndInstall
+      } as never)
+
+      render(
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      )
+
+      await waitFor(() => {
+        expect(mockDownloadAndInstall).toHaveBeenCalled()
+      })
+
+      await waitFor(() => {
+        expect(relaunch).toHaveBeenCalled()
+      })
+    })
+
+    it('should handle update check errors gracefully', async () => {
+      process.env.NODE_ENV = 'production'
+      const { check } = await import('@tauri-apps/plugin-updater')
+
+      vi.mocked(check).mockRejectedValue(new Error('Network error'))
+
+      render(
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      )
+
+      await waitFor(() => {
+        expect(check).toHaveBeenCalled()
+      })
+
+      // Should not crash the app - page layout should still render
+      expect(screen.getByTestId('page-layout')).toBeInTheDocument()
+    })
+
+    it('should handle no update available', async () => {
+      process.env.NODE_ENV = 'production'
+      const { check } = await import('@tauri-apps/plugin-updater')
+      const { relaunch } = await import('@tauri-apps/plugin-process')
+
+      vi.mocked(check).mockResolvedValue({} as never) // No version means no update
+
+      render(
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      )
+
+      await waitFor(() => {
+        expect(check).toHaveBeenCalled()
+      })
+
+      // Should not attempt relaunch
+      expect(relaunch).not.toHaveBeenCalled()
+    })
+
+    it('should handle download progress events correctly', async () => {
+      process.env.NODE_ENV = 'production'
+      const { check } = await import('@tauri-apps/plugin-updater')
+
+      let progressCallback: ((event: DownloadEvent) => void) | undefined
+
+      const mockDownloadAndInstall = vi.fn(async (callback) => {
+        progressCallback = callback
+        callback({ event: 'Started', data: { contentLength: 1000 } })
+        callback({ event: 'Progress', data: { chunkLength: 250 } })
+        callback({ event: 'Progress', data: { chunkLength: 250 } })
+        callback({ event: 'Progress', data: { chunkLength: 250 } })
+        callback({ event: 'Progress', data: { chunkLength: 250 } })
+        callback({ event: 'Finished' })
+      })
+
+      vi.mocked(check).mockResolvedValue({
+        version: '1.2.3',
+        downloadAndInstall: mockDownloadAndInstall
+      } as never)
+
+      render(
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      )
+
+      await waitFor(() => {
+        expect(mockDownloadAndInstall).toHaveBeenCalled()
+      })
+
+      // Verify all progress events were handled without errors
+      expect(progressCallback).toBeDefined()
+    })
+  })
+})

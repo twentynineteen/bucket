@@ -73,13 +73,11 @@ describe('Premiere Barrel Exports - Shape', () => {
     expect(typeof premiereBarrel.PremierePluginManager).toBe('function')
   })
 
-  it('exports exactly the expected named exports', () => {
+  // Presence, not exhaustiveness: a caller breaks when a name it imports
+  // disappears, never when a new one is added beside it.
+  it('exports every documented named export', () => {
     const exportNames = Object.keys(premiereBarrel)
-    expect(exportNames.sort()).toEqual(['PremierePluginManager'])
-  })
-
-  it('exports exactly 1 member', () => {
-    expect(Object.keys(premiereBarrel)).toHaveLength(1)
+    expect(exportNames).toContain('PremierePluginManager')
   })
 })
 

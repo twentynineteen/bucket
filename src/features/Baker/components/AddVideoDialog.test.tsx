@@ -3,7 +3,13 @@
  * Issue #140 (B1.1, B1.3-B1.5, B2.2, B4.1-B4.3, B5.2, B5.3, B5.6, B7.1)
  */
 
-import { fireEvent, render as baseRender, screen } from '@testing-library/react'
+import {
+  fireEvent,
+  render as baseRender,
+  type RenderOptions,
+  screen
+} from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -17,7 +23,7 @@ import { createTestQueryClient } from '@tests/utils/queryClientWrapper'
  * AddVideoDialog now renders SproutFolderPicker, which reads folder levels
  * through React Query (issue #155). Every render needs a client in scope.
  */
-const render: typeof baseRender = (ui, options) =>
+const render = (ui: React.ReactElement, options?: RenderOptions) =>
   baseRender(ui, {
     wrapper: ({ children }) => (
       <QueryClientProvider client={createTestQueryClient()}>
@@ -40,6 +46,9 @@ function posterFrameState(
     backgrounds: BACKGROUNDS,
     selectedBackground: BACKGROUNDS[0],
     onBackgroundChange: vi.fn(),
+    template: 'classic',
+    onTemplateChange: vi.fn(),
+    offAspect: false,
     text: 'Managing Change',
     onTextChange: vi.fn(),
     previewImageUrl: 'blob:preview',
@@ -76,10 +85,17 @@ function baseProps(overrides: Partial<AddVideoDialogProps> = {}): AddVideoDialog
       selectedFile: '/renders/WBS_intro.mp4',
       uploading: false,
       progress: 0,
+      bytesSent: 0,
+      totalBytes: 0,
+      stallWarning: null,
       message: null,
       uploadSuccess: false,
       onSelectFile: vi.fn(),
-      onUploadAndAdd: vi.fn()
+      onUploadAndAdd: vi.fn(),
+      apiKey: 'test-api-key',
+      selectedFolder: null,
+      onSelectedFolderChange: vi.fn(),
+      recentFolders: []
     },
     errors: { validationErrors: [], addError: null },
     posterFrame: posterFrameState(),
@@ -405,27 +421,26 @@ describe('AddVideoDialog - poster frame text is required (B7)', () => {
 })
 
 // ==========================================================================
-// UPLOAD-02 — upload message severity comes from the event, not the text.
+// UPLOAD-02 - upload message severity comes from the event, not the text.
 //
 // Every message below deliberately contains neither "failed" nor "success":
 // that is the whole regression. `message.includes('failed')` renders a hard
 // failure as a neutral notice.
 // ==========================================================================
-type UploadMessage = {
-  text: string
-  severity: 'error' | 'success' | 'info'
-}
 
 /**
- * Casts through the current `string | null` prop type. Once the message shape
- * lands in @features/Upload this cast disappears.
+ * Builds default props with the upload message already populated.
+ * The UploadMessage type is now the real one from @features/Upload.
  */
-const messageProps = (message: UploadMessage) =>
+const messageProps = (message: {
+  text: string
+  severity: 'error' | 'success' | 'info'
+}) =>
   baseProps({
     uploadMode: {
       ...baseProps().uploadMode,
       uploading: false,
-      message: message as unknown as string
+      message
     }
   })
 
@@ -479,5 +494,75 @@ describe('AddVideoDialog - upload message severity (UPLOAD-02)', () => {
     render(<AddVideoDialog {...messageProps({ text, severity: 'error' })} />)
 
     expect(screen.getByRole('alert')).not.toHaveTextContent('[object Object]')
+  })
+})
+
+describe('AddVideoDialog - poster frame template (#189)', () => {
+  it('b3_2_offers_the_template_choice_once_the_option_is_enabled', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          posterFrame: posterFrameState({ enabled: true, template: 'rebrand' })
+        })}
+      />
+    )
+
+    expect(screen.getByRole('combobox', { name: /template/i })).toHaveTextContent(
+      /rebrand/i
+    )
+  })
+
+  it('b3_2_choosing_a_template_reaches_the_handler', async () => {
+    // Full chain through the Radix select (review round, finding 9).
+    const user = userEvent.setup()
+    const onTemplateChange = vi.fn()
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          posterFrame: posterFrameState({ enabled: true, onTemplateChange })
+        })}
+      />
+    )
+
+    await user.click(screen.getByRole('combobox', { name: /template/i }))
+    await user.click(await screen.findByRole('option', { name: /rebrand/i }))
+
+    expect(onTemplateChange).toHaveBeenCalledWith('rebrand')
+  })
+
+  it('b3_2_shows_no_template_choice_while_the_option_is_off', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({ posterFrame: posterFrameState({ enabled: false }) })}
+      />
+    )
+
+    expect(screen.queryByRole('combobox', { name: /template/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('AddVideoDialog - poster frame aspect warning (#189)', () => {
+  it('b4_2_warns_when_the_background_is_off_aspect', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          posterFrame: posterFrameState({ enabled: true, offAspect: true })
+        })}
+      />
+    )
+
+    expect(screen.getByText(/16:9/)).toBeInTheDocument()
+  })
+
+  it('b4_2_shows_no_aspect_warning_for_a_16_9_background', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          posterFrame: posterFrameState({ enabled: true, offAspect: false })
+        })}
+      />
+    )
+
+    expect(screen.queryByText(/16:9/)).not.toBeInTheDocument()
   })
 })
