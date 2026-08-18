@@ -28,9 +28,10 @@
 //! narrowest separation is about 0.83.
 //!
 //! Remeasured for issue #266 once scoring moved to per-reference subwindows: a third
-//! real UHD render, mark present on every one of 259 samples over heavily textured
-//! footage, measured presence **0.974 to 0.999**. The separation from absence is
-//! still enormous, and the documented floor follows the weakest honest measurement.
+//! real UHD render, mark present on every one of 256 coarse samples over heavily
+//! textured footage, measured presence **0.9333 to 0.9996**. The separation from
+//! absence is still enormous, and the documented floor follows the weakest honest
+//! measurement.
 //!
 //! An earlier round of measurement put presence as low as 0.389 and looked like a
 //! contrast problem. It was an artefact of clipping: computing the gradient at 8-bit
@@ -61,11 +62,11 @@ pub const MATCH_CONFIDENCE_MAX: f32 = 0.999;
 /// render whose watermark is plainly visible.
 ///
 /// Remeasured for issue #266: with per-reference scoring subwindows, a third
-/// real UHD render (mark present and pristine on every one of 259 samples over
-/// heavily textured footage) measured presence 0.974 to 0.999, dipping below
-/// the 0.9803 the first two renders established. The floor follows the weakest
-/// honest measurement.
-pub const MEASURED_WEAKEST_PRESENCE: f32 = 0.974;
+/// real UHD render (mark present and pristine on every one of 256 coarse
+/// samples over heavily textured footage) measured presence 0.9333 to 0.9996,
+/// dipping below the 0.9803 the first two renders established. The floor
+/// follows the weakest honest measurement.
+pub const MEASURED_WEAKEST_PRESENCE: f32 = 0.933;
 
 /// Absence was measured no higher than this, so a default below it would pass a
 /// video with no watermark at all.
