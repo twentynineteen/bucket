@@ -173,10 +173,14 @@ pub fn union(a: &CropRegion, b: &CropRegion) -> CropRegion {
 /// anything smaller, which would score 0 forever and read as a permanently
 /// missing mark rather than the pool problem it is.
 pub fn scoring_subwindow(reference: &CropRegion, crop: &CropRegion) -> Option<CropRegion> {
-    let x1 = reference.x.max(crop.x);
-    let y1 = reference.y.max(crop.y);
-    let x2 = (reference.x + reference.width).min(crop.x + crop.width);
-    let y2 = (reference.y + reference.height).min(crop.y + crop.height);
+    // Edges in u64 so an origin-plus-size near u32::MAX cannot wrap; the result
+    // fits u32 again because it is bounded by the inputs' own coordinates.
+    let x1 = u64::from(reference.x.max(crop.x));
+    let y1 = u64::from(reference.y.max(crop.y));
+    let x2 = (u64::from(reference.x) + u64::from(reference.width))
+        .min(u64::from(crop.x) + u64::from(crop.width));
+    let y2 = (u64::from(reference.y) + u64::from(reference.height))
+        .min(u64::from(crop.y) + u64::from(crop.height));
 
     if x2 <= x1 || y2 <= y1 {
         return None;
@@ -188,10 +192,10 @@ pub fn scoring_subwindow(reference: &CropRegion, crop: &CropRegion) -> Option<Cr
     }
 
     Some(CropRegion {
-        x: x1,
-        y: y1,
-        width,
-        height,
+        x: x1 as u32,
+        y: y1 as u32,
+        width: width as u32,
+        height: height as u32,
     })
 }
 
