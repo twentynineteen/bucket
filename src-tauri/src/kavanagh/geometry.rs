@@ -330,6 +330,124 @@ mod tests {
     }
 
     #[test]
+    fn i266_b1_3_scoring_subwindow_clamps_to_the_placed_crop() {
+        // A reference region partly outside the placed crop is scored over the
+        // visible part, computed at prepare time so template and extracted crop
+        // always agree in shape (issue #266, D2).
+        let reference = CropRegion {
+            x: 100,
+            y: 100,
+            width: 50,
+            height: 50,
+        };
+        let crop = CropRegion {
+            x: 120,
+            y: 90,
+            width: 100,
+            height: 100,
+        };
+
+        let subwindow = scoring_subwindow(&reference, &crop).expect("the overlap is scoreable");
+
+        assert_eq!(
+            subwindow,
+            CropRegion {
+                x: 120,
+                y: 100,
+                width: 30,
+                height: 50
+            }
+        );
+    }
+
+    #[test]
+    fn i266_b1_3_scoring_subwindow_is_the_reference_region_when_fully_inside() {
+        let reference = CropRegion {
+            x: 3505,
+            y: 40,
+            width: 295,
+            height: 294,
+        };
+        let crop = CropRegion {
+            x: 40,
+            y: 40,
+            width: 3762,
+            height: 384,
+        };
+
+        assert_eq!(scoring_subwindow(&reference, &crop), Some(reference));
+    }
+
+    #[test]
+    fn i266_b1_4_scoring_subwindow_rejects_an_empty_or_degenerate_overlap() {
+        // Sobel zeroes the border of anything under 3x3, so a degenerate sliver
+        // would score 0 forever and read as a permanently absent mark. Skipping
+        // it (with a note upstream) is the honest answer (issue #266, D2).
+        let crop = CropRegion {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100,
+        };
+        let disjoint = CropRegion {
+            x: 200,
+            y: 200,
+            width: 50,
+            height: 50,
+        };
+        let sliver = CropRegion {
+            x: 98,
+            y: 0,
+            width: 50,
+            height: 50,
+        };
+
+        assert_eq!(scoring_subwindow(&disjoint, &crop), None);
+        assert_eq!(
+            scoring_subwindow(&sliver, &crop),
+            None,
+            "a 2px-wide overlap cannot carry a Sobel gradient"
+        );
+    }
+
+    #[test]
+    fn i266_b2_flags_a_mark_spanning_more_than_half_its_canvas_on_either_axis() {
+        // The real banner: 1881x192 on a 1920x1080 canvas - wide, not tall.
+        let banner = AlphaBbox {
+            x1: 20,
+            y1: 20,
+            x2: 1900,
+            y2: 211,
+        };
+        // A hypothetical side banner causes the same region inflation vertically.
+        let tall = AlphaBbox {
+            x1: 20,
+            y1: 20,
+            x2: 219,
+            y2: 919,
+        };
+
+        assert!(is_wide_mark(&banner, 1920, 1080));
+        assert!(is_wide_mark(&tall, 1920, 1080));
+    }
+
+    #[test]
+    fn i266_b2_does_not_flag_a_real_corner_mark() {
+        // Real marks are ~7.7% of the frame width; exactly half is also not
+        // "spanning most of the frame".
+        let exactly_half = AlphaBbox {
+            x1: 0,
+            y1: 0,
+            x2: 959,
+            y2: 99,
+        };
+
+        assert!(!is_wide_mark(&REF_1080_RIGHT, 1920, 1080));
+        assert!(!is_wide_mark(&REF_4K_RIGHT, 3840, 2160));
+        assert!(!is_wide_mark(&exactly_half, 1920, 1080));
+    }
+
+    #[test]
     fn union_covers_both_regions() {
         let a = CropRegion {
             x: 3502,

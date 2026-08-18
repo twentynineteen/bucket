@@ -900,6 +900,30 @@ mod tests {
     }
 
     #[test]
+    fn i266_b2_pool_notes_name_wide_and_skipped_references() {
+        // Pool hygiene must be loud (issue #266, D4): a reference whose mark
+        // spans most of its frame is named in the report on every run, and so is
+        // one whose subwindow could not be inspected at all.
+        let notes = pool_notes(
+            &["banner.png".to_string()],
+            &["clipped.png".to_string()],
+        );
+
+        assert_eq!(notes.len(), 2);
+        assert!(
+            notes[0].contains("banner.png") && notes[0].contains("spans"),
+            "got {}",
+            notes[0]
+        );
+        assert!(notes[1].contains("clipped.png"), "got {}", notes[1]);
+    }
+
+    #[test]
+    fn i266_b2_2_an_ordinary_pool_produces_no_notes() {
+        assert_eq!(pool_notes(&[], &[]), Vec::<String>::new());
+    }
+
+    #[test]
     fn splits_an_hstacked_frame_row_by_row_not_in_halves() {
         // The failure this guards is silent: treating the first half of the buffer
         // as the left crop yields the top half of both corners stacked, which

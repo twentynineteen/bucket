@@ -302,12 +302,35 @@ mod tests {
         WatermarkTemplate {
             name: name.to_string(),
             corner,
+            offset_x: 0,
+            offset_y: 0,
             alpha: alpha_map(),
             gradient: sobel_magnitude(&alpha_map(), REGION, REGION),
             weights: vec![1.0; REGION * REGION],
             width: REGION,
             height: REGION,
         }
+    }
+
+    /// A crop twice the template's width: footage everywhere, with the mark
+    /// composited at `offset` when given. Models the decoded corner crop being
+    /// wider than any one reference's mark (issue #266).
+    fn strip(mark_at: Option<usize>) -> Vec<u8> {
+        let mut pixels = vec![0u8; REGION * 2 * REGION];
+        for y in 0..REGION {
+            for x in 0..REGION * 2 {
+                pixels[y * REGION * 2 + x] = ((x + y) * 3) as u8;
+            }
+        }
+        if let Some(offset) = mark_at {
+            let marked = composite(0, 200);
+            for y in 0..REGION {
+                for x in 0..REGION {
+                    pixels[y * REGION * 2 + offset + x] = marked[y * REGION + x];
+                }
+            }
+        }
+        pixels
     }
 
     /// Footage: a diagonal ramp. Plenty of gradient, none of the mark's structure.
@@ -690,5 +713,122 @@ mod tests {
         assert_eq!(result.corner, None);
         assert!(result.confidence > 0.0, "the near-miss score must survive");
         assert_eq!(result.reference.as_deref(), Some("right.png"));
+    }
+
+    #[test]
+    fn i266_b1_1_scores_a_template_over_its_own_subwindow_inside_a_wider_crop() {
+        // The decoded crop can be far wider than any one mark (a union across
+        // references). The template must be correlated against its own subwindow,
+        // not the whole crop, or footage texture elsewhere in the crop deflates
+        // the score (issue #266, D1).
+        let mut mark = template(Corner::TopRight, "right.png");
+        mark.offset_x = REGION;
+
+        let result = evaluate_sample(
+            &[(Corner::TopRight, &strip(Some(REGION)))],
+            REGION * 2,
+            REGION,
+            &[mark],
+            CUTOFF,
+        );
+
+        assert_eq!(result.corner, Some(Corner::TopRight));
+        assert!(
+            result.confidence >= CUTOFF,
+            "a pristine mark in its own subwindow must match, got {}",
+            result.confidence
+        );
+    }
+
+    #[test]
+    fn i266_b1_2_an_unrelated_template_does_not_change_the_winners_score() {
+        // The seam-level statement of B1.2: each template's score depends only on
+        // its own subwindow bytes, so adding a second template to the pool cannot
+        // change what the first one scores.
+        let mut mark = template(Corner::TopRight, "right.png");
+        mark.offset_x = REGION;
+
+        // A banner-shaped template spanning the whole strip: a box outline in
+        // alpha, none of the mark's structure, offset 0.
+        let mut banner_alpha = vec![0u8; REGION * 2 * REGION];
+        for y in 2..REGION - 2 {
+            for x in 2..REGION * 2 - 2 {
+                banner_alpha[y * REGION * 2 + x] = PEAK_ALPHA;
+            }
+        }
+        for y in 8..REGION - 8 {
+            for x in 8..REGION * 2 - 8 {
+                banner_alpha[y * REGION * 2 + x] = 0;
+            }
+        }
+        let banner = WatermarkTemplate {
+            name: "banner.png".to_string(),
+            corner: Corner::TopRight,
+            offset_x: 0,
+            offset_y: 0,
+            gradient: sobel_magnitude(&banner_alpha, REGION * 2, REGION),
+            weights: vec![1.0; REGION * 2 * REGION],
+            alpha: banner_alpha,
+            width: REGION * 2,
+            height: REGION,
+        };
+
+        let crop = strip(Some(REGION));
+        let alone = evaluate_sample(
+            &[(Corner::TopRight, &crop)],
+            REGION * 2,
+            REGION,
+            &[mark.clone()],
+            CUTOFF,
+        );
+        let with_banner = evaluate_sample(
+            &[(Corner::TopRight, &crop)],
+            REGION * 2,
+            REGION,
+            &[mark, banner],
+            CUTOFF,
+        );
+
+        assert_eq!(with_banner.confidence, alone.confidence);
+        assert_eq!(with_banner.corner, alone.corner);
+        assert_eq!(with_banner.reference, alone.reference);
+    }
+
+    #[test]
+    fn i266_b1_5_keeps_identical_alpha_at_two_different_positions() {
+        // With per-reference subwindows, two same-shaped marks at different
+        // positions carry byte-identical alpha. Position is part of a mark's
+        // identity: collapsing them would score one mark at the other's location
+        // and reintroduce false gaps (issue #266, D3).
+        let near = template(Corner::TopRight, "near.png");
+        let mut far = template(Corner::TopRight, "far.png");
+        far.offset_x = REGION;
+
+        let kept = dedupe_by_alpha(vec![near, far]);
+
+        assert_eq!(
+            kept.len(),
+            2,
+            "the same shape at a different position is a different mark"
+        );
+    }
+
+    #[test]
+    fn i266_a_template_window_outside_the_crop_is_no_match_rather_than_garbage() {
+        // A subwindow that does not fit the crop it is being read from must fail
+        // loudly-as-a-miss, never read out of bounds or misinterpret the buffer.
+        let mut mark = template(Corner::TopRight, "right.png");
+        mark.offset_x = REGION * 2 - 4;
+
+        let result = evaluate_sample(
+            &[(Corner::TopRight, &strip(None))],
+            REGION * 2,
+            REGION,
+            &[mark],
+            CUTOFF,
+        );
+
+        assert_eq!(result.corner, None);
+        assert_eq!(result.confidence, 0.0);
     }
 }

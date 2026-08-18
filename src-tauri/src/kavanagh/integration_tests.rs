@@ -111,6 +111,55 @@ fn make_black_reference(ffmpeg: &str, dir: &Path, name: &str, x: u32) -> PathBuf
     make_reference(ffmpeg, dir, name, x, "black")
 }
 
+/// A reference whose mark is a banner spanning most of the frame, like the real
+/// lightboard asset that inflated the inspection regions (issue #266).
+///
+/// Same construction as `make_reference` - flat colour plus structured alpha -
+/// but the box runs nearly the full canvas width, so its alpha bbox dwarfs a
+/// corner mark's.
+fn make_wide_reference(ffmpeg: &str, dir: &Path, name: &str) -> PathBuf {
+    let path = dir.join(name);
+    let (x, y, w, h) = (20, 20, FRAME_WIDTH - 40, 200);
+
+    let graph = format!(
+        "[0:v]format=gbrp[mark];\
+[1:v]drawbox=x={x}:y={y}:w={w}:h={h}:color=0x898989:t=fill,\
+drawbox=x={inner_x}:y={inner_y}:w={inner_w}:h={inner_h}:color=black:t=fill,format=gray[mask];\
+[mark][mask]alphamerge,format=rgba[out]",
+        inner_x = x + 12,
+        inner_y = y + 12,
+        inner_w = w - 24,
+        inner_h = h - 24,
+    );
+
+    let status = Command::new(ffmpeg)
+        .args([
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            &format!("color=c=black:s={FRAME_WIDTH}x{FRAME_HEIGHT}:d=1"),
+            "-f",
+            "lavfi",
+            "-i",
+            &format!("color=c=black:s={FRAME_WIDTH}x{FRAME_HEIGHT}:d=1"),
+            "-filter_complex",
+            &graph,
+            "-map",
+            "[out]",
+            "-frames:v",
+            "1",
+            "-y",
+        ])
+        .arg(&path)
+        .status()
+        .expect("ffmpeg should run");
+
+    assert!(status.success(), "building the wide reference failed");
+    path
+}
+
 /// Renders a fixture with the given watermark overlays.
 ///
 /// Each overlay is a reference PNG plus an `enable` expression saying when it is
@@ -233,6 +282,95 @@ fn b3_1_and_b4_1_passes_a_render_carrying_the_watermark_throughout() {
         "confidence {} should clear the threshold {}",
         report.best_confidence,
         report.threshold
+    );
+}
+
+#[test]
+fn i266_b1_1_a_full_frame_banner_reference_does_not_dilute_a_corner_mark() {
+    // Issue #266: a pool asset whose mark spans the frame (the Natwest lightboard
+    // banner) used to inflate the per-corner inspection regions, so the corner
+    // mark's correlation was deflated by footage texture and a pristine render
+    // reported false gaps. Each reference must be scored over its own mark's
+    // extent instead.
+    let (ffmpeg, ffprobe) = require_ffmpeg!();
+    let dir = tempfile::tempdir().unwrap();
+
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let banner = make_wide_reference(&ffmpeg, dir.path(), "banner.png");
+    // The corner mark is present for the whole render; only the pool differs from
+    // the plain passing case.
+    let video = make_fixture(&ffmpeg, dir.path(), "banner-pool.mp4", 30, &[(&right, "1")]);
+
+    let report =
+        run(&ffmpeg, &ffprobe, &video, &[&right, &banner]).expect("the run should complete");
+
+    assert_eq!(report.outcome, WatermarkOutcome::Pass, "{:?}", report);
+    assert_eq!(report.gaps, vec![], "a clean render has no gaps: {:?}", report);
+    assert_eq!(report.matched_reference.as_deref(), Some("right.png"));
+}
+
+#[test]
+fn i266_b1_2_the_banner_leaves_the_corner_marks_verdict_unchanged() {
+    // The same render checked against the pool with and without the banner must
+    // reach the same verdict with the same sample outcomes. One test, one ffmpeg
+    // binary, so the decode is deterministic between the two runs.
+    let (ffmpeg, ffprobe) = require_ffmpeg!();
+    let dir = tempfile::tempdir().unwrap();
+
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let banner = make_wide_reference(&ffmpeg, dir.path(), "banner.png");
+    let video = make_fixture(&ffmpeg, dir.path(), "same-verdict.mp4", 30, &[(&right, "1")]);
+
+    let without = run(&ffmpeg, &ffprobe, &video, &[&right]).expect("the run should complete");
+    let with =
+        run(&ffmpeg, &ffprobe, &video, &[&right, &banner]).expect("the run should complete");
+
+    assert_eq!(without.outcome, WatermarkOutcome::Pass, "{:?}", without);
+    assert_eq!(with.outcome, WatermarkOutcome::Pass, "{:?}", with);
+    assert_eq!(with.matched_samples, without.matched_samples);
+    assert_eq!(with.gaps, vec![]);
+    assert_eq!(without.gaps, vec![]);
+    // Extra templates can only raise a sample's best score, never lower it.
+    assert!(
+        with.weakest_confidence >= without.weakest_confidence - 1e-4,
+        "the banner lowered a sample's score: {} against {}",
+        with.weakest_confidence,
+        without.weakest_confidence
+    );
+    // B2.2: a pool with no wide reference carries no wide-reference note.
+    assert!(
+        without.notes.iter().all(|note| !note.contains("spans")),
+        "an ordinary pool must not be flagged: {:?}",
+        without.notes
+    );
+}
+
+#[test]
+fn i266_b2_1_names_a_wide_reference_in_the_notes_on_pass_and_fail() {
+    // Pool hygiene must be loud: whichever way the verdict goes, the report says
+    // a reference's mark spans most of its frame, naming the file.
+    let (ffmpeg, ffprobe) = require_ffmpeg!();
+    let dir = tempfile::tempdir().unwrap();
+
+    let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
+    let banner = make_wide_reference(&ffmpeg, dir.path(), "banner.png");
+    let marked = make_fixture(&ffmpeg, dir.path(), "noted-pass.mp4", 24, &[(&right, "1")]);
+    let bare = make_fixture(&ffmpeg, dir.path(), "noted-fail.mp4", 24, &[]);
+
+    let pass =
+        run(&ffmpeg, &ffprobe, &marked, &[&right, &banner]).expect("the run should complete");
+    let fail = run(&ffmpeg, &ffprobe, &bare, &[&right, &banner]).expect("the run should complete");
+
+    assert!(
+        pass.notes.iter().any(|note| note.contains("banner.png")),
+        "a passing report must still name the wide reference: {:?}",
+        pass.notes
+    );
+    assert_eq!(fail.outcome, WatermarkOutcome::Fail);
+    assert!(
+        fail.notes.iter().any(|note| note.contains("banner.png")),
+        "a failing report must name the wide reference: {:?}",
+        fail.notes
     );
 }
 
