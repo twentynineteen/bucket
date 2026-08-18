@@ -19,6 +19,11 @@
  * Presence measured **0.9803 to 0.9973** across two renders, two colour variants and
  * two backdrop types at 4K. Absence measured **-0.1483 to 0.0135**. The narrowest
  * separation is about 0.83, so 0.85 sits in a very wide empty band.
+ *
+ * Remeasured for issue #266: with per-reference scoring subwindows, a third real UHD
+ * render (mark present on every one of 259 samples over heavily textured footage)
+ * measured presence 0.974 to 0.999, so the documented floor follows the weakest
+ * honest measurement.
  */
 
 /** Defaults applied when nothing is overridden. */
@@ -39,7 +44,7 @@ export const KAVANAGH_THRESHOLDS = {
   matchConfidenceMin: 0.3,
   matchConfidenceMax: 0.999,
   /** The weakest score measured on a render whose watermark was plainly visible. */
-  measuredWeakestPresence: 0.9803,
+  measuredWeakestPresence: 0.974,
   /** The strongest score measured on a region with no watermark in it. */
   measuredStrongestAbsence: 0.0135
 } as const

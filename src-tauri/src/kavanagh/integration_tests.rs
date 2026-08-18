@@ -305,7 +305,12 @@ fn i266_b1_1_a_full_frame_banner_reference_does_not_dilute_a_corner_mark() {
         run(&ffmpeg, &ffprobe, &video, &[&right, &banner]).expect("the run should complete");
 
     assert_eq!(report.outcome, WatermarkOutcome::Pass, "{:?}", report);
-    assert_eq!(report.gaps, vec![], "a clean render has no gaps: {:?}", report);
+    assert_eq!(
+        report.gaps,
+        vec![],
+        "a clean render has no gaps: {:?}",
+        report
+    );
     assert_eq!(report.matched_reference.as_deref(), Some("right.png"));
 }
 
@@ -319,7 +324,13 @@ fn i266_b1_2_the_banner_leaves_the_corner_marks_verdict_unchanged() {
 
     let right = make_black_reference(&ffmpeg, dir.path(), "right.png", FRAME_WIDTH - MARK - 20);
     let banner = make_wide_reference(&ffmpeg, dir.path(), "banner.png");
-    let video = make_fixture(&ffmpeg, dir.path(), "same-verdict.mp4", 30, &[(&right, "1")]);
+    let video = make_fixture(
+        &ffmpeg,
+        dir.path(),
+        "same-verdict.mp4",
+        30,
+        &[(&right, "1")],
+    );
 
     let without = run(&ffmpeg, &ffprobe, &video, &[&right]).expect("the run should complete");
     let with =

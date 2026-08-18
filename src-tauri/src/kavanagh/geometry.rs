@@ -163,6 +163,50 @@ pub fn union(a: &CropRegion, b: &CropRegion) -> CropRegion {
     }
 }
 
+/// The overlap between a reference's own scoring region and the placed crop it
+/// will be read out of, or `None` when the overlap cannot carry a score.
+///
+/// Computed at prepare time so the template and the window extracted from the
+/// decoded crop always agree in shape (issue #266): clamping at score time would
+/// hand `score_watermark_crop` mismatched dimensions, and its length guard turns
+/// that into a silent zero. The 3x3 floor is Sobel's - `sobel_magnitude` zeroes
+/// anything smaller, which would score 0 forever and read as a permanently
+/// missing mark rather than the pool problem it is.
+pub fn scoring_subwindow(reference: &CropRegion, crop: &CropRegion) -> Option<CropRegion> {
+    let x1 = reference.x.max(crop.x);
+    let y1 = reference.y.max(crop.y);
+    let x2 = (reference.x + reference.width).min(crop.x + crop.width);
+    let y2 = (reference.y + reference.height).min(crop.y + crop.height);
+
+    if x2 <= x1 || y2 <= y1 {
+        return None;
+    }
+    let width = x2 - x1;
+    let height = y2 - y1;
+    if width < 3 || height < 3 {
+        return None;
+    }
+
+    Some(CropRegion {
+        x: x1,
+        y: y1,
+        width,
+        height,
+    })
+}
+
+/// True when a reference's mark spans more than half its canvas on either axis.
+///
+/// Corner marks measure ~8% of the frame; a mark past half of it is a
+/// banner-class asset - the kind whose bbox swallowed both corners' inspection
+/// regions under the old union design (issue #266). It is still scored, over
+/// its own subwindow, but every report names it so a stray asset in the pool is
+/// loud instead of silently odd.
+pub fn is_wide_mark(bbox: &AlphaBbox, canvas_width: u32, canvas_height: u32) -> bool {
+    u64::from(bbox.width()) * 2 > u64::from(canvas_width)
+        || u64::from(bbox.height()) * 2 > u64::from(canvas_height)
+}
+
 /// Puts a region of exactly the given size at another's origin.
 ///
 /// Both corners must be cropped at **exactly** the same size or `hstack` refuses
