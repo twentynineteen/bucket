@@ -587,7 +587,7 @@ function initializeCustomThemes(): void
 - ✨ Sidebar "Customize" link
 - ✨ Custom theme architecture (foundation)
 - ✅ Backward compatible with existing themes
-- ✅ Comprehensive test coverage
+- ✅ Tests covering the theme system
 - 📚 Full documentation
 
 ### Previous Versions
@@ -602,7 +602,7 @@ function initializeCustomThemes(): void
 1. Fork the repository
 2. Follow "Adding a New Built-In Theme" guide above
 3. Ensure WCAG AA contrast compliance
-4. Add comprehensive tests
+4. Add tests
 5. Update documentation
 6. Submit pull request with theme preview screenshots
 

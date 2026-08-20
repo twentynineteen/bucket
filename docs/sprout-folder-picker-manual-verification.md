@@ -1,4 +1,4 @@
-# Manual verification — Sprout folder picker (#155)
+# Manual verification: Sprout folder picker (#155)
 
 Everything in this document needs a **real Sprout Video account**, which is why
 it is not automated. Automated coverage stops at two boundaries:
@@ -34,7 +34,7 @@ check, because it looks like "the tree works" until you read the names.
 
 - [ ] Open the Sprout upload page, select a video file, open the folder picker.
 - [ ] The first level matches the **root** folders in the Sprout web UI.
-- [ ] Hover a folder that has subfolders and hold — its submenu lists **that
+- [ ] Hover a folder that has subfolders and hold -- its submenu lists **that
       folder's children**, not the root list again.
 - [ ] Go two levels deep. The third level is correct, not a repeat of level one.
 
@@ -44,7 +44,7 @@ check, because it looks like "the tree works" until you read the names.
 ## 2. The right video lands in the right folder
 
 - [ ] Pick a nested folder (say `Marketing / Q2 Campaign`) and upload a short video.
-- [ ] In the Sprout web UI, the video is inside **that** folder — not the root,
+- [ ] In the Sprout web UI, the video is inside **that** folder -- not the root,
       not the parent.
 - [ ] Repeat with **Root (no folder)** selected: the video appears at the root.
 
@@ -65,16 +65,16 @@ subsequent pages internally.
 
 - [ ] Open a level with **more than 25** subfolders.
 - [ ] Every folder visible in the Sprout web UI is present in the menu.
-- [ ] The menu **scrolls** — nothing is clipped or unreachable.
+- [ ] The menu **scrolls** -- nothing is clipped or unreachable.
 
 If a level ever exceeds 1000 folders, the menu shows a
 `Showing the first N of M folders` row rather than silently truncating.
 
-## 5. `next_page` behaviour (informational — resolves a documented unknown)
+## 5. `next_page` behaviour (informational -- resolves a documented unknown)
 
 We deliberately **rebuild** each page URL rather than following Sprout's
 `next_page`, because the documented example carries neither `parent_id` nor the
-requested `per_page` — following it verbatim could splice root's page 2 into a
+requested `per_page` -- following it verbatim could splice root's page 2 into a
 child listing. This step confirms whether that caution was warranted.
 
 - [ ] With devtools open on a level that paginates, note whether results stay
@@ -89,7 +89,7 @@ The account-wide limit is the reason browsing is throttled and uploads are not.
 
 - [ ] Sweep the mouse quickly down a list of 10+ folders **without pausing**.
       In devtools, **no** folder requests fire.
-- [ ] Rest on one folder for ~half a second — exactly one request fires.
+- [ ] Rest on one folder for ~half a second -- exactly one request fires.
 - [ ] Close and reopen the picker: previously loaded levels appear instantly
       with **no** new requests.
 - [ ] Start a large upload, and browse folders while it runs. The upload
@@ -102,7 +102,7 @@ Uploads must still work.
 ## 7. Failure modes are honest
 
 - [ ] Enter an **invalid** API key. The picker shows an error naming the API key
-      and pointing at Settings — **not** an empty folder tree.
+      and pointing at Settings -- **not** an empty folder tree.
 - [ ] With folders failing to load, uploading to Root still works.
 - [ ] Disconnect from the network mid-browse: an error appears with a Retry
       button, and Retry works once connectivity returns.
@@ -112,7 +112,7 @@ Uploads must still work.
 - [ ] Settings → SproutVideo → set a **default upload folder**. A confirmation
       toast names it.
 - [ ] Restart the app. A new upload defaults to that folder.
-- [ ] Upload to a *different* folder, then start another upload — it defaults to
+- [ ] Upload to a *different* folder, then start another upload -- it defaults to
       the folder you just used (session last-used beats the stored default).
 - [ ] Restart again: the default from Settings is back (last-used is
       session-scoped by design).
@@ -121,7 +121,7 @@ Uploads must still work.
 
 ## 9. Appearance
 
-- [ ] Cycle through several of the 13 themes with the picker open — including
+- [ ] Cycle through several of the 13 themes with the picker open -- including
       at least one light, one dark, and one Catppuccin variant. Selected rows,
       folder names and the error row all stay legible.
 - [ ] In Baker → Add Video → Upload with the poster frame enabled, the dialog is
@@ -132,5 +132,5 @@ Uploads must still work.
 
 ## Reporting
 
-Record the outcome on #155. If step 1 or 2 fails, stop — those indicate the core
+Record the outcome on #155. If step 1 or 2 fails, stop -- those indicate the core
 fix is not working and everything below them is moot.
