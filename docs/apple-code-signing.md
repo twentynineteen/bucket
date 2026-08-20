@@ -98,7 +98,7 @@ On Windows (PowerShell):
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("Bucket_Certificate.p12")) | Set-Clipboard
 ```
 
-### Security Best Practices
+### Keeping credentials safe
 
 - **Never commit certificates or passwords to version control**
 - Store your `.p12` certificate file in a secure password manager or encrypted storage
@@ -213,6 +213,49 @@ Apple Developer ID certificates are valid for 5 years. When renewal is needed:
 3. Export the new certificate to `.p12`
 4. Update the `APPLE_CERTIFICATE` and `APPLE_CERTIFICATE_PASSWORD` secrets in GitHub
 5. Update `APPLE_SIGNING_IDENTITY` if the certificate name changed
+
+## Setup checklist
+
+Work through the Parts above for the detail; use this to track where you are.
+
+**Certificate**
+
+- [ ] Apple Developer Program membership is active
+- [ ] CSR generated via Keychain Access (Part 1, Step 1)
+- [ ] Developer ID Application certificate created and installed (Part 1, Step 2)
+- [ ] Certificate exported to `.p12` with a password (Part 1, Step 3)
+- [ ] Full identity name noted, e.g. `Developer ID Application: Your Name (TEAM123456)` (Part 1, Step 4)
+- [ ] `.p12` stored in a password manager or encrypted storage, never in the repo
+
+**Apple account**
+
+- [ ] App-specific password generated (Part 2)
+- [ ] Team ID found, a 10-character code (Part 3)
+
+**GitHub secrets** (Part 4)
+
+- [ ] `APPLE_CERTIFICATE`
+- [ ] `APPLE_CERTIFICATE_PASSWORD`
+- [ ] `APPLE_SIGNING_IDENTITY`
+- [ ] `APPLE_ID`
+- [ ] `APPLE_PASSWORD`
+- [ ] `APPLE_TEAM_ID`
+- [ ] `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` still present. These
+      drive the updater and are separate from Apple signing, so it is worth confirming a
+      secrets change did not disturb them.
+
+**Verify** (Part 5)
+
+- [ ] Local signed build completes and `codesign -dv` reports a valid signature
+- [ ] On `master` or `release`, the CI `build-macos` job imports the certificate and builds signed
+- [ ] On `release`, the publish workflow builds both arm64 and x86_64, notarizes, and attaches DMGs
+- [ ] A downloaded DMG installs on a machine that never held the certificate
+
+**Renewal** (every 5 years)
+
+- [ ] Renewal date recorded somewhere the team will see it
+- [ ] New certificate created and secrets updated
+- [ ] Old certificate archived
 
 ## Additional Resources
 

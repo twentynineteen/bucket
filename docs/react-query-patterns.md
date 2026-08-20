@@ -1,6 +1,6 @@
 # React Query Patterns for Bucket
 
-This document outlines the React Query patterns and best practices implemented during the migration from legacy useEffect data fetching to TanStack React Query.
+These are the React Query patterns Bucket adopted when it moved from useEffect data fetching to TanStack React Query.
 
 ## Table of Contents
 
@@ -571,7 +571,7 @@ removed now that the migration is complete. The checks it performed:
 - Error handling implementation
 - TypeScript compilation
 
-## Best Practices
+## Rules of thumb
 
 1. **Always use the query key factory** - Ensures consistency and enables proper cache invalidation
 2. **Choose appropriate query profiles** - Match cache settings to data characteristics

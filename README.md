@@ -1,6 +1,6 @@
 # Bucket
 
-A desktop video-production workflow app built with Tauri 2 (Rust + React/TypeScript). Bucket streamlines footage ingest, project creation, and integration with Adobe Premiere, Trello, and Sprout Video.
+A desktop video-production workflow app built with Tauri 2 (Rust + React/TypeScript). Bucket handles footage ingest, project creation, and integration with Adobe Premiere, Trello and Sprout Video.
 
 **Version:** 0.19.0  
 **Platform:** macOS (primary)  
@@ -138,11 +138,29 @@ Each feature module follows a strict convention: an `api.ts` I/O boundary wrappi
 
 ## Further Reading
 
+Start here:
+
 - **[CLAUDE.md](./CLAUDE.md)** -- Architecture conventions, import rules, and how to add a new feature module
+- **[docs/ONBOARDING.md](./docs/ONBOARDING.md)** -- Developer onboarding, from clone to first PR
+- **[docs/USER_GUIDE.md](./docs/USER_GUIDE.md)** -- Using the app: breadcrumbs, workflows, settings, troubleshooting
 - **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** -- System design, data flow, and component interactions
-- **[docs/ONBOARDING.md](./docs/ONBOARDING.md)** -- Developer onboarding guide
-- **[docs/PREMIERE_PLUGINS.md](./docs/PREMIERE_PLUGINS.md)** -- Premiere Pro plugin documentation
+- **[docs/API_COMMANDS.md](./docs/API_COMMANDS.md)** -- Reference for all 58 Tauri commands
+
+Reference:
+
 - **[docs/BRANCHING_STRATEGY.md](./docs/BRANCHING_STRATEGY.md)** -- Git branching and release conventions
+- **[docs/react-query-patterns.md](./docs/react-query-patterns.md)** -- TanStack React Query usage patterns
+- **[docs/PREMIERE_PLUGINS.md](./docs/PREMIERE_PLUGINS.md)** -- Install and manage Premiere Pro CEP extensions
+- **[docs/theme-architecture.md](./docs/theme-architecture.md)** -- How the 13-theme system works
+- **[docs/theme-customization.md](./docs/theme-customization.md)** -- Customising and extending themes
+- **[docs/macos-window-styling.md](./docs/macos-window-styling.md)** -- Native window styling and vibrancy
+- **[docs/apple-code-signing.md](./docs/apple-code-signing.md)** -- Signing and notarisation setup, with a checklist
+- **[CHANGELOG.md](./CHANGELOG.md)** -- Version history and release notes
+
+Manual test procedures, for the cases automated coverage cannot reach:
+
+- **[docs/posterframe-background-verification.md](./docs/posterframe-background-verification.md)**
+- **[docs/sprout-folder-picker-manual-verification.md](./docs/sprout-folder-picker-manual-verification.md)**
 
 ## Version Bumping
 

@@ -9,7 +9,7 @@ Specifically, it cannot prove that:
 - A macOS TCC permission denial on a protected directory (`~/Documents`,
   `~/Desktop`, an external volume) surfaces as a rejection rather than an empty
   listing. This is the case that originally hid behind "contains no image files".
-- A genuinely malformed `api_keys.json` reaches `JSON.parse` and rethrows, rather
+- A malformed `api_keys.json` reaches `JSON.parse` and rethrows, rather
   than being caught earlier.
 
 Run this checklist against a real build before releasing a change that touches

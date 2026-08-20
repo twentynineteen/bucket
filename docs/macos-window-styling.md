@@ -2,7 +2,7 @@
 
 ## Overview
 
-Bucket uses native macOS window styling features to provide a seamless, OS-integrated experience. This document covers implementation details, configuration, and troubleshooting.
+Bucket uses native macOS window styling so the app looks and behaves like any other Mac window. This document covers implementation details, configuration, and troubleshooting.
 
 ## Features
 
@@ -401,7 +401,7 @@ This provides a standard macOS window without custom styling but is App Store co
 ### Root
 - `src/App.tsx` - Main app with hooks integration
 
-## Best Practices
+## Do's and don'ts
 
 ### Do's
 ✅ Use platform detection before applying macOS features
