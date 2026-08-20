@@ -41,14 +41,13 @@ CEP (Common Extensibility Platform) extensions are HTML/JavaScript-based plugins
 
 ### BreadcrumbsPremiere v0.6.6
 
-**Purpose**: Metadata management panel for Premiere Pro
+**Purpose**: Breadcrumbs metadata panel for Premiere Pro. Integrates with Bucket's project management system.
 
 **Features**:
 
-- View and edit `breadcrumbs.json` metadata directly in timeline
-- Sync with Trello cards and Sprout Video
-- Quick access to project resources
-- Integrates with Bucket's project management system
+- View `breadcrumbs.json` metadata in Premiere
+- Insert footage from the breadcrumbs file into the timeline and update the sequence title
+- Quickly add WBS watermarks and stings to your timeline
 
 **Size**: 605 KB
 
@@ -58,13 +57,15 @@ CEP (Common Extensibility Platform) extensions are HTML/JavaScript-based plugins
 
 ### Boring v0.5.2
 
-**Purpose**: Premiere Pro extension for streamlined workflows
+**Purpose**: Replicates the "Boring detector" from DaVinci Resolve. Finds points in the
+timeline where long clips have been used, and can place markers there as a reference for
+cutting.
 
 **Features**:
 
-- Feature 1 (user to specify)
-- Feature 2 (user to specify)
-- Feature 3 (user to specify)
+- Analyze timeline for long clips
+- Place markers at boring points
+- Customizable detection thresholds
 
 **Size**: 67 KB
 
