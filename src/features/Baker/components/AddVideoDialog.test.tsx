@@ -567,6 +567,48 @@ describe('AddVideoDialog - poster frame aspect warning (#189)', () => {
   })
 })
 
+describe('AddVideoDialog - title naming guide on the URL tab (#277)', () => {
+  it('shows the naming guide beside the title on the URL tab', () => {
+    // The guide belongs on the Enter URL tab too, not only the Upload tab.
+    // It does not depend on a selected file, so it renders as soon as the
+    // URL tab is shown.
+    localStorage.clear()
+    render(
+      <AddVideoDialog
+        {...baseProps({ mode: { addMode: 'url', onTabChange: vi.fn() } })}
+      />
+    )
+
+    expect(
+      screen.getByRole('checkbox', { name: /show naming guide/i })
+    ).toBeInTheDocument()
+  })
+
+  it('warns when the URL-tab title does not match the selected format', () => {
+    localStorage.clear()
+    // Default category is Module content (three " - " parts); a bare title
+    // cannot match it, so the amber advisory shows on the URL tab as well.
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          mode: { addMode: 'url', onTabChange: vi.fn() },
+          form: {
+            formData: {
+              url: '',
+              title: 'rawfilename',
+              thumbnailUrl: '',
+              sproutVideoId: ''
+            },
+            onFormFieldChange: vi.fn()
+          }
+        })}
+      />
+    )
+
+    expect(screen.getByText(/expected format/i)).toBeInTheDocument()
+  })
+})
+
 describe('AddVideoDialog - title naming guide (#274)', () => {
   it('shows the naming guide beside the upload title once a file is selected', () => {
     // The guide must be available when uploading via this dialog, not only on
