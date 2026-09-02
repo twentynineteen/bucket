@@ -34,7 +34,18 @@ beforeEach(() => {
 // #206 removed AuthProvider from between them, and mis-nesting any of the rest
 // leaves the app blank, so mount the real tree rather than a mocked stand-in.
 it('mounts the real provider tree and renders the dashboard shell', async () => {
+  // The default route ('/' -> '/ingest/build') renders the lazy BuildProjectPage.
+  // App's only Suspense boundary wraps the whole AppRouter, so while that chunk
+  // loads the entire shell - the navigation included - is replaced by the
+  // fallback. Vite transforms that large feature on first import, which can take
+  // well over the default 1000ms findByRole timeout on a cold run (~2.8s locally,
+  // fast enough to pass on CI - a flake waiting to happen). Warm the chunk first
+  // so the assertion tests the provider tree, not the transformer's speed.
+  await import('@features/BuildProject')
+
   render(<App />)
 
-  expect(await screen.findByRole('navigation')).toBeInTheDocument()
+  expect(
+    await screen.findByRole('navigation', undefined, { timeout: 5000 })
+  ).toBeInTheDocument()
 })
