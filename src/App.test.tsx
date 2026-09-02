@@ -34,18 +34,21 @@ beforeEach(() => {
 // #206 removed AuthProvider from between them, and mis-nesting any of the rest
 // leaves the app blank, so mount the real tree rather than a mocked stand-in.
 it('mounts the real provider tree and renders the dashboard shell', async () => {
-  // The default route ('/' -> '/ingest/build') renders the lazy BuildProjectPage.
-  // App's only Suspense boundary wraps the whole AppRouter, so while that chunk
-  // loads the entire shell - the navigation included - is replaced by the
-  // fallback. Vite transforms that large feature on first import, which can take
-  // well over the default 1000ms findByRole timeout on a cold run (~2.8s locally,
-  // fast enough to pass on CI - a flake waiting to happen). Warm the chunk first
-  // so the assertion tests the provider tree, not the transformer's speed.
-  await import('@features/BuildProject')
-
   render(<App />)
 
-  expect(
-    await screen.findByRole('navigation', undefined, { timeout: 5000 })
-  ).toBeInTheDocument()
+  expect(await screen.findByRole('navigation')).toBeInTheDocument()
+})
+
+// #278 moved the Suspense boundary from wrapping the whole AppRouter to inside
+// the dashboard Page, around the routed Outlet. The navigation lives in the
+// sidebar, outside that boundary, so it must mount immediately -- without waiting
+// on the lazy route chunk. Asserting synchronously (getByRole, not findByRole)
+// proves the shell is present on the same tick the routed chunk is still loading.
+it('renders the navigation shell synchronously while the routed chunk loads', () => {
+  render(<App />)
+
+  // The sidebar is not lazy, so the nav is on the page before any chunk resolves.
+  expect(screen.getByRole('navigation')).toBeInTheDocument()
+  // ...and the routed content region shows the Suspense fallback in the meantime.
+  expect(screen.getByRole('status', { name: /loading page/i })).toBeInTheDocument()
 })
