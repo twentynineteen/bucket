@@ -21,6 +21,61 @@ Bucket is a single desktop app that ties together the repetitive steps of a vide
 - **Kavanagh** -- Automated QC checks on rendered videos: watermark presence detection and closing sting validation, powered by ffmpeg.
 - **Settings** -- Per-domain configuration tabs covering Trello boards, Ollama connection, and app preferences. Thirteen themes available (System, Light, Dark, Dracula, Tokyo Night, Catppuccin variants, Solarized Light, GitHub Light, Nord Light, One Light).
 
+## Screenshots
+
+A tour of the main workflows. Captured with sample data on the Dark theme; several panels populate once Sprout, Trello and QC reference folders are configured.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <b>Build a project</b><br/>
+      <sub>Name the project, set camera count, add footage, and generate the folder structure + Premiere project in one step.</sub><br/><br/>
+      <img src="docs/images/build-project.png" alt="BuildProject: project configuration, footage selection with camera assignment, and one-step project creation" />
+    </td>
+    <td width="50%" valign="top">
+      <b>Upload to Sprout</b><br/>
+      <sub>Publish to Sprout Video with the title naming guide (format templates, live advisory, colon check) and folder picker.</sub><br/><br/>
+      <img src="docs/images/upload-sprout.png" alt="Upload to SproutVideo: video title with the naming guide showing the format template and an advisory hint, plus the Sprout folder picker" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>Baker</b><br/>
+      <sub>Scan a drive for project folders, validate their structure, and create or update breadcrumbs metadata in batch.</sub><br/><br/>
+      <img src="docs/images/baker.png" alt="Baker: choose a folder and start a scan to find BuildProject folders and manage their breadcrumbs" />
+    </td>
+    <td width="50%" valign="top">
+      <b>Posterframe</b><br/>
+      <sub>Compose branded video thumbnails over a background with a live preview, then export or push to a Sprout video.</sub><br/><br/>
+      <img src="docs/images/posterframe.png" alt="Posterframe: background selection, video title, export settings and a live thumbnail preview with zoom and pan" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>Kavanagh QC</b><br/>
+      <sub>Automated render checks: watermark presence throughout and a valid closing dip-to-white sting, via ffmpeg.</sub><br/><br/>
+      <img src="docs/images/kavanagh.png" alt="Kavanagh: prerequisites for watermark and sting reference folders, and a control to choose a render and run quality control" />
+    </td>
+    <td width="50%" valign="top">
+      <b>Premiere plugins</b><br/>
+      <sub>Install and update Premiere Pro CEP extensions and open the extensions folder, without leaving the app.</sub><br/><br/>
+      <img src="docs/images/premiere.png" alt="Premiere Plugin Manager: available plugins to install with one click and settings for the CEP extensions folder" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>Settings &amp; themes</b><br/>
+      <sub>Per-domain settings (Ollama, Trello, QC) and a live theme picker across thirteen themes.</sub><br/><br/>
+      <img src="docs/images/settings.png" alt="Settings: AI model connection and an appearance section with a theme picker" />
+    </td>
+    <td width="50%" valign="top">
+      <b>Trello</b><br/>
+      <sub>Search and select Trello cards to append breadcrumbs and video information to a project.</sub><br/><br/>
+      <img src="docs/images/trello.png" alt="Trello: search cards by name or description and select a card to update" />
+    </td>
+  </tr>
+</table>
+
 ## Getting Bucket
 
 Releases are published to GitHub via the `publish` workflow. The latest macOS build is available on the [Releases page](https://github.com/twentynineteen/bucket/releases). The app includes a built-in auto-updater.
