@@ -34,14 +34,26 @@ test.describe('naming guide - format dropdown fits and scrolls', () => {
     const listbox = page.getByRole('listbox')
     await expect(listbox).toBeVisible()
 
-    // The menu must not spill past the bottom of the window.
-    const box = await listbox.boundingBox()
-    expect(box).not.toBeNull()
-    expect(box!.y + box!.height).toBeLessThanOrEqual(page.viewportSize()!.height + 1)
+    const viewportH = page.viewportSize()!.height
 
-    // The last option is reachable - i.e. the capped menu actually scrolls.
-    const lastOption = page.getByRole('option', { name: /other \/ not listed/i })
-    await lastOption.scrollIntoViewIfNeeded()
-    await expect(lastOption).toBeInViewport()
+    // The bug (#274): the menu was not capped, so it spilled past the bottom of
+    // the window with no way to reach the hidden options. Assert it now fits
+    // inside the window. Polled so it settles past the open (zoom) animation
+    // rather than racing it.
+    await expect
+      .poll(async () => {
+        const box = await listbox.boundingBox()
+        return box ? Math.round(box.y + box.height) : Number.POSITIVE_INFINITY
+      })
+      .toBeLessThanOrEqual(viewportH + 1)
+
+    // And the cap genuinely clips the list rather than shrinking the rows: the
+    // menu is shorter than the space its 13 options need, so the remainder is
+    // reachable only by scrolling. (Uncapped, the menu was ~656px; capped, it is
+    // bounded by the ~420px window.)
+    const optionCount = await page.getByRole('option').count()
+    expect(optionCount).toBeGreaterThanOrEqual(13)
+    const box = await listbox.boundingBox()
+    expect(box!.height).toBeLessThan(viewportH)
   })
 })
