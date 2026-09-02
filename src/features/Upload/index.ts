@@ -7,6 +7,8 @@ export { default as Posterframe } from './components/Posterframe'
 export { default as UploadOtter } from './components/UploadOtter'
 /** Picker for choosing which Sprout folder an upload lands in */
 export { SproutFolderPicker } from './components/SproutFolderPicker'
+/** WBS video-title naming guide shown beside a Sprout upload title field */
+export { TitleNamingGuide } from './components/TitleNamingGuide'
 /** Settings panel for building the saved folder index that powers search */
 export { SproutFolderIndexPanel } from './components/SproutFolderIndexPanel'
 

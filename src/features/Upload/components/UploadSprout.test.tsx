@@ -848,7 +848,7 @@ describe('UploadSprout Page', () => {
       expect(screen.getByRole('button', { name: /Upload Video/i })).toBeDisabled()
     })
 
-    it('B4.1 shows a positive hint once an edited title matches the category', () => {
+    it('B4.1 shows a positive hint when the title matches the selected category', () => {
       renderUploadSprout()
 
       fireEvent.change(screen.getByLabelText(/video title/i), {
@@ -860,7 +860,7 @@ describe('UploadSprout Page', () => {
       ).toBeInTheDocument()
     })
 
-    it('B4.2 shows an amber hint for an edited non-matching title but does not block', () => {
+    it('B4.2 shows an amber hint for a non-matching title but does not block', () => {
       renderUploadSprout()
 
       fireEvent.change(screen.getByLabelText(/video title/i), {
@@ -910,7 +910,22 @@ describe('UploadSprout Page', () => {
       )
     })
 
-    it('B4.4 shows no advisory for a title prefilled but not yet edited', async () => {
+    it('B4.4 warns on a prefilled title that does not match, without an edit (#274)', async () => {
+      // The reported bug: a prefilled filename that does not fit the selected
+      // format must warn even though the user never edits it.
+      mockSelectFile.mockResolvedValue('/renders/rawfilename.mp4')
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /Select Video File/i }))
+
+      await waitFor(() =>
+        expect(screen.getByText(/expected format/i)).toBeInTheDocument()
+      )
+      // A warning, not a block.
+      expect(screen.getByRole('button', { name: /Upload Video/i })).not.toBeDisabled()
+    })
+
+    it('B4.1 shows a tick on a prefilled title that matches, without an edit', async () => {
       mockSelectFile.mockResolvedValue(
         '/renders/AB123X - D Okafor - Core principles explained.mp4'
       )
@@ -918,15 +933,11 @@ describe('UploadSprout Page', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Select Video File/i }))
 
-      // The prefill is a valid Module content title, but the user has not edited
-      // it, so neither the tick nor the amber hint appears.
       await waitFor(() =>
-        expect(screen.getByRole('button', { name: /Upload Video/i })).not.toBeDisabled()
+        expect(
+          screen.getByText(/looks like the module content format/i)
+        ).toBeInTheDocument()
       )
-      expect(
-        screen.queryByText(/looks like the module content format/i)
-      ).not.toBeInTheDocument()
-      expect(screen.queryByText(/expected format/i)).not.toBeInTheDocument()
     })
   })
 })
