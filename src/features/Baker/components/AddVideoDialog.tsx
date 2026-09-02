@@ -338,6 +338,10 @@ function UrlEntryContent({
           onChange={(e) => form.onFormFieldChange('title', e.target.value)}
           maxLength={200}
         />
+        <TitleNamingGuide
+          title={form.formData.title}
+          onTitleChange={(next) => form.onFormFieldChange('title', next)}
+        />
       </div>
 
       <div className="space-y-2">
