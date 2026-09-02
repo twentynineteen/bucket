@@ -566,3 +566,40 @@ describe('AddVideoDialog - poster frame aspect warning (#189)', () => {
     expect(screen.queryByText(/16:9/)).not.toBeInTheDocument()
   })
 })
+
+describe('AddVideoDialog - title naming guide (#274)', () => {
+  it('shows the naming guide beside the upload title once a file is selected', () => {
+    // The guide must be available when uploading via this dialog, not only on
+    // the standalone Sprout upload page.
+    localStorage.clear()
+    render(<AddVideoDialog {...baseProps()} />)
+
+    expect(
+      screen.getByRole('checkbox', { name: /show naming guide/i })
+    ).toBeInTheDocument()
+  })
+
+  it('warns when the upload title does not match the selected format', () => {
+    localStorage.clear()
+    // Default category is Module content (three " - " parts); a bare title
+    // cannot match it, so the amber hint shows - the same guidance as the
+    // standalone page.
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          form: {
+            formData: {
+              url: '',
+              title: 'rawfilename',
+              thumbnailUrl: '',
+              sproutVideoId: ''
+            },
+            onFormFieldChange: vi.fn()
+          }
+        })}
+      />
+    )
+
+    expect(screen.getByText(/expected format/i)).toBeInTheDocument()
+  })
+})

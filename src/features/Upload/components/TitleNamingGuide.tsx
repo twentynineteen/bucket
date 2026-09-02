@@ -8,9 +8,12 @@
  *
  * The colon block is hard and always shown (a colon breaks the embed code). The
  * guide itself - picker, templates, advisory - is behind the "Show naming guide"
- * toggle. The advisory only speaks once the title has been edited, so the
- * prefilled filename does not draw an amber hint the instant a file is chosen;
- * and it never blocks, because it can only judge shape, not correctness.
+ * toggle. The advisory speaks as soon as a specific format is selected and the
+ * title is non-blank, the prefilled filename included (#274): filenames here are
+ * usually already dash-formatted, so gating on a manual edit hid the warning in
+ * the one case that mattered - accepting a prefilled title that does not match.
+ * It never blocks, because it can only judge shape, not correctness; colons
+ * remain the sole hard block.
  */
 
 import { Button } from '@shared/ui/button'
@@ -38,17 +41,20 @@ import {
 export const TitleNamingGuide: React.FC<{
   /** The current title, whatever its source. */
   title: string
-  /** Whether the user has changed the title since it was prefilled. */
-  edited: boolean
-  /** Applies a repaired title (used by "Remove colons"); marks it edited. */
+  /** Applies a repaired title (used by "Remove colons"). */
   onTitleChange: (next: string) => void
-}> = ({ title, edited, onTitleChange }) => {
+}> = ({ title, onTitleChange }) => {
   const { showGuide, setShowGuide, category, setCategory } = useTitleNamingGuide()
 
   const colon = hasColon(title)
   const selected = NAMING_CATEGORIES.find((c) => c.id === category)
+  // Advisory shows as soon as a specific format is selected and the title is
+  // non-blank - the prefilled title included (#274). Filenames here are usually
+  // already dash-formatted, so gating on a manual edit hid the warning in the
+  // one case that matters: accepting a prefilled title that does not match the
+  // chosen format. Still advisory only; colons remain the sole hard block.
   const advisory =
-    edited && title.trim() !== '' && category !== OTHER_CATEGORY_ID
+    title.trim() !== '' && category !== OTHER_CATEGORY_ID
       ? matchTitle(title, category)
       : 'none'
 

@@ -127,9 +127,6 @@ const UploadSproutContent: React.FC = () => {
   const { thumbnailLoaded, refreshTimestamp, setThumbnailLoaded } =
     useImageRefresh(response)
   const [title, setTitle] = useState('')
-  // Whether the user has changed the title since it was prefilled, so the guide
-  // only comments once they have actually typed (issue #270, B4).
-  const [titleEdited, setTitleEdited] = useState(false)
   const kavanagh = useKavanaghForUpload()
 
   // A colon breaks the Sprout embed code, so a title carrying one blocks the
@@ -152,9 +149,6 @@ const UploadSproutContent: React.FC = () => {
     const file = await selectFile()
     if (file) {
       setTitle(fileNameToTitle(file))
-      // A fresh prefill is not the user's own wording, so the guide stays quiet
-      // until they edit it (B4.4).
-      setTitleEdited(false)
       // A previous render's verdict must not linger beside a different file.
       kavanagh.reset()
     }
@@ -234,10 +228,7 @@ const UploadSproutContent: React.FC = () => {
                     id="sprout-video-title"
                     placeholder="Video title on Sprout Video"
                     value={title}
-                    onChange={(e) => {
-                      setTitle(e.target.value)
-                      setTitleEdited(true)
-                    }}
+                    onChange={(e) => setTitle(e.target.value)}
                     maxLength={200}
                   />
                   <p className="text-muted-foreground text-xs">
@@ -245,14 +236,7 @@ const UploadSproutContent: React.FC = () => {
                     filename.
                   </p>
 
-                  <TitleNamingGuide
-                    title={title}
-                    edited={titleEdited}
-                    onTitleChange={(next) => {
-                      setTitle(next)
-                      setTitleEdited(true)
-                    }}
-                  />
+                  <TitleNamingGuide title={title} onTitleChange={setTitle} />
 
                   <div className="space-y-2 pt-2">
                     <Label>Sprout Folder</Label>
