@@ -154,6 +154,9 @@ const renderUploadSprout = () => {
 describe('UploadSprout Page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // The naming guide (issue #270) keeps its show/category choice in
+    // localStorage; clear it so one case's toggle does not leak into the next.
+    localStorage.clear()
     // Reset to default states
     // The gate lets everything through unless a test says otherwise, which is
     // what a switched-off check does (B9.1).
@@ -733,6 +736,130 @@ describe('UploadSprout Page', () => {
       renderUploadSprout()
 
       expect(screen.getByRole('button', { name: /Loading\.\.\./i })).toBeDisabled()
+    })
+  })
+
+  // ==========================================
+  // Title naming guide (issue #270)
+  // ==========================================
+  describe('title naming guide', () => {
+    beforeEach(() => {
+      mockFileUploadState = {
+        selectedFile: '/path/to/video.mp4',
+        response: null,
+        selectFile: mockSelectFile,
+        uploadFile: mockUploadFile,
+        cancelUpload: mockCancelUpload
+      }
+    })
+
+    it('B1.1 shows the guide with its default category by default', () => {
+      renderUploadSprout()
+
+      expect(
+        screen.getByRole('checkbox', { name: /show naming guide/i })
+      ).toBeChecked()
+      // Default category is Module content, so its template is on screen.
+      expect(screen.getByText('Module code - Presenter - Video title')).toBeInTheDocument()
+    })
+
+    it('B1.2 hides the guide when the toggle is unticked', () => {
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('checkbox', { name: /show naming guide/i }))
+
+      expect(
+        screen.queryByText('Module code - Presenter - Video title')
+      ).not.toBeInTheDocument()
+    })
+
+    it('B2.1 shows the selected category example', () => {
+      renderUploadSprout()
+
+      expect(
+        screen.getByText('AB123X - D Okafor - Core principles explained')
+      ).toBeInTheDocument()
+    })
+
+    it('B3.1 shows a colon error and disables Upload when the title has a colon', () => {
+      renderUploadSprout()
+
+      fireEvent.change(screen.getByLabelText(/video title/i), {
+        target: { value: 'Session 1: Intro' }
+      })
+
+      expect(screen.getByText(/colons break the embed code/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Upload Video/i })).toBeDisabled()
+    })
+
+    it('B3.2 removes colons and re-enables Upload', () => {
+      renderUploadSprout()
+
+      const input = screen.getByLabelText(/video title/i) as HTMLInputElement
+      fireEvent.change(input, { target: { value: 'Session 1: Intro' } })
+
+      fireEvent.click(screen.getByRole('button', { name: /remove colons/i }))
+
+      expect(input.value).toBe('Session 1 Intro')
+      expect(screen.queryByText(/colons break the embed code/i)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Upload Video/i })).not.toBeDisabled()
+    })
+
+    it('B3.5 blocks a colon that arrives from the prefilled filename', async () => {
+      // Selecting a file whose name contains a colon prefills a colon title and
+      // must block before the user types anything.
+      mockSelectFile.mockResolvedValue('/renders/Lecture: intro.mp4')
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /Select Video File/i }))
+
+      await waitFor(() =>
+        expect(screen.getByText(/colons break the embed code/i)).toBeInTheDocument()
+      )
+      expect(screen.getByRole('button', { name: /Upload Video/i })).toBeDisabled()
+    })
+
+    it('B4.1 shows a positive hint once an edited title matches the category', () => {
+      renderUploadSprout()
+
+      fireEvent.change(screen.getByLabelText(/video title/i), {
+        target: { value: 'AB123X - D Okafor - Core principles explained' }
+      })
+
+      expect(screen.getByText(/looks like the module content format/i)).toBeInTheDocument()
+    })
+
+    it('B4.2 shows an amber hint for an edited non-matching title but does not block', () => {
+      renderUploadSprout()
+
+      fireEvent.change(screen.getByLabelText(/video title/i), {
+        target: { value: 'nodashes' }
+      })
+
+      expect(screen.getByText(/expected format/i)).toBeInTheDocument()
+      // Advisory never disables Upload - only colons do.
+      expect(screen.getByRole('button', { name: /Upload Video/i })).not.toBeDisabled()
+    })
+
+    it('B4.4 shows no advisory for a title prefilled but not yet edited', async () => {
+      mockSelectFile.mockResolvedValue(
+        '/renders/AB123X - D Okafor - Core principles explained.mp4'
+      )
+      renderUploadSprout()
+
+      fireEvent.click(screen.getByRole('button', { name: /Select Video File/i }))
+
+      // The prefill is a valid Module content title, but the user has not edited
+      // it, so neither the tick nor the amber hint appears.
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: /Upload Video/i })
+        ).not.toBeDisabled()
+      )
+      expect(
+        screen.queryByText(/looks like the module content format/i)
+      ).not.toBeInTheDocument()
+      expect(screen.queryByText(/expected format/i)).not.toBeInTheDocument()
     })
   })
 })
