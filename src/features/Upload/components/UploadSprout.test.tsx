@@ -756,11 +756,11 @@ describe('UploadSprout Page', () => {
     it('B1.1 shows the guide with its default category by default', () => {
       renderUploadSprout()
 
-      expect(
-        screen.getByRole('checkbox', { name: /show naming guide/i })
-      ).toBeChecked()
+      expect(screen.getByRole('checkbox', { name: /show naming guide/i })).toBeChecked()
       // Default category is Module content, so its template is on screen.
-      expect(screen.getByText('Module code - Presenter - Video title')).toBeInTheDocument()
+      expect(
+        screen.getByText('Module code - Presenter - Video title')
+      ).toBeInTheDocument()
     })
 
     it('B1.2 hides the guide when the toggle is unticked', () => {
@@ -779,6 +779,22 @@ describe('UploadSprout Page', () => {
       expect(
         screen.getByText('AB123X - D Okafor - Core principles explained')
       ).toBeInTheDocument()
+    })
+
+    it('B2.2 shows the Trello reference for a category that has one', () => {
+      // The default category (Module content) carries a Trello reference.
+      renderUploadSprout()
+
+      expect(screen.getByText(/trello card:/i)).toBeInTheDocument()
+    })
+
+    it('B1.4 shows no naming guide until a file is selected', () => {
+      mockFileUploadState = { ...mockFileUploadState, selectedFile: null }
+      renderUploadSprout()
+
+      expect(
+        screen.queryByRole('checkbox', { name: /show naming guide/i })
+      ).not.toBeInTheDocument()
     })
 
     it('B3.1 shows a colon error and disables Upload when the title has a colon', () => {
@@ -805,6 +821,19 @@ describe('UploadSprout Page', () => {
       expect(screen.getByRole('button', { name: /Upload Video/i })).not.toBeDisabled()
     })
 
+    it('B3.4 keeps the colon block even when the guide is hidden', () => {
+      renderUploadSprout()
+
+      // Hide the guide, then give the title a colon.
+      fireEvent.click(screen.getByRole('checkbox', { name: /show naming guide/i }))
+      fireEvent.change(screen.getByLabelText(/video title/i), {
+        target: { value: 'A: B' }
+      })
+
+      expect(screen.getByText(/colons break the embed code/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Upload Video/i })).toBeDisabled()
+    })
+
     it('B3.5 blocks a colon that arrives from the prefilled filename', async () => {
       // Selecting a file whose name contains a colon prefills a colon title and
       // must block before the user types anything.
@@ -826,7 +855,9 @@ describe('UploadSprout Page', () => {
         target: { value: 'AB123X - D Okafor - Core principles explained' }
       })
 
-      expect(screen.getByText(/looks like the module content format/i)).toBeInTheDocument()
+      expect(
+        screen.getByText(/looks like the module content format/i)
+      ).toBeInTheDocument()
     })
 
     it('B4.2 shows an amber hint for an edited non-matching title but does not block', () => {
@@ -841,6 +872,44 @@ describe('UploadSprout Page', () => {
       expect(screen.getByRole('button', { name: /Upload Video/i })).not.toBeDisabled()
     })
 
+    it('B4.5 shows no advisory when an edited title is cleared to blank', () => {
+      renderUploadSprout()
+
+      const input = screen.getByLabelText(/video title/i)
+      fireEvent.change(input, {
+        target: { value: 'AB123X - D Okafor - Core principles explained' }
+      })
+      expect(
+        screen.getByText(/looks like the module content format/i)
+      ).toBeInTheDocument()
+
+      fireEvent.change(input, { target: { value: '' } })
+
+      expect(
+        screen.queryByText(/looks like the module content format/i)
+      ).not.toBeInTheDocument()
+      expect(screen.queryByText(/expected format/i)).not.toBeInTheDocument()
+    })
+
+    it('B5.1/B5.3 passes an edited clean title through to uploadFile unchanged', async () => {
+      renderUploadSprout()
+
+      fireEvent.change(screen.getByLabelText(/video title/i), {
+        target: { value: 'AB123X - D Okafor - Core principles explained' }
+      })
+      fireEvent.click(screen.getByRole('button', { name: /Upload Video/i }))
+
+      // The typed title reaches Sprout verbatim - no duration appended, no
+      // reformatting.
+      await waitFor(() =>
+        expect(mockUploadFile).toHaveBeenCalledWith(
+          'test-api-key',
+          'AB123X - D Okafor - Core principles explained',
+          null
+        )
+      )
+    })
+
     it('B4.4 shows no advisory for a title prefilled but not yet edited', async () => {
       mockSelectFile.mockResolvedValue(
         '/renders/AB123X - D Okafor - Core principles explained.mp4'
@@ -852,9 +921,7 @@ describe('UploadSprout Page', () => {
       // The prefill is a valid Module content title, but the user has not edited
       // it, so neither the tick nor the amber hint appears.
       await waitFor(() =>
-        expect(
-          screen.getByRole('button', { name: /Upload Video/i })
-        ).not.toBeDisabled()
+        expect(screen.getByRole('button', { name: /Upload Video/i })).not.toBeDisabled()
       )
       expect(
         screen.queryByText(/looks like the module content format/i)

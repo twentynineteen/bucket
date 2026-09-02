@@ -56,8 +56,25 @@ describe('stripColons', () => {
 })
 
 describe('NAMING_CATEGORIES', () => {
-  it('B2.3 lists the 12 WBS categories', () => {
-    expect(NAMING_CATEGORIES).toHaveLength(12)
+  it('B2.3 lists exactly the 12 agreed WBS categories', () => {
+    // The specific set, not a bare count: a changed id is a spec change, and
+    // that is what should force this test to be revisited.
+    expect(NAMING_CATEGORIES.map((c) => c.id).sort()).toEqual(
+      [
+        'elective-promotional-module-overview',
+        'events-conferences',
+        'file-used-on-multiple-modules',
+        'group-presentations',
+        'interview-with-guest-speaker',
+        'lesson-introductions',
+        'module-content',
+        'module-overview',
+        'programme-information',
+        'ptes',
+        'two-presenters',
+        'wbslive-recording'
+      ].sort()
+    )
   })
 
   it('every category carries a template and an example', () => {
@@ -99,6 +116,10 @@ describe('matchTitle', () => {
     )
   })
 
+  it('B4.5 a blank title never matches, so the component can suppress the hint', () => {
+    expect(matchTitle('', 'module-content')).toBe('mismatch')
+  })
+
   it('B4.3 the "other" category never judges the title', () => {
     expect(matchTitle('anything at all', OTHER_CATEGORY_ID)).toBe('none')
     expect(matchTitle('AB123X - D Okafor - Core principles explained', 'other')).toBe(
@@ -125,11 +146,14 @@ describe('matchTitle', () => {
 
   it('two presenters needs an " and " in the presenter part', () => {
     expect(
-      matchTitle('AB321W - F Nguyen and G Adeyemi - Working across teams', 'two-presenters')
+      matchTitle(
+        'AB321W - F Nguyen and G Adeyemi - Working across teams',
+        'two-presenters'
+      )
     ).toBe('match')
-    expect(
-      matchTitle('AB321W - F Nguyen - Working across teams', 'two-presenters')
-    ).toBe('mismatch')
+    expect(matchTitle('AB321W - F Nguyen - Working across teams', 'two-presenters')).toBe(
+      'mismatch'
+    )
   })
 
   it('cannot disambiguate same-arity categories - a documented limit, not a bug', () => {

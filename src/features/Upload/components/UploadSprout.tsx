@@ -16,6 +16,8 @@ import { fileNameToTitle } from '@shared/utils'
 import { useFileUpload } from '../hooks/useFileUpload'
 import { useKavanaghForUpload } from '../hooks/useKavanaghForUpload'
 import { KavanaghBlockDialog, KavanaghGateControls } from './KavanaghUploadGate'
+import { TitleNamingGuide } from './TitleNamingGuide'
+import { hasColon } from '../internal/namingConventions'
 import { useSproutFolderSelection } from '../hooks/useSproutFolderSelection'
 import { SproutFolderPicker } from './SproutFolderPicker'
 import { useImageRefresh } from '../hooks/useImageRefresh'
@@ -125,7 +127,15 @@ const UploadSproutContent: React.FC = () => {
   const { thumbnailLoaded, refreshTimestamp, setThumbnailLoaded } =
     useImageRefresh(response)
   const [title, setTitle] = useState('')
+  // Whether the user has changed the title since it was prefilled, so the guide
+  // only comments once they have actually typed (issue #270, B4).
+  const [titleEdited, setTitleEdited] = useState(false)
   const kavanagh = useKavanaghForUpload()
+
+  // A colon breaks the Sprout embed code, so a title carrying one blocks the
+  // upload (B3). Runs whatever the guide toggle is, and however the title got
+  // its colon - typed or prefilled from a filename that had one (B3.5).
+  const titleHasColon = hasColon(title)
 
   // Page label - shadcn breadcrumb component (memoized to prevent infinite re-renders)
   const breadcrumbItems = useMemo(
@@ -142,6 +152,9 @@ const UploadSproutContent: React.FC = () => {
     const file = await selectFile()
     if (file) {
       setTitle(fileNameToTitle(file))
+      // A fresh prefill is not the user's own wording, so the guide stays quiet
+      // until they edit it (B4.4).
+      setTitleEdited(false)
       // A previous render's verdict must not linger beside a different file.
       kavanagh.reset()
     }
@@ -221,13 +234,25 @@ const UploadSproutContent: React.FC = () => {
                     id="sprout-video-title"
                     placeholder="Video title on Sprout Video"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) => {
+                      setTitle(e.target.value)
+                      setTitleEdited(true)
+                    }}
                     maxLength={200}
                   />
                   <p className="text-muted-foreground text-xs">
                     Used as the video title on Sprout Video. Leave blank to use the
                     filename.
                   </p>
+
+                  <TitleNamingGuide
+                    title={title}
+                    edited={titleEdited}
+                    onTitleChange={(next) => {
+                      setTitle(next)
+                      setTitleEdited(true)
+                    }}
+                  />
 
                   <div className="space-y-2 pt-2">
                     <Label>Sprout Folder</Label>
@@ -287,7 +312,8 @@ const UploadSproutContent: React.FC = () => {
                   !apiKey ||
                   uploading ||
                   apiKeyLoading ||
-                  kavanagh.checking
+                  kavanagh.checking ||
+                  titleHasColon
                 }
               >
                 {uploadButtonLabel({
