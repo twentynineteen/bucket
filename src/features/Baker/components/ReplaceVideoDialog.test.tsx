@@ -17,7 +17,9 @@ const CARDS = [
   { cardId: 'c2', title: 'Card Two' }
 ]
 
-function baseProps(overrides: Partial<ReplaceVideoDialogProps> = {}): ReplaceVideoDialogProps {
+function baseProps(
+  overrides: Partial<ReplaceVideoDialogProps> = {}
+): ReplaceVideoDialogProps {
   return {
     open: true,
     onOpenChange: vi.fn(),
@@ -67,15 +69,21 @@ describe('ReplaceVideoDialog - form', () => {
     render(<ReplaceVideoDialog {...baseProps()} />)
 
     expect(screen.getByText('WBS - MSc - Managing Change')).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /keep the current poster frame/i })).toBeChecked()
-    expect(screen.getByRole('radio', { name: /set a new poster frame/i })).not.toBeChecked()
+    expect(
+      screen.getByRole('radio', { name: /keep the current poster frame/i })
+    ).toBeChecked()
+    expect(
+      screen.getByRole('radio', { name: /set a new poster frame/i })
+    ).not.toBeChecked()
     expect(primary()).toBeDisabled()
   })
 
   it('asks the caller to pick a file', () => {
     const onSelectFile = vi.fn()
     render(
-      <ReplaceVideoDialog {...baseProps({ upload: { ...baseProps().upload, onSelectFile } })} />
+      <ReplaceVideoDialog
+        {...baseProps({ upload: { ...baseProps().upload, onSelectFile } })}
+      />
     )
 
     fireEvent.click(screen.getByRole('button', { name: /choose (a )?file/i }))
@@ -197,7 +205,11 @@ describe('ReplaceVideoDialog - transfer lifecycle', () => {
           upload: {
             ...withFile().upload,
             status: 'uploading',
-            progress: { percentage: 42.5, bytesSent: 425_000_000, totalBytes: 1_000_000_000 }
+            progress: {
+              percentage: 42.5,
+              bytesSent: 425_000_000,
+              totalBytes: 1_000_000_000
+            }
           }
         })}
       />
@@ -205,7 +217,9 @@ describe('ReplaceVideoDialog - transfer lifecycle', () => {
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.getByText(/42%|43%/)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^replace video$/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /^replace video$/i })
+    ).not.toBeInTheDocument()
   })
 
   it('b5_2_offers_cancel_while_uploading_and_reports_it', () => {
@@ -229,14 +243,19 @@ describe('ReplaceVideoDialog - transfer lifecycle', () => {
     )
 
     expect(screen.getByRole('button', { name: /cancelling/i })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: /^replace video$/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /^replace video$/i })
+    ).not.toBeInTheDocument()
   })
 
   it('b5_3_does_not_ask_to_close_on_escape_while_uploading', () => {
     const onOpenChange = vi.fn()
     render(
       <ReplaceVideoDialog
-        {...withFile({ onOpenChange, upload: { ...withFile().upload, status: 'uploading' } })}
+        {...withFile({
+          onOpenChange,
+          upload: { ...withFile().upload, status: 'uploading' }
+        })}
       />
     )
 
@@ -249,7 +268,10 @@ describe('ReplaceVideoDialog - transfer lifecycle', () => {
     const onOpenChange = vi.fn()
     render(
       <ReplaceVideoDialog
-        {...withFile({ onOpenChange, upload: { ...withFile().upload, status: 'cancelling' } })}
+        {...withFile({
+          onOpenChange,
+          upload: { ...withFile().upload, status: 'cancelling' }
+        })}
       />
     )
 

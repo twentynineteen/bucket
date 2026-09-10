@@ -193,6 +193,18 @@ vi.mock('@features/Upload', () => ({
     uploadFile: vi.fn(),
     resetUploadState: vi.fn()
   }),
+  // Issue #282: the replace-video transfer, composed by useReplaceVideo
+  useReplaceUpload: () => ({
+    selectedFile: null,
+    selectFile: vi.fn(),
+    clearFile: vi.fn(),
+    start: vi.fn(),
+    cancel: vi.fn(),
+    progress: { percentage: 0, bytesSent: 0, totalBytes: 0 },
+    status: 'idle',
+    error: null,
+    reset: vi.fn()
+  }),
   // Issue #155: destination folder, resolved from session/default/root
   useSproutFolderSelection: () => ({
     selectedFolder: null,

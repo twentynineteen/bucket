@@ -35,7 +35,11 @@ describe('VideoLinkCard - replace action', () => {
   it('b3_1_offers_an_enabled_replace_action_when_the_link_can_be_replaced', () => {
     const onReplaceVideo = vi.fn()
     render(
-      <VideoLinkCard {...baseProps} onReplaceVideo={onReplaceVideo} replaceDisabledReason={null} />
+      <VideoLinkCard
+        {...baseProps}
+        onReplaceVideo={onReplaceVideo}
+        replaceDisabledReason={null}
+      />
     )
 
     const button = screen.getByRole('button', { name: /replace video/i })
@@ -64,6 +68,8 @@ describe('VideoLinkCard - replace action', () => {
   it('renders no replace action when the surface does not offer one', () => {
     render(<VideoLinkCard {...baseProps} />)
 
-    expect(screen.queryByRole('button', { name: /replace video/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /replace video/i })
+    ).not.toBeInTheDocument()
   })
 })

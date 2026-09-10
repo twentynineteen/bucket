@@ -666,8 +666,9 @@ fn the_size_check_runs_before_any_streaming_or_network_work() {
     let reader = source
         .find("ProgressReader {")
         .expect("upload_video_task must still build a ProgressReader");
+    // The URL comes from `endpoint(&target)` since #282; the call is what is pinned.
     let request = source
-        .find("post(\"https://api.sproutvideo.com/v1/videos\")")
+        .find("post(endpoint(&target))")
         .expect("upload_video_task must still POST to Sprout");
 
     assert!(
@@ -1128,13 +1129,19 @@ fn b1_3_replace_video_is_registered_and_shares_the_upload_task() {
     );
 
     let source = include_str!("../sprout_upload.rs");
-    let command = source
+    let upload_command = source
+        .split("pub async fn upload_video(")
+        .nth(1)
+        .and_then(|rest| rest.split("pub async fn replace_video").next())
+        .expect("upload_video must precede replace_video in sprout_upload.rs");
+    let replace_command = source
         .split("pub async fn replace_video")
         .nth(1)
+        .and_then(|rest| rest.split("async fn start_transfer").next())
         .expect("a replace_video command must exist in sprout_upload.rs");
     assert!(
-        command.contains("upload_video_task"),
-        "replace_video must reuse upload_video_task rather than a second transfer loop"
+        upload_command.contains("start_transfer(") && replace_command.contains("start_transfer("),
+        "both commands must go through the one start_transfer helper"
     );
     assert!(
         source.matches("async fn upload_video_task").count() == 1,

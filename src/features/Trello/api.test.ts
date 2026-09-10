@@ -9,8 +9,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
-vi.mock('@tauri-apps/plugin-fs', () => ({ readTextFile: vi.fn(), writeTextFile: vi.fn() }))
-vi.mock('@tauri-apps/plugin-dialog', () => ({ ask: vi.fn(), confirm: vi.fn(), open: vi.fn() }))
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  readTextFile: vi.fn(),
+  writeTextFile: vi.fn()
+}))
+vi.mock('@tauri-apps/plugin-dialog', () => ({
+  ask: vi.fn(),
+  confirm: vi.fn(),
+  open: vi.fn()
+}))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }))
 
 import { addCardComment } from './api'

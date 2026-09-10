@@ -19,15 +19,17 @@ import { toast } from 'sonner'
 import type { VideoLink } from '@features/Baker'
 import { usePosterFrameForUpload } from '@features/Upload'
 
-const NO_SPROUT_ID_REASON = 'No Sprout video ID could be determined from this link.'
-const NO_API_KEY_REASON = 'Sprout Video API key not configured. Go to Settings to add it.'
+export const NO_SPROUT_ID_REASON =
+  'No Sprout video ID could be determined from this link.'
+export const NO_API_KEY_REASON =
+  'Sprout Video API key not configured. Go to Settings to add it.'
 
 /**
  * The Sprout id a poster frame can be set against: the stored one, or one
  * derived from the link's own URL for links added before the id was captured
- * (B2.1-B2.2).
+ * (B2.1-B2.2). Shared with the replace action (#282), which has the same need.
  */
-function resolveSproutVideoId(videoLink: VideoLink): string | null {
+export function resolveSproutVideoId(videoLink: VideoLink): string | null {
   return videoLink.sproutVideoId?.trim() || sproutVideoIdFromUrl(videoLink.url)
 }
 
@@ -73,6 +75,15 @@ export function useCardPosterFrame({
     // Closing mid-request would tear down the in-flight PUT (B5.3)
     if (!open && posterFrame.status === 'working') return
     if (!open) setTargetIndex(null)
+  }
+
+  /**
+   * Forces the card to reload its thumbnail. Sprout may reuse the same asset
+   * URL for a changed image, so a new key is the only way a replaced poster
+   * frame (or a replaced video, #282) becomes visible.
+   */
+  const bumpThumbnailCacheKey = (url: string) => {
+    setThumbnailCacheKeys((current) => ({ ...current, [url]: Date.now() }))
   }
 
   /** Records the refreshed thumbnail, reporting whether the write stuck */
@@ -130,7 +141,7 @@ export function useCardPosterFrame({
 
     const refreshed = await writeBack(index, link, videoId, result.posterFrameUrl)
 
-    setThumbnailCacheKeys((current) => ({ ...current, [link.url]: Date.now() }))
+    bumpThumbnailCacheKey(link.url)
 
     if (refreshed) {
       toast.success('Poster frame set on Sprout Video.')
@@ -153,6 +164,7 @@ export function useCardPosterFrame({
     unavailableReason:
       posterFrame.unavailableReason ?? (apiKey ? null : NO_API_KEY_REASON),
     thumbnailCacheKeys,
+    bumpThumbnailCacheKey,
     disabledReason,
     request,
     confirm,

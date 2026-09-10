@@ -267,6 +267,19 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       createUploadEventsMock()
     )
 
+    // Mock useReplaceUpload (Issue #282): idle, nothing selected
+    vi.mocked(useFileUploadModule.useReplaceUpload).mockReturnValue({
+      selectedFile: null,
+      selectFile: vi.fn(),
+      clearFile: vi.fn(),
+      start: vi.fn(),
+      cancel: vi.fn(),
+      progress: { percentage: 0, bytesSent: 0, totalBytes: 0 },
+      status: 'idle',
+      error: null,
+      reset: vi.fn()
+    })
+
     // Mock useSproutFolderSelection (Issue #155)
     vi.mocked(useFileUploadModule.useSproutFolderSelection).mockReturnValue({
       selectedFolder: null,

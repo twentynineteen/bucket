@@ -121,18 +121,21 @@ beforeEach(() => {
   vi.mocked(toast.error).mockClear()
 })
 
-/** Picks a file and starts the replace, returning the pending outcome. */
+/**
+ * Picks a file and starts the replace. The pending outcome comes back wrapped
+ * so `await startReplace()` does not flatten it and wait for the transfer.
+ */
 async function startReplace(result: { current: ReturnType<typeof useReplaceUpload> }) {
   await act(async () => {
     await result.current.selectFile()
   })
-  let outcome!: ReturnType<typeof result.current.start>
+  let pending!: ReturnType<typeof result.current.start>
   await act(async () => {
-    outcome = result.current.start('vid-1', 'key-123')
+    pending = result.current.start('vid-1', 'key-123')
     // Let the listeners attach and the invoke resolve.
     await Promise.resolve()
   })
-  return outcome
+  return { pending }
 }
 
 describe('useReplaceUpload - file selection', () => {
@@ -167,9 +170,13 @@ describe('useReplaceUpload - file selection', () => {
 describe('useReplaceUpload - completion', () => {
   it('b2_1_invokes_replace_for_the_selected_file_and_resolves_with_the_video', async () => {
     const { result } = renderHook(() => useReplaceUpload())
-    const outcome = await startReplace(result)
+    const { pending: outcome } = await startReplace(result)
 
-    expect(replaceVideo).toHaveBeenCalledWith('/renders/WBS_intro_v2.mp4', 'key-123', 'vid-1')
+    expect(replaceVideo).toHaveBeenCalledWith(
+      '/renders/WBS_intro_v2.mp4',
+      'key-123',
+      'vid-1'
+    )
     expect(result.current.status).toBe('uploading')
 
     const replaced = video()
@@ -198,7 +205,12 @@ describe('useReplaceUpload - completion', () => {
 
     await act(async () => {
       await handlers.progress?.(
-        asEvent({ operationId: 'op-other', bytesSent: 199, totalBytes: 200, percentage: 99.5 })
+        asEvent({
+          operationId: 'op-other',
+          bytesSent: 199,
+          totalBytes: 200,
+          percentage: 99.5
+        })
       )
     })
     expect(result.current.progress.percentage).toBe(25)
@@ -211,7 +223,7 @@ describe('useReplaceUpload - completion', () => {
     const registered = deferred<string>()
     vi.mocked(replaceVideo).mockReturnValue(registered.promise)
     const { result } = renderHook(() => useReplaceUpload())
-    const outcome = await startReplace(result)
+    const { pending: outcome } = await startReplace(result)
 
     await act(async () => {
       await handlers.complete?.(
@@ -243,7 +255,7 @@ describe('useReplaceUpload - completion', () => {
     const registered = deferred<string>()
     vi.mocked(replaceVideo).mockReturnValue(registered.promise)
     const { result } = renderHook(() => useReplaceUpload())
-    const outcome = await startReplace(result)
+    const { pending: outcome } = await startReplace(result)
 
     const mine = video()
     await act(async () => {
@@ -275,7 +287,7 @@ describe('useReplaceUpload - completion', () => {
 describe('useReplaceUpload - error', () => {
   it('b2_3_an_upload_error_is_reported_in_state_and_not_toasted', async () => {
     const { result } = renderHook(() => useReplaceUpload())
-    const outcome = await startReplace(result)
+    const { pending: outcome } = await startReplace(result)
 
     await act(async () => {
       await handlers.error?.(
@@ -295,7 +307,7 @@ describe('useReplaceUpload - error', () => {
 
   it('b2_3_a_2xx_whose_video_failed_processing_is_an_error', async () => {
     const { result } = renderHook(() => useReplaceUpload())
-    const outcome = await startReplace(result)
+    const { pending: outcome } = await startReplace(result)
 
     await act(async () => {
       await handlers.complete?.(
@@ -312,7 +324,7 @@ describe('useReplaceUpload - error', () => {
   it('b2_3_a_failed_invoke_is_an_error', async () => {
     vi.mocked(replaceVideo).mockRejectedValue('No such video')
     const { result } = renderHook(() => useReplaceUpload())
-    const outcome = await startReplace(result)
+    const { pending: outcome } = await startReplace(result)
 
     await expect(outcome).resolves.toEqual({ status: 'error', message: 'No such video' })
     expect(result.current.status).toBe('error')
@@ -331,7 +343,7 @@ describe('useReplaceUpload - error', () => {
 describe('useReplaceUpload - cancellation', () => {
   it('b2_4_cancel_signals_the_backend_and_waits_for_the_terminal_event', async () => {
     const { result } = renderHook(() => useReplaceUpload())
-    const outcome = await startReplace(result)
+    const { pending: outcome } = await startReplace(result)
 
     await act(async () => {
       await result.current.cancel()

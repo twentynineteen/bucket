@@ -311,6 +311,59 @@ pub struct UploadStallWarningEvent {
     pub message: Option<String>,
 }
 
+/// Where a transfer's bytes go: a new video, or the source file of an existing
+/// one (issue #282).
+///
+/// The two Sprout endpoints take the same streamed `source_video` part and
+/// differ only in URL and in the text fields alongside it. Lifting those two
+/// decisions out of `upload_video_task` is what lets a replace reuse the task's
+/// progress, stall detection and cancellation rather than fork them.
+#[derive(Debug, Clone, PartialEq)]
+pub enum UploadTarget {
+    New {
+        folder_id: Option<String>,
+        title: Option<String>,
+    },
+    Replace {
+        video_id: String,
+    },
+}
+
+/// The Sprout endpoint a target posts to.
+pub fn endpoint(target: &UploadTarget) -> String {
+    match target {
+        UploadTarget::New { .. } => "https://api.sproutvideo.com/v1/videos".to_string(),
+        UploadTarget::Replace { video_id } => {
+            format!("https://api.sproutvideo.com/v1/videos/{video_id}/replace")
+        }
+    }
+}
+
+/// The multipart text fields sent beside `source_video`.
+///
+/// A replace takes none: the video already has its folder and title. A new
+/// upload sends the folder when one was chosen and the title when it is not
+/// blank, so Sprout does not store an empty string where it would otherwise
+/// derive a title from the filename.
+pub fn text_fields(target: &UploadTarget) -> Vec<(&'static str, String)> {
+    match target {
+        UploadTarget::Replace { .. } => Vec::new(),
+        UploadTarget::New { folder_id, title } => {
+            let mut fields = Vec::new();
+            if let Some(fid) = folder_id {
+                fields.push(("folder_id", fid.clone()));
+            }
+            if let Some(t) = title {
+                let trimmed = t.trim();
+                if !trimmed.is_empty() {
+                    fields.push(("title", trimmed.to_string()));
+                }
+            }
+            fields
+        }
+    }
+}
+
 /// Starts an upload and returns the id it can be addressed by.
 ///
 /// Returning the id is what makes cancellation possible at all: before #225 this
@@ -327,6 +380,49 @@ pub async fn upload_video(
     folder_id: Option<String>,
     title: Option<String>,
 ) -> Result<String, String> {
+    start_transfer(
+        app_handle,
+        registry.inner(),
+        file_path,
+        api_key,
+        UploadTarget::New { folder_id, title },
+    )
+    .await
+}
+
+/// Replaces the source file of an existing Sprout video (issue #282).
+///
+/// Sprout keeps the video id, so every embed and share link already published
+/// keeps working; only the file behind them changes. The transfer is the same
+/// task as `upload_video`, so progress, stall detection and `cancel_upload`
+/// apply unchanged.
+#[command]
+pub async fn replace_video(
+    app_handle: AppHandle,
+    registry: State<'_, OperationRegistry>,
+    file_path: String,
+    api_key: String,
+    video_id: String,
+) -> Result<String, String> {
+    start_transfer(
+        app_handle,
+        registry.inner(),
+        file_path,
+        api_key,
+        UploadTarget::Replace { video_id },
+    )
+    .await
+}
+
+/// Registers an operation, spawns the transfer and its supervisor, and returns
+/// the operation id. Shared by `upload_video` and `replace_video`.
+async fn start_transfer(
+    app_handle: AppHandle,
+    registry: &OperationRegistry,
+    file_path: String,
+    api_key: String,
+    target: UploadTarget,
+) -> Result<String, String> {
     let (operation_id, cancel_rx) = registry.register().await;
 
     let gate = TerminalGate::new(app_handle.clone(), operation_id.clone());
@@ -340,8 +436,7 @@ pub async fn upload_video(
             app_handle,
             file_path,
             api_key,
-            folder_id,
-            title,
+            target,
             upload_progress,
             upload_gate.clone(),
             upload_operation,
@@ -366,7 +461,7 @@ pub async fn upload_video(
         progress,
         gate,
         cancel_rx,
-        registry.inner().clone(),
+        registry.clone(),
         operation_id.clone(),
     ));
 
@@ -1125,8 +1220,7 @@ async fn upload_video_task(
     app_handle: AppHandle,
     file_path: String,
     api_key: String,
-    folder_id: Option<String>,
-    title: Option<String>,
+    target: UploadTarget,
     progress: Arc<UploadProgress>,
     gate: TerminalGate,
     operation_id: String,
@@ -1203,23 +1297,16 @@ async fn upload_video_task(
         .map_err(|e| e.to_string())?;
 
     let mut form = multipart::Form::new().part("source_video", part);
-    // If a folder_id was provided, add it as a text field.
-    if let Some(fid) = folder_id {
-        form = form.text("folder_id", fid);
-    }
-    // If a title was provided, send it so Sprout doesn't derive one from the filename.
-    if let Some(t) = title {
-        let trimmed = t.trim().to_string();
-        if !trimmed.is_empty() {
-            form = form.text("title", trimmed);
-        }
+    // Folder and title for a new video; nothing for a replace. See `text_fields`.
+    for (name, value) in text_fields(&target) {
+        form = form.text(name, value);
     }
 
     println!("Starting upload to SproutVideo...");
 
     // Send the request asynchronously
     let response = client
-        .post("https://api.sproutvideo.com/v1/videos")
+        .post(endpoint(&target))
         .header("SproutVideo-Api-Key", api_key.to_string())
         .multipart(form)
         .send()

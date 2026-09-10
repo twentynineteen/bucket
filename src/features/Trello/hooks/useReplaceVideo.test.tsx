@@ -32,8 +32,8 @@ import { addCardComment } from '../api'
 import { useReplaceVideo } from './useReplaceVideo'
 
 const LINK: VideoLink = {
-  url: 'https://sproutvideo.com/videos/vid-1',
-  sproutVideoId: 'vid-1',
+  url: 'https://sproutvideo.com/videos/a09bd4b21e1b',
+  sproutVideoId: 'a09bd4b21e1b',
   title: 'WBS - MSc - Managing Change',
   thumbnailUrl: 'https://cdn/poster-a.jpg',
   uploadDate: '2025-01-01T00:00:00.000Z',
@@ -46,17 +46,17 @@ const CARDS: TrelloCard[] = [
 ]
 
 const REPLACED_VIDEO = {
-  id: 'vid-1',
+  id: 'a09bd4b21e1b',
   title: 'WBS - MSc - Managing Change',
   state: 'deployed',
   duration: 130,
   embed_code: '',
-  embedded_url: 'https://sproutvideo.com/videos/vid-1',
+  embedded_url: 'https://sproutvideo.com/videos/a09bd4b21e1b',
   assets: { poster_frames: ['https://cdn/poster-a.jpg'] }
 }
 
 const details = (posterFrames: string[]) => ({
-  id: 'vid-1',
+  id: 'a09bd4b21e1b',
   title: 'WBS - MSc - Managing Change',
   duration: 130,
   created_at: '2025-01-01T00:00:00.000Z',
@@ -230,7 +230,9 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
 
   it('b4_4_falls_back_to_the_source_file_when_the_title_is_blank', () => {
     const untitled: VideoLink = { ...LINK, title: '   ' }
-    const { result } = renderHook(() => useReplaceVideo(options({ videoLinks: [untitled] })))
+    const { result } = renderHook(() =>
+      useReplaceVideo(options({ videoLinks: [untitled] }))
+    )
 
     act(() => {
       result.current.request(0)
@@ -275,8 +277,15 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
   })
 
   it('re-derives the form for each newly targeted link', () => {
-    const second: VideoLink = { ...LINK, url: 'https://sproutvideo.com/videos/vid-2', sproutVideoId: 'vid-2', title: 'Second' }
-    const { result } = renderHook(() => useReplaceVideo(options({ videoLinks: [LINK, second] })))
+    const second: VideoLink = {
+      ...LINK,
+      url: 'https://sproutvideo.com/videos/b19ce5c32f2c',
+      sproutVideoId: 'b19ce5c32f2c',
+      title: 'Second'
+    }
+    const { result } = renderHook(() =>
+      useReplaceVideo(options({ videoLinks: [LINK, second] }))
+    )
 
     act(() => {
       result.current.request(0)
@@ -302,16 +311,18 @@ describe('useReplaceVideo - transfer lifecycle', () => {
 
     await replaceFirstLink(result)
 
-    expect(mockStart).toHaveBeenCalledWith('vid-1', 'sprout-key')
+    expect(mockStart).toHaveBeenCalledWith('a09bd4b21e1b', 'sprout-key')
   })
 
   it('b5_1_resolves_the_id_from_the_url_for_links_that_never_stored_one', async () => {
     const legacy: VideoLink = { ...LINK, sproutVideoId: undefined }
-    const { result } = renderHook(() => useReplaceVideo(options({ videoLinks: [legacy] })))
+    const { result } = renderHook(() =>
+      useReplaceVideo(options({ videoLinks: [legacy] }))
+    )
 
     await replaceFirstLink(result)
 
-    expect(mockStart).toHaveBeenCalledWith('vid-1', 'sprout-key')
+    expect(mockStart).toHaveBeenCalledWith('a09bd4b21e1b', 'sprout-key')
   })
 
   it('b5_2_b8_3_a_cancelled_transfer_writes_nothing_and_keeps_the_dialog_open', async () => {
@@ -396,7 +407,7 @@ describe('useReplaceVideo - success with the current poster frame kept', () => {
       updatedLink: {
         url: LINK.url,
         title: LINK.title,
-        sproutVideoId: 'vid-1',
+        sproutVideoId: 'a09bd4b21e1b',
         thumbnailUrl: 'https://cdn/poster-a.jpg',
         uploadDate: '2026-09-10T10:00:00.000Z',
         sourceRenderFile: 'WBS_managing_change_v2.mp4'
@@ -409,13 +420,15 @@ describe('useReplaceVideo - success with the current poster frame kept', () => {
 
   it('b6_1_backfills_a_derived_sprout_id', async () => {
     const legacy: VideoLink = { ...LINK, sproutVideoId: undefined }
-    const { result } = renderHook(() => useReplaceVideo(options({ videoLinks: [legacy] })))
+    const { result } = renderHook(() =>
+      useReplaceVideo(options({ videoLinks: [legacy] }))
+    )
 
     await replaceFirstLink(result)
 
     expect(updateVideoLinkAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        updatedLink: expect.objectContaining({ sproutVideoId: 'vid-1' })
+        updatedLink: expect.objectContaining({ sproutVideoId: 'a09bd4b21e1b' })
       })
     )
   })
