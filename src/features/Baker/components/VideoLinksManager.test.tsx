@@ -1623,6 +1623,94 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
   })
 
   // ==========================================
+  // Issue #282: replace the video behind an already-linked video
+  // ==========================================
+  describe('#282: Replace video card action', () => {
+    const replaceableLink: VideoLink = {
+      url: 'https://sproutvideo.com/videos/abc123',
+      title: 'WBS - MSc - Managing Change',
+      sproutVideoId: 'abc123',
+      thumbnailUrl: 'https://cdn.sproutvideo.com/poster/abc123.jpg',
+      uploadDate: '2026-01-05T10:00:00Z',
+      sourceRenderFile: 'managing_change_v1.mp4'
+    }
+
+    it('b6_5_the_card_thumbnail_gains_a_cache_busting_key_after_a_replace', async () => {
+      // End to end through the real useVideoLinksManager, useReplaceVideo and
+      // useCardPosterFrame: only the transfer and the Sprout re-read are
+      // stubbed. The hook-level tests assert a mock was called; this one
+      // asserts what the user sees, the card reloading its image.
+      vi.mocked(useBreadcrumbsVideoLinksModule.useBreadcrumbsVideoLinks).mockReturnValue({
+        videoLinks: [replaceableLink],
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+        addVideoLink: mockAddVideoLink,
+        addVideoLinkAsync: vi.fn(),
+        removeVideoLink: mockRemoveVideoLink,
+        removeVideoLinkAsync: vi.fn(),
+        updateVideoLink: vi.fn(),
+        updateVideoLinkAsync: mockUpdateVideoLinkAsync,
+        reorderVideoLinks: mockReorderVideoLinks,
+        reorderVideoLinksAsync: vi.fn(),
+        isUpdating: false,
+        addError: null,
+        removeError: null,
+        updateError: null,
+        reorderError: null
+      })
+      vi.mocked(useFileUploadModule.useReplaceUpload).mockReturnValue({
+        selectedFile: '/renders/managing_change_v2.mp4',
+        selectFile: vi.fn(),
+        clearFile: vi.fn(),
+        start: vi.fn().mockResolvedValue({
+          status: 'complete',
+          video: createMockSproutUploadResponse({ id: 'abc123' })
+        }),
+        cancel: vi.fn(),
+        progress: { percentage: 0, bytesSent: 0, totalBytes: 0 },
+        status: 'idle',
+        error: null,
+        reset: vi.fn()
+      })
+      vi.mocked(useSproutVideoApiModule.useSproutVideoApi).mockReturnValue({
+        fetchVideoDetails: vi.fn(),
+        fetchVideoDetailsAsync: vi.fn().mockResolvedValue({
+          id: 'abc123',
+          title: replaceableLink.title,
+          duration: 130,
+          created_at: '2026-01-05T10:00:00Z',
+          assets: { poster_frames: [replaceableLink.thumbnailUrl] }
+        }),
+        isFetching: false,
+        error: null,
+        data: undefined,
+        reset: vi.fn()
+      })
+
+      renderWithQueryClient(<VideoLinksManager projectPath={mockProjectPath} />)
+
+      const thumbnail = () => screen.getByAltText(replaceableLink.title)
+      expect(thumbnail()).toHaveAttribute('src', replaceableLink.thumbnailUrl)
+
+      await userEvent.click(screen.getByRole('button', { name: /replace video/i }))
+      const dialog = within(await screen.findByRole('dialog'))
+      await userEvent.click(dialog.getByRole('button', { name: /^replace video$/i }))
+
+      await waitFor(() =>
+        expect(thumbnail().getAttribute('src')).toMatch(
+          /^https:\/\/cdn\.sproutvideo\.com\/poster\/abc123\.jpg\?v=\d+$/
+        )
+      )
+      expect(mockUpdateVideoLinkAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          videoIndex: 0,
+          updatedLink: expect.objectContaining({ sourceRenderFile: 'managing_change_v2.mp4' })
+        })
+      )
+    })
+  })
+
   // Issue #141: set a poster frame on an already-linked video
   // ==========================================
   describe('#141: Set poster frame card action', () => {

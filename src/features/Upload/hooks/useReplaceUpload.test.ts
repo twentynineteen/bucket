@@ -375,6 +375,50 @@ describe('useReplaceUpload - cancellation', () => {
     expect(result.current.selectedFile).toBe('/renders/WBS_intro_v2.mp4')
   })
 
+  it('b2_4_a_refused_cancel_signal_returns_to_uploading_so_cancel_can_be_retried', async () => {
+    // Rust answers false when the registry has no such operation, and the
+    // invoke itself can reject. Neither is followed by upload_cancelled, so
+    // staying in 'cancelling' would leave a disabled button and a locked
+    // dialog until the silence deadline fires.
+    vi.mocked(cancelUpload).mockResolvedValue(false)
+    const { result } = renderHook(() => useReplaceUpload())
+    await startReplace(result)
+
+    await act(async () => {
+      await result.current.cancel()
+    })
+    expect(result.current.status).toBe('uploading')
+
+    vi.mocked(cancelUpload).mockRejectedValue(new Error('backend unreachable'))
+    await act(async () => {
+      await result.current.cancel()
+    })
+    expect(result.current.status).toBe('uploading')
+  })
+
+  it('b2_4_a_cancel_before_the_id_is_known_is_issued_once_the_id_arrives', async () => {
+    // The dialog shows an enabled Cancel from the moment the transfer starts,
+    // but the backend has not yet named the operation. The intent is kept and
+    // acted on as soon as it can be, rather than silently dropped.
+    const registered = deferred<string>()
+    vi.mocked(replaceVideo).mockReturnValue(registered.promise)
+    const { result } = renderHook(() => useReplaceUpload())
+    await startReplace(result)
+
+    await act(async () => {
+      await result.current.cancel()
+    })
+    expect(cancelUpload).not.toHaveBeenCalled()
+    expect(result.current.status).toBe('cancelling')
+
+    await act(async () => {
+      registered.resolve('op-1')
+      await Promise.resolve()
+    })
+
+    await waitFor(() => expect(cancelUpload).toHaveBeenCalledWith('op-1'))
+  })
+
   it('b2_4_cancel_is_a_no_op_when_nothing_is_running', async () => {
     const { result } = renderHook(() => useReplaceUpload())
 

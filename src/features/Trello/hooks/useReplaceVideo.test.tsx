@@ -66,6 +66,7 @@ const details = (posterFrames: string[]) => ({
 const mockStart = vi.fn()
 const mockCancel = vi.fn()
 const mockSelectFile = vi.fn()
+const mockClearFile = vi.fn()
 const mockFetchDetails = vi.fn()
 
 const uploadState = (
@@ -74,7 +75,7 @@ const uploadState = (
   ({
     selectedFile: '/renders/WBS_managing_change_v2.mp4',
     selectFile: mockSelectFile,
-    clearFile: vi.fn(),
+    clearFile: mockClearFile,
     start: mockStart,
     cancel: mockCancel,
     progress: { percentage: 0, bytesSent: 0, totalBytes: 0 },
@@ -126,6 +127,7 @@ beforeEach(() => {
   mockStart.mockReset().mockResolvedValue({ status: 'complete', video: REPLACED_VIDEO })
   mockCancel.mockReset()
   mockSelectFile.mockReset()
+  mockClearFile.mockReset()
   mockFetchDetails.mockReset().mockResolvedValue(details(['https://cdn/poster-a.jpg']))
   updateVideoLinkAsync.mockReset().mockResolvedValue(undefined)
   bumpThumbnailCacheKey.mockReset()
@@ -302,6 +304,10 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
     expect(result.current.trello.text).toContain('"Second"')
     expect(result.current.posterMode).toBe('keep')
     expect(result.current.trello.selectedCardIds).toEqual(['c1', 'c2'])
+    // The previous link's file must not be pre-selected for this one: the
+    // action is irreversible and B4.1 says submit is blocked until a file is
+    // chosen, on every open.
+    expect(mockClearFile).toHaveBeenCalled()
   })
 })
 
@@ -391,6 +397,50 @@ describe('useReplaceVideo - transfer lifecycle', () => {
     })
 
     expect(result.current.targetIndex).toBeNull()
+  })
+})
+
+describe('useReplaceVideo - follow-ups still running', () => {
+  it('refuses_a_new_target_while_the_previous_replace_is_finishing', async () => {
+    // The dialog closes once Sprout has accepted the file, but the poster
+    // re-read, breadcrumbs write and comments can run for seconds after. In
+    // that window the panel is unmodal; a second replace must not start, or
+    // the first one's poster dialog could open over the second's form.
+    const write = deferred<void>()
+    updateVideoLinkAsync.mockReturnValue(write.promise)
+    const second: VideoLink = {
+      ...LINK,
+      url: 'https://sproutvideo.com/videos/b19ce5c32f2c',
+      sproutVideoId: 'b19ce5c32f2c',
+      title: 'Second'
+    }
+    const { result } = renderHook(() =>
+      useReplaceVideo(options({ videoLinks: [LINK, second] }))
+    )
+
+    act(() => {
+      result.current.request(0)
+    })
+    const run = act(async () => {
+      await result.current.confirm()
+    })
+    await waitFor(() => expect(updateVideoLinkAsync).toHaveBeenCalledTimes(1))
+
+    expect(result.current.targetIndex).toBeNull()
+    expect(result.current.disabledReason(second)).toMatch(/finishing/i)
+    act(() => {
+      result.current.request(1)
+    })
+    expect(result.current.targetIndex).toBeNull()
+
+    write.resolve()
+    await run
+
+    expect(result.current.disabledReason(second)).toBeNull()
+    act(() => {
+      result.current.request(1)
+    })
+    expect(result.current.targetIndex).toBe(1)
   })
 })
 
@@ -682,6 +732,31 @@ describe('useReplaceVideo - follow-up reporting', () => {
     expect(message).toContain('Card Two')
     expect(message).not.toContain('Card One')
     expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('keeps_the_still_processing_note_when_a_follow_up_also_failed', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    mockFetchDetails.mockResolvedValue(details([]))
+    updateVideoLinkAsync.mockRejectedValue(new Error('disk full'))
+    const { result } = renderHook(() => useReplaceVideo(options()))
+
+    act(() => {
+      result.current.request(0)
+    })
+    const run = act(async () => {
+      await result.current.confirm()
+    })
+    await waitFor(() => expect(mockFetchDetails).toHaveBeenCalledTimes(1))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000)
+    })
+    await run
+
+    expect(toast.warning).toHaveBeenCalledTimes(1)
+    const [message] = vi.mocked(toast.warning).mock.calls[0]
+    expect(message).toMatch(/breadcrumbs/i)
+    expect(message).toMatch(/still processing/i)
+    expect(toast.info).not.toHaveBeenCalled()
   })
 
   it('b9_3_both_failing_is_still_exactly_one_warning_naming_both', async () => {
