@@ -222,7 +222,9 @@ describe('Upload Barrel Exports - Shape', () => {
     'useSproutFolders',
     'useSproutFolderSelection',
     'useSproutFolderIndex',
-    'useDefaultSproutFolder'
+    'useDefaultSproutFolder',
+    // Cross-imported by Trello's replace-video orchestration (#282)
+    'useReplaceUpload'
   ].sort()
 
   /**
@@ -269,7 +271,8 @@ describe('Upload Barrel Exports - Shape', () => {
     'useSproutFolders',
     'useSproutFolderSelection',
     'useSproutFolderIndex',
-    'useDefaultSproutFolder'
+    'useDefaultSproutFolder',
+    'useReplaceUpload'
   ] as const
 
   for (const name of hookNames) {

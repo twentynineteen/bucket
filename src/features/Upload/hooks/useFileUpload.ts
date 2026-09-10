@@ -9,32 +9,10 @@ import { logger } from '@shared/utils'
 import {
   cancelUpload as cancelUploadCommand,
   getVideoDuration,
-  listenUploadCancelled,
-  listenUploadComplete,
-  listenUploadError,
-  listenUploadProgress,
   openFileDialog,
   uploadVideo
 } from '../api'
-
-/**
- * How long the hook waits for *any* word from the backend -- a progress event or
- * a terminal event -- before concluding the backend itself has stopped talking.
- *
- * This is not stall detection. Stall detection lives in Rust
- * (`sprout_upload.rs::supervise_upload`), which can see byte offsets and tear the
- * request down; the frontend can only observe the absence of events, which is a
- * weaker signal. What this timer covers is the one thing Rust cannot report: the
- * backend going silent altogether.
- *
- * Two full Rust stall windows (70s each) plus slack, so the watchdog always wins
- * the race and the user gets the specific message rather than this vague one. The
- * deadline is rearmed by every progress event, which is what stops it killing a
- * healthy upload of a very large file over a slow connection -- the flat
- * 45-minute deadline it replaces was armed once at invocation and never consulted
- * progress, so it was wrong in both directions. See issue #204.
- */
-const BACKEND_SILENCE_TIMEOUT_MS = 150_000
+import { awaitUploadOutcome } from '../internal/awaitUploadOutcome'
 
 interface UseFileUploadReturn {
   selectedFile: string | null
@@ -151,130 +129,30 @@ export const useFileUpload = (): UseFileUploadReturn => {
     try {
       // Waits for a terminal event -- complete, error or cancelled -- backed by a
       // liveness deadline that follows the transfer's progress rather than the
-      // wall clock. Resolves null when the user cancelled: there is no response
-      // to record and nothing went wrong.
-      const finalResponse = await new Promise<SproutUploadResponse | null>(
-        (resolve, reject) => {
-          let completeUnlisten: Promise<() => void> | null = null
-          let errorUnlisten: Promise<() => void> | null = null
-          let progressUnlisten: Promise<() => void> | null = null
-          let cancelledUnlisten: Promise<() => void> | null = null
-          let silenceTimeoutId: NodeJS.Timeout | null = null
-
-          /**
-           * The operation the backend registered, once it has told us. Held here as
-           * well as in the ref so the listeners below close over it directly.
-           */
-          let operationId: string | null = null
-
-          /**
-           * Whether an event belongs to this upload.
-           *
-           * Strict once the id is known, which is what stops a zombie operation's
-           * events settling a retry (#150 UP-11). Permissive before then, because
-           * `upload_video` resolves the id a tick after the backend starts reading:
-           * only one upload is ever started by this hook, and any earlier one has
-           * already emitted its single terminal event and been deregistered.
-           */
-          const isThisOperation = (eventOperationId: string) =>
-            operationId === null || eventOperationId === operationId
-
-          const unsubscribe = async (
-            pending: Promise<() => void> | null,
-            channel: string
-          ) => {
-            if (!pending) return
-            try {
-              const unsub = await pending
-              unsub()
-            } catch (e) {
-              logger.warn(`Failed to unsubscribe from ${channel}:`, e)
-            }
-          }
-
-          const cleanup = async () => {
-            if (silenceTimeoutId) clearTimeout(silenceTimeoutId)
-            operationIdRef.current = null
-            await unsubscribe(completeUnlisten, 'upload_complete')
-            await unsubscribe(errorUnlisten, 'upload_error')
-            await unsubscribe(progressUnlisten, 'upload_progress')
-            await unsubscribe(cancelledUnlisten, 'upload_cancelled')
-          }
-
-          /**
-           * (Re)arms the backend liveness deadline. Called once at the start and
-           * again on every progress event, so the deadline measures *silence* and
-           * not elapsed time: an upload that is still moving bytes can run for as
-           * long as it needs to.
-           */
-          const armSilenceDeadline = () => {
-            if (silenceTimeoutId) clearTimeout(silenceTimeoutId)
-            silenceTimeoutId = setTimeout(async () => {
-              await cleanup()
-              reject(
-                'The upload backend stopped responding: no progress and no result for ' +
-                  `${BACKEND_SILENCE_TIMEOUT_MS / 1000} seconds. The transfer may still be ` +
-                  'running. Cancel it, and restart the app if that has no effect.'
-              )
-            }, BACKEND_SILENCE_TIMEOUT_MS)
-          }
-
-          armSilenceDeadline()
-
-          // At most one of these per 100ms on the Rust side, so any transfer that
-          // is alive at all keeps the deadline pushed out.
-          progressUnlisten = listenUploadProgress((event) => {
-            if (!isThisOperation(event.payload.operationId)) return
-            armSilenceDeadline()
-          })
-
-          // Listen for the upload_complete event and resolve with its payload
-          completeUnlisten = listenUploadComplete(async (event) => {
-            if (!isThisOperation(event.payload.operationId)) return
-            await cleanup()
-            resolve(event.payload.video)
-          })
-
-          // Listen for the upload_error event and reject with its payload
-          errorUnlisten = listenUploadError(async (event) => {
-            if (!isThisOperation(event.payload.operationId)) return
-            await cleanup()
-            reject(event.payload.message)
-          })
-
-          // Cancellation settles the upload without being a failure, so it resolves
-          // rather than rejects and carries no response to record.
-          cancelledUnlisten = listenUploadCancelled(async (event) => {
-            if (!isThisOperation(event.payload.operationId)) return
-            await cleanup()
-            resolve(null)
-          })
-
-          // Invoke the Rust backend command to start the upload
+      // wall clock (see awaitUploadOutcome). Events are accepted permissively
+      // until the backend names the operation, as this hook always has: it only
+      // ever starts one upload, and any earlier one has already emitted its
+      // single terminal event and been deregistered (#150 UP-11).
+      const outcome = await awaitUploadOutcome({
+        start: () =>
           uploadVideo(
             selectedFile,
             apiKey,
             destination?.id ?? null,
             title?.trim() || null
-          )
-            .then((registeredOperationId) => {
-              operationId = registeredOperationId
-              operationIdRef.current = registeredOperationId
-            })
-            .catch(async (error) => {
-              await cleanup()
-              reject(error)
-            })
+          ),
+        beforeIdKnown: 'accept',
+        onOperationId: (registeredOperationId) => {
+          operationIdRef.current = registeredOperationId
         }
-      )
+      })
 
       // A cancelled upload produced nothing to record, and must not overwrite the
       // last successful upload in the store with a null.
-      if (finalResponse) {
-        setResponse(finalResponse)
-        appStore.getState().setLatestSproutUpload(finalResponse)
+      if (outcome.kind === 'complete') {
+        setResponse(outcome.video)
+        appStore.getState().setLatestSproutUpload(outcome.video)
       }
-      // Upload completed successfully
     } catch (error) {
       // Log and display any error encountered during the upload process
       logger.error('Upload error:', error)

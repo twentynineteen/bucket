@@ -182,6 +182,14 @@ export async function fetchTrelloCardById(
   return response.json()
 }
 
+/**
+ * Posts a comment on a card.
+ *
+ * Rejects on a non-2xx response. It used to log and resolve, which left every
+ * caller unable to tell a posted comment from a refused one; the replace flow
+ * (#282) reports exactly which cards missed their comment, so it needs the
+ * failure surfaced.
+ */
 export async function addCardComment(
   cardId: string,
   text: string,
@@ -197,7 +205,9 @@ export async function addCardComment(
     }
   )
   if (!commentResponse.ok) {
-    logger.warn(`Failed to add comment: ${commentResponse.statusText}`)
+    throw new Error(
+      `Failed to add comment: HTTP ${commentResponse.status} ${commentResponse.statusText}`
+    )
   }
 }
 
