@@ -43,7 +43,9 @@ export interface UseReplaceUploadReturn {
   /**
    * Signals cancellation. `status` becomes `cancelling` and only returns to
    * `idle` when the backend confirms with `upload_cancelled`, which is what
-   * `start` then resolves on. A no-op when nothing is running.
+   * `start` then resolves on. If the backend refuses or cannot be reached,
+   * `status` returns to `uploading` so the action can be tried again. A no-op
+   * when nothing is running.
    */
   cancel: () => Promise<void>
   progress: ReplaceUploadProgress
@@ -64,6 +66,14 @@ export const useReplaceUpload = (): UseReplaceUploadReturn => {
    * an older render.
    */
   const operationIdRef = useRef<string | null>(null)
+  /** Whether `start` is between its invoke and its terminal event. */
+  const inFlightRef = useRef(false)
+  /**
+   * A cancel asked for before the backend had named the operation. The dialog
+   * shows an enabled Cancel from the first render of the transfer, so the
+   * intent is kept and issued the moment the id arrives.
+   */
+  const pendingCancelRef = useRef(false)
 
   const selectFile = async (): Promise<string | null> => {
     const file = await openFileDialog({
@@ -89,6 +99,23 @@ export const useReplaceUpload = (): UseReplaceUploadReturn => {
     return { status: 'error', message }
   }
 
+  /**
+   * Asks the backend to stop `operationId`. Only a true answer is followed by
+   * `upload_cancelled`; false (nothing registered under that id) or a rejected
+   * invoke leaves the transfer running, so the state goes back to uploading
+   * rather than sitting in a cancelling that nothing will ever settle.
+   */
+  const signalCancel = async (operationId: string) => {
+    setStatus('cancelling')
+    try {
+      const signalled = await cancelUploadCommand(operationId)
+      if (!signalled) setStatus('uploading')
+    } catch (caught) {
+      logger.warn('Could not signal cancellation for the replace:', caught)
+      setStatus('uploading')
+    }
+  }
+
   const start = async (videoId: string, apiKey: string): Promise<ReplaceUploadResult> => {
     const file = selectedFile
     if (!file) return fail('Choose the replacement video file first.')
@@ -97,6 +124,8 @@ export const useReplaceUpload = (): UseReplaceUploadReturn => {
     setError(null)
     setProgress(IDLE_PROGRESS)
     operationIdRef.current = null
+    pendingCancelRef.current = false
+    inFlightRef.current = true
 
     try {
       const outcome = await awaitUploadOutcome({
@@ -104,6 +133,10 @@ export const useReplaceUpload = (): UseReplaceUploadReturn => {
         beforeIdKnown: 'buffer',
         onOperationId: (id) => {
           operationIdRef.current = id
+          if (pendingCancelRef.current) {
+            pendingCancelRef.current = false
+            void signalCancel(id)
+          }
         },
         onProgress: ({ percentage, bytesSent, totalBytes }) =>
           setProgress({ percentage, bytesSent, totalBytes })
@@ -128,22 +161,23 @@ export const useReplaceUpload = (): UseReplaceUploadReturn => {
       // Terminal messages from the backend are already user-facing prose.
       return fail(typeof caught === 'string' ? caught : String(caught))
     } finally {
+      inFlightRef.current = false
+      pendingCancelRef.current = false
       operationIdRef.current = null
     }
   }
 
   const cancel = async () => {
-    const operationId = operationIdRef.current
-    if (!operationId) return
+    if (!inFlightRef.current) return
 
-    setStatus('cancelling')
-    try {
-      await cancelUploadCommand(operationId)
-    } catch (caught) {
-      // The transfer is either already over or the backend is unreachable; the
-      // liveness deadline reports a silent backend on its own.
-      logger.warn('Could not signal cancellation for the replace:', caught)
+    const operationId = operationIdRef.current
+    if (!operationId) {
+      pendingCancelRef.current = true
+      setStatus('cancelling')
+      return
     }
+
+    await signalCancel(operationId)
   }
 
   return {

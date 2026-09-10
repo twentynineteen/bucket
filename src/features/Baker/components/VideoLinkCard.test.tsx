@@ -51,7 +51,9 @@ describe('VideoLinkCard - rendering', () => {
     // "Jan 15, 2024" in the card's en-US format
     expect(screen.getByText(/Uploaded: Jan 15, 2024/i)).toBeInTheDocument()
     expect(screen.getByText(/Source: project_alpha_final.mp4/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /open in sprout video/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /open in sprout video/i })
+    ).toBeInTheDocument()
   })
 
   it('omits the optional rows when the link has no id, date or source', () => {
@@ -60,7 +62,10 @@ describe('VideoLinkCard - rendering', () => {
     render(
       <VideoLinkCard
         {...baseProps}
-        videoLink={{ url: 'https://sproutvideo.com/videos/xyz789', title: 'Minimal Video' }}
+        videoLink={{
+          url: 'https://sproutvideo.com/videos/xyz789',
+          title: 'Minimal Video'
+        }}
       />
     )
 
@@ -89,7 +94,9 @@ describe('VideoLinkCard - rendering', () => {
   })
 
   it('cache-busts a refreshed thumbnail, respecting an existing query string (#141 B1.3)', () => {
-    const { rerender } = render(<VideoLinkCard {...baseProps} thumbnailCacheKey={1717171717} />)
+    const { rerender } = render(
+      <VideoLinkCard {...baseProps} thumbnailCacheKey={1717171717} />
+    )
 
     expect(screen.getByAltText('Project Alpha - Final Edit')).toHaveAttribute(
       'src',
@@ -224,6 +231,8 @@ describe('VideoLinkCard - replace action (#282)', () => {
   it('renders no replace action when the surface does not offer one', () => {
     render(<VideoLinkCard {...baseProps} />)
 
-    expect(screen.queryByRole('button', { name: /replace video/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /replace video/i })
+    ).not.toBeInTheDocument()
   })
 })

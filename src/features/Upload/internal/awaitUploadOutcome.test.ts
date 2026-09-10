@@ -27,12 +27,13 @@ import { awaitUploadOutcome } from './awaitUploadOutcome'
 type Payload = { operationId: string; [key: string]: unknown }
 type Handler = (event: { event: string; id: number; payload: Payload }) => unknown
 
-const handlers: Record<'progress' | 'complete' | 'error' | 'cancelled', Handler | null> = {
-  progress: null,
-  complete: null,
-  error: null,
-  cancelled: null
-}
+const handlers: Record<'progress' | 'complete' | 'error' | 'cancelled', Handler | null> =
+  {
+    progress: null,
+    complete: null,
+    error: null,
+    cancelled: null
+  }
 const unlisten = vi.fn()
 
 const emit = async (channel: keyof typeof handlers, payload: Payload) => {
@@ -82,7 +83,12 @@ describe('awaitUploadOutcome - buffer mode', () => {
     })
     void outcome.then(() => order.push('resolved'))
 
-    await emit('progress', { operationId: 'op-1', bytesSent: 5, totalBytes: 10, percentage: 50 })
+    await emit('progress', {
+      operationId: 'op-1',
+      bytesSent: 5,
+      totalBytes: 10,
+      percentage: 50
+    })
     await emit('complete', { operationId: 'op-1', video })
     expect(onProgress).not.toHaveBeenCalled()
 
@@ -117,7 +123,12 @@ describe('awaitUploadOutcome - buffer mode', () => {
       onProgress
     })
 
-    await emit('progress', { operationId: 'op-zombie', bytesSent: 1, totalBytes: 2, percentage: 50 })
+    await emit('progress', {
+      operationId: 'op-zombie',
+      bytesSent: 1,
+      totalBytes: 2,
+      percentage: 50
+    })
     await emit('complete', { operationId: 'op-zombie', video })
     registered.resolve('op-1')
     await Promise.resolve()

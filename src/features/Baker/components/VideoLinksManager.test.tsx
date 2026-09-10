@@ -1705,7 +1705,9 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       expect(mockUpdateVideoLinkAsync).toHaveBeenCalledWith(
         expect.objectContaining({
           videoIndex: 0,
-          updatedLink: expect.objectContaining({ sourceRenderFile: 'managing_change_v2.mp4' })
+          updatedLink: expect.objectContaining({
+            sourceRenderFile: 'managing_change_v2.mp4'
+          })
         })
       )
     })

@@ -421,12 +421,12 @@ describe('useReplaceVideo - follow-ups still running', () => {
     act(() => {
       result.current.request(0)
     })
-    const run = act(async () => {
-      await result.current.confirm()
-    })
+    // Not wrapped in act: the assertions below need React to flush the state
+    // set mid-flight, which an enclosing async act would hold back.
+    const run = result.current.confirm()
     await waitFor(() => expect(updateVideoLinkAsync).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(result.current.targetIndex).toBeNull())
 
-    expect(result.current.targetIndex).toBeNull()
     expect(result.current.disabledReason(second)).toMatch(/finishing/i)
     act(() => {
       result.current.request(1)
@@ -434,7 +434,9 @@ describe('useReplaceVideo - follow-ups still running', () => {
     expect(result.current.targetIndex).toBeNull()
 
     write.resolve()
-    await run
+    await act(async () => {
+      await run
+    })
 
     expect(result.current.disabledReason(second)).toBeNull()
     act(() => {

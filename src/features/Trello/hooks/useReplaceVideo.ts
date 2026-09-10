@@ -36,6 +36,8 @@ import {
  */
 const PROCESSING_RETRY_DELAY_MS = 3_000
 
+const FINISHING_REASON = 'Finishing the previous replace. Try again in a moment.'
+
 export type PosterMode = 'keep' | 'new'
 
 export interface UseReplaceVideoOptions {
@@ -54,6 +56,11 @@ export interface UseReplaceVideoOptions {
   bumpThumbnailCacheKey: (url: string) => void
   /** Opens the existing Set poster frame dialog for a link ("new" poster mode) */
   onOpenPosterFrame: (index: number) => void
+}
+
+interface TrelloCredentials {
+  apiKey: string
+  token: string
 }
 
 /** The name a link is shown under when its title is blank (older breadcrumbs) */
@@ -76,18 +83,23 @@ const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, 
 
 type PosterOutcome = 'kept' | 'regenerated' | 'processing'
 
+const POSTER_NOTES: Record<PosterOutcome, string> = {
+  kept: '',
+  regenerated:
+    ' Sprout regenerated the poster frame; use Set poster frame to restore it.',
+  processing:
+    ' Sprout is still processing; the thumbnail will refresh next time you open this project.'
+}
+
 /**
  * One toast per replace. Follow-up failures win, since they need acting on;
- * a regenerated frame is folded into that warning rather than shown twice.
+ * whatever the poster frame check found is appended to that warning rather
+ * than shown as a second toast.
  */
 function reportOutcome(failures: string[], posterOutcome: PosterOutcome, title: string) {
   if (failures.length > 0) {
-    const posterNote =
-      posterOutcome === 'regenerated'
-        ? ' Sprout regenerated the poster frame; use Set poster frame to restore it.'
-        : ''
     toast.warning(
-      `Video replaced. Could not ${failures.join('; could not ')}.${posterNote}`
+      `Video replaced. Could not ${failures.join('; could not ')}.${POSTER_NOTES[posterOutcome]}`
     )
     return
   }
@@ -98,9 +110,7 @@ function reportOutcome(failures: string[], posterOutcome: PosterOutcome, title: 
     return
   }
   if (posterOutcome === 'processing') {
-    toast.info(
-      'Video replaced. Sprout is still processing; the thumbnail will refresh next time you open this project.'
-    )
+    toast.info(`Video replaced.${POSTER_NOTES.processing}`)
     return
   }
   toast.success('Video replaced on Sprout Video.')
@@ -120,6 +130,12 @@ export function useReplaceVideo({
   const { fetchVideoDetailsAsync } = useSproutVideoApi()
 
   const [targetIndex, setTargetIndex] = useState<number | null>(null)
+  /**
+   * True from Sprout accepting the file until the follow-ups have reported.
+   * The dialog is closed for that stretch, so without this a second replace
+   * could start and the first one's poster dialog open over its form.
+   */
+  const [finishing, setFinishing] = useState(false)
   const [posterMode, setPosterMode] = useState<PosterMode>('keep')
   const [trelloEnabled, setTrelloEnabled] = useState(true)
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([])
@@ -127,15 +143,22 @@ export function useReplaceVideo({
 
   const target = targetIndex !== null ? videoLinks[targetIndex] : undefined
   const cards = trelloCards ?? []
-  const trelloAvailable = cards.length > 0 && !!trelloApiKey && !!trelloToken
+  const credentials: TrelloCredentials | null =
+    trelloApiKey && trelloToken ? { apiKey: trelloApiKey, token: trelloToken } : null
+  const trelloAvailable = cards.length > 0 && credentials !== null
   const commentActive = trelloAvailable && trelloEnabled
   const transferring = upload.status === 'uploading' || upload.status === 'cancelling'
 
-  /** Opens the dialog for one link, re-deriving the whole form from it. */
+  /**
+   * Opens the dialog for one link, re-deriving the whole form from it. The
+   * previous file is cleared too: a replace is irreversible, so each one
+   * starts from "no file chosen".
+   */
   const request = (index: number) => {
     const link = videoLinks[index]
-    if (!link) return
+    if (!link || finishing) return
     upload.reset()
+    upload.clearFile()
     setPosterMode('keep')
     setTrelloEnabled(true)
     setSelectedCardIds(cards.map((card) => card.cardId))
@@ -200,59 +223,6 @@ export function useReplaceVideo({
     }
   }
 
-  const confirm = async () => {
-    const index = targetIndex
-    if (index === null) return
-    const link = videoLinks[index]
-    if (!link) return
-
-    const videoId = resolveSproutVideoId(link)
-    const apiKey = sproutApiKey
-    const file = upload.selectedFile
-    if (!videoId || !apiKey || !file) return
-
-    // Captured now: the form is reset when the dialog closes below.
-    const comment = commentText.trim()
-    const commentCards = commentActive
-      ? cards.filter((card) => selectedCardIds.includes(card.cardId))
-      : []
-    const mode = posterMode
-
-    const result = await upload.start(videoId, apiKey)
-    // Cancelled or failed: the dialog stays open showing why, nothing is written.
-    if (result.status !== 'complete') return
-
-    setTargetIndex(null)
-
-    const failures: string[] = []
-    const poster = mode === 'keep' ? await settlePosterFrame(link, videoId, apiKey) : null
-    if (poster?.failed) failures.push('check the poster frame')
-
-    const updatedLink: VideoLink = {
-      ...link,
-      sproutVideoId: videoId,
-      thumbnailUrl: poster?.thumbnailUrl ?? link.thumbnailUrl,
-      uploadDate: new Date().toISOString(),
-      sourceRenderFile: basename(file)
-    }
-
-    const [wrote, missedCards] = await Promise.all([
-      writeBreadcrumbs(index, updatedLink),
-      postComments(commentCards, comment)
-    ])
-
-    bumpThumbnailCacheKey(link.url)
-
-    if (!wrote) failures.unshift('update breadcrumbs')
-    if (missedCards.length > 0) failures.push(`comment on: ${missedCards.join(', ')}`)
-
-    reportOutcome(failures, poster?.outcome ?? 'kept', displayTitle(link))
-
-    // Only once the breadcrumbs write has landed: the poster flow rewrites the
-    // whole record from its own view of the links and would otherwise revert it.
-    if (mode === 'new') onOpenPosterFrame(index)
-  }
-
   /**
    * Decides what the stored thumbnail should be after a "keep" replace. Best
    * effort: Sprout can serve a changed image at the same URL, so "equal" is not
@@ -290,10 +260,15 @@ export function useReplaceVideo({
       })
 
   /** Comments on every card in parallel; resolves with the titles that missed it. */
-  const postComments = async (targets: TrelloCard[], text: string): Promise<string[]> => {
+  const postComments = async (
+    targets: TrelloCard[],
+    text: string,
+    auth: TrelloCredentials | null
+  ): Promise<string[]> => {
+    if (!auth || targets.length === 0) return []
     const outcomes = await Promise.all(
       targets.map((card) =>
-        addCardComment(card.cardId, text, trelloApiKey as string, trelloToken as string)
+        addCardComment(card.cardId, text, auth.apiKey, auth.token)
           .then(() => null)
           .catch((error) => {
             logger.warn(`Could not comment on Trello card "${card.title}":`, error)
@@ -304,8 +279,89 @@ export function useReplaceVideo({
     return outcomes.filter((title): title is string => title !== null)
   }
 
+  /**
+   * Everything after Sprout has accepted the file: poster frame check,
+   * breadcrumbs write, comments, cache bump, one toast, and the hand-off to
+   * the poster frame dialog when a new frame was asked for.
+   */
+  const finish = async (
+    index: number,
+    link: VideoLink,
+    videoId: string,
+    apiKey: string,
+    file: string,
+    mode: PosterMode,
+    commentCards: TrelloCard[],
+    comment: string,
+    auth: TrelloCredentials | null
+  ) => {
+    const failures: string[] = []
+    const poster = mode === 'keep' ? await settlePosterFrame(link, videoId, apiKey) : null
+    if (poster?.failed) failures.push('check the poster frame')
+
+    // `link` and `index` are from before the transfer. In-app edits are
+    // blocked by the modal for that stretch; an external edit to
+    // breadcrumbs.json during a replace is overwritten here, which is accepted.
+    const updatedLink: VideoLink = {
+      ...link,
+      sproutVideoId: videoId,
+      thumbnailUrl: poster?.thumbnailUrl ?? link.thumbnailUrl,
+      uploadDate: new Date().toISOString(),
+      sourceRenderFile: basename(file)
+    }
+
+    const [wrote, missedCards] = await Promise.all([
+      writeBreadcrumbs(index, updatedLink),
+      postComments(commentCards, comment, auth)
+    ])
+
+    bumpThumbnailCacheKey(link.url)
+
+    if (!wrote) failures.unshift('update breadcrumbs')
+    if (missedCards.length > 0) failures.push(`comment on: ${missedCards.join(', ')}`)
+
+    reportOutcome(failures, poster?.outcome ?? 'kept', displayTitle(link))
+
+    // Only once the breadcrumbs write has landed: the poster flow rewrites the
+    // whole record from its own view of the links and would otherwise revert it.
+    if (mode === 'new') onOpenPosterFrame(index)
+  }
+
+  const confirm = async () => {
+    const index = targetIndex
+    if (index === null) return
+    const link = videoLinks[index]
+    if (!link) return
+
+    const videoId = resolveSproutVideoId(link)
+    const apiKey = sproutApiKey
+    const file = upload.selectedFile
+    if (!videoId || !apiKey || !file) return
+
+    // Captured now: the form is reset when the dialog closes below.
+    const comment = commentText.trim()
+    const commentCards = commentActive
+      ? cards.filter((card) => selectedCardIds.includes(card.cardId))
+      : []
+    const mode = posterMode
+    const auth = credentials
+
+    const result = await upload.start(videoId, apiKey)
+    // Cancelled or failed: the dialog stays open showing why, nothing is written.
+    if (result.status !== 'complete') return
+
+    setTargetIndex(null)
+    setFinishing(true)
+    try {
+      await finish(index, link, videoId, apiKey, file, mode, commentCards, comment, auth)
+    } finally {
+      setFinishing(false)
+    }
+  }
+
   /** Why the card action is unavailable for a link, or null when it is usable */
   const disabledReason = (videoLink: VideoLink): string | null => {
+    if (finishing) return FINISHING_REASON
     if (!resolveSproutVideoId(videoLink)) return NO_SPROUT_ID_REASON
     if (!sproutApiKey) return NO_API_KEY_REASON
     return null

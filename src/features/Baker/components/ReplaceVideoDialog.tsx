@@ -89,7 +89,7 @@ export function ReplaceVideoDialog({
         onOpenChange(next)
       }}
     >
-      <DialogContent>
+      <DialogContent hideClose={transferring}>
         <DialogHeader>
           <DialogTitle>Replace video</DialogTitle>
           <DialogDescription>
@@ -99,12 +99,12 @@ export function ReplaceVideoDialog({
 
         <div className="space-y-4 py-2">
           <div className="space-y-1">
-            <Label>Video</Label>
+            <p className="text-sm font-medium">Video</p>
             <p className="text-muted-foreground text-sm">{videoTitle}</p>
           </div>
 
           <div className="space-y-2">
-            <Label>Replacement file</Label>
+            <p className="text-sm font-medium">Replacement file</p>
             <div className="flex items-center gap-3">
               <Button
                 type="button"
@@ -226,9 +226,7 @@ export function ReplaceVideoDialog({
             <div className="space-y-2">
               <Progress value={upload.progress.percentage} />
               <p className="text-muted-foreground text-xs">
-                {cancelling
-                  ? 'Cancelling...'
-                  : `${percent}% · ${formatTransferredBytes(upload.progress.bytesSent)} of ${formatTransferredBytes(upload.progress.totalBytes)}`}
+                {`${percent}% · ${formatTransferredBytes(upload.progress.bytesSent)} of ${formatTransferredBytes(upload.progress.totalBytes)}`}
               </p>
             </div>
           )}

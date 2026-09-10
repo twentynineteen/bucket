@@ -1094,7 +1094,7 @@ pub fn classify_response(status: reqwest::StatusCode, body: &str) -> Result<Valu
         Ok(parsed)
     } else {
         Err(format!(
-            "Sprout rejected the upload: HTTP {} — {}",
+            "Sprout rejected the request: HTTP {} — {}",
             status,
             body_excerpt(body)
         ))
