@@ -78,7 +78,7 @@ No orphaned requirements found -- all 9 requirement IDs claimed in plans match R
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `src/features/Trello/hooks/useVideoLinksManager.ts` | 221 | `TODO: Add Trello Card functionality to be implemented` | Info | Comment-only TODO, not blocking. Feature stub for future work. |
+| `src/features/Trello/hooks/useVideoLinksManager.ts` | 221 | ~~`TODO: Add Trello Card functionality to be implemented`~~ | Resolved | Removed in #293. Dead placeholder and its `onAddTrelloCard` prop deleted. |
 | `src/features/Auth/components/Register.tsx` | 34, 42 | Direct `localStorage` calls | Info | Deliberate decision documented in SUMMARY. Registration storage is page-local, not auth-flow I/O. |
 | `src/utils/trello/TrelloCardMembers.tsx` | 4 | Imports `from '@features/Trello/api'` (bypasses barrel) | Info | File lives outside the Trello module in legacy `src/utils/trello/` -- will be addressed in a later phase migration. |
 | `src/hooks/useAppendVideoInfo.ts` | 5 | Imports `from '@features/Trello/api'` (bypasses barrel) | Info | Cross-module consumer not yet migrated. Phase 3 scope was creating the modules, not migrating all external consumers to barrel-only imports. |

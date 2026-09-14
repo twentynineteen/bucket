@@ -181,16 +181,22 @@ function extractFormattingMetadata(html: string): FormattingMetadata {
     })
 
     // Extract lists
-    doc.querySelectorAll('ul, ol').forEach((listElement) => {
-      const isOrdered = listElement.tagName === 'OL'
-      listElement.querySelectorAll('li').forEach((item) => {
-        const text = item.textContent || ''
-        metadata.lists.push({
-          type: isOrdered ? 'ordered' : 'unordered',
-          text,
-          level: 1, // TODO: Calculate nesting level
-          position: currentPosition
-        })
+    doc.querySelectorAll('li').forEach((item) => {
+      const parentList = item.parentElement
+      if (!parentList) return
+      const isOrdered = parentList.tagName === 'OL'
+      const text = item.textContent || ''
+      let level = 0
+      let ancestor: Element | null = parentList
+      while (ancestor) {
+        if (ancestor.tagName === 'UL' || ancestor.tagName === 'OL') level++
+        ancestor = ancestor.parentElement
+      }
+      metadata.lists.push({
+        type: isOrdered ? 'ordered' : 'unordered',
+        text,
+        level,
+        position: currentPosition
       })
     })
 

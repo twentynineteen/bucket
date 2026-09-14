@@ -21,8 +21,7 @@ const cards: TrelloCard[] = [
 const baseProps = {
   open: true,
   onOpenChange: vi.fn(),
-  trelloCards: cards,
-  onAddTrelloCard: vi.fn()
+  trelloCards: cards
 }
 
 describe('TrelloCardUpdateDialog', () => {

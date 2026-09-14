@@ -372,10 +372,6 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     await Promise.all(updatePromises)
   }
 
-  const handleAddTrelloCard = () => {
-    // TODO: Add Trello Card functionality to be implemented
-  }
-
   const handleDialogOpenChange = (open: boolean) => {
     // Closing mid-poster-frame would tear down the in-flight request
     if (!open && posterFrameWorking) return
@@ -506,7 +502,6 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     handleMoveDown,
     handleUploadAndAdd,
     handleTrelloCardUpdate,
-    handleAddTrelloCard,
     handleDialogOpenChange,
     handleTabChange,
     selectFile: handleSelectUploadFile,

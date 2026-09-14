@@ -41,12 +41,8 @@
 - Fix approach: Either implement the feature or hide the component until ready
 
 **Incomplete TODO Comments:**
-- Issue: Several TODO items indicate unfinished work
-- Files:
-  - `src/hooks/useDocxParser.ts:191` - "TODO: Calculate nesting level" (list nesting always hardcoded to 1)
-  - `src/hooks/useVideoLinksManager.ts:203` - "TODO: Add Trello Card functionality to be implemented" (empty handler)
-- Impact: Missing functionality that may cause incorrect behavior (nesting) or dead UI buttons (Trello card add)
-- Fix approach: Implement the TODO items or remove the dead code paths
+- Status: Resolved in #293
+- The two TODO stubs (hardcoded docx nesting level, dead Trello card placeholder) were fixed and removed
 
 **Duplicate Logger Import in query-client-config.ts:**
 - Issue: Two logger imports on lines 7 and 9 - one generic, one namespaced - the generic one shadows the namespaced one
