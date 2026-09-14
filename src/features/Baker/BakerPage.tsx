@@ -30,7 +30,11 @@ import { useRepairBreadcrumbs } from './hooks/useRepairBreadcrumbs'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 
-import { useBakerTrelloIntegration, useTrelloBoard } from '@features/Trello'
+import {
+  useBakerTrelloIntegration,
+  useTrelloBoard,
+  useTrelloBoardId
+} from '@features/Trello'
 import { useBreadcrumb } from '@shared/hooks'
 import { logger } from '@shared/utils'
 
@@ -83,7 +87,7 @@ const BakerPageContent: React.FC = () => {
   } = useBreadcrumbsPreview()
 
   // Trello integration - now properly separated
-  const boardId = '55a504d70bed2bd21008dc5a'
+  const { boardId } = useTrelloBoardId()
   const { apiKey: apiKeyOrNull, token: tokenOrNull } = useTrelloBoard(boardId)
   // useTrelloBoard normalises absent credentials to `null`; everything below
   // models absence as an omitted optional prop. Convert once here rather than
