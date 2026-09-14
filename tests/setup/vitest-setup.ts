@@ -146,86 +146,60 @@ vi.mock('@tauri-apps/api/window', () => ({
   EffectState: { Active: 'active', Inactive: 'inactive' }
 }))
 
-// Mock Tauri APIs
-const mockTauriApis = () => {
-  // Note: We don't mock @tauri-apps/api/core here because mockIPC() from
-  // tauri-mocks.ts handles invoke() mocking for contract/integration tests.
-  // Individual tests can use vi.mock() locally if they need custom behavior.
+// Mock Tauri APIs at the top level so Vitest does not warn about nested
+// vi.mock calls (they are hoisted regardless, but nesting will become an
+// error in the next major version).
+//
+// Note: @tauri-apps/api/core is intentionally NOT mocked here because
+// mockIPC() from @tauri-apps/api/mocks handles invoke() for contract and
+// integration tests. Individual test files mock it locally when needed.
 
-  // Mock event listeners - must return unlisten function to avoid cleanup errors
-  vi.mock('@tauri-apps/api/event', () => ({
-    listen: vi.fn().mockResolvedValue(vi.fn()),
-    emit: vi.fn().mockResolvedValue(undefined)
-  }))
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn().mockResolvedValue(vi.fn()),
+  emit: vi.fn().mockResolvedValue(undefined)
+}))
 
-  // Mock app functions
-  vi.mock('@tauri-apps/api/app', () => ({
-    getVersion: vi.fn().mockResolvedValue('1.0.0')
-  }))
+vi.mock('@tauri-apps/api/app', () => ({
+  getVersion: vi.fn().mockResolvedValue('1.0.0')
+}))
 
-  // Mock plugin-dialog
-  vi.mock('@tauri-apps/plugin-dialog', () => ({
-    open: vi.fn()
-  }))
+vi.mock('@tauri-apps/plugin-dialog', () => ({
+  open: vi.fn()
+}))
 
-  // Mock plugin-shell
-  vi.mock('@tauri-apps/plugin-shell', () => ({
-    open: vi.fn()
-  }))
+vi.mock('@tauri-apps/plugin-shell', () => ({
+  open: vi.fn()
+}))
 
-  // Mock plugin-process
-  vi.mock('@tauri-apps/plugin-process', () => ({
-    relaunch: vi.fn()
-  }))
+vi.mock('@tauri-apps/plugin-process', () => ({
+  relaunch: vi.fn()
+}))
 
-  // Mock plugin-updater
-  vi.mock('@tauri-apps/plugin-updater', () => ({
-    check: vi.fn()
-  }))
+vi.mock('@tauri-apps/plugin-updater', () => ({
+  check: vi.fn()
+}))
 
-  // Mock plugin-store
-  vi.mock('@tauri-apps/plugin-store', () => ({
-    get: vi.fn(),
-    set: vi.fn(),
-    del: vi.fn()
-  }))
+vi.mock('@tauri-apps/plugin-store', () => ({
+  get: vi.fn(),
+  set: vi.fn(),
+  del: vi.fn()
+}))
 
-  // Mock Tauri path APIs (used by storage utilities)
-  //
-  // None of the directory getters returns a trailing separator, matching the
-  // real API. A file-level vi.mock replaces this factory wholesale, so any
-  // test file declaring its own must supply `join` too (issue #167).
-  // Plain functions rather than vi.fn: vitest.config.ts sets `mockReset`, so a
-  // vi.fn's implementation is wiped before every test after the first, leaving
-  // appDataDir() returning undefined. Files that need to assert on these calls
-  // declare their own factory, which replaces this one wholesale.
-  vi.mock('@tauri-apps/api/path', () => ({
-    appDataDir: async () => '/mock/app/data',
-    appConfigDir: async () => '/mock/app/config',
-    appCacheDir: async () => '/mock/app/cache',
-    appLocalDataDir: async () => '/mock/app/local-data',
-    fontDir: async () => '/mock/fonts',
-    join: async (...parts: string[]) => parts.join('/').replace(/\/{2,}/g, '/')
-  }))
-
-  // Mock window API for useWindowState and useSystemTheme hooks
-  vi.mock('@tauri-apps/api/window', () => ({
-    getCurrentWindow: vi.fn(() => ({
-      setPosition: vi.fn().mockResolvedValue(undefined),
-      setSize: vi.fn().mockResolvedValue(undefined),
-      outerPosition: vi.fn().mockResolvedValue({ x: 100, y: 100 }),
-      outerSize: vi.fn().mockResolvedValue({ width: 800, height: 600 }),
-      onResized: vi.fn().mockResolvedValue(vi.fn()),
-      onMoved: vi.fn().mockResolvedValue(vi.fn()),
-      onThemeChanged: vi.fn().mockResolvedValue(vi.fn())
-    }))
-  }))
-
-  // Don't globally mock @tauri-apps/api/core here, because:
-  // 1. Contract tests use mockIPC() from @tauri-apps/api/mocks which handles invoke()
-  // 2. Unit tests that need invoke() mocking should do it locally with vi.mock()
-  // 3. Global mocking prevents mockIPC() from working properly
-}
+// None of the directory getters returns a trailing separator, matching the
+// real API. A file-level vi.mock replaces this factory wholesale, so any
+// test file declaring its own must supply `join` too (issue #167).
+// Plain functions rather than vi.fn: vitest.config.ts sets `mockReset`, so a
+// vi.fn's implementation is wiped before every test after the first, leaving
+// appDataDir() returning undefined. Files that need to assert on these calls
+// declare their own factory, which replaces this one wholesale.
+vi.mock('@tauri-apps/api/path', () => ({
+  appDataDir: async () => '/mock/app/data',
+  appConfigDir: async () => '/mock/app/config',
+  appCacheDir: async () => '/mock/app/cache',
+  appLocalDataDir: async () => '/mock/app/local-data',
+  fontDir: async () => '/mock/fonts',
+  join: async (...parts: string[]) => parts.join('/').replace(/\/{2,}/g, '/')
+}))
 
 // Mock browser APIs
 const mockBrowserApis = () => {
@@ -303,7 +277,6 @@ const mockBrowserApis = () => {
 }
 
 beforeAll(() => {
-  mockTauriApis()
   mockBrowserApis()
 })
 
