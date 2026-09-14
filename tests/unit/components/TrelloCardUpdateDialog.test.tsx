@@ -111,7 +111,9 @@ describe('TrelloCardUpdateDialog Component', () => {
       expect(
         screen.getByText(/No Trello cards are linked to this project yet/i)
       ).toBeInTheDocument()
-      expect(screen.getAllByRole('button', { name: /close/i }).length).toBeGreaterThanOrEqual(1)
+      expect(
+        screen.getAllByRole('button', { name: /close/i }).length
+      ).toBeGreaterThanOrEqual(1)
     })
 
     test('renders card selection when cards exist', () => {
@@ -280,7 +282,7 @@ describe('TrelloCardUpdateDialog Component', () => {
       const user = userEvent.setup()
       let resolveUpdate: (value?: unknown) => void
       mockOnUpdate.mockReturnValue(
-        new Promise(resolve => {
+        new Promise((resolve) => {
           resolveUpdate = resolve
         })
       )
@@ -363,7 +365,6 @@ describe('TrelloCardUpdateDialog Component', () => {
       const newCheckboxes = screen.getAllByRole('checkbox')
       expect(newCheckboxes[0]).not.toBeChecked()
     })
-
   })
 
   // =================================================================
