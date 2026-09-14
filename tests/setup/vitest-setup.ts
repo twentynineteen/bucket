@@ -1,5 +1,17 @@
 import '@testing-library/jest-dom'
+import nodeConsole from 'node:console'
 import { afterAll, afterEach, beforeAll, vi } from 'vitest'
+
+// Silence jsdom's "Not implemented: HTMLCanvasElement.getContext()" warnings.
+// jsdom creates a default VirtualConsole that forwards to the Node `console`
+// module (not `globalThis.console`). We patch the Node console's `.error`
+// directly so the filter reaches the right object.
+const _origNodeError = nodeConsole.error.bind(nodeConsole)
+;(nodeConsole as any).error = (...args: unknown[]) => {
+  const msg = String(args[0] ?? '')
+  if (msg.includes('Not implemented: HTMLCanvasElement')) return
+  _origNodeError(...args)
+}
 
 // Mock matchMedia IMMEDIATELY at module load time
 // This is required for both our code and Framer Motion's reduced motion detection
