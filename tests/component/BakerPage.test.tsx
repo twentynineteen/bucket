@@ -90,6 +90,12 @@ vi.mock('@features/Trello', () => ({
     token: 'test-token',
     grouped: {},
     isLoading: false
+  })),
+  useTrelloBoardId: vi.fn(() => ({
+    boardId: 'test-board-id',
+    setBoardId: vi.fn().mockResolvedValue(undefined),
+    isLoading: false,
+    validateStoredBoardId: vi.fn(() => true)
   }))
 }))
 
