@@ -30,7 +30,11 @@ import { useRepairBreadcrumbs } from './hooks/useRepairBreadcrumbs'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 
-import { useBakerTrelloIntegration, useTrelloBoard, useTrelloBoardId } from '@features/Trello'
+import {
+  useBakerTrelloIntegration,
+  useTrelloBoard,
+  useTrelloBoardId
+} from '@features/Trello'
 import { useBreadcrumb } from '@shared/hooks'
 import { logger } from '@shared/utils'
 
