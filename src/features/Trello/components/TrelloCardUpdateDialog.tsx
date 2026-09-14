@@ -28,7 +28,6 @@ interface TrelloCardUpdateDialogProps {
     selectedCardIndexes: number[],
     options?: { renameToVideoTitle?: boolean }
   ) => Promise<void>
-  onAddTrelloCard: () => void
   /** Proposed new card name (video title + duration suffix); null hides the rename option */
   proposedCardName?: string | null
 }
@@ -38,7 +37,6 @@ export function TrelloCardUpdateDialog({
   onOpenChange,
   trelloCards,
   onUpdate,
-  onAddTrelloCard,
   proposedCardName = null
 }: TrelloCardUpdateDialogProps) {
   const [selectedIndexes, setSelectedIndexes] = useState<number[]>([])
@@ -99,15 +97,7 @@ export function TrelloCardUpdateDialog({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => handleDialogChange(false)}>
-              Skip for Now
-            </Button>
-            <Button
-              onClick={() => {
-                handleDialogChange(false)
-                onAddTrelloCard()
-              }}
-            >
-              Add Trello Card
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

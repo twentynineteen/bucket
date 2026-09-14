@@ -44,7 +44,6 @@ describe('TrelloCardUpdateDialog Component', () => {
   // Mock functions for callbacks
   let mockOnOpenChange: Mock
   let mockOnUpdate: Mock
-  let mockOnAddTrelloCard: Mock
 
   // Mock data
   const mockTrelloCards: TrelloCard[] = [
@@ -74,7 +73,6 @@ describe('TrelloCardUpdateDialog Component', () => {
     vi.clearAllMocks()
     mockOnOpenChange = vi.fn()
     mockOnUpdate = vi.fn().mockResolvedValue(undefined)
-    mockOnAddTrelloCard = vi.fn()
   })
 
   // =================================================================
@@ -90,7 +88,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -106,7 +103,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={[]}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -115,8 +111,7 @@ describe('TrelloCardUpdateDialog Component', () => {
       expect(
         screen.getByText(/No Trello cards are linked to this project yet/i)
       ).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /skip for now/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /add trello card/i })).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /close/i }).length).toBeGreaterThanOrEqual(1)
     })
 
     test('renders card selection when cards exist', () => {
@@ -127,7 +122,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -156,7 +150,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -178,7 +171,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -202,7 +194,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -224,7 +215,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -249,7 +239,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -272,7 +261,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -303,7 +291,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -329,7 +316,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -353,7 +339,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -371,7 +356,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -380,26 +364,6 @@ describe('TrelloCardUpdateDialog Component', () => {
       expect(newCheckboxes[0]).not.toBeChecked()
     })
 
-    test('calls onAddTrelloCard and closes when Add Trello Card clicked', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      render(
-        <TrelloCardUpdateDialog
-          open={true}
-          onOpenChange={mockOnOpenChange}
-          trelloCards={[]}
-          onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
-        />
-      )
-
-      // Act
-      await user.click(screen.getByRole('button', { name: /add trello card/i }))
-
-      // Assert
-      expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-      expect(mockOnAddTrelloCard).toHaveBeenCalledTimes(1)
-    })
   })
 
   // =================================================================
@@ -419,7 +383,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -445,7 +408,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 
@@ -468,7 +430,6 @@ describe('TrelloCardUpdateDialog Component', () => {
           onOpenChange={mockOnOpenChange}
           trelloCards={mockTrelloCards}
           onUpdate={mockOnUpdate}
-          onAddTrelloCard={mockOnAddTrelloCard}
         />
       )
 

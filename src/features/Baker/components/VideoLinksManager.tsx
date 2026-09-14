@@ -103,7 +103,6 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
     handleMoveDown,
     handleUploadAndAdd,
     handleTrelloCardUpdate,
-    handleAddTrelloCard,
     handleDialogOpenChange,
     handleTabChange,
     selectFile,
@@ -335,7 +334,6 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
         onOpenChange={setIsTrelloDialogOpen}
         trelloCards={trelloCards}
         onUpdate={handleTrelloCardUpdate}
-        onAddTrelloCard={handleAddTrelloCard}
         proposedCardName={renameProposal}
       />
 
