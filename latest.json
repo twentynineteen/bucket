@@ -1,0 +1,15 @@
+{
+  "version": "0.19.2",
+  "notes": "## What's Changed\n\n- Release v0.19.2 (#299) (1d49846)\n\n## Installation\n\nDownload the appropriate installer for your platform from the assets below.\n\n**Full Changelog**: https://github.com/twentynineteen/bucket/compare/app-v0.19.1...app-v0.19.2",
+  "pub_date": "2026-09-15T21:38:21Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "url": "https://github.com/twentynineteen/bucket/releases/download/app-v0.19.2/Bucket_aarch64-apple-darwin.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUdGxzdGplRllZblIwV051KzJoL2ZEeGZrTnFpSy9GblkyNXlBNWFFZVhBU2xRckhwbGxUMTYydEFTUVI2U3hzcDVER09Bd3BSNWZFTE4rbExPUUdVdVVPM21UTWlXTndrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5NTA4MTMyCWZpbGU6QnVja2V0LmFwcC50YXIuZ3oKZCtUVllLYUZxRFkvMmNWT01LQTBjWXcveHh0NzRSMHlPaDMxZEtlRjVmbjBSR0kyOExiYyt1Ni9tTHA2NnBYQk0zdFJoWUtLdXpzR2xJYmpNZkFlQ0E9PQo="
+    },
+    "darwin-x86_64": {
+      "url": "https://github.com/twentynineteen/bucket/releases/download/app-v0.19.2/Bucket_x86_64-apple-darwin.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUdGxzdGplRllZblUwQUx4TEFiSndyeGIxcFo4WnE2bHg1eWF5Y2hURWpxUVVnS0VTVDVPMHM0UTBuaXh2YTNwUjNFM3hRQkJ2UU1ZMUI2ODh5T0xHaGhXWTFtV3hNaXdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5NTA4MjUwCWZpbGU6QnVja2V0LmFwcC50YXIuZ3oKYzRBeXdJMWVMdUFLelcwTytZNWhYVDdCZUJ1enFjZkk3WFA5K05HSFAxSjM3UWpORHhadHEzOFQxN3B6cmc4bWRNSjFNMnFya2tscm1uc1RnbnBQQUE9PQo="
+    }
+  }
+}
