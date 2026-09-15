@@ -21,6 +21,7 @@ import {
 } from '@features/Baker'
 import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
 import { useCardPosterFrame } from './useCardPosterFrame'
+import { useReplaceVideo } from './useReplaceVideo'
 import { useBreadcrumbsVideoLinks } from '@features/Baker'
 import {
   useFileUpload,
@@ -108,6 +109,19 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     videoLinks,
     apiKey,
     updateVideoLinkAsync
+  })
+
+  // Replace the file behind an already-linked video, from the card action
+  // (Issue #282). Chains into the poster frame dialog above when asked to.
+  const replaceVideo = useReplaceVideo({
+    videoLinks,
+    sproutApiKey: apiKey,
+    trelloApiKey,
+    trelloToken,
+    trelloCards,
+    updateVideoLinkAsync,
+    bumpThumbnailCacheKey: cardPosterFrame.bumpThumbnailCacheKey,
+    onOpenPosterFrame: cardPosterFrame.request
   })
 
   /**
@@ -358,10 +372,6 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     await Promise.all(updatePromises)
   }
 
-  const handleAddTrelloCard = () => {
-    // TODO: Add Trello Card functionality to be implemented
-  }
-
   const handleDialogOpenChange = (open: boolean) => {
     // Closing mid-poster-frame would tear down the in-flight request
     if (!open && posterFrameWorking) return
@@ -378,15 +388,19 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
 
     setIsDialogOpen(open)
 
+    // The message lives in the React Query cache, which resetUploadState does
+    // not own, and the slot is shared by every Sprout transfer, including a
+    // replace started from a card (#282). Clear it on open as well as close, or
+    // a previous run's text greets the next upload tab visit as though it were
+    // this dialog's own.
+    setMessage(null)
+
     if (!open) {
       setFormData(initialFormData)
       setValidationErrors([])
       setFetchError(null)
       setAddMode('url')
       resetUploadState()
-      // The message lives in the React Query cache, which resetUploadState
-      // does not own -- clear it here or a previous run's text reappears.
-      setMessage(null)
       videoProcessor.reset()
       posterFrame.reset()
     }
@@ -463,6 +477,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     retrySetPosterFrame: cardPosterFrame.retry,
     handlePosterFrameDialogOpenChange: cardPosterFrame.handleOpenChange,
 
+    // Replace the video behind a link, from the card action (Issue #282)
+    replaceVideo,
+
     // Loading states
     isUpdating,
     isFetchingVideo,
@@ -485,7 +502,6 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     handleMoveDown,
     handleUploadAndAdd,
     handleTrelloCardUpdate,
-    handleAddTrelloCard,
     handleDialogOpenChange,
     handleTabChange,
     selectFile: handleSelectUploadFile,

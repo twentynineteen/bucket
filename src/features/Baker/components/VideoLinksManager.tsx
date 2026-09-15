@@ -24,6 +24,7 @@ import { TrelloCardUpdateDialog } from '@features/Trello'
 import { describeVideoLinksError } from '../internal/videoLinksError'
 import { VideoLinkCard } from './VideoLinkCard'
 import { AddVideoDialog } from './AddVideoDialog'
+import { ReplaceVideoDialog } from './ReplaceVideoDialog'
 import { SetPosterFrameDialog } from './SetPosterFrameDialog'
 
 interface VideoLinksManagerProps {
@@ -80,6 +81,9 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
     retrySetPosterFrame,
     handlePosterFrameDialogOpenChange,
 
+    // Replace the video behind a link (Issue #282)
+    replaceVideo,
+
     // Loading states
     isUpdating,
     isFetchingVideo,
@@ -99,7 +103,6 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
     handleMoveDown,
     handleUploadAndAdd,
     handleTrelloCardUpdate,
-    handleAddTrelloCard,
     handleDialogOpenChange,
     handleTabChange,
     selectFile,
@@ -253,11 +256,43 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
               canMoveDown={index < videoLinks.length - 1}
               onSetPosterFrame={() => requestSetPosterFrame(index)}
               posterFrameDisabledReason={posterFrameDisabledReason(link)}
+              onReplaceVideo={() => replaceVideo.request(index)}
+              replaceDisabledReason={replaceVideo.disabledReason(link)}
               thumbnailCacheKey={thumbnailCacheKeys[link.url] ?? null}
             />
           ))}
         </div>
       )}
+
+      {/* Replace the file behind an already-linked video (Issue #282) */}
+      <ReplaceVideoDialog
+        open={replaceVideo.targetIndex !== null}
+        onOpenChange={replaceVideo.handleOpenChange}
+        videoTitle={replaceVideo.targetTitle}
+        upload={{
+          selectedFile: replaceVideo.upload.selectedFile,
+          onSelectFile: () => void replaceVideo.upload.selectFile(),
+          status: replaceVideo.upload.status,
+          progress: replaceVideo.upload.progress,
+          error: replaceVideo.upload.error,
+          onCancel: () => void replaceVideo.upload.cancel()
+        }}
+        posterMode={replaceVideo.posterMode}
+        onPosterModeChange={replaceVideo.setPosterMode}
+        trello={{
+          available: replaceVideo.trello.available,
+          enabled: replaceVideo.trello.enabled,
+          onEnabledChange: replaceVideo.trello.setEnabled,
+          cards: replaceVideo.trello.cards,
+          selectedCardIds: replaceVideo.trello.selectedCardIds,
+          onToggleCard: replaceVideo.trello.toggleCard,
+          text: replaceVideo.trello.text,
+          onTextChange: replaceVideo.trello.setText,
+          validationMessage: replaceVideo.trello.validationMessage
+        }}
+        canSubmit={replaceVideo.canSubmit}
+        onConfirm={() => void replaceVideo.confirm()}
+      />
 
       {/* Loading indicator */}
       {isUpdating && (
@@ -299,7 +334,6 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
         onOpenChange={setIsTrelloDialogOpen}
         trelloCards={trelloCards}
         onUpdate={handleTrelloCardUpdate}
-        onAddTrelloCard={handleAddTrelloCard}
         proposedCardName={renameProposal}
       />
 

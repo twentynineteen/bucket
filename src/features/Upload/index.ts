@@ -7,6 +7,8 @@ export { default as Posterframe } from './components/Posterframe'
 export { default as UploadOtter } from './components/UploadOtter'
 /** Picker for choosing which Sprout folder an upload lands in */
 export { SproutFolderPicker } from './components/SproutFolderPicker'
+/** WBS video-title naming guide shown beside a Sprout upload title field */
+export { TitleNamingGuide } from './components/TitleNamingGuide'
 /** Settings panel for building the saved folder index that powers search */
 export { SproutFolderIndexPanel } from './components/SproutFolderIndexPanel'
 
@@ -39,6 +41,8 @@ export { useSproutFolderSelection } from './hooks/useSproutFolderSelection'
 export { useSproutFolderIndex } from './hooks/useSproutFolderIndex'
 /** Hook validating the stored default folder against the saved index, no requests */
 export { useDefaultSproutFolder } from './hooks/useDefaultSproutFolder'
+/** Hook driving the transfer that replaces an existing Sprout video's source file (#282) */
+export { useReplaceUpload } from './hooks/useReplaceUpload'
 
 // Types (re-export for consumers)
 /** Sprout Video upload response with video ID, embed code, and status */
@@ -71,6 +75,12 @@ export type { UploadErrorEvent } from './types'
 export type { UploadCancelledEvent } from './types'
 /** The non-terminal stall warning, raised at half the terminal window (#225) */
 export type { UploadStallWarningEvent } from './types'
+/** Where a replace transfer is: idle, uploading, cancelling or error (#282) */
+export type { ReplaceUploadStatus } from './types'
+/** Progress of a replace transfer (#282) */
+export type { ReplaceUploadProgress } from './types'
+/** How a replace transfer ended: complete, cancelled or error (#282) */
+export type { ReplaceUploadResult } from './types'
 
 // Formatting
 /** Renders a transfer byte count in the decimal units the backend messages use */

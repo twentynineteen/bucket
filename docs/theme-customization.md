@@ -6,7 +6,7 @@ Bucket supports multiple color themes to personalize your workspace. Choose from
 
 ### System (Default)
 - **Description**: Automatically follows your operating system's light/dark mode preference
-- **Best For**: Users who want seamless integration with their OS settings
+- **Best For**: Users who want the app to follow their OS setting
 
 ### Light Themes
 

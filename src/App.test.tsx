@@ -38,3 +38,17 @@ it('mounts the real provider tree and renders the dashboard shell', async () => 
 
   expect(await screen.findByRole('navigation')).toBeInTheDocument()
 })
+
+// #278 moved the Suspense boundary from wrapping the whole AppRouter to inside
+// the dashboard Page, around the routed Outlet. The navigation lives in the
+// sidebar, outside that boundary, so it must mount immediately -- without waiting
+// on the lazy route chunk. Asserting synchronously (getByRole, not findByRole)
+// proves the shell is present on the same tick the routed chunk is still loading.
+it('renders the navigation shell synchronously while the routed chunk loads', () => {
+  render(<App />)
+
+  // The sidebar is not lazy, so the nav is on the page before any chunk resolves.
+  expect(screen.getByRole('navigation')).toBeInTheDocument()
+  // ...and the routed content region shows the Suspense fallback in the meantime.
+  expect(screen.getByRole('status', { name: /loading page/i })).toBeInTheDocument()
+})

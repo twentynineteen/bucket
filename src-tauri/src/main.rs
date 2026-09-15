@@ -45,6 +45,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_folders,
             upload_video,
+            // Issue #282: replace the source file of an existing Sprout video
+            replace_video,
             // Issue #225: a running Sprout upload can be addressed and stopped
             cancel_upload,
             copy_premiere_project,

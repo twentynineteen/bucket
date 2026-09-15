@@ -59,6 +59,22 @@ export async function uploadVideo(
 }
 
 /**
+ * Replaces the source file of an existing Sprout video and resolves with the
+ * operation id, exactly as `uploadVideo` does (issue #282).
+ *
+ * The video keeps its id, so published embed and share links keep working. The
+ * transfer runs through the same backend task, so `cancelUpload` and every
+ * `upload_*` event apply to it unchanged.
+ */
+export async function replaceVideo(
+  filePath: string,
+  apiKey: string,
+  videoId: string
+): Promise<string> {
+  return invoke<string>('replace_video', { filePath, apiKey, videoId })
+}
+
+/**
  * Cancels an in-flight upload, tearing the request down rather than only
  * detaching the UI from it.
  *

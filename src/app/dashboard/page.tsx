@@ -1,3 +1,5 @@
+import { ChunkErrorBoundary } from '@shared/ui/layout/ChunkErrorBoundary'
+import { RouteLoadingSpinner } from '@shared/ui/layout/RouteLoadingSpinner'
 import { AppSidebar } from '@shared/ui/layout/app-sidebar'
 import {
   Breadcrumb,
@@ -11,7 +13,7 @@ import { Separator } from '@shared/ui/separator'
 import { SidebarInset, SidebarTrigger } from '@shared/ui/sidebar/Sidebar'
 import { SidebarProvider } from '@shared/ui/sidebar/SidebarProvider'
 import { useBreadcrumbStore } from '@shared/store'
-import React from 'react'
+import React, { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 
 // The Page component acts as the main provider of layout for this application
@@ -45,7 +47,14 @@ export const Page: React.FC = () => {
             </Breadcrumb>
           </div>
         </header>
-        <Outlet />
+        {/* Suspense + chunk-error boundary wrap only the routed content (#278),
+            so the sidebar navigation and header stay mounted while a lazy route
+            chunk loads; only this region shows the spinner or the retry UI. */}
+        <ChunkErrorBoundary>
+          <Suspense fallback={<RouteLoadingSpinner />}>
+            <Outlet />
+          </Suspense>
+        </ChunkErrorBoundary>
       </SidebarInset>
     </SidebarProvider>
   )

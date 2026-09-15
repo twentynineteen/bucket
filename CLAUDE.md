@@ -19,7 +19,7 @@ bun run preview            # Preview production build
 ### Building
 
 ```bash
-bun run build:tauri        # Build complete desktop app (creates DMG in /target/build/dmg)
+bun run build:tauri        # Build complete desktop app (DMG in src-tauri/target/release/bundle/dmg/)
 bun run build              # Build frontend only
 ```
 

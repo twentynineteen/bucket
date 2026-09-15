@@ -40,7 +40,7 @@ vi.mock('@tauri-apps/api/path', () => ({
   join: async (...parts: string[]) => parts.join('/').replace(/\/{2,}/g, '/')
 }))
 
-import { getFolders, uploadVideo } from '../api'
+import { getFolders, replaceVideo, uploadVideo } from '../api'
 import { __resetBudget } from '../internal/sproutRateBudget'
 
 const emptyPage = {
@@ -115,6 +115,22 @@ describe('uploadVideo wire contract', () => {
       apiKey: 'key-123',
       folderId: null,
       title: null
+    })
+  })
+})
+
+describe('replaceVideo wire contract (#282)', () => {
+  it('b1_4_sends exactly { filePath, apiKey, videoId } and returns the operation id', async () => {
+    // Same silent-failure class as getFolders: a mistyped key would bind the
+    // Rust argument to nothing and the command would never find the video.
+    invokeMock.mockResolvedValue('op-9')
+
+    await expect(replaceVideo('/tmp/v2.mp4', 'key-123', 'vid-1')).resolves.toBe('op-9')
+
+    expect(invokeMock).toHaveBeenCalledWith('replace_video', {
+      filePath: '/tmp/v2.mp4',
+      apiKey: 'key-123',
+      videoId: 'vid-1'
     })
   })
 })

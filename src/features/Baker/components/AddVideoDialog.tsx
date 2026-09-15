@@ -20,7 +20,11 @@ import type {
   SelectedSproutFolder,
   UploadMessage
 } from '@features/Upload'
-import { formatTransferredBytes, SproutFolderPicker } from '@features/Upload'
+import {
+  formatTransferredBytes,
+  SproutFolderPicker,
+  TitleNamingGuide
+} from '@features/Upload'
 
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
@@ -334,6 +338,10 @@ function UrlEntryContent({
           onChange={(e) => form.onFormFieldChange('title', e.target.value)}
           maxLength={200}
         />
+        <TitleNamingGuide
+          title={form.formData.title}
+          onTitleChange={(next) => form.onFormFieldChange('title', next)}
+        />
       </div>
 
       <div className="space-y-2">
@@ -596,6 +604,10 @@ function UploadContent({
           <p className="text-muted-foreground text-xs">
             Used as the video title on Sprout Video. Leave blank to use the filename.
           </p>
+          <TitleNamingGuide
+            title={form.formData.title}
+            onTitleChange={(next) => form.onFormFieldChange('title', next)}
+          />
         </div>
       )}
 

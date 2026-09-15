@@ -8,6 +8,7 @@ import {
   ChevronUp,
   ExternalLink,
   Image as ImageIcon,
+  Replace,
   Trash2,
   Video
 } from 'lucide-react'
@@ -29,9 +30,14 @@ interface VideoLinkCardProps {
   onSetPosterFrame?: () => void
   /** Why the poster frame action is unavailable; disables it when set */
   posterFrameDisabledReason?: string | null
+  /** Opens the replace-video dialog for this link (issue #282) */
+  onReplaceVideo?: () => void
+  /** Why the replace action is unavailable; disables it when set */
+  replaceDisabledReason?: string | null
   /**
-   * Bumped after a poster frame is set. Sprout may reuse the same asset URL,
-   * so without this the browser keeps serving the superseded image.
+   * Bumped after a poster frame is set or the video is replaced. Sprout may
+   * reuse the same asset URL, so without this the browser keeps serving the
+   * superseded image.
    */
   thumbnailCacheKey?: number | null
 }
@@ -51,6 +57,8 @@ function VideoLinkCardComponent({
   canMoveDown,
   onSetPosterFrame,
   posterFrameDisabledReason,
+  onReplaceVideo,
+  replaceDisabledReason,
   thumbnailCacheKey
 }: VideoLinkCardProps) {
   const formatDate = (isoDate?: string) => {
@@ -122,6 +130,19 @@ function VideoLinkCardComponent({
               title={posterFrameDisabledReason || 'Set poster frame'}
             >
               <ImageIcon className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {onReplaceVideo && (
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={onReplaceVideo}
+              disabled={!!replaceDisabledReason}
+              className="bg-background h-7 w-7"
+              aria-label="Replace video"
+              title={replaceDisabledReason || 'Replace video'}
+            >
+              <Replace className="h-3.5 w-3.5" />
             </Button>
           )}
           <Button

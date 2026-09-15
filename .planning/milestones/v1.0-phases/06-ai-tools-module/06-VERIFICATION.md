@@ -64,7 +64,7 @@ re_verification:
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| ScriptFormatter/hooks/useDocxParser.ts | 191 | `// TODO: Calculate nesting level` | Info | Pre-existing TODO, not a phase 6 regression. Minor incomplete feature. |
+| ScriptFormatter/hooks/useDocxParser.ts | 191 | ~~`// TODO: Calculate nesting level`~~ | Resolved | Fixed in #293. Nesting level now calculated by walking ancestor list elements. |
 
 ### Human Verification Required
 

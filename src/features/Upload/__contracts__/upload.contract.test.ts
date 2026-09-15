@@ -206,6 +206,8 @@ describe('Upload Barrel Exports - Shape', () => {
     'UploadOtter',
     'SproutFolderPicker',
     'SproutFolderIndexPanel',
+    // Cross-imported by Baker's Add Video dialog (#274)
+    'TitleNamingGuide',
     // Hooks
     'useFileUpload',
     'useUploadEvents',
@@ -220,7 +222,9 @@ describe('Upload Barrel Exports - Shape', () => {
     'useSproutFolders',
     'useSproutFolderSelection',
     'useSproutFolderIndex',
-    'useDefaultSproutFolder'
+    'useDefaultSproutFolder',
+    // Cross-imported by Trello's replace-video orchestration (#282)
+    'useReplaceUpload'
   ].sort()
 
   /**
@@ -242,7 +246,8 @@ describe('Upload Barrel Exports - Shape', () => {
     'Posterframe',
     'UploadOtter',
     'SproutFolderPicker',
-    'SproutFolderIndexPanel'
+    'SproutFolderIndexPanel',
+    'TitleNamingGuide'
   ] as const
 
   for (const name of componentNames) {
@@ -266,7 +271,8 @@ describe('Upload Barrel Exports - Shape', () => {
     'useSproutFolders',
     'useSproutFolderSelection',
     'useSproutFolderIndex',
-    'useDefaultSproutFolder'
+    'useDefaultSproutFolder',
+    'useReplaceUpload'
   ] as const
 
   for (const name of hookNames) {

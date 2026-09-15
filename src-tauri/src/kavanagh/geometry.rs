@@ -163,6 +163,54 @@ pub fn union(a: &CropRegion, b: &CropRegion) -> CropRegion {
     }
 }
 
+/// The overlap between a reference's own scoring region and the placed crop it
+/// will be read out of, or `None` when the overlap cannot carry a score.
+///
+/// Computed at prepare time so the template and the window extracted from the
+/// decoded crop always agree in shape (issue #266): clamping at score time would
+/// hand `score_watermark_crop` mismatched dimensions, and its length guard turns
+/// that into a silent zero. The 3x3 floor is Sobel's - `sobel_magnitude` zeroes
+/// anything smaller, which would score 0 forever and read as a permanently
+/// missing mark rather than the pool problem it is.
+pub fn scoring_subwindow(reference: &CropRegion, crop: &CropRegion) -> Option<CropRegion> {
+    // Edges in u64 so an origin-plus-size near u32::MAX cannot wrap; the result
+    // fits u32 again because it is bounded by the inputs' own coordinates.
+    let x1 = u64::from(reference.x.max(crop.x));
+    let y1 = u64::from(reference.y.max(crop.y));
+    let x2 = (u64::from(reference.x) + u64::from(reference.width))
+        .min(u64::from(crop.x) + u64::from(crop.width));
+    let y2 = (u64::from(reference.y) + u64::from(reference.height))
+        .min(u64::from(crop.y) + u64::from(crop.height));
+
+    if x2 <= x1 || y2 <= y1 {
+        return None;
+    }
+    let width = x2 - x1;
+    let height = y2 - y1;
+    if width < 3 || height < 3 {
+        return None;
+    }
+
+    Some(CropRegion {
+        x: x1 as u32,
+        y: y1 as u32,
+        width: width as u32,
+        height: height as u32,
+    })
+}
+
+/// True when a reference's mark spans more than half its canvas on either axis.
+///
+/// Corner marks measure ~8% of the frame; a mark past half of it is a
+/// banner-class asset - the kind whose bbox swallowed both corners' inspection
+/// regions under the old union design (issue #266). It is still scored, over
+/// its own subwindow, but every report names it so a stray asset in the pool is
+/// loud instead of silently odd.
+pub fn is_wide_mark(bbox: &AlphaBbox, canvas_width: u32, canvas_height: u32) -> bool {
+    u64::from(bbox.width()) * 2 > u64::from(canvas_width)
+        || u64::from(bbox.height()) * 2 > u64::from(canvas_height)
+}
+
 /// Puts a region of exactly the given size at another's origin.
 ///
 /// Both corners must be cropped at **exactly** the same size or `hstack` refuses
@@ -327,6 +375,124 @@ mod tests {
 
         assert_eq!(region.x + region.width, 640);
         assert_eq!(region.y + region.height, 360);
+    }
+
+    #[test]
+    fn i266_b1_3_scoring_subwindow_clamps_to_the_placed_crop() {
+        // A reference region partly outside the placed crop is scored over the
+        // visible part, computed at prepare time so template and extracted crop
+        // always agree in shape (issue #266, D2).
+        let reference = CropRegion {
+            x: 100,
+            y: 100,
+            width: 50,
+            height: 50,
+        };
+        let crop = CropRegion {
+            x: 120,
+            y: 90,
+            width: 100,
+            height: 100,
+        };
+
+        let subwindow = scoring_subwindow(&reference, &crop).expect("the overlap is scoreable");
+
+        assert_eq!(
+            subwindow,
+            CropRegion {
+                x: 120,
+                y: 100,
+                width: 30,
+                height: 50
+            }
+        );
+    }
+
+    #[test]
+    fn i266_b1_3_scoring_subwindow_is_the_reference_region_when_fully_inside() {
+        let reference = CropRegion {
+            x: 3505,
+            y: 40,
+            width: 295,
+            height: 294,
+        };
+        let crop = CropRegion {
+            x: 40,
+            y: 40,
+            width: 3762,
+            height: 384,
+        };
+
+        assert_eq!(scoring_subwindow(&reference, &crop), Some(reference));
+    }
+
+    #[test]
+    fn i266_b1_4_scoring_subwindow_rejects_an_empty_or_degenerate_overlap() {
+        // Sobel zeroes the border of anything under 3x3, so a degenerate sliver
+        // would score 0 forever and read as a permanently absent mark. Skipping
+        // it (with a note upstream) is the honest answer (issue #266, D2).
+        let crop = CropRegion {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100,
+        };
+        let disjoint = CropRegion {
+            x: 200,
+            y: 200,
+            width: 50,
+            height: 50,
+        };
+        let sliver = CropRegion {
+            x: 98,
+            y: 0,
+            width: 50,
+            height: 50,
+        };
+
+        assert_eq!(scoring_subwindow(&disjoint, &crop), None);
+        assert_eq!(
+            scoring_subwindow(&sliver, &crop),
+            None,
+            "a 2px-wide overlap cannot carry a Sobel gradient"
+        );
+    }
+
+    #[test]
+    fn i266_b2_flags_a_mark_spanning_more_than_half_its_canvas_on_either_axis() {
+        // The real banner: 1881x192 on a 1920x1080 canvas - wide, not tall.
+        let banner = AlphaBbox {
+            x1: 20,
+            y1: 20,
+            x2: 1900,
+            y2: 211,
+        };
+        // A hypothetical side banner causes the same region inflation vertically.
+        let tall = AlphaBbox {
+            x1: 20,
+            y1: 20,
+            x2: 219,
+            y2: 919,
+        };
+
+        assert!(is_wide_mark(&banner, 1920, 1080));
+        assert!(is_wide_mark(&tall, 1920, 1080));
+    }
+
+    #[test]
+    fn i266_b2_does_not_flag_a_real_corner_mark() {
+        // Real marks are ~7.7% of the frame width; exactly half is also not
+        // "spanning most of the frame".
+        let exactly_half = AlphaBbox {
+            x1: 0,
+            y1: 0,
+            x2: 959,
+            y2: 99,
+        };
+
+        assert!(!is_wide_mark(&REF_1080_RIGHT, 1920, 1080));
+        assert!(!is_wide_mark(&REF_4K_RIGHT, 3840, 2160));
+        assert!(!is_wide_mark(&exactly_half, 1920, 1080));
     }
 
     #[test]

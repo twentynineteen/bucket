@@ -666,8 +666,9 @@ fn the_size_check_runs_before_any_streaming_or_network_work() {
     let reader = source
         .find("ProgressReader {")
         .expect("upload_video_task must still build a ProgressReader");
+    // The URL comes from `endpoint(&target)` since #282; the call is what is pinned.
     let request = source
-        .find("post(\"https://api.sproutvideo.com/v1/videos\")")
+        .find("post(endpoint(&target))")
         .expect("upload_video_task must still POST to Sprout");
 
     assert!(
@@ -1035,5 +1036,115 @@ fn detection_did_not_migrate_into_the_task_it_watches() {
     assert!(
         !upload_task.contains("STALL_WINDOW"),
         "detection must not migrate into the task it is watching"
+    );
+}
+
+// --- Issue #282: replace the source file behind an existing Sprout video ------
+//
+// The upload task used to build its URL and form fields inline, so the only way
+// to reuse its streaming, progress and cancellation for Sprout's
+// `POST /v1/videos/:id/replace` was to copy the whole function. `UploadTarget`
+// lifts the two decisions that differ into pure functions the task calls.
+
+#[test]
+fn b1_1_replace_target_posts_to_the_video_replace_endpoint() {
+    use crate::commands::sprout_upload::{endpoint, UploadTarget};
+
+    let target = UploadTarget::Replace {
+        video_id: "abc123".to_string(),
+    };
+
+    assert_eq!(
+        endpoint(&target),
+        "https://api.sproutvideo.com/v1/videos/abc123/replace"
+    );
+}
+
+#[test]
+fn b1_1_new_target_posts_to_the_videos_collection() {
+    use crate::commands::sprout_upload::{endpoint, UploadTarget};
+
+    let target = UploadTarget::New {
+        folder_id: None,
+        title: None,
+    };
+
+    assert_eq!(endpoint(&target), "https://api.sproutvideo.com/v1/videos");
+}
+
+#[test]
+fn b1_2_replace_target_adds_no_text_fields() {
+    use crate::commands::sprout_upload::{text_fields, UploadTarget};
+
+    // Sprout's replace endpoint takes only `source_video`; a folder or title
+    // field alongside it would be rejected or silently ignored.
+    let target = UploadTarget::Replace {
+        video_id: "abc123".to_string(),
+    };
+
+    assert!(text_fields(&target).is_empty());
+}
+
+#[test]
+fn b1_2_new_target_keeps_folder_and_trimmed_title_fields() {
+    use crate::commands::sprout_upload::{text_fields, UploadTarget};
+
+    let target = UploadTarget::New {
+        folder_id: Some("folder-1".to_string()),
+        title: Some("  Interview part 1  ".to_string()),
+    };
+
+    assert_eq!(
+        text_fields(&target),
+        vec![
+            ("folder_id", "folder-1".to_string()),
+            ("title", "Interview part 1".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn b1_2_new_target_omits_a_blank_title() {
+    use crate::commands::sprout_upload::{text_fields, UploadTarget};
+
+    // Exactly today's behaviour: a whitespace-only title is not sent, so Sprout
+    // derives one from the filename rather than storing an empty string.
+    let target = UploadTarget::New {
+        folder_id: None,
+        title: Some("   ".to_string()),
+    };
+
+    assert!(text_fields(&target).is_empty());
+}
+
+#[test]
+fn b1_3_replace_video_is_registered_and_shares_the_upload_task() {
+    // Same source-level pinning as `detection_did_not_migrate_into_the_task_it_watches`:
+    // the command must exist, be reachable from the frontend, and drive the one
+    // task so progress, stall detection and cancellation are not forked.
+    let main = include_str!("../../main.rs");
+    assert!(
+        main.contains("replace_video,"),
+        "replace_video must be listed in generate_handler! or the frontend cannot invoke it"
+    );
+
+    let source = include_str!("../sprout_upload.rs");
+    let upload_command = source
+        .split("pub async fn upload_video(")
+        .nth(1)
+        .and_then(|rest| rest.split("pub async fn replace_video").next())
+        .expect("upload_video must precede replace_video in sprout_upload.rs");
+    let replace_command = source
+        .split("pub async fn replace_video")
+        .nth(1)
+        .and_then(|rest| rest.split("async fn start_transfer").next())
+        .expect("a replace_video command must exist in sprout_upload.rs");
+    assert!(
+        upload_command.contains("start_transfer(") && replace_command.contains("start_transfer("),
+        "both commands must go through the one start_transfer helper"
+    );
+    assert!(
+        source.matches("async fn upload_video_task").count() == 1,
+        "there must be exactly one upload task"
     );
 }

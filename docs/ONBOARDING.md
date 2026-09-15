@@ -126,7 +126,7 @@ bucket/
 │   └── Cargo.toml              # Rust dependencies
 │
 └── docs/                       # Documentation
-    ├── README.md               # User-facing documentation
+    ├── USER_GUIDE.md           # User-facing documentation
     ├── ARCHITECTURE.md         # System architecture
     ├── API_COMMANDS.md         # Tauri commands reference
     └── ONBOARDING.md           # This file
@@ -147,10 +147,11 @@ bucket/
 
 Before making changes, skim these docs:
 
-1. **[README.md](./README.md)** - Get familiar with features
-2. **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Understand system design
-3. **[API_COMMANDS.md](./API_COMMANDS.md)** - Learn Tauri command API
-4. **[CLAUDE.md](../CLAUDE.md)** - Module conventions and import rules
+1. **[../README.md](../README.md)** - Get familiar with features
+2. **[USER_GUIDE.md](./USER_GUIDE.md)** - What breadcrumbs are and what the app does day to day
+3. **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Understand system design
+4. **[API_COMMANDS.md](./API_COMMANDS.md)** - Learn Tauri command API
+5. **[CLAUDE.md](../CLAUDE.md)** - Module conventions and import rules
 
 **Time investment:** 15-20 minutes of reading will save hours later.
 
@@ -501,7 +502,7 @@ RUST_LOG=debug bun run dev:tauri
 
 ---
 
-## Development Workflow Best Practices
+## Five conventions this codebase follows
 
 ### 1. Use React Query for Data Fetching
 
@@ -600,7 +601,8 @@ describe('myFunction', () => {
 
 ### Documentation
 
-- **[README.md](./README.md)** - Features and setup guide
+- **[../README.md](../README.md)** - Features and setup guide
+- **[USER_GUIDE.md](./USER_GUIDE.md)** - Domain concepts, workflows and troubleshooting
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System design and patterns
 - **[API_COMMANDS.md](./API_COMMANDS.md)** - Tauri commands reference
 - **[BRANCHING_STRATEGY.md](./BRANCHING_STRATEGY.md)** - Git branching workflow

@@ -119,6 +119,31 @@ export interface UploadCancelledEvent {
 }
 
 /**
+ * Where a replace transfer is (issue #282).
+ *
+ * `cancelling` is its own state because Rust tears the request down
+ * asynchronously after `cancel_upload`: reporting `idle` at that moment is the
+ * gap in which a user could start something else against a live transfer.
+ */
+export type ReplaceUploadStatus = 'idle' | 'uploading' | 'cancelling' | 'error'
+
+/** Progress of a replace transfer, in the same units as `UploadProgressEvent` */
+export interface ReplaceUploadProgress {
+  percentage: number
+  bytesSent: number
+  totalBytes: number
+}
+
+/**
+ * How a replace transfer ended. A value rather than a rejection, because none
+ * of the three is exceptional to the caller: each has its own UI.
+ */
+export type ReplaceUploadResult =
+  | { status: 'complete'; video: SproutUploadResponse }
+  | { status: 'cancelled' }
+  | { status: 'error'; message: string }
+
+/**
  * The non-terminal "this looks stalled" signal, and its withdrawal (UP-26/UP-27).
  *
  * `message` is null when a standing warning is being withdrawn because progress

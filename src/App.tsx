@@ -1,13 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ThemeProvider } from 'next-themes'
-import React, { Suspense } from 'react'
+import React from 'react'
 import { BrowserRouter as Router } from 'react-router-dom'
 
 import AppRouter from './AppRouter'
-import { ChunkErrorBoundary } from './shared/ui/layout/ChunkErrorBoundary'
 import { QueryErrorBoundary } from './shared/ui/layout/ErrorBoundary'
-import { RouteLoadingSpinner } from './shared/ui/layout/RouteLoadingSpinner'
 import { TitleBar } from './shared/ui/layout/TitleBar'
 import { Toaster } from './shared/ui/sonner'
 import { CACHE, getBackoffDelay, RETRY } from '@shared/constants'
@@ -100,11 +98,10 @@ const App: React.FC = () => {
         <QueryErrorBoundary>
           <Router>
             <TitleBar />
-            <ChunkErrorBoundary>
-              <Suspense fallback={<RouteLoadingSpinner />}>
-                <AppRouter />
-              </Suspense>
-            </ChunkErrorBoundary>
+            {/* The Suspense + chunk-error boundary now live inside the dashboard
+                Page, around the routed Outlet (#278), so the navigation shell
+                stays mounted while a lazy route chunk loads. */}
+            <AppRouter />
           </Router>
         </QueryErrorBoundary>
         <Toaster />

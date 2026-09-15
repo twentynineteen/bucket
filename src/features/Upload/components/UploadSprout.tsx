@@ -16,6 +16,8 @@ import { fileNameToTitle } from '@shared/utils'
 import { useFileUpload } from '../hooks/useFileUpload'
 import { useKavanaghForUpload } from '../hooks/useKavanaghForUpload'
 import { KavanaghBlockDialog, KavanaghGateControls } from './KavanaghUploadGate'
+import { TitleNamingGuide } from './TitleNamingGuide'
+import { hasColon } from '../internal/namingConventions'
 import { useSproutFolderSelection } from '../hooks/useSproutFolderSelection'
 import { SproutFolderPicker } from './SproutFolderPicker'
 import { useImageRefresh } from '../hooks/useImageRefresh'
@@ -127,6 +129,11 @@ const UploadSproutContent: React.FC = () => {
   const [title, setTitle] = useState('')
   const kavanagh = useKavanaghForUpload()
 
+  // A colon breaks the Sprout embed code, so a title carrying one blocks the
+  // upload (B3). Runs whatever the guide toggle is, and however the title got
+  // its colon - typed or prefilled from a filename that had one (B3.5).
+  const titleHasColon = hasColon(title)
+
   // Page label - shadcn breadcrumb component (memoized to prevent infinite re-renders)
   const breadcrumbItems = useMemo(
     () => [
@@ -229,6 +236,8 @@ const UploadSproutContent: React.FC = () => {
                     filename.
                   </p>
 
+                  <TitleNamingGuide title={title} onTitleChange={setTitle} />
+
                   <div className="space-y-2 pt-2">
                     <Label>Sprout Folder</Label>
                     <SproutFolderPicker
@@ -287,7 +296,8 @@ const UploadSproutContent: React.FC = () => {
                   !apiKey ||
                   uploading ||
                   apiKeyLoading ||
-                  kavanagh.checking
+                  kavanagh.checking ||
+                  titleHasColon
                 }
               >
                 {uploadButtonLabel({

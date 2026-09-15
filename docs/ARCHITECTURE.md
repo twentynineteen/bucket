@@ -234,7 +234,8 @@ bucket/
 │   └── ...
 │
 ├── docs/                           # Documentation
-│   ├── README.md                   # Project overview
+│   ├── USER_GUIDE.md               # Using the app: concepts, workflows, troubleshooting
+│   ├── ONBOARDING.md               # Developer onboarding
 │   ├── ARCHITECTURE.md             # Architecture overview (this file)
 │   └── API_COMMANDS.md             # Tauri commands reference
 │

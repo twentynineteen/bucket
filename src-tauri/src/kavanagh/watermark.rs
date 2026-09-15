@@ -33,7 +33,9 @@ use tokio::sync::watch;
 use super::error::KavanaghError;
 use super::evidence::cap_evidence;
 use super::ffmpeg::{run_capture, run_frames, RunError};
-use super::geometry::{corner_of, place_region, scale_bbox, union, Corner, CropRegion};
+use super::geometry::{
+    corner_of, is_wide_mark, place_region, scale_bbox, scoring_subwindow, union, Corner, CropRegion,
+};
 use super::matching::{dedupe_by_alpha, evaluate_sample, sobel_magnitude, WatermarkTemplate};
 use super::parsing::{parse_alpha_bbox, parse_probe_output, parse_showinfo_size, VideoProbe};
 use super::sampling::{
@@ -185,10 +187,18 @@ pub fn split_hstacked(frame: &[u8], width: usize, height: usize) -> (Vec<u8>, Ve
 #[derive(Debug, Clone)]
 pub struct PreparedReferences {
     pub templates: Vec<WatermarkTemplate>,
-    /// The region to crop per corner, all of exactly the same size.
+    /// The region to crop per corner, all of exactly the same size. Transport
+    /// only: scoring happens over each template's own subwindow within its
+    /// corner's crop (issue #266).
     pub regions: Vec<(Corner, CropRegion)>,
     pub region_width: u32,
     pub region_height: u32,
+    /// References whose mark spans most of its own frame, named in the report
+    /// so a banner-class asset in the pool is loud rather than silently odd.
+    pub wide_references: Vec<String>,
+    /// References skipped because their subwindow fell outside what this video's
+    /// dimensions allow, named in the report rather than scoring a silent zero.
+    pub skipped_references: Vec<String>,
 }
 
 /// Builds the filter graph for a sampling pass.
@@ -365,6 +375,10 @@ pub fn analyse_with_probe(
     }
 
     let mut notes = Vec::new();
+    notes.extend(pool_notes(
+        &prepared.wide_references,
+        &prepared.skipped_references,
+    ));
     if span.approximated {
         // Stated rather than assumed: stage 3 measures the dip to white, and until
         // it does the span end is an assumption the verdict rests on (B5.10).
@@ -484,6 +498,7 @@ fn prepare_references(
     }
 
     let mut measured: Vec<Measured> = Vec::new();
+    let mut wide_references: Vec<String> = Vec::new();
 
     for path in &request.reference_files {
         let args = vec![
@@ -512,6 +527,10 @@ fn prepare_references(
         else {
             continue;
         };
+
+        if is_wide_mark(&bbox, reference_width, reference_height) {
+            wide_references.push(file_name_of(path));
+        }
 
         measured.push(Measured {
             path: path.clone(),
@@ -568,18 +587,32 @@ fn prepare_references(
         .collect();
 
     let mut templates = Vec::new();
+    let mut skipped_references = Vec::new();
     for reference in &measured {
-        let Some((_, region)) = regions
+        let Some((_, crop)) = regions
             .iter()
             .find(|(corner, _)| *corner == reference.corner)
         else {
             continue;
         };
 
+        // Each reference is scored over its own mark's extent, not the corner's
+        // union: a full-frame banner in the pool used to inflate the union until
+        // every other template was mostly empty and correlation measured backdrop
+        // flatness instead of mark presence (issue #266). The intersection is
+        // computed here, not at score time, so the template and the window read
+        // out of the decoded crop always agree in shape.
+        let Some(subwindow) = scoring_subwindow(&reference.region, crop) else {
+            skipped_references.push(file_name_of(&reference.path));
+            continue;
+        };
+
         if let Some(template) = build_template(
             request,
             reference.path.clone(),
-            *region,
+            subwindow,
+            (subwindow.x - crop.x) as usize,
+            (subwindow.y - crop.y) as usize,
             reference.corner,
             probe,
             cancel,
@@ -604,7 +637,36 @@ fn prepare_references(
         regions,
         region_width,
         region_height,
+        wide_references,
+        skipped_references,
     })
+}
+
+/// Notes a run must carry about the reference pool itself (issue #266).
+///
+/// Wide first, then skipped, so a report reads from "this asset is unusual" to
+/// "this asset was not checked". Worded without a matchability claim: a wide
+/// reference may also have been deduped or failed to decode, and the note must
+/// stay true either way.
+pub fn pool_notes(wide: &[String], skipped: &[String]) -> Vec<String> {
+    let mut notes: Vec<String> = wide
+        .iter()
+        .map(|name| {
+            format!(
+                "{} has a mark that spans most of its frame, so it was inspected over its own region; corner labels are nominal for this asset.",
+                name
+            )
+        })
+        .collect();
+
+    notes.extend(skipped.iter().map(|name| {
+        format!(
+            "{} was not checked: its mark falls outside the region this video's dimensions allow.",
+            name
+        )
+    }));
+
+    notes
 }
 
 /// Decodes one reference's **alpha map** over the inspection region and turns it
@@ -625,10 +687,13 @@ fn prepare_references(
 /// `format=rgba` is forced before `alphaextract` because format negotiation
 /// propagates upstream: without it the chain settles on a format with no alpha plane
 /// and `alphaextract` fails with "Requested planes not available".
+#[allow(clippy::too_many_arguments)]
 fn build_template(
     request: &AnalysisRequest,
     path: String,
     region: CropRegion,
+    offset_x: usize,
+    offset_y: usize,
     corner: Corner,
     probe: &VideoProbe,
     cancel: &watch::Receiver<bool>,
@@ -665,6 +730,8 @@ fn build_template(
     Ok(Some(WatermarkTemplate {
         name: file_name_of(&path),
         corner,
+        offset_x,
+        offset_y,
         alpha: stdout[..width * height].to_vec(),
         gradient: sobel_magnitude(&stdout[..width * height], width, height),
         // Uniform: the alpha map already *is* the mark's shape, so there is nothing
@@ -762,7 +829,8 @@ fn sample_pass(
                 .map(|(corner, pixels)| (*corner, pixels.as_slice()))
                 .collect();
 
-            let evaluation = evaluate_sample(&borrowed, &prepared.templates, threshold);
+            let evaluation =
+                evaluate_sample(&borrowed, width, height, &prepared.templates, threshold);
             evaluations.push((
                 evaluation.corner,
                 evaluation.confidence,
@@ -896,7 +964,30 @@ mod tests {
             regions,
             region_width: 148,
             region_height: 148,
+            wide_references: vec![],
+            skipped_references: vec![],
         }
+    }
+
+    #[test]
+    fn i266_b2_pool_notes_name_wide_and_skipped_references() {
+        // Pool hygiene must be loud (issue #266, D4): a reference whose mark
+        // spans most of its frame is named in the report on every run, and so is
+        // one whose subwindow could not be inspected at all.
+        let notes = pool_notes(&["banner.png".to_string()], &["clipped.png".to_string()]);
+
+        assert_eq!(notes.len(), 2);
+        assert!(
+            notes[0].contains("banner.png") && notes[0].contains("spans"),
+            "got {}",
+            notes[0]
+        );
+        assert!(notes[1].contains("clipped.png"), "got {}", notes[1]);
+    }
+
+    #[test]
+    fn i266_b2_2_an_ordinary_pool_produces_no_notes() {
+        assert_eq!(pool_notes(&[], &[]), Vec::<String>::new());
     }
 
     #[test]

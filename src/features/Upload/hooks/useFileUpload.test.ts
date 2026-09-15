@@ -462,3 +462,17 @@ describe('useFileUpload cancellation', () => {
     expect(result.current.uploading).toBe(true)
   })
 })
+
+describe('#282 B2.6: nothing listens outside an upload', () => {
+  it('attaches no completion listener and records no response until uploadFile runs', () => {
+    // A replace started from a Baker card emits upload_complete on the same
+    // global channel. This hook only listens between uploadFile's start and
+    // its terminal event, which is what stops a replace completion being
+    // taken for an add. Pinned here so moving the listeners into an effect
+    // fails loudly.
+    const { result } = renderHook(() => useFileUpload())
+
+    expect(listenUploadComplete).not.toHaveBeenCalled()
+    expect(result.current.response).toBeNull()
+  })
+})

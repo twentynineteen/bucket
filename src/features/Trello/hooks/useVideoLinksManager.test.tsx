@@ -21,6 +21,7 @@ import * as uploadModule from '@features/Upload'
 
 import * as trelloCardsModule from './useBreadcrumbsTrelloCards'
 import * as cardPosterFrameModule from './useCardPosterFrame'
+import * as replaceVideoModule from './useReplaceVideo'
 import { useVideoLinksManager } from './useVideoLinksManager'
 
 vi.mock('../api', () => ({
@@ -31,6 +32,7 @@ vi.mock('../api', () => ({
 
 vi.mock('./useBreadcrumbsTrelloCards')
 vi.mock('./useCardPosterFrame')
+vi.mock('./useReplaceVideo')
 
 vi.mock('@shared/hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@shared/hooks')>()),
@@ -117,6 +119,37 @@ const setupMocks = () => {
     retry: vi.fn(),
     reset: vi.fn()
   } as unknown as ReturnType<typeof cardPosterFrameModule.useCardPosterFrame>)
+
+  vi.mocked(replaceVideoModule.useReplaceVideo).mockReturnValue({
+    target: undefined,
+    targetIndex: null,
+    request: vi.fn(),
+    handleOpenChange: vi.fn(),
+    upload: {
+      selectedFile: null,
+      selectFile: vi.fn(),
+      status: 'idle',
+      progress: { percentage: 0, bytesSent: 0, totalBytes: 0 },
+      error: null,
+      cancel: vi.fn()
+    },
+    posterMode: 'keep',
+    setPosterMode: vi.fn(),
+    trello: {
+      available: false,
+      enabled: true,
+      setEnabled: vi.fn(),
+      cards: [],
+      selectedCardIds: [],
+      toggleCard: vi.fn(),
+      text: '',
+      setText: vi.fn(),
+      validationMessage: null
+    },
+    canSubmit: false,
+    confirm: vi.fn(),
+    disabledReason: vi.fn(() => null)
+  } as unknown as ReturnType<typeof replaceVideoModule.useReplaceVideo>)
 
   vi.mocked(apiKeysModule.useSproutVideoApiKey).mockReturnValue({
     apiKey: 'test-api-key',
@@ -250,6 +283,24 @@ describe('UPLOAD-04: closing the dialog clears the previous upload message', () 
     })
 
     expect(cachedMessage(queryClient)).toBeNull()
+    expect(result.current.message).toBeNull()
+  })
+})
+
+describe('#282 B5.5: opening the dialog clears a message left by another transfer', () => {
+  it('nulls the cached message on open, without a preceding close', async () => {
+    // A replace from a card shares the same cache slot. Its terminal message
+    // must not greet the next Add Video > Upload visit as if it were an add.
+    const { result, queryClient } = await renderManager()
+    await seedStaleMessage(queryClient)
+
+    await act(async () => {
+      result.current.handleDialogOpenChange(true)
+    })
+
+    await waitFor(() => {
+      expect(cachedMessage(queryClient)).toBeNull()
+    })
     expect(result.current.message).toBeNull()
   })
 })

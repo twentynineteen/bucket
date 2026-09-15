@@ -1,10 +1,12 @@
 # Bucket
 
-A desktop video-production workflow app built with Tauri 2 (Rust + React/TypeScript). Bucket streamlines footage ingest, project creation, and integration with Adobe Premiere, Trello, and Sprout Video.
+A desktop video-production workflow app built with Tauri 2 (Rust + React/TypeScript). Bucket handles footage ingest, project creation, and integration with Adobe Premiere, Trello and Sprout Video.
 
-**Version:** 0.19.0  
 **Platform:** macOS (primary)  
 **License:** UNLICENSED (proprietary)
+
+The current version lives in `package.json`; released builds are on the
+[Releases page](https://github.com/twentynineteen/bucket/releases).
 
 ## What Bucket Does
 
@@ -19,6 +21,61 @@ Bucket is a single desktop app that ties together the repetitive steps of a vide
 - **Kavanagh** -- Automated QC checks on rendered videos: watermark presence detection and closing sting validation, powered by ffmpeg.
 - **Settings** -- Per-domain configuration tabs covering Trello boards, Ollama connection, and app preferences. Thirteen themes available (System, Light, Dark, Dracula, Tokyo Night, Catppuccin variants, Solarized Light, GitHub Light, Nord Light, One Light).
 
+## Screenshots
+
+A tour of the main workflows. Captured with sample data on the Dark theme; several panels populate once Sprout, Trello and QC reference folders are configured.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <b>Build a project</b><br/>
+      <sub>Name the project, set camera count, add footage, and generate the folder structure + Premiere project in one step.</sub><br/><br/>
+      <img src="docs/images/build-project.png" alt="BuildProject: project configuration, footage selection with camera assignment, and one-step project creation" />
+    </td>
+    <td width="50%" valign="top">
+      <b>Upload to Sprout</b><br/>
+      <sub>Publish to Sprout Video with the title naming guide (format templates, live advisory, colon check) and folder picker.</sub><br/><br/>
+      <img src="docs/images/upload-sprout.png" alt="Upload to SproutVideo: video title with the naming guide showing the format template and an advisory hint, plus the Sprout folder picker" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>Baker</b><br/>
+      <sub>Scan a drive for project folders, validate their structure, and create or update breadcrumbs metadata in batch.</sub><br/><br/>
+      <img src="docs/images/baker.png" alt="Baker: choose a folder and start a scan to find BuildProject folders and manage their breadcrumbs" />
+    </td>
+    <td width="50%" valign="top">
+      <b>Posterframe</b><br/>
+      <sub>Compose branded video thumbnails over a background with a live preview, then export or push to a Sprout video.</sub><br/><br/>
+      <img src="docs/images/posterframe.png" alt="Posterframe: background selection, video title, export settings and a live thumbnail preview with zoom and pan" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>Kavanagh QC</b><br/>
+      <sub>Automated render checks: watermark presence throughout and a valid closing dip-to-white sting, via ffmpeg.</sub><br/><br/>
+      <img src="docs/images/kavanagh.png" alt="Kavanagh: prerequisites for watermark and sting reference folders, and a control to choose a render and run quality control" />
+    </td>
+    <td width="50%" valign="top">
+      <b>Premiere plugins</b><br/>
+      <sub>Install and update Premiere Pro CEP extensions and open the extensions folder, without leaving the app.</sub><br/><br/>
+      <img src="docs/images/premiere.png" alt="Premiere Plugin Manager: available plugins to install with one click and settings for the CEP extensions folder" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>Settings &amp; themes</b><br/>
+      <sub>Per-domain settings (Ollama, Trello, QC) and a live theme picker across thirteen themes.</sub><br/><br/>
+      <img src="docs/images/settings.png" alt="Settings: AI model connection and an appearance section with a theme picker" />
+    </td>
+    <td width="50%" valign="top">
+      <b>Trello</b><br/>
+      <sub>Search and select Trello cards to append breadcrumbs and video information to a project.</sub><br/><br/>
+      <img src="docs/images/trello.png" alt="Trello: search cards by name or description and select a card to update" />
+    </td>
+  </tr>
+</table>
+
 ## Getting Bucket
 
 Releases are published to GitHub via the `publish` workflow. The latest macOS build is available on the [Releases page](https://github.com/twentynineteen/bucket/releases). The app includes a built-in auto-updater.
@@ -30,6 +87,9 @@ Releases are published to GitHub via the `publish` workflow. The latest macOS bu
 - [Bun](https://bun.sh) -- package manager and script runner (replaces npm entirely)
 - [Rust toolchain](https://rustup.rs) -- required by the Tauri 2 backend
 - Xcode Command Line Tools (macOS) -- needed for native compilation
+- [Ollama](https://ollama.com) with `ollama pull nomic-embed-text` -- needed to run
+  `build:tauri`, and for the AI Tools features at runtime. See Building for how to
+  skip it.
 
 ### Setup
 
@@ -50,8 +110,19 @@ bun run preview         # Preview the production frontend build
 ### Building
 
 ```bash
-bun run build:tauri     # Build the complete desktop app (produces a DMG in target/build/dmg)
+bun run build:tauri     # Build the complete desktop app
 bun run build           # Build the frontend only
+```
+
+`build:tauri` writes its DMG to `src-tauri/target/release/bundle/dmg/`.
+
+It also runs `prebuild:tauri` first, which regenerates the script-example
+embeddings and needs Ollama running with `nomic-embed-text`. Without it the
+build stops before Tauri starts. `examples.db` is committed, so if you are not
+changing the examples you can skip that step:
+
+```bash
+CI=1 bun run build:tauri
 ```
 
 ### Tests
@@ -79,18 +150,26 @@ Run these before committing:
 ```bash
 bun run eslint:fix      # Fix lint issues (includes module-boundary rules)
 bun run prettier:fix    # Auto-format (90 char width, single quotes, no semicolons)
+bun run typecheck       # tsc --noEmit. CI fails without this; nothing else type-checks
 bun run knip            # Detect unused exports and dependencies
 ```
 
+Vite transpiles without type-checking, so neither a build nor the test run will
+catch a type error. `typecheck` is the only thing that does, which is why CI
+gates on it (#178).
+
 ## CI
 
-GitHub Actions workflows run on every push and PR to `master` and `release`:
+Six GitHub Actions workflows cover tests, releases and dependency bumps:
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| **CI** (`ci.yml`) | Push/PR to `master`, `release` | Lint, unit + Rust tests, E2E tests, macOS build |
-| **E2E Slow Suite** (`e2e-tests.yml`) | Push to `master`, `release` | The `@slow` E2E specs (large transfer simulations) |
+| **CI** (`ci.yml`) | Push/PR to `master`, `release` | Lint, typecheck, unit + Rust tests, E2E tests, macOS build |
+| **E2E Slow Suite** (`e2e-tests.yml`) | Push to `master`, `release` touching `src/**` or `tests/e2e/**` | The `@slow` E2E specs (large transfer simulations) |
+| **Auto Release PR** (`auto-release-pr.yml`) | Push to `master` touching `package.json` | Detects a version bump, runs tests, opens the release PR |
 | **Publish** (`publish.yml`) | Push to `release` | Build app, create GitHub release, upload artifacts |
+| **Update NodeJS Dependencies** (`update-node-dependencies.yml`) | Push to `renovate/**` touching `package.json` | Build check for dependency bumps |
+| **Update Rust Packages** (`update-rust-packages.yml`) | Push to `renovate/**` touching `Cargo.toml` | Rust test run for crate bumps |
 
 ## Tech Stack
 
@@ -138,18 +217,42 @@ Each feature module follows a strict convention: an `api.ts` I/O boundary wrappi
 
 ## Further Reading
 
+Start here:
+
 - **[CLAUDE.md](./CLAUDE.md)** -- Architecture conventions, import rules, and how to add a new feature module
+- **[docs/ONBOARDING.md](./docs/ONBOARDING.md)** -- Developer onboarding, from clone to first PR
+- **[docs/USER_GUIDE.md](./docs/USER_GUIDE.md)** -- Using the app: breadcrumbs, workflows, settings, troubleshooting
 - **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** -- System design, data flow, and component interactions
-- **[docs/ONBOARDING.md](./docs/ONBOARDING.md)** -- Developer onboarding guide
-- **[docs/PREMIERE_PLUGINS.md](./docs/PREMIERE_PLUGINS.md)** -- Premiere Pro plugin documentation
+- **[docs/API_COMMANDS.md](./docs/API_COMMANDS.md)** -- Reference for all 58 Tauri commands
+
+Reference:
+
 - **[docs/BRANCHING_STRATEGY.md](./docs/BRANCHING_STRATEGY.md)** -- Git branching and release conventions
+- **[docs/react-query-patterns.md](./docs/react-query-patterns.md)** -- TanStack React Query usage patterns
+- **[docs/PREMIERE_PLUGINS.md](./docs/PREMIERE_PLUGINS.md)** -- Install and manage Premiere Pro CEP extensions
+- **[docs/theme-architecture.md](./docs/theme-architecture.md)** -- How the 13-theme system works
+- **[docs/theme-customization.md](./docs/theme-customization.md)** -- Customising and extending themes
+- **[docs/macos-window-styling.md](./docs/macos-window-styling.md)** -- Native window styling and vibrancy
+- **[docs/apple-code-signing.md](./docs/apple-code-signing.md)** -- Signing and notarisation setup, with a checklist
+- **[CHANGELOG.md](./CHANGELOG.md)** -- Version history and release notes
+
+Manual test procedures, for the cases automated coverage cannot reach:
+
+- **[docs/posterframe-background-verification.md](./docs/posterframe-background-verification.md)**
+- **[docs/sprout-folder-picker-manual-verification.md](./docs/sprout-folder-picker-manual-verification.md)**
 
 ## Version Bumping
 
 ```bash
-bun run version:patch   # 0.19.0 -> 0.19.1
-bun run version:minor   # 0.19.0 -> 0.20.0
-bun run version:major   # 0.19.0 -> 1.0.0
+bun run version:patch   # 1.2.3 -> 1.2.4
+bun run version:minor   # 1.2.3 -> 1.3.0
+bun run version:major   # 1.2.3 -> 2.0.0
 ```
 
 These scripts update `package.json`, `Cargo.toml`, and `tauri.conf.json` in one step.
+
+Once a version bump lands on `master`, the Auto Release PR workflow notices that
+`package.json` changed, runs the tests, and opens the release PR for you. You do
+not create it by hand. See
+[docs/BRANCHING_STRATEGY.md](./docs/BRANCHING_STRATEGY.md) for how that PR must
+be merged, which is a merge commit and never a squash.
