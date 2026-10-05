@@ -3,8 +3,8 @@
  * Feature: 007-frontend-script-example
  */
 
-import type { ExampleWithMetadata } from '@shared/types/exampleEmbeddings'
 import { ExampleList } from '@features/AITools/ExampleEmbeddings/components/ExampleList'
+import type { ExampleWithMetadata } from '@shared/types/exampleEmbeddings'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'

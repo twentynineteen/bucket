@@ -7,8 +7,8 @@
 import { ThemeSelector } from '@shared/ui/theme/ThemeSelector'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
 import * as React from 'react'
+import { describe, expect, it, vi } from 'vitest'
 
 // Mock next-themes useTheme hook (vi.fn() created inline for proper hoisting)
 vi.mock('next-themes', () => ({
@@ -16,16 +16,16 @@ vi.mock('next-themes', () => ({
   useTheme: () => ({
     theme: 'light',
     setTheme: vi.fn(),
-    themes: ['light', 'dark', 'system'],
-  }),
+    themes: ['light', 'dark', 'system']
+  })
 }))
 
 // Mock useThemePreview hook
 vi.mock('@shared/ui/theme/useThemePreview', () => ({
   useThemePreview: () => ({
     startPreview: vi.fn(),
-    stopPreview: vi.fn(),
-  }),
+    stopPreview: vi.fn()
+  })
 }))
 
 describe('ThemeSelector', () => {
@@ -45,9 +45,7 @@ describe('ThemeSelector', () => {
     renderThemeSelector()
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/hover over themes to preview them/i)
-      ).toBeInTheDocument()
+      expect(screen.getByText(/hover over themes to preview them/i)).toBeInTheDocument()
       expect(screen.getByText(/changes are saved automatically/i)).toBeInTheDocument()
     })
   })
@@ -57,19 +55,45 @@ describe('ThemeSelector', () => {
 
     // All themes should be visible without clicking (no dropdown)
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /select system theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select light theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select dark theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select dracula theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select tokyo night theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select catppuccin latte theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select catppuccin frappé theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select catppuccin macchiato theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select catppuccin mocha theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select solarized light theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select github light theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select nord light theme/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /select one light theme/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select system theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select light theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select dark theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select dracula theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select tokyo night theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select catppuccin latte theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select catppuccin frappé theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select catppuccin macchiato theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select catppuccin mocha theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select solarized light theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select github light theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select nord light theme/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /select one light theme/i })
+      ).toBeInTheDocument()
     })
   })
 
@@ -101,7 +125,9 @@ describe('ThemeSelector', () => {
     renderThemeSelector()
 
     await waitFor(() => {
-      expect(screen.getByText(/follow system light\/dark preference/i)).toBeInTheDocument()
+      expect(
+        screen.getByText(/follow system light\/dark preference/i)
+      ).toBeInTheDocument()
       expect(
         screen.getByText(/dark theme with vibrant purple and pink accents/i)
       ).toBeInTheDocument()

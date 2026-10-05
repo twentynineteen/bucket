@@ -92,9 +92,9 @@ pub fn paths_exist(paths: Vec<String>) -> Vec<bool>
 
 **Parameters:**
 
-| Parameter | Type           | Description            |
-| --------- | -------------- | ---------------------- |
-| `paths`   | `Vec<String>`  | Paths to check         |
+| Parameter | Type          | Description    |
+| --------- | ------------- | -------------- |
+| `paths`   | `Vec<String>` | Paths to check |
 
 **Returns:** `Vec<bool>` -- One answer per path, in the same order
 
@@ -118,9 +118,9 @@ pub fn open_resource_file(handle: AppHandle, relative_file_path: &str) -> Result
 
 **Parameters:**
 
-| Parameter            | Type     | Description                                    |
-| -------------------- | -------- | ---------------------------------------------- |
-| `relative_file_path` | `String` | Path relative to the resource directory         |
+| Parameter            | Type     | Description                             |
+| -------------------- | -------- | --------------------------------------- |
+| `relative_file_path` | `String` | Path relative to the resource directory |
 
 **Returns:** `Result<Vec<u8>, String>` -- Raw file bytes
 
@@ -143,11 +143,11 @@ pub fn show_confirmation_dialog(
 
 **Parameters:**
 
-| Parameter     | Type     | Description                                 |
-| ------------- | -------- | ------------------------------------------- |
-| `message`     | `String` | Dialog message text                         |
-| `title`       | `String` | Dialog title                                |
-| `destination` | `String` | Folder path to open if user selects Yes     |
+| Parameter     | Type     | Description                             |
+| ------------- | -------- | --------------------------------------- |
+| `message`     | `String` | Dialog message text                     |
+| `title`       | `String` | Dialog title                            |
+| `destination` | `String` | Folder path to open if user selects Yes |
 
 **Returns:** `Result<(), String>`
 
@@ -177,8 +177,8 @@ pub async fn transfer_files_with_progress(
 
 **Parameters:**
 
-| Parameter | Type              | Description                              |
-| --------- | ----------------- | ---------------------------------------- |
+| Parameter | Type              | Description                                  |
+| --------- | ----------------- | -------------------------------------------- |
 | `request` | `TransferRequest` | Transfer request with file source/dest pairs |
 
 **TransferRequest structure:**
@@ -186,8 +186,8 @@ pub async fn transfer_files_with_progress(
 ```typescript
 interface TransferRequest {
   files: Array<{
-    source: string       // Source file path
-    destination: string  // Destination file path
+    source: string // Source file path
+    destination: string // Destination file path
   }>
 }
 ```
@@ -206,7 +206,7 @@ interface TransferRequest {
     totalFiles: number
     bytesTransferred: number
     totalBytes: number
-    percentage: number  // 0-100
+    percentage: number // 0-100
   }
   ```
 
@@ -244,8 +244,8 @@ pub async fn cancel_file_transfer(
 
 **Parameters:**
 
-| Parameter      | Type     | Description                              |
-| -------------- | -------- | ---------------------------------------- |
+| Parameter      | Type     | Description                                             |
+| -------------- | -------- | ------------------------------------------------------- |
 | `operation_id` | `String` | Operation ID returned by `transfer_files_with_progress` |
 
 **Returns:** `Result<bool, String>` -- `true` if cancellation was signalled, `false` if operation not found
@@ -277,16 +277,16 @@ pub async fn baker_start_scan(
 
 **Parameters:**
 
-| Parameter   | Type          | Description                                |
-| ----------- | ------------- | ------------------------------------------ |
-| `root_path` | `String`      | Root directory to scan                     |
-| `options`   | `ScanOptions` | Scan configuration                         |
+| Parameter   | Type          | Description            |
+| ----------- | ------------- | ---------------------- |
+| `root_path` | `String`      | Root directory to scan |
+| `options`   | `ScanOptions` | Scan configuration     |
 
 **ScanOptions structure:**
 
 ```typescript
 interface ScanOptions {
-  max_depth: number       // Minimum 1
+  max_depth: number // Minimum 1
   include_hidden: boolean
 }
 ```
@@ -364,9 +364,9 @@ pub async fn baker_validate_folder(folder_path: String) -> Result<ProjectFolder,
 
 **Parameters:**
 
-| Parameter     | Type     | Description          |
-| ------------- | -------- | -------------------- |
-| `folder_path` | `String` | Path to folder       |
+| Parameter     | Type     | Description    |
+| ------------- | -------- | -------------- |
+| `folder_path` | `String` | Path to folder |
 
 **Returns:** `Result<ProjectFolder, String>`
 
@@ -406,8 +406,8 @@ pub async fn baker_read_breadcrumbs(
 
 **Parameters:**
 
-| Parameter      | Type     | Description           |
-| -------------- | -------- | --------------------- |
+| Parameter      | Type     | Description            |
+| -------------- | -------- | ---------------------- |
 | `project_path` | `String` | Project directory path |
 
 **Returns:** `Result<Option<BreadcrumbsFile>, String>` -- `None` if no breadcrumbs.json exists
@@ -415,7 +415,9 @@ pub async fn baker_read_breadcrumbs(
 **Frontend usage** (`Baker/api.ts`, `Trello/api.ts`):
 
 ```typescript
-const breadcrumbs = await invoke<BreadcrumbsFile | null>('baker_read_breadcrumbs', { projectPath })
+const breadcrumbs = await invoke<BreadcrumbsFile | null>('baker_read_breadcrumbs', {
+  projectPath
+})
 ```
 
 ### `baker_read_raw_breadcrumbs`
@@ -430,8 +432,8 @@ pub async fn baker_read_raw_breadcrumbs(project_path: String) -> Result<Option<S
 
 **Parameters:**
 
-| Parameter      | Type     | Description           |
-| -------------- | -------- | --------------------- |
+| Parameter      | Type     | Description            |
+| -------------- | -------- | ---------------------- |
 | `project_path` | `String` | Project directory path |
 
 **Returns:** `Result<Option<String>, String>` -- Raw JSON string or `None`
@@ -458,11 +460,11 @@ pub async fn baker_update_breadcrumbs(
 
 **Parameters:**
 
-| Parameter          | Type           | Description                              |
-| ------------------ | -------------- | ---------------------------------------- |
-| `project_paths`    | `Vec<String>`  | List of project directories to update    |
-| `create_missing`   | `bool`         | Create breadcrumbs.json if missing       |
-| `backup_originals` | `bool`         | Backup existing files as .bak before update |
+| Parameter          | Type          | Description                                 |
+| ------------------ | ------------- | ------------------------------------------- |
+| `project_paths`    | `Vec<String>` | List of project directories to update       |
+| `create_missing`   | `bool`        | Create breadcrumbs.json if missing          |
+| `backup_originals` | `bool`        | Backup existing files as .bak before update |
 
 **Returns:** `Result<BatchUpdateResult, String>`
 
@@ -499,8 +501,8 @@ pub async fn baker_scan_current_files(project_path: String) -> Result<Vec<FileIn
 
 **Parameters:**
 
-| Parameter      | Type     | Description           |
-| -------------- | -------- | --------------------- |
+| Parameter      | Type     | Description            |
+| -------------- | -------- | ---------------------- |
 | `project_path` | `String` | Project directory path |
 
 **Returns:** `Result<Vec<FileInfo>, String>`
@@ -553,8 +555,8 @@ pub async fn baker_repair_breadcrumbs(
 
 **Parameters:**
 
-| Parameter      | Type     | Description           |
-| -------------- | -------- | --------------------- |
+| Parameter      | Type     | Description            |
+| -------------- | -------- | ---------------------- |
 | `project_path` | `String` | Project directory path |
 
 **Returns:** `Result<BreadcrumbsFile, String>` -- The regenerated breadcrumbs
@@ -562,7 +564,9 @@ pub async fn baker_repair_breadcrumbs(
 **Frontend usage** (`Baker/api.ts`):
 
 ```typescript
-const repaired = await invoke<BreadcrumbsFile>('baker_repair_breadcrumbs', { projectPath })
+const repaired = await invoke<BreadcrumbsFile>('baker_repair_breadcrumbs', {
+  projectPath
+})
 ```
 
 ### `get_folder_size`
@@ -605,8 +609,8 @@ pub async fn baker_get_video_links(project_path: String) -> Result<Vec<VideoLink
 
 **Parameters:**
 
-| Parameter      | Type     | Description           |
-| -------------- | -------- | --------------------- |
+| Parameter      | Type     | Description            |
+| -------------- | -------- | ---------------------- |
 | `project_path` | `String` | Project directory path |
 
 **Returns:** `Result<Vec<VideoLink>, String>`
@@ -632,10 +636,10 @@ pub async fn baker_associate_video_link(
 
 **Parameters:**
 
-| Parameter      | Type        | Description           |
-| -------------- | ----------- | --------------------- |
+| Parameter      | Type        | Description            |
+| -------------- | ----------- | ---------------------- |
 | `project_path` | `String`    | Project directory path |
-| `video_link`   | `VideoLink` | Video link to add     |
+| `video_link`   | `VideoLink` | Video link to add      |
 
 **Returns:** `Result<BreadcrumbsFile, String>` -- Updated breadcrumbs
 
@@ -663,10 +667,10 @@ pub async fn baker_remove_video_link(
 
 **Parameters:**
 
-| Parameter      | Type     | Description           |
-| -------------- | -------- | --------------------- |
+| Parameter      | Type     | Description            |
+| -------------- | -------- | ---------------------- |
 | `project_path` | `String` | Project directory path |
-| `video_index`  | `usize`  | Zero-based index      |
+| `video_index`  | `usize`  | Zero-based index       |
 
 **Returns:** `Result<BreadcrumbsFile, String>`
 
@@ -695,11 +699,11 @@ pub async fn baker_update_video_link(
 
 **Parameters:**
 
-| Parameter      | Type        | Description             |
-| -------------- | ----------- | ----------------------- |
-| `project_path` | `String`    | Project directory path   |
-| `video_index`  | `usize`     | Zero-based index         |
-| `updated_link` | `VideoLink` | Replacement video link   |
+| Parameter      | Type        | Description            |
+| -------------- | ----------- | ---------------------- |
+| `project_path` | `String`    | Project directory path |
+| `video_index`  | `usize`     | Zero-based index       |
+| `updated_link` | `VideoLink` | Replacement video link |
 
 **Returns:** `Result<BreadcrumbsFile, String>`
 
@@ -729,8 +733,8 @@ pub async fn baker_reorder_video_links(
 
 **Parameters:**
 
-| Parameter      | Type     | Description           |
-| -------------- | -------- | --------------------- |
+| Parameter      | Type     | Description            |
+| -------------- | -------- | ---------------------- |
 | `project_path` | `String` | Project directory path |
 | `from_index`   | `usize`  | Source position        |
 | `to_index`     | `usize`  | Target position        |
@@ -763,8 +767,8 @@ pub async fn baker_get_trello_cards(project_path: String) -> Result<Vec<TrelloCa
 
 **Parameters:**
 
-| Parameter      | Type     | Description           |
-| -------------- | -------- | --------------------- |
+| Parameter      | Type     | Description            |
+| -------------- | -------- | ---------------------- |
 | `project_path` | `String` | Project directory path |
 
 **Returns:** `Result<Vec<TrelloCard>, String>`
@@ -790,10 +794,10 @@ pub async fn baker_associate_trello_card(
 
 **Parameters:**
 
-| Parameter      | Type         | Description           |
-| -------------- | ------------ | --------------------- |
+| Parameter      | Type         | Description            |
+| -------------- | ------------ | ---------------------- |
 | `project_path` | `String`     | Project directory path |
-| `trello_card`  | `TrelloCard` | Card to associate     |
+| `trello_card`  | `TrelloCard` | Card to associate      |
 
 **Returns:** `Result<BreadcrumbsFile, String>`
 
@@ -818,10 +822,10 @@ pub async fn baker_remove_trello_card(
 
 **Parameters:**
 
-| Parameter      | Type     | Description           |
-| -------------- | -------- | --------------------- |
+| Parameter      | Type     | Description            |
+| -------------- | -------- | ---------------------- |
 | `project_path` | `String` | Project directory path |
-| `card_index`   | `usize`  | Zero-based index      |
+| `card_index`   | `usize`  | Zero-based index       |
 
 **Returns:** `Result<BreadcrumbsFile, String>`
 
@@ -928,10 +932,10 @@ pub async fn get_folders(
 
 **Parameters:**
 
-| Parameter   | Type             | Description                                    |
-| ----------- | ---------------- | ---------------------------------------------- |
-| `api_key`   | `String`         | Sprout Video API key                           |
-| `parent_id` | `Option<String>` | Parent folder ID, or `None` for root folders   |
+| Parameter   | Type             | Description                                  |
+| ----------- | ---------------- | -------------------------------------------- |
+| `api_key`   | `String`         | Sprout Video API key                         |
+| `parent_id` | `Option<String>` | Parent folder ID, or `None` for root folders |
 
 **Returns:** `Result<SproutFoldersPage, String>`
 
@@ -944,10 +948,10 @@ interface SproutFoldersPage {
     name: string
     parent_id: string | null
   }>
-  total: number | null          // Sprout's total for this level
-  truncated: boolean            // true when the page cap stopped pagination early
-  rate_limit_remaining: number | null  // X-RateLimit-Remaining from last page
-  rate_limit_reset: number | null      // X-RateLimit-Reset (UTC epoch seconds)
+  total: number | null // Sprout's total for this level
+  truncated: boolean // true when the page cap stopped pagination early
+  rate_limit_remaining: number | null // X-RateLimit-Remaining from last page
+  rate_limit_reset: number | null // X-RateLimit-Reset (UTC epoch seconds)
 }
 ```
 
@@ -979,11 +983,11 @@ pub async fn upload_video(
 
 **Parameters:**
 
-| Parameter   | Type             | Description                                     |
-| ----------- | ---------------- | ----------------------------------------------- |
-| `file_path` | `String`         | Full path to video file                         |
-| `api_key`   | `String`         | Sprout Video API key                            |
-| `folder_id` | `Option<String>` | Optional destination folder ID                  |
+| Parameter   | Type             | Description                                                     |
+| ----------- | ---------------- | --------------------------------------------------------------- |
+| `file_path` | `String`         | Full path to video file                                         |
+| `api_key`   | `String`         | Sprout Video API key                                            |
+| `folder_id` | `Option<String>` | Optional destination folder ID                                  |
 | `title`     | `Option<String>` | Optional title (otherwise Sprout derives one from the filename) |
 
 **Returns:** `Result<String, String>` -- Operation ID (upload runs in background)
@@ -997,7 +1001,7 @@ pub async fn upload_video(
     operationId: string
     bytesSent: number
     totalBytes: number
-    percentage: number  // 0-100
+    percentage: number // 0-100
   }
   ```
 
@@ -1006,7 +1010,7 @@ pub async fn upload_video(
   ```typescript
   interface UploadCompleteEvent {
     operationId: string
-    video: object  // Raw Sprout Video API response
+    video: object // Raw Sprout Video API response
   }
   ```
 
@@ -1045,7 +1049,10 @@ pub async fn upload_video(
 
 ```typescript
 const operationId = await invoke<string>('upload_video', {
-  filePath, apiKey, folderId, title
+  filePath,
+  apiKey,
+  folderId,
+  title
 })
 ```
 
@@ -1064,9 +1071,9 @@ pub async fn cancel_upload(
 
 **Parameters:**
 
-| Parameter      | Type     | Description                                |
-| -------------- | -------- | ------------------------------------------ |
-| `operation_id` | `String` | Operation ID returned by `upload_video`    |
+| Parameter      | Type     | Description                             |
+| -------------- | -------- | --------------------------------------- |
+| `operation_id` | `String` | Operation ID returned by `upload_video` |
 
 **Returns:** `Result<bool, String>` -- `true` if cancellation was signalled
 
@@ -1091,10 +1098,10 @@ pub async fn fetch_sprout_video_details(
 
 **Parameters:**
 
-| Parameter  | Type     | Description            |
-| ---------- | -------- | ---------------------- |
-| `video_id` | `String` | Sprout Video video ID  |
-| `api_key`  | `String` | Sprout Video API key   |
+| Parameter  | Type     | Description           |
+| ---------- | -------- | --------------------- |
+| `video_id` | `String` | Sprout Video video ID |
+| `api_key`  | `String` | Sprout Video API key  |
 
 **Returns:** `Result<SproutVideoDetails, String>`
 
@@ -1130,11 +1137,11 @@ pub async fn set_sprout_poster_frame(
 
 **Parameters:**
 
-| Parameter     | Type             | Description                                    |
-| ------------- | ---------------- | ---------------------------------------------- |
-| `video_id`    | `String`         | Sprout Video video ID                          |
-| `api_key`     | `String`         | Sprout Video API key                           |
-| `image_bytes` | `Vec<u8>`        | JPEG image bytes                               |
+| Parameter     | Type             | Description                                          |
+| ------------- | ---------------- | ---------------------------------------------------- |
+| `video_id`    | `String`         | Sprout Video video ID                                |
+| `api_key`     | `String`         | Sprout Video API key                                 |
+| `image_bytes` | `Vec<u8>`        | JPEG image bytes                                     |
 | `file_name`   | `Option<String>` | Filename for the upload (default: `posterframe.jpg`) |
 
 **Returns:** `Result<(), PosterFrameError>`
@@ -1143,7 +1150,7 @@ pub async fn set_sprout_poster_frame(
 
 ```typescript
 interface PosterFrameError {
-  status: number | null  // HTTP status, or null for transport errors
+  status: number | null // HTTP status, or null for transport errors
   message: string
 }
 ```
@@ -1152,7 +1159,10 @@ interface PosterFrameError {
 
 ```typescript
 await invoke('set_sprout_poster_frame', {
-  videoId, apiKey, imageBytes, fileName
+  videoId,
+  apiKey,
+  imageBytes,
+  fileName
 })
 ```
 
@@ -1172,11 +1182,11 @@ pub fn save_poster_frame_copy(
 
 **Parameters:**
 
-| Parameter      | Type      | Description                              |
-| -------------- | --------- | ---------------------------------------- |
-| `project_path` | `String`  | Project directory path                   |
+| Parameter      | Type      | Description                                        |
+| -------------- | --------- | -------------------------------------------------- |
+| `project_path` | `String`  | Project directory path                             |
 | `file_stem`    | `String`  | Filename stem (e.g. `posterframe-Managing_Change`) |
-| `image_bytes`  | `Vec<u8>` | JPEG image bytes                         |
+| `image_bytes`  | `Vec<u8>` | JPEG image bytes                                   |
 
 **Returns:** `Result<String, String>` -- The path that was written
 
@@ -1184,7 +1194,9 @@ pub fn save_poster_frame_copy(
 
 ```typescript
 const writtenPath = await invoke<string>('save_poster_frame_copy', {
-  projectPath, fileStem, imageBytes
+  projectPath,
+  fileStem,
+  imageBytes
 })
 ```
 
@@ -1204,9 +1216,9 @@ pub fn get_video_duration(file_path: String) -> Result<f64, String>
 
 **Parameters:**
 
-| Parameter   | Type     | Description           |
-| ----------- | -------- | --------------------- |
-| `file_path` | `String` | Path to MP4/MOV file  |
+| Parameter   | Type     | Description          |
+| ----------- | -------- | -------------------- |
+| `file_path` | `String` | Path to MP4/MOV file |
 
 **Returns:** `Result<f64, String>` -- Duration in seconds
 
@@ -1232,9 +1244,9 @@ pub fn parse_docx_file(file_path: String) -> Result<ParseResult, String>
 
 **Parameters:**
 
-| Parameter   | Type     | Description           |
-| ----------- | -------- | --------------------- |
-| `file_path` | `String` | Path to .docx file    |
+| Parameter   | Type     | Description        |
+| ----------- | -------- | ------------------ |
+| `file_path` | `String` | Path to .docx file |
 
 **Returns:** `Result<ParseResult, String>`
 
@@ -1272,10 +1284,10 @@ pub fn generate_docx_file(
 
 **Parameters:**
 
-| Parameter          | Type     | Description                  |
-| ------------------ | -------- | ---------------------------- |
-| `content`          | `String` | Content (currently unused)   |
-| `default_filename` | `String` | Suggested output filename    |
+| Parameter          | Type     | Description                |
+| ------------------ | -------- | -------------------------- |
+| `content`          | `String` | Content (currently unused) |
+| `default_filename` | `String` | Suggested output filename  |
 
 **Returns:** `Result<DownloadPath, String>` where `DownloadPath = { path: String }`
 
@@ -1320,10 +1332,10 @@ pub async fn validate_provider_connection(
 
 **Parameters:**
 
-| Parameter      | Type             | Description                                |
-| -------------- | ---------------- | ------------------------------------------ |
-| `provider_url` | `String`         | Provider health endpoint URL               |
-| `timeout_ms`   | `Option<u64>`    | Connection timeout in ms (default: 5000)   |
+| Parameter      | Type          | Description                              |
+| -------------- | ------------- | ---------------------------------------- |
+| `provider_url` | `String`      | Provider health endpoint URL             |
+| `timeout_ms`   | `Option<u64>` | Connection timeout in ms (default: 5000) |
 
 **Returns:** `Result<ConnectionStatus, String>`
 
@@ -1355,11 +1367,11 @@ pub async fn validate_provider_with_auth(
 
 **Parameters:**
 
-| Parameter      | Type             | Description                                |
-| -------------- | ---------------- | ------------------------------------------ |
-| `provider_url` | `String`         | Provider endpoint URL                      |
-| `auth_header`  | `String`         | Value for Authorization header             |
-| `timeout_ms`   | `Option<u64>`    | Connection timeout in ms (default: 5000)   |
+| Parameter      | Type          | Description                              |
+| -------------- | ------------- | ---------------------------------------- |
+| `provider_url` | `String`      | Provider endpoint URL                    |
+| `auth_header`  | `String`      | Value for Authorization header           |
+| `timeout_ms`   | `Option<u64>` | Connection timeout in ms (default: 5000) |
 
 **Returns:** `Result<ConnectionStatus, String>`
 
@@ -1388,11 +1400,11 @@ pub async fn search_similar_scripts(
 
 **Parameters:**
 
-| Parameter         | Type            | Description                                      |
-| ----------------- | --------------- | ------------------------------------------------ |
-| `query_embedding` | `Vec<f32>`      | Vector embedding (384 or 768 dimensions)         |
-| `top_k`           | `usize`         | Maximum results to return                        |
-| `min_similarity`  | `Option<f32>`   | Minimum cosine similarity threshold (0.0-1.0)    |
+| Parameter         | Type          | Description                                   |
+| ----------------- | ------------- | --------------------------------------------- |
+| `query_embedding` | `Vec<f32>`    | Vector embedding (384 or 768 dimensions)      |
+| `top_k`           | `usize`       | Maximum results to return                     |
+| `min_similarity`  | `Option<f32>` | Minimum cosine similarity threshold (0.0-1.0) |
 
 **Returns:** `Result<Vec<SimilarExample>, String>`
 
@@ -1403,9 +1415,9 @@ interface SimilarExample {
   id: string
   title: string
   category: string
-  before_text: string  // Raw script text (snake_case from Rust)
-  after_text: string   // Formatted script text
-  similarity: number   // Cosine similarity score (0-1)
+  before_text: string // Raw script text (snake_case from Rust)
+  after_text: string // Formatted script text
+  similarity: number // Cosine similarity score (0-1)
 }
 ```
 
@@ -1431,9 +1443,9 @@ pub async fn get_example_by_id(app: tauri::AppHandle, id: String) -> Result<Simi
 
 **Parameters:**
 
-| Parameter | Type     | Description   |
-| --------- | -------- | ------------- |
-| `id`      | `String` | Example UUID  |
+| Parameter | Type     | Description  |
+| --------- | -------- | ------------ |
+| `id`      | `String` | Example UUID |
 
 **Returns:** `Result<SimilarExample, String>` -- similarity is always 1.0
 
@@ -1482,12 +1494,12 @@ interface ExampleWithMetadata {
   id: string
   title: string
   category: string
-  beforeText: string       // camelCase (serde rename_all)
+  beforeText: string // camelCase (serde rename_all)
   afterText: string
   tags: string[]
   wordCount: number | null
   qualityScore: number | null
-  source: string           // "bundled" or "user-uploaded"
+  source: string // "bundled" or "user-uploaded"
   createdAt: string
 }
 ```
@@ -1521,15 +1533,15 @@ pub async fn upload_example(
 
 ```typescript
 interface UploadExampleRequest {
-  beforeContent: string  // Raw script (min 50, max 100,000 chars)
-  afterContent: string   // Formatted script (min 50, max 100,000 chars)
+  beforeContent: string // Raw script (min 50, max 100,000 chars)
+  afterContent: string // Formatted script (min 50, max 100,000 chars)
   metadata: {
-    title: string              // 1-200 chars, no newlines
-    category: string           // educational | business | narrative | interview | documentary | user-custom
+    title: string // 1-200 chars, no newlines
+    category: string // educational | business | narrative | interview | documentary | user-custom
     tags?: string[]
     qualityScore?: number
   }
-  embedding: number[]    // 384 or 768 dimensions
+  embedding: number[] // 384 or 768 dimensions
 }
 ```
 
@@ -1624,10 +1636,10 @@ pub fn copy_premiere_project(
 
 **Parameters:**
 
-| Parameter            | Type     | Description                                   |
-| -------------------- | -------- | --------------------------------------------- |
-| `destination_folder` | `String` | Destination folder path                       |
-| `new_title`          | `String` | Project name (without .prproj extension)      |
+| Parameter            | Type     | Description                              |
+| -------------------- | -------- | ---------------------------------------- |
+| `destination_folder` | `String` | Destination folder path                  |
+| `new_title`          | `String` | Project name (without .prproj extension) |
 
 **Returns:** `Result<(), String>`
 
@@ -1702,9 +1714,9 @@ pub async fn install_plugin(
 
 **Parameters:**
 
-| Parameter         | Type     | Description                                    |
-| ----------------- | -------- | ---------------------------------------------- |
-| `plugin_filename` | `String` | ZXP filename in assets/plugins/ directory      |
+| Parameter         | Type     | Description                                         |
+| ----------------- | -------- | --------------------------------------------------- |
+| `plugin_filename` | `String` | ZXP filename in assets/plugins/ directory           |
 | `plugin_name`     | `String` | Plugin directory name (e.g., "BreadcrumbsPremiere") |
 
 **Returns:** `Result<InstallResult, String>`
@@ -1819,8 +1831,8 @@ pub fn kavanagh_detect_ffmpeg(custom_dir: Option<String>) -> FfmpegAvailability
 
 **Parameters:**
 
-| Parameter    | Type             | Description                                       |
-| ------------ | ---------------- | ------------------------------------------------- |
+| Parameter    | Type             | Description                                              |
+| ------------ | ---------------- | -------------------------------------------------------- |
 | `custom_dir` | `Option<String>` | Directory configured in Settings, or `None` for defaults |
 
 **Returns:** `FfmpegAvailability` (tagged union, serialised with `status` discriminator)
@@ -1859,19 +1871,19 @@ pub async fn kavanagh_run_check(
 
 **Parameters:**
 
-| Parameter | Type                    | Description          |
-| --------- | ----------------------- | -------------------- |
-| `request` | `WatermarkCheckRequest` | Check configuration  |
+| Parameter | Type                    | Description         |
+| --------- | ----------------------- | ------------------- |
+| `request` | `WatermarkCheckRequest` | Check configuration |
 
 **WatermarkCheckRequest structure:**
 
 ```typescript
 interface WatermarkCheckRequest {
   videoPath: string
-  referenceFiles: string[]         // Watermark pool files
-  stingReferenceFiles?: string[]   // Sting pool files (defaults to [])
-  ffmpegDirectory?: string | null  // Settings ffmpeg directory override
-  matchThreshold?: number | null   // Advanced: custom match threshold
+  referenceFiles: string[] // Watermark pool files
+  stingReferenceFiles?: string[] // Sting pool files (defaults to [])
+  ffmpegDirectory?: string | null // Settings ffmpeg directory override
+  matchThreshold?: number | null // Advanced: custom match threshold
 }
 ```
 
@@ -1884,8 +1896,8 @@ interface WatermarkCheckRequest {
   ```typescript
   interface KavanaghProgressEvent {
     operationId: string
-    phase: string       // "probe" | "tail" | "watermark"
-    percentage: number  // 0-100, never decreases
+    phase: string // "probe" | "tail" | "watermark"
+    percentage: number // 0-100, never decreases
     detail: string
   }
   ```
@@ -1935,18 +1947,18 @@ pub fn kavanagh_save_evidence(
 
 **Parameters:**
 
-| Parameter | Type               | Description                              |
-| --------- | ------------------ | ---------------------------------------- |
-| `folder`  | `String`           | Destination folder path                  |
-| `prefix`  | `String`           | Filename prefix (e.g. `kavanagh-render`) |
+| Parameter | Type                | Description                              |
+| --------- | ------------------- | ---------------------------------------- |
+| `folder`  | `String`            | Destination folder path                  |
+| `prefix`  | `String`            | Filename prefix (e.g. `kavanagh-render`) |
 | `items`   | `Vec<EvidenceItem>` | Thumbnails to save                       |
 
 **EvidenceItem structure:**
 
 ```typescript
 interface EvidenceItem {
-  label: string   // Human-readable label (used in filename)
-  jpeg: number[]  // JPEG image bytes
+  label: string // Human-readable label (used in filename)
+  jpeg: number[] // JPEG image bytes
 }
 ```
 
@@ -1956,7 +1968,9 @@ interface EvidenceItem {
 
 ```typescript
 const paths = await invoke<string[]>('kavanagh_save_evidence', {
-  folder, prefix, items
+  folder,
+  prefix,
+  items
 })
 ```
 

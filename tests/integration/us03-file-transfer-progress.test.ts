@@ -14,13 +14,13 @@
  * in each test or beforeEach — they are reset between tests.
  */
 
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createTransferItems,
   formatBytes,
   formatTimeRemaining,
   transferFiles
 } from '../../src/features/BuildProject/stages/fileTransfer'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock Tauri core — transferFiles calls invoke('transfer_files_with_progress', ...)
 vi.mock('@tauri-apps/api/core', () => ({
@@ -38,9 +38,18 @@ vi.mock('@tauri-apps/api/event', () => ({
 // ============================================================================
 
 const mockFiles = [
-  { source: '/volumes/drive/cam1.braw', destination: '/projects/My Project/Footage/Camera 1/cam1.braw' },
-  { source: '/volumes/drive/cam2.braw', destination: '/projects/My Project/Footage/Camera 2/cam2.braw' },
-  { source: '/volumes/drive/cam3.braw', destination: '/projects/My Project/Footage/Camera 1/cam3.braw' }
+  {
+    source: '/volumes/drive/cam1.braw',
+    destination: '/projects/My Project/Footage/Camera 1/cam1.braw'
+  },
+  {
+    source: '/volumes/drive/cam2.braw',
+    destination: '/projects/My Project/Footage/Camera 2/cam2.braw'
+  },
+  {
+    source: '/volumes/drive/cam3.braw',
+    destination: '/projects/My Project/Footage/Camera 1/cam3.braw'
+  }
 ]
 
 // ============================================================================
@@ -90,12 +99,17 @@ describe('US-03 — File Transfer Progress', () => {
     const transferPromise = transferFiles({ files: mockFiles })
 
     // Allow listeners to be set up
-    await new Promise((resolve) => setTimeout(resolve, 15))
+    await new Promise(resolve => setTimeout(resolve, 15))
 
     // Fire completion event
     if (handlers['file-transfer-complete']) {
       handlers['file-transfer-complete']({
-        payload: { operationId: OPERATION_ID, success: true, filesTransferred: 3, error: null }
+        payload: {
+          operationId: OPERATION_ID,
+          success: true,
+          filesTransferred: 3,
+          error: null
+        }
       })
     }
 
@@ -124,12 +138,17 @@ describe('US-03 — File Transfer Progress', () => {
     })
 
     const transferPromise = transferFiles({ files: mockFiles })
-    await new Promise((resolve) => setTimeout(resolve, 15))
+    await new Promise(resolve => setTimeout(resolve, 15))
 
     // Fire completion
     if (handlers['file-transfer-complete']) {
       handlers['file-transfer-complete']({
-        payload: { operationId: OPERATION_ID, success: true, filesTransferred: 3, error: null }
+        payload: {
+          operationId: OPERATION_ID,
+          success: true,
+          filesTransferred: 3,
+          error: null
+        }
       })
     }
 
@@ -160,7 +179,7 @@ describe('US-03 — File Transfer Progress', () => {
     })
 
     const transferPromise = transferFiles({ files: mockFiles, onProgress })
-    await new Promise((resolve) => setTimeout(resolve, 15))
+    await new Promise(resolve => setTimeout(resolve, 15))
 
     // Simulate incremental progress events
     const fire = (filesCompleted: number, pct: number) => {
@@ -185,7 +204,12 @@ describe('US-03 — File Transfer Progress', () => {
 
     // Fire completion
     handlers['file-transfer-complete']?.({
-      payload: { operationId: OPERATION_ID, success: true, filesTransferred: 3, error: null }
+      payload: {
+        operationId: OPERATION_ID,
+        success: true,
+        filesTransferred: 3,
+        error: null
+      }
     })
 
     await transferPromise
@@ -208,10 +232,15 @@ describe('US-03 — File Transfer Progress', () => {
     })
 
     const transferPromise = transferFiles({ files: mockFiles })
-    await new Promise((resolve) => setTimeout(resolve, 15))
+    await new Promise(resolve => setTimeout(resolve, 15))
 
     handlers['file-transfer-complete']?.({
-      payload: { operationId: OPERATION_ID, success: true, filesTransferred: 3, error: null }
+      payload: {
+        operationId: OPERATION_ID,
+        success: true,
+        filesTransferred: 3,
+        error: null
+      }
     })
 
     const result = await transferPromise
@@ -259,10 +288,15 @@ describe('US-03 — File Transfer Progress', () => {
     })
 
     const transferPromise = transferFiles({ files: mockFiles })
-    await new Promise((resolve) => setTimeout(resolve, 15))
+    await new Promise(resolve => setTimeout(resolve, 15))
 
     handlers['file-transfer-complete']?.({
-      payload: { operationId: OPERATION_ID, success: false, filesTransferred: 0, error: 'IO error during copy' }
+      payload: {
+        operationId: OPERATION_ID,
+        success: false,
+        filesTransferred: 0,
+        error: 'IO error during copy'
+      }
     })
 
     const result = await transferPromise
@@ -309,16 +343,26 @@ describe('US-03 — File Transfer Progress', () => {
     const onProgress = vi.fn()
 
     const transferPromise = transferFiles({ files: mockFiles, onProgress })
-    await new Promise((resolve) => setTimeout(resolve, 15))
+    await new Promise(resolve => setTimeout(resolve, 15))
 
     // Simulate progress for a DIFFERENT operation ID — should be ignored
     handlers['file-transfer-progress']?.({
-      payload: { operationId: 'op-different', filesCompleted: 1, totalFiles: 3, percentage: 33 }
+      payload: {
+        operationId: 'op-different',
+        filesCompleted: 1,
+        totalFiles: 3,
+        percentage: 33
+      }
     })
 
     // Fire completion for the correct operation
     handlers['file-transfer-complete']?.({
-      payload: { operationId: OPERATION_ID, success: true, filesTransferred: 3, error: null }
+      payload: {
+        operationId: OPERATION_ID,
+        success: true,
+        filesTransferred: 3,
+        error: null
+      }
     })
 
     await transferPromise

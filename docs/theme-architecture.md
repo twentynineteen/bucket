@@ -7,12 +7,14 @@ This document explains the multi-theme system architecture in Bucket, designed f
 ## System Overview
 
 ### Technology Stack
+
 - **Theme Provider**: `next-themes` v0.4.6
 - **CSS Framework**: Tailwind CSS v4 with PostCSS
 - **Storage**: Browser localStorage
 - **State Management**: React hooks + next-themes context
 
 ### Key Design Principles
+
 1. **CSS Variables First**: All themes use semantic CSS custom properties
 2. **Class-Based Theming**: Themes applied via class on `<html>` element
 3. **Backward Compatible**: Existing light/dark themes unchanged
@@ -52,12 +54,31 @@ docs/
 Central source of truth for all theme metadata.
 
 **Key Exports:**
+
 ```typescript
 export type ThemeId =
-  | 'system' | 'light' | 'dark' | 'dracula' | 'tokyo-night'
-  | 'catppuccin-latte' | 'catppuccin-frappe' | 'catppuccin-macchiato' | 'catppuccin-mocha'
-  | 'solarized-light' | 'github-light' | 'nord-light' | 'one-light'
-export interface ThemeMetadata { id, name, description, category, colorSwatch, author?, isDark }
+  | 'system'
+  | 'light'
+  | 'dark'
+  | 'dracula'
+  | 'tokyo-night'
+  | 'catppuccin-latte'
+  | 'catppuccin-frappe'
+  | 'catppuccin-macchiato'
+  | 'catppuccin-mocha'
+  | 'solarized-light'
+  | 'github-light'
+  | 'nord-light'
+  | 'one-light'
+export interface ThemeMetadata {
+  id
+  name
+  description
+  category
+  colorSwatch
+  author?
+  isDark
+}
 export const THEMES: Record<ThemeId, ThemeMetadata>
 export function getAllThemeIds(): ThemeId[]
 export function getThemeById(id: string): ThemeMetadata | undefined
@@ -66,8 +87,9 @@ export function getGroupedThemes(): ThemeGroup[]
 ```
 
 **Usage:**
+
 ```typescript
-import { THEMES, getGroupedThemes } from '@shared/ui/theme/themes'
+import { getGroupedThemes, THEMES } from '@shared/ui/theme/themes'
 
 // Get theme info
 const dracula = THEMES.dracula
@@ -98,6 +120,7 @@ const groups = getGroupedThemes()
 ```
 
 **How it works:**
+
 1. `next-themes` reads `storageKey` from localStorage
 2. Applies corresponding class to `<html>` (e.g., `.dracula`)
 3. CSS variables update based on class selector
@@ -106,6 +129,7 @@ const groups = getGroupedThemes()
 ### 3. CSS Variable System ([index.css](../src/index.css))
 
 **Structure:**
+
 ```css
 @layer base {
   :root {
@@ -115,14 +139,21 @@ const groups = getGroupedThemes()
     /* ...40+ variables */
   }
 
-  .dark { /* Dark theme overrides */ }
-  .dracula { /* Dracula theme overrides */ }
-  .catppuccin-latte { /* Latte theme overrides */ }
+  .dark {
+    /* Dark theme overrides */
+  }
+  .dracula {
+    /* Dracula theme overrides */
+  }
+  .catppuccin-latte {
+    /* Latte theme overrides */
+  }
   /* ...9 more themes */
 }
 ```
 
 **Color Variables (Complete List):**
+
 - Base: `--background`, `--foreground`
 - Surfaces: `--card`, `--popover`, `--sidebar`
 - Semantic: `--primary`, `--secondary`, `--accent`, `--muted`
@@ -131,17 +162,17 @@ const groups = getGroupedThemes()
 - Charts: `--chart-1` through `--chart-5`
 
 **Usage in Components:**
+
 ```tsx
 <div className="bg-background text-foreground border-border">
-  <button className="bg-primary text-primary-foreground">
-    Click me
-  </button>
+  <button className="bg-primary text-primary-foreground">Click me</button>
 </div>
 ```
 
 ### 4. ThemeSelector Component ([ThemeSelector.tsx](../src/shared/ui/theme/ThemeSelector.tsx))
 
 **Features:**
+
 - Radix UI Select dropdown
 - Grouped theme options (System / Light / Dark)
 - Color swatches for visual identification
@@ -150,6 +181,7 @@ const groups = getGroupedThemes()
 - Loading state (hydration-safe)
 
 **Props:**
+
 ```typescript
 interface ThemeSelectorProps {
   label?: string
@@ -158,10 +190,11 @@ interface ThemeSelectorProps {
 ```
 
 **Integration:**
+
 ```tsx
 import { ThemeSelector } from '@shared/ui/theme/ThemeSelector'
 
-<ThemeSelector label="Theme" />
+;<ThemeSelector label="Theme" />
 ```
 
 ### 5. Live Preview Hook ([useThemePreview.ts](../src/shared/ui/theme/useThemePreview.ts))
@@ -169,6 +202,7 @@ import { ThemeSelector } from '@shared/ui/theme/ThemeSelector'
 **Purpose:** Temporarily apply a theme on hover without persisting it.
 
 **API:**
+
 ```typescript
 const { startPreview, stopPreview } = useThemePreview({
   activeTheme: 'dark',
@@ -183,6 +217,7 @@ stopPreview() // Restores 'dark' theme
 ```
 
 **How it works:**
+
 1. User hovers over theme option
 2. Hook waits 150ms (debounce)
 3. Removes all theme classes from `<html>`
@@ -194,10 +229,11 @@ stopPreview() // Restores 'dark' theme
 **Purpose:** Visual preview of theme colors (4-color bar).
 
 **Props:**
+
 ```typescript
 interface ThemeColorSwatchProps {
   colors: {
-    background: string  // HSL format: "220 13% 91%"
+    background: string // HSL format: "220 13% 91%"
     foreground: string
     primary: string
     accent: string
@@ -207,6 +243,7 @@ interface ThemeColorSwatchProps {
 ```
 
 **Renders:**
+
 ```
 ┌──────────────────────┐
 │ ▮ ▮ ▮ ▮  │  (4 colors: bg, fg, primary, accent)
@@ -296,11 +333,11 @@ export const THEMES: Record<ThemeId, ThemeMetadata> = {
       background: '240 10% 3.9%',
       foreground: '0 0% 98%',
       primary: '0 0% 98%',
-      accent: '240 3.7% 15.9%',
+      accent: '240 3.7% 15.9%'
     },
     author: 'Your Name',
-    isDark: true,
-  },
+    isDark: true
+  }
 }
 ```
 
@@ -326,7 +363,8 @@ In `src/App.tsx`:
 In `tests/unit/constants/themes.test.ts`:
 
 ```typescript
-it('contains all 14 themes', () => { // Update count
+it('contains all 14 themes', () => {
+  // Update count
   const themeIds = Object.keys(THEMES)
   expect(themeIds).toHaveLength(14)
   expect(themeIds).toContain('my-new-theme')
@@ -344,6 +382,7 @@ Update `docs/theme-customization.md` with theme details.
 ### Architecture (Already in Place)
 
 **Type Definition** (`src/shared/ui/theme/customTheme.ts`):
+
 ```typescript
 export interface CustomThemeDefinition {
   id: string
@@ -356,13 +395,18 @@ export interface CustomThemeDefinition {
 ```
 
 **Theme Loader** (`src/shared/ui/theme/themeLoader.ts`):
+
 ```typescript
-export function loadCustomTheme(theme: CustomThemeDefinition): { success: boolean, error?: string }
+export function loadCustomTheme(theme: CustomThemeDefinition): {
+  success: boolean
+  error?: string
+}
 export function saveCustomThemesToStorage(themes: CustomThemeDefinition[]): void
 export function loadCustomThemesFromStorage(): CustomThemeDefinition[]
 ```
 
 **Validation** (Zod schema):
+
 ```typescript
 export const CustomThemeSchema = z.object({
   id: z.string().min(1).regex(/^[a-z0-9-]+$/),
@@ -389,18 +433,20 @@ export const CustomThemeSchema = z.object({
 Users upgrading from old versions have their themes automatically migrated:
 
 **src/shared/ui/theme/themeMapper.ts:**
+
 ```typescript
 export function migrateLegacyTheme(legacyThemeId: string): ThemeId {
   const migrations: Record<string, ThemeId> = {
     light: 'light',
     dark: 'dark',
-    system: 'system',
+    system: 'system'
   }
   return migrations[legacyThemeId] || 'system'
 }
 ```
 
 **Handles:**
+
 - Old `"light"` → New `"light"` ✓
 - Old `"dark"` → New `"dark"` ✓
 - Old `"system"` → New `"system"` ✓
@@ -419,6 +465,7 @@ export function migrateLegacyTheme(legacyThemeId: string): ThemeId {
 ### Unit Tests
 
 **What's Tested:**
+
 - Theme metadata completeness
 - Helper function correctness
 - Component rendering
@@ -426,12 +473,14 @@ export function migrateLegacyTheme(legacyThemeId: string): ThemeId {
 - Migration utilities
 
 **Coverage:**
+
 - `themes.ts`: 21 tests, 100% coverage
 - `themeMapper.ts`: 8 tests, 100% coverage
 - `ThemeColorSwatch.tsx`: 7 tests
 - `ThemeSelector.tsx`: 10 tests
 
 **Run Tests:**
+
 ```bash
 bun test themes
 bun test themeMapper
@@ -456,16 +505,19 @@ bun test ThemeColorSwatch
 ## Performance Considerations
 
 ### Theme Switching
+
 - **Transition Time**: 0.3s CSS transition
 - **Class Toggle**: Instant (single DOM operation)
 - **Re-renders**: Minimal (next-themes handles efficiently)
 
 ### Live Preview
+
 - **Debounce**: 150ms prevents flicker
 - **DOM Operations**: 2 per preview (remove old class, add new)
 - **Cleanup**: Automatic on unmount
 
 ### Storage
+
 - **localStorage**: ~50 bytes per theme preference
 - **No Network Requests**: All themes bundled
 - **Custom Themes**: Future feature, stored in localStorage
@@ -479,12 +531,14 @@ bun test ThemeColorSwatch
 **Symptom:** Selected theme doesn't show visually
 
 **Debug Steps:**
+
 1. Check `<html>` class: Should have theme class (e.g., `.dracula`)
 2. Inspect CSS variables: `getComputedStyle(document.documentElement).getPropertyValue('--background')`
 3. Verify localStorage: `localStorage.getItem('theme')`
 4. Check next-themes context: Use React DevTools
 
 **Common Causes:**
+
 - Hydration mismatch (SSR/SSG)
 - Conflicting CSS overrides
 - ThemeProvider not wrapping app
@@ -494,6 +548,7 @@ bun test ThemeColorSwatch
 **Symptom:** Preview theme stays after mouse leave
 
 **Debug Steps:**
+
 1. Check `useThemePreview` cleanup
 2. Verify `stopPreview()` is called
 3. Look for uncaught errors in preview logic
@@ -505,6 +560,7 @@ bun test ThemeColorSwatch
 ## Future Enhancements
 
 ### Planned Features
+
 1. **Custom Theme Import**: JSON file upload
 2. **Theme Editor**: Visual theme builder
 3. **Theme Export**: Share themes with others
@@ -513,6 +569,7 @@ bun test ThemeColorSwatch
 6. **Font Size Themes**: Accessibility presets
 
 ### Extension Points
+
 - `themeLoader.ts`: Fully functional custom theme loader
 - `customTheme.ts`: Type definitions ready
 - localStorage: Architecture supports unlimited custom themes
@@ -524,10 +581,7 @@ bun test ThemeColorSwatch
 ### hooks/useThemePreview
 
 ```typescript
-function useThemePreview(options: {
-  activeTheme: string
-  debounceMs?: number
-}): {
+function useThemePreview(options: { activeTheme: string; debounceMs?: number }): {
   startPreview: (themeId: string) => void
   stopPreview: () => void
 }
@@ -554,7 +608,10 @@ function isValidThemeId(themeId: string): themeId is ThemeId
 ### utils/themeLoader (Future)
 
 ```typescript
-function loadCustomTheme(theme: CustomThemeDefinition): { success: boolean, error?: string }
+function loadCustomTheme(theme: CustomThemeDefinition): {
+  success: boolean
+  error?: string
+}
 function unloadCustomTheme(themeId: string): void
 function saveCustomThemesToStorage(themes: CustomThemeDefinition[]): void
 function loadCustomThemesFromStorage(): CustomThemeDefinition[]
@@ -566,11 +623,13 @@ function initializeCustomThemes(): void
 ## Credits
 
 ### Libraries
+
 - [next-themes](https://github.com/pacocoursey/next-themes) by @pacocoursey
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Radix UI](https://www.radix-ui.com/)
 
 ### Theme Inspiration
+
 - [Dracula Theme](https://draculatheme.com/) by Zeno Rocha
 - [Catppuccin](https://github.com/catppuccin/catppuccin) by the Catppuccin team
 
@@ -579,6 +638,7 @@ function initializeCustomThemes(): void
 ## Changelog
 
 ### v0.11.0
+
 - ✨ Added 8-theme system (System, Light, Dark, Dracula, 4x Catppuccin)
 - ✨ Later expanded to 13 themes (added Tokyo Night, Solarized Light, GitHub Light, Nord Light, One Light)
 - ✨ Live preview on hover
@@ -591,6 +651,7 @@ function initializeCustomThemes(): void
 - 📚 Full documentation
 
 ### Previous Versions
+
 - v0.10.0 and earlier: Binary light/dark toggle only
 
 ---
@@ -619,5 +680,6 @@ function initializeCustomThemes(): void
 Theme system code: MIT License (see LICENSE file)
 
 Third-party theme licenses:
+
 - Dracula: MIT License
 - Catppuccin: MIT License

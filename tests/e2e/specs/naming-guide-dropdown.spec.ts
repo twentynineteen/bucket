@@ -7,7 +7,6 @@
  * window, and its last option is reachable by scrolling.
  */
 import { expect, test } from '@playwright/test'
-
 import { SAMPLE_TREE, setupSproutMocks } from '../fixtures/sprout-folders.fixture'
 
 test.describe('naming guide - format dropdown fits and scrolls', () => {

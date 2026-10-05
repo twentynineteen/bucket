@@ -7,7 +7,7 @@
  */
 
 import type { Page } from '@playwright/test'
-import type { SimulatedFileSet, MockFile } from '../utils/large-file-simulator'
+import type { MockFile, SimulatedFileSet } from '../utils/large-file-simulator'
 
 export interface FailureInjection {
   /** Error message carried on the failed `file-transfer-complete` event */
@@ -144,12 +144,15 @@ export class TauriE2EMock {
     const config = this.config
 
     // Add init script that runs before page scripts - includes ALL mock logic
-    await this.page.addInitScript((cfg) => {
+    await this.page.addInitScript(cfg => {
       // Types for window extensions
       type EventCallback = (event: { payload: unknown; id: number }) => void
       type TauriInternals = {
         invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>
-        transformCallback: (callback?: (response: unknown) => void, once?: boolean) => number
+        transformCallback: (
+          callback?: (response: unknown) => void,
+          once?: boolean
+        ) => number
         convertFileSrc: (filePath: string, protocol?: string) => string
         unregisterCallback: (id: number) => void
         metadata?: {
@@ -164,7 +167,11 @@ export class TauriE2EMock {
       // them exist on the real window object.
       type E2EExtras = {
         __E2E_CONFIG__?: typeof cfg
-        __E2E_EVENTS__?: Array<{ percent: number; fileIndex: number; fileProgress?: number }>
+        __E2E_EVENTS__?: Array<{
+          percent: number
+          fileIndex: number
+          fileProgress?: number
+        }>
         __E2E_LISTENERS__?: Map<string, Map<number, EventCallback>>
         __E2E_CALLBACKS__?: Record<number, (response: unknown) => void>
         __E2E_CANCELLED__?: boolean
@@ -253,7 +260,7 @@ export class TauriE2EMock {
               console.log('[E2E Mock] Returning folder:', folder)
               return folder
             }
-            const files = cfg.mockFiles.map((f) => f.file.path)
+            const files = cfg.mockFiles.map(f => f.file.path)
             console.log('[E2E Mock] Returning files:', files.length)
             return files
           }
@@ -262,7 +269,12 @@ export class TauriE2EMock {
           if (cmd === 'plugin:event|listen') {
             const eventName = args?.event as string
             const handlerId = args?.handler as number
-            console.log('[E2E Mock] Registering listener for:', eventName, 'handler:', handlerId)
+            console.log(
+              '[E2E Mock] Registering listener for:',
+              eventName,
+              'handler:',
+              handlerId
+            )
 
             const eventId = nextEventId++
 
@@ -281,7 +293,12 @@ export class TauriE2EMock {
               }
             })
 
-            console.log('[E2E Mock] Listener registered, eventId:', eventId, 'total:', listeners.size)
+            console.log(
+              '[E2E Mock] Listener registered, eventId:',
+              eventId,
+              'total:',
+              listeners.size
+            )
             return eventId
           }
 
@@ -289,7 +306,12 @@ export class TauriE2EMock {
           if (cmd === 'plugin:event|unlisten') {
             const eventName = args?.event as string
             const eventId = args?.eventId as number
-            console.log('[E2E Mock] Unregistering listener for:', eventName, 'id:', eventId)
+            console.log(
+              '[E2E Mock] Unregistering listener for:',
+              eventName,
+              'id:',
+              eventId
+            )
             const listeners = eventListeners.get(eventName)
             if (listeners) {
               listeners.delete(eventId)
@@ -313,8 +335,7 @@ export class TauriE2EMock {
           // cancellation). Any file error aborts the whole transfer.
           if (cmd === 'transfer_files_with_progress') {
             const request = args?.request as
-              | { files: Array<{ source: string; destination: string }> }
-              | undefined
+              { files: Array<{ source: string; destination: string }> } | undefined
             const requestFiles = request?.files ?? []
             const operationId = `e2e-op-${nextOperationId++}`
             console.log(
@@ -334,7 +355,10 @@ export class TauriE2EMock {
             const BUFFER_SIZE = 8192 // 8KB - matches Rust backend
 
             // Calculate base interval (adjusted by speed multiplier)
-            const baseIntervalMs = Math.max(1, cfg.scenario.progressIntervalMs / cfg.speedMultiplier)
+            const baseIntervalMs = Math.max(
+              1,
+              cfg.scenario.progressIntervalMs / cfg.speedMultiplier
+            )
 
             const baseName = (p: string) => p.split('/').pop() || p
 
@@ -408,7 +432,9 @@ export class TauriE2EMock {
                 const mockFile = cfg.mockFiles[fileIndex]
                 const fileSize = mockFile?.simulatedSize || cfg.scenario.averageFileSize
                 const currentFile = baseName(
-                  requestFiles[fileIndex]?.source || mockFile?.file.path || `file_${fileIndex}`
+                  requestFiles[fileIndex]?.source ||
+                    mockFile?.file.path ||
+                    `file_${fileIndex}`
                 )
 
                 if (enableIntraFile) {
@@ -428,7 +454,8 @@ export class TauriE2EMock {
                     // Calculate progress matching Rust formula:
                     // overall_progress = (files_completed + file_progress) / total_files * 100
                     const fileProgress = (chunk + 1) / eventsPerFile
-                    const overallProgress = ((fileIndex + fileProgress) / totalFiles) * 100
+                    const overallProgress =
+                      ((fileIndex + fileProgress) / totalFiles) * 100
 
                     recordEvent({
                       percent: overallProgress,
@@ -444,7 +471,7 @@ export class TauriE2EMock {
 
                     // Only wait between chunks, not after the last one
                     if (chunk < eventsPerFile - 1) {
-                      await new Promise((r) => setTimeout(r, baseIntervalMs))
+                      await new Promise(r => setTimeout(r, baseIntervalMs))
                     }
                   }
                 } else {
@@ -458,7 +485,7 @@ export class TauriE2EMock {
 
                 // Small delay between files
                 if (fileIndex < totalFiles - 1) {
-                  await new Promise((r) => setTimeout(r, baseIntervalMs))
+                  await new Promise(r => setTimeout(r, baseIntervalMs))
                 }
               }
 
@@ -607,10 +634,18 @@ export class TauriE2EMock {
             if (windowCmd === 'outer_size' || windowCmd === 'inner_size') {
               return { width: 1280, height: 720 }
             }
-            if (windowCmd === 'is_fullscreen' || windowCmd === 'is_maximized' || windowCmd === 'is_minimized') {
+            if (
+              windowCmd === 'is_fullscreen' ||
+              windowCmd === 'is_maximized' ||
+              windowCmd === 'is_minimized'
+            ) {
               return false
             }
-            if (windowCmd === 'is_visible' || windowCmd === 'is_focused' || windowCmd === 'is_decorated') {
+            if (
+              windowCmd === 'is_visible' ||
+              windowCmd === 'is_focused' ||
+              windowCmd === 'is_decorated'
+            ) {
               return true
             }
             if (windowCmd === 'scale_factor') {
@@ -683,7 +718,7 @@ export class TauriE2EMock {
    * such as `failureInjection`, is really gone in the page.
    */
   async injectMocks(): Promise<void> {
-    await this.page.evaluate((config) => {
+    await this.page.evaluate(config => {
       const win = window as Window & { __E2E_CONFIG__?: Record<string, unknown> }
       const live = win.__E2E_CONFIG__
       if (!live) return
@@ -701,8 +736,12 @@ export class TauriE2EMock {
   async getEmittedEvents(): Promise<Array<{ percent: number; fileIndex: number }>> {
     return this.page.evaluate(() => {
       return (
-        window as Window & { __E2E_EVENTS__?: Array<{ percent: number; fileIndex: number }> }
-      ).__E2E_EVENTS__ || []
+        (
+          window as Window & {
+            __E2E_EVENTS__?: Array<{ percent: number; fileIndex: number }>
+          }
+        ).__E2E_EVENTS__ || []
+      )
     })
   }
 
@@ -711,8 +750,10 @@ export class TauriE2EMock {
    */
   async isOperationInProgress(): Promise<boolean> {
     return this.page.evaluate(() => {
-      return (window as Window & { __E2E_OPERATION_IN_PROGRESS__?: boolean })
-        .__E2E_OPERATION_IN_PROGRESS__ || false
+      return (
+        (window as Window & { __E2E_OPERATION_IN_PROGRESS__?: boolean })
+          .__E2E_OPERATION_IN_PROGRESS__ || false
+      )
     })
   }
 
@@ -720,7 +761,7 @@ export class TauriE2EMock {
    * Get current listener count for an event
    */
   async getListenerCount(eventName: string): Promise<number> {
-    return this.page.evaluate((name) => {
+    return this.page.evaluate(name => {
       const listeners = (
         window as Window & { __E2E_LISTENERS__?: Map<string, Map<number, unknown>> }
       ).__E2E_LISTENERS__?.get(name)
@@ -776,7 +817,11 @@ export class TauriE2EMock {
       return (
         (
           window as Window & {
-            __E2E_EVENTS__?: Array<{ percent: number; fileIndex: number; fileProgress?: number }>
+            __E2E_EVENTS__?: Array<{
+              percent: number
+              fileIndex: number
+              fileProgress?: number
+            }>
           }
         ).__E2E_EVENTS__ || []
       )

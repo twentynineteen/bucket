@@ -21,8 +21,8 @@
 //   prettierConfig
 // )
 
-import boundaries from 'eslint-plugin-boundaries'
 import js from '@eslint/js'
+import boundaries from 'eslint-plugin-boundaries'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'

@@ -40,11 +40,7 @@
     "dialog": null,
     "deep-link": {
       "desktop": {
-        "schemes": [
-          "bucket",
-          "myapp",
-          "Bucket"
-        ]
+        "schemes": ["bucket", "myapp", "Bucket"]
       }
     },
     "fs": null,

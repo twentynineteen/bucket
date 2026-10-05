@@ -771,15 +771,15 @@ pub use my_feature::*;
 
 ```typescript
 // src/features/MyFeature/api.ts
+
+// src/features/MyFeature/hooks/useMyFeature.ts
+import { useMutation } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
+import { myCommand } from '../api'
 
 export async function myCommand(arg1: string, arg2: number): Promise<string> {
   return invoke<string>('my_command', { arg1, arg2 })
 }
-
-// src/features/MyFeature/hooks/useMyFeature.ts
-import { useMutation } from '@tanstack/react-query'
-import { myCommand } from '../api'
 
 export function useMyFeature() {
   return useMutation({

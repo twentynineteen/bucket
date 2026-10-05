@@ -112,7 +112,7 @@ Uploads must still work.
 - [ ] Settings → SproutVideo → set a **default upload folder**. A confirmation
       toast names it.
 - [ ] Restart the app. A new upload defaults to that folder.
-- [ ] Upload to a *different* folder, then start another upload -- it defaults to
+- [ ] Upload to a _different_ folder, then start another upload -- it defaults to
       the folder you just used (session last-used beats the stored default).
 - [ ] Restart again: the default from Settings is back (last-used is
       session-scoped by design).
@@ -126,7 +126,7 @@ Uploads must still work.
       folder names and the error row all stay legible.
 - [ ] In Baker → Add Video → Upload with the poster frame enabled, the dialog is
       still usable at a laptop viewport and "Upload and Add" is reachable.
-      *(If it is not, that is #157, not this feature.)*
+      _(If it is not, that is #157, not this feature.)_
 
 ---
 

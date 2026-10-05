@@ -76,7 +76,7 @@ export async function detectMemoryLeak(
   }
 
   // Calculate metrics
-  const heapSizes = samples.filter((s) => s.available).map((s) => s.usedJSHeapSize!)
+  const heapSizes = samples.filter(s => s.available).map(s => s.usedJSHeapSize!)
 
   if (heapSizes.length < 2) {
     return {
@@ -164,7 +164,7 @@ export class MemorySampler {
    * Analyze collected samples for leaks
    */
   analyze(leakThresholdBytes: number = 50 * 1024 * 1024): MemoryAnalysis {
-    const heapSizes = this.samples.filter((s) => s.available).map((s) => s.usedJSHeapSize!)
+    const heapSizes = this.samples.filter(s => s.available).map(s => s.usedJSHeapSize!)
 
     if (heapSizes.length < 2) {
       return {

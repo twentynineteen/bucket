@@ -245,7 +245,6 @@ Let's make a simple change to see the development workflow.
 
    ```typescript
    import { useQuery } from '@tanstack/react-query'
-
    import { getTimestamp } from '../api'
 
    export function useTimestamp() {

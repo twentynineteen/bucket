@@ -14,14 +14,13 @@
  */
 
 import type { TrelloCard } from '@features/Baker'
-import { logger } from '@shared/utils/logger'
 import { TrelloCardItem } from '@features/Trello'
+import { logger } from '@shared/utils/logger'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
-import type { Mock } from 'vitest'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
 
 // Mock Tauri opener
 vi.mock('@tauri-apps/plugin-opener', () => ({

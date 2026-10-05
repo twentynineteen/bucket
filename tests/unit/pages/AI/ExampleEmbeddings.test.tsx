@@ -3,8 +3,8 @@
  * Feature: 007-frontend-script-example
  */
 
-import * as useExampleManagementModule from '@features/AITools/ExampleEmbeddings/hooks/useExampleManagement'
 import { ExampleEmbeddings } from '@features/AITools/ExampleEmbeddings/components/ExampleEmbeddings'
+import * as useExampleManagementModule from '@features/AITools/ExampleEmbeddings/hooks/useExampleManagement'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

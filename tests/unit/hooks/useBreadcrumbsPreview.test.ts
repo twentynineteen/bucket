@@ -3,15 +3,15 @@
  * Purpose: Test breadcrumbs preview generation with concurrency control
  */
 
-import { useBreadcrumbsPreview } from '../../../src/features/Baker/hooks/useBreadcrumbsPreview'
 import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '@features/Baker'
-import { invoke } from '@tauri-apps/api/core'
 import {
   compareBreadcrumbsMeaningful,
   generateBreadcrumbsPreview
 } from '@shared/utils/breadcrumbs'
+import { invoke } from '@tauri-apps/api/core'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useBreadcrumbsPreview } from '../../../src/features/Baker/hooks/useBreadcrumbsPreview'
 
 // Mock Tauri API
 vi.mock('@tauri-apps/api/core', () => ({
@@ -186,7 +186,7 @@ describe('useBreadcrumbsPreview', () => {
 
       // Mock slow operation with controlled resolution
       let resolveInvoke: (value: any) => void
-      const slowPromise = new Promise((resolve) => {
+      const slowPromise = new Promise(resolve => {
         resolveInvoke = resolve
       })
 
@@ -345,7 +345,7 @@ describe('useBreadcrumbsPreview', () => {
 
       // Mock slow operation with controlled resolution
       let resolveInvoke: (value: any) => void
-      const slowPromise = new Promise((resolve) => {
+      const slowPromise = new Promise(resolve => {
         resolveInvoke = resolve
       })
 
@@ -404,7 +404,7 @@ describe('useBreadcrumbsPreview', () => {
         maxConcurrent = Math.max(maxConcurrent, currentConcurrent)
 
         // Simulate async work
-        await new Promise((resolve) => setTimeout(resolve, 10))
+        await new Promise(resolve => setTimeout(resolve, 10))
 
         currentConcurrent--
 
@@ -456,7 +456,7 @@ describe('useBreadcrumbsPreview', () => {
 
       mockInvoke.mockImplementation(async (command: string) => {
         // Simulate work
-        await new Promise((resolve) => setTimeout(resolve, 20))
+        await new Promise(resolve => setTimeout(resolve, 20))
         progressUpdates.push(result.current.previews.size)
 
         if (command === 'baker_scan_current_files') {

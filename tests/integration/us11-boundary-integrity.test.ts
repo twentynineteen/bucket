@@ -11,8 +11,8 @@
  * No mocking needed — tests read the actual source tree.
  */
 
-import { readFileSync, readdirSync, statSync } from 'fs'
-import { join, extname, basename } from 'path'
+import { readdirSync, readFileSync, statSync } from 'fs'
+import { basename, extname, join } from 'path'
 import { describe, expect, it } from 'vitest'
 
 // ============================================================================
@@ -76,7 +76,9 @@ function readFile(filePath: string): string {
  * Check if a file contains a direct @tauri-apps import.
  */
 function hasTauriImport(content: string): boolean {
-  return /from ['"]@tauri-apps\//.test(content) || /require\(['"]@tauri-apps\//.test(content)
+  return (
+    /from ['"]@tauri-apps\//.test(content) || /require\(['"]@tauri-apps\//.test(content)
+  )
 }
 
 /**
@@ -95,7 +97,7 @@ function hasFeatureImport(content: string): boolean {
  */
 function getFeatureNames(): string[] {
   try {
-    return readdirSync(FEATURES_DIR).filter((entry) => {
+    return readdirSync(FEATURES_DIR).filter(entry => {
       const fullPath = join(FEATURES_DIR, entry)
       try {
         return statSync(fullPath).isDirectory()
@@ -182,7 +184,7 @@ describe('US-11a — @tauri-apps imports confined to api.ts boundary files', () 
 
     for (const file of sharedFiles) {
       const relativePath = file.replace(PROJECT_ROOT + '/', '')
-      if (KNOWN_EXCEPTIONS.some((exc) => relativePath.includes(exc))) continue
+      if (KNOWN_EXCEPTIONS.some(exc => relativePath.includes(exc))) continue
 
       // Skip hooks that are documented as Tauri-dependent (not in barrel)
       const filename = basename(file)
@@ -193,7 +195,7 @@ describe('US-11a — @tauri-apps imports confined to api.ts boundary files', () 
         'useVersionCheck',
         'useWindowState'
       ]
-      if (TAURI_DEPENDENT_HOOKS.some((h) => filename.includes(h))) continue
+      if (TAURI_DEPENDENT_HOOKS.some(h => filename.includes(h))) continue
 
       const content = readFile(file)
       if (hasTauriImport(content)) {
@@ -249,7 +251,13 @@ describe('US-11a — @tauri-apps imports confined to api.ts boundary files', () 
 // ============================================================================
 
 describe('US-11b — api.ts boundary files properly encapsulate Tauri calls', () => {
-  const FEATURES_WITH_TAURI_API = ['Baker', 'BuildProject', 'Premiere', 'Settings', 'Upload']
+  const FEATURES_WITH_TAURI_API = [
+    'Baker',
+    'BuildProject',
+    'Premiere',
+    'Settings',
+    'Upload'
+  ]
 
   for (const feature of FEATURES_WITH_TAURI_API) {
     it(`src/features/${feature}/api.ts should contain @tauri-apps imports`, () => {
@@ -283,7 +291,10 @@ describe('US-11c — Feature barrel files use named exports only', () => {
     }
 
     if (violations.length > 0) {
-      console.error('Barrel files using wildcard exports (should use named exports):', violations)
+      console.error(
+        'Barrel files using wildcard exports (should use named exports):',
+        violations
+      )
     }
 
     expect(violations).toEqual([])
@@ -292,7 +303,15 @@ describe('US-11c — Feature barrel files use named exports only', () => {
   it('feature barrel files should have at least one named export', () => {
     const featuresMissingExports: string[] = []
 
-    const EXPECTED_FEATURES = ['AITools', 'Baker', 'BuildProject', 'Premiere', 'Settings', 'Trello', 'Upload']
+    const EXPECTED_FEATURES = [
+      'AITools',
+      'Baker',
+      'BuildProject',
+      'Premiere',
+      'Settings',
+      'Trello',
+      'Upload'
+    ]
 
     for (const feature of EXPECTED_FEATURES) {
       const barrelPath = join(FEATURES_DIR, feature, 'index.ts')
@@ -304,7 +323,12 @@ describe('US-11c — Feature barrel files use named exports only', () => {
 
       // Check that barrel has at least one export statement (named or type)
       // Use multiline-aware search
-      const hasExport = content.includes('export {') || content.includes('export type {') || content.includes('export function') || content.includes('export const') || content.includes('export class')
+      const hasExport =
+        content.includes('export {') ||
+        content.includes('export type {') ||
+        content.includes('export function') ||
+        content.includes('export const') ||
+        content.includes('export class')
       if (!hasExport) {
         featuresMissingExports.push(feature)
       }

@@ -75,18 +75,19 @@ On your Mac:
 
 Add these secrets to your GitHub repository at **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
 
-| Secret Name | Description | How to Get |
-|-------------|-------------|------------|
-| `APPLE_CERTIFICATE` | Base64-encoded .p12 certificate | See Step 5 below |
-| `APPLE_CERTIFICATE_PASSWORD` | Password for the .p12 file | The password you set when exporting |
-| `APPLE_SIGNING_IDENTITY` | Full certificate name | From Step 4 in Part 1 |
-| `APPLE_ID` | Apple Developer email | Your Apple ID email address |
-| `APPLE_PASSWORD` | App-specific password | From Part 2 |
-| `APPLE_TEAM_ID` | Apple Developer Team ID | From Part 3 |
+| Secret Name                  | Description                     | How to Get                          |
+| ---------------------------- | ------------------------------- | ----------------------------------- |
+| `APPLE_CERTIFICATE`          | Base64-encoded .p12 certificate | See Step 5 below                    |
+| `APPLE_CERTIFICATE_PASSWORD` | Password for the .p12 file      | The password you set when exporting |
+| `APPLE_SIGNING_IDENTITY`     | Full certificate name           | From Step 4 in Part 1               |
+| `APPLE_ID`                   | Apple Developer email           | Your Apple ID email address         |
+| `APPLE_PASSWORD`             | App-specific password           | From Part 2                         |
+| `APPLE_TEAM_ID`              | Apple Developer Team ID         | From Part 3                         |
 
 ### Step 5: Encode Certificate to Base64
 
 On macOS/Linux:
+
 ```bash
 base64 -i Bucket_Certificate.p12 | pbcopy
 ```
@@ -94,6 +95,7 @@ base64 -i Bucket_Certificate.p12 | pbcopy
 This copies the base64-encoded certificate to your clipboard. Paste this entire string (including any `=` padding at the end) into the `APPLE_CERTIFICATE` secret.
 
 On Windows (PowerShell):
+
 ```powershell
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("Bucket_Certificate.p12")) | Set-Clipboard
 ```
@@ -148,24 +150,29 @@ xcrun notarytool history --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --pas
 ### Common Issues
 
 **Error: "No identity found"**
+
 - Verify `APPLE_SIGNING_IDENTITY` matches exactly what's in Keychain Access
 - Check that the certificate was imported correctly in the workflow
 
 **Error: "The specified item could not be found in the keychain"**
+
 - The keychain import step failed - check that `APPLE_CERTIFICATE` is properly base64-encoded
 - Verify `APPLE_CERTIFICATE_PASSWORD` is correct
 
 **Error: "Unable to notarize app"**
+
 - Verify `APPLE_ID` is correct (must be your Apple Developer account email)
 - Check that `APPLE_PASSWORD` is an app-specific password, not your Apple ID password
 - Verify `APPLE_TEAM_ID` matches your Developer account
 
 **Notarization stuck "In Progress"**
+
 - As of January 2026, Apple's notarization service has experienced delays
 - Check status: `xcrun notarytool history --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID"`
 - Builds may take several hours to complete notarization
 
 **Error: "App is damaged and can't be opened"**
+
 - The app was not properly signed or notarized
 - Users need to download from the official GitHub release
 - Check code signature: `spctl -a -vvv -t install /path/to/Bucket.app`
@@ -191,6 +198,7 @@ xcrun notarytool info SUBMISSION_ID --apple-id "$APPLE_ID" --team-id "$APPLE_TEA
 ### CI Workflow (`ci.yml`)
 
 The CI workflow includes a `build-macos` job that:
+
 - **On Pull Requests**: Builds unsigned DMGs for testing
 - **On master/release branches**: Builds signed and notarized DMGs
 
@@ -199,6 +207,7 @@ This ensures PRs can build quickly without requiring secrets, while production b
 ### Publish Workflow (`publish.yml`)
 
 The publish workflow runs on every push to `release` branch and:
+
 1. Builds signed DMGs for both Apple Silicon (arm64) and Intel (x86_64)
 2. Notarizes the DMGs with Apple
 3. Creates a GitHub release with signed artifacts

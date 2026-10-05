@@ -22,7 +22,9 @@ describe('CreateProjectStep', () => {
   it('does not render the button when showing success', () => {
     render(<CreateProjectStep {...defaultProps} showSuccess={true} />)
 
-    expect(screen.queryByRole('button', { name: /create project/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /create project/i })
+    ).not.toBeInTheDocument()
   })
 
   it('disables the button when title is empty', () => {
@@ -30,7 +32,10 @@ describe('CreateProjectStep', () => {
 
     const button = screen.getByRole('button', { name: /create project/i })
     expect(button).toBeDisabled()
-    expect(button).toHaveAttribute('title', 'Please enter a project title and select a folder')
+    expect(button).toHaveAttribute(
+      'title',
+      'Please enter a project title and select a folder'
+    )
   })
 
   it('disables the button when folder is not selected', () => {
@@ -38,7 +43,10 @@ describe('CreateProjectStep', () => {
 
     const button = screen.getByRole('button', { name: /create project/i })
     expect(button).toBeDisabled()
-    expect(button).toHaveAttribute('title', 'Please enter a project title and select a folder')
+    expect(button).toHaveAttribute(
+      'title',
+      'Please enter a project title and select a folder'
+    )
   })
 
   it('disables the button when loading', () => {

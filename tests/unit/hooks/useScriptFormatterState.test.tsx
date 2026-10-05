@@ -8,13 +8,13 @@
  */
 
 import { useExampleManagement } from '@features/AITools/ExampleEmbeddings/hooks/useExampleManagement'
-import { useScriptFormatterState } from '@features/AITools/ScriptFormatter/hooks/useScriptFormatterState'
 import { useOllamaEmbedding } from '@features/AITools/ScriptFormatter/hooks/useOllamaEmbedding'
+import { useScriptFormatterState } from '@features/AITools/ScriptFormatter/hooks/useScriptFormatterState'
 import { useScriptWorkflow } from '@features/AITools/ScriptFormatter/hooks/useScriptWorkflow'
+import { ExampleCategory } from '@shared/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { ExampleCategory } from '@shared/types'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock the composed hooks
@@ -247,7 +247,11 @@ describe('useScriptFormatterState', () => {
 
       // Act
       await act(async () => {
-        await result.current.handleSaveAsExample('My Example', ExampleCategory.EDUCATIONAL, 4)
+        await result.current.handleSaveAsExample(
+          'My Example',
+          ExampleCategory.EDUCATIONAL,
+          4
+        )
       })
 
       // Assert - the UploadRequest shape the Tauri command actually accepts
@@ -275,7 +279,11 @@ describe('useScriptFormatterState', () => {
       const { result } = renderHook(() => useScriptFormatterState(), { wrapper })
 
       await act(async () => {
-        await result.current.handleSaveAsExample('My Example', ExampleCategory.BUSINESS, 3)
+        await result.current.handleSaveAsExample(
+          'My Example',
+          ExampleCategory.BUSINESS,
+          3
+        )
       })
 
       expect(mockEmbedding.embed).toHaveBeenCalledWith('Raw script')
@@ -318,7 +326,11 @@ describe('useScriptFormatterState', () => {
 
       // Act
       await act(async () => {
-        await result.current.handleSaveAsExample('Example', ExampleCategory.EDUCATIONAL, 5)
+        await result.current.handleSaveAsExample(
+          'Example',
+          ExampleCategory.EDUCATIONAL,
+          5
+        )
       })
 
       // Assert
@@ -404,7 +416,11 @@ describe('useScriptFormatterState', () => {
       // Act & Assert
       for (const score of scores) {
         await act(async () => {
-          await result.current.handleSaveAsExample('Example', ExampleCategory.BUSINESS, score)
+          await result.current.handleSaveAsExample(
+            'Example',
+            ExampleCategory.BUSINESS,
+            score
+          )
         })
 
         expect(mockExampleManagement.uploadExample.mutateAsync).toHaveBeenCalledWith(

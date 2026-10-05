@@ -5,12 +5,12 @@
  */
 
 import {
-  THEMES,
   getAllThemeIds,
+  getGroupedThemes,
   getThemeById,
   getThemesByCategory,
   isCustomTheme,
-  getGroupedThemes,
+  THEMES
 } from '@shared/ui/theme/themes'
 import { describe, expect, it } from 'vitest'
 
@@ -32,12 +32,12 @@ describe('themes constants', () => {
         'solarized-light',
         'github-light',
         'nord-light',
-        'one-light',
+        'one-light'
       ])
     })
 
     it('has complete metadata for each theme', () => {
-      Object.values(THEMES).forEach((theme) => {
+      Object.values(THEMES).forEach(theme => {
         expect(theme).toHaveProperty('id')
         expect(theme).toHaveProperty('name')
         expect(theme).toHaveProperty('description')
@@ -115,7 +115,7 @@ describe('themes constants', () => {
         'solarized-light',
         'github-light',
         'nord-light',
-        'one-light',
+        'one-light'
       ])
     })
 
@@ -158,26 +158,26 @@ describe('themes constants', () => {
     it('returns 6 light themes', () => {
       const lightThemes = getThemesByCategory('light')
       expect(lightThemes).toHaveLength(6)
-      expect(lightThemes.map((t) => t.id)).toEqual([
+      expect(lightThemes.map(t => t.id)).toEqual([
         'light',
         'catppuccin-latte',
         'solarized-light',
         'github-light',
         'nord-light',
-        'one-light',
+        'one-light'
       ])
     })
 
     it('returns 6 dark themes', () => {
       const darkThemes = getThemesByCategory('dark')
       expect(darkThemes).toHaveLength(6)
-      expect(darkThemes.map((t) => t.id)).toEqual([
+      expect(darkThemes.map(t => t.id)).toEqual([
         'dark',
         'dracula',
         'tokyo-night',
         'catppuccin-frappe',
         'catppuccin-macchiato',
-        'catppuccin-mocha',
+        'catppuccin-mocha'
       ])
     })
 
@@ -227,13 +227,13 @@ describe('themes constants', () => {
       const groups = getGroupedThemes()
       const lightGroup = groups[1]
       expect(lightGroup.themes).toHaveLength(6)
-      expect(lightGroup.themes.map((t) => t.id)).toEqual([
+      expect(lightGroup.themes.map(t => t.id)).toEqual([
         'light',
         'catppuccin-latte',
         'solarized-light',
         'github-light',
         'nord-light',
-        'one-light',
+        'one-light'
       ])
     })
 
@@ -241,13 +241,13 @@ describe('themes constants', () => {
       const groups = getGroupedThemes()
       const darkGroup = groups[2]
       expect(darkGroup.themes).toHaveLength(6)
-      expect(darkGroup.themes.map((t) => t.id)).toEqual([
+      expect(darkGroup.themes.map(t => t.id)).toEqual([
         'dark',
         'dracula',
         'tokyo-night',
         'catppuccin-frappe',
         'catppuccin-macchiato',
-        'catppuccin-mocha',
+        'catppuccin-mocha'
       ])
     })
   })

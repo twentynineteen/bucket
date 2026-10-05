@@ -15,9 +15,9 @@
  * restored in beforeEach.
  */
 
-import { useScriptWorkflow } from '../../src/features/AITools/ScriptFormatter/hooks/useScriptWorkflow'
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useScriptWorkflow } from '../../src/features/AITools/ScriptFormatter/hooks/useScriptWorkflow'
 
 // ============================================================================
 // vi.hoisted() — declare mock functions before vi.mock() hoisting runs
@@ -127,18 +127,14 @@ describe('US-08 — AI Script Formatter: Workflow Navigation', () => {
     localStorage.clear()
 
     // mockReset: true clears vi.fn() implementations — restore sub-hook mocks
-    const { useScriptUpload } = await import(
-      '../../src/features/AITools/ScriptFormatter/hooks/useScriptUpload'
-    )
-    const { useAIProcessing } = await import(
-      '../../src/features/AITools/ScriptFormatter/hooks/useAIProcessing'
-    )
-    const { useScriptReview } = await import(
-      '../../src/features/AITools/ScriptFormatter/hooks/useScriptReview'
-    )
-    const { useScriptDownload } = await import(
-      '../../src/features/AITools/ScriptFormatter/hooks/useScriptDownload'
-    )
+    const { useScriptUpload } =
+      await import('../../src/features/AITools/ScriptFormatter/hooks/useScriptUpload')
+    const { useAIProcessing } =
+      await import('../../src/features/AITools/ScriptFormatter/hooks/useAIProcessing')
+    const { useScriptReview } =
+      await import('../../src/features/AITools/ScriptFormatter/hooks/useScriptReview')
+    const { useScriptDownload } =
+      await import('../../src/features/AITools/ScriptFormatter/hooks/useScriptDownload')
 
     vi.mocked(useScriptUpload).mockReturnValue({
       document: null,

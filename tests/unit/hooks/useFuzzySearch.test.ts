@@ -1,6 +1,6 @@
-import { renderHook, act } from '@testing-library/react'
-import { describe, test, expect } from 'vitest'
 import { useFuzzySearch } from '@shared/hooks/useFuzzySearch'
+import { act, renderHook } from '@testing-library/react'
+import { describe, expect, test } from 'vitest'
 
 interface TestItem {
   id: string
@@ -19,25 +19,21 @@ describe('useFuzzySearch', () => {
 
   describe('basic search functionality', () => {
     test('should return all items when search term is empty', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch(sampleItems, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(sampleItems, { keys: ['name'] }))
 
       expect(result.current.results).toEqual(sampleItems)
       expect(result.current.searchTerm).toBe('')
     })
 
     test('should filter items based on search term', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch(sampleItems, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(sampleItems, { keys: ['name'] }))
 
       act(() => {
         result.current.setSearchTerm('Apple')
       })
 
       expect(result.current.results).toHaveLength(2)
-      expect(result.current.results.map((item) => item.name)).toEqual([
+      expect(result.current.results.map(item => item.name)).toEqual([
         'Apple iPhone',
         'Apple Watch'
       ])
@@ -53,7 +49,7 @@ describe('useFuzzySearch', () => {
       })
 
       expect(result.current.results).toHaveLength(2)
-      expect(result.current.results.map((item) => item.id)).toEqual(['1', '2'])
+      expect(result.current.results.map(item => item.id)).toEqual(['1', '2'])
     })
 
     test('should handle fuzzy matching', () => {
@@ -66,15 +62,11 @@ describe('useFuzzySearch', () => {
       })
 
       expect(result.current.results.length).toBeGreaterThan(0)
-      expect(result.current.results.some((item) => item.name.includes('Apple'))).toBe(
-        true
-      )
+      expect(result.current.results.some(item => item.name.includes('Apple'))).toBe(true)
     })
 
     test('should return empty array for no matches', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch(sampleItems, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(sampleItems, { keys: ['name'] }))
 
       act(() => {
         result.current.setSearchTerm('xyz123nonexistent')
@@ -84,9 +76,7 @@ describe('useFuzzySearch', () => {
     })
 
     test('should trim whitespace from search term', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch(sampleItems, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(sampleItems, { keys: ['name'] }))
 
       act(() => {
         result.current.setSearchTerm('   ')
@@ -224,9 +214,7 @@ describe('useFuzzySearch', () => {
 
   describe('threshold configuration', () => {
     test('should use default threshold when not specified', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch(sampleItems, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(sampleItems, { keys: ['name'] }))
 
       act(() => {
         result.current.setSearchTerm('Appl')
@@ -263,9 +251,7 @@ describe('useFuzzySearch', () => {
 
   describe('edge cases', () => {
     test('should handle empty items array', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch([], { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch([], { keys: ['name'] }))
 
       act(() => {
         result.current.setSearchTerm('test')
@@ -277,9 +263,7 @@ describe('useFuzzySearch', () => {
     test('should handle single item', () => {
       const singleItem = [{ id: '1', name: 'Only Item', category: 'Test' }]
 
-      const { result } = renderHook(() =>
-        useFuzzySearch(singleItem, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(singleItem, { keys: ['name'] }))
 
       act(() => {
         result.current.setSearchTerm('Only')
@@ -289,9 +273,7 @@ describe('useFuzzySearch', () => {
     })
 
     test('should handle special characters in search term', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch(sampleItems, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(sampleItems, { keys: ['name'] }))
 
       act(() => {
         result.current.setSearchTerm('App!e@#')
@@ -302,9 +284,7 @@ describe('useFuzzySearch', () => {
     })
 
     test('should handle very long search terms', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch(sampleItems, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(sampleItems, { keys: ['name'] }))
 
       const longSearchTerm = 'a'.repeat(1000)
 
@@ -337,9 +317,7 @@ describe('useFuzzySearch', () => {
 
   describe('search term updates', () => {
     test('should update search term correctly', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch(sampleItems, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(sampleItems, { keys: ['name'] }))
 
       expect(result.current.searchTerm).toBe('')
 
@@ -357,9 +335,7 @@ describe('useFuzzySearch', () => {
     })
 
     test('should clear search results when search term is cleared', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch(sampleItems, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(sampleItems, { keys: ['name'] }))
 
       act(() => {
         result.current.setSearchTerm('Apple')
@@ -402,9 +378,7 @@ describe('useFuzzySearch', () => {
     })
 
     test('should not cause memory leaks on repeated searches', () => {
-      const { result } = renderHook(() =>
-        useFuzzySearch(sampleItems, { keys: ['name'] })
-      )
+      const { result } = renderHook(() => useFuzzySearch(sampleItems, { keys: ['name'] }))
 
       // Perform many searches
       for (let i = 0; i < 100; i++) {

@@ -24,12 +24,11 @@
  *   touch, not demonstrating the fix. Do not read it as evidence of one.
  */
 import { expect, test, type Page } from '@playwright/test'
-
 import {
   DEFAULT_FOLDER,
+  installBackgroundMocks,
   LINKED_VIDEO_TITLE,
   PROJECT_NAME,
-  installBackgroundMocks,
   type BackgroundMockOptions
 } from '../fixtures/posterframe-backgrounds.fixture'
 
@@ -46,7 +45,10 @@ async function openProject(page: Page, options: BackgroundMockOptions) {
   await page.goto('/ingest/baker')
 
   // Pick the drive. The mock returns a root path for any titled folder dialog.
-  await page.getByRole('button', { name: /select|choose|browse/i }).first().click()
+  await page
+    .getByRole('button', { name: /select|choose|browse/i })
+    .first()
+    .click()
 
   await page
     .getByRole('button', { name: /^(start )?scan/i })
@@ -84,7 +86,10 @@ test.describe('Baker > Add Video dialog', () => {
   }) => {
     await openProject(page, { scenario: 'missing' })
 
-    await page.getByRole('button', { name: /^add video$/i }).first().click()
+    await page
+      .getByRole('button', { name: /^add video$/i })
+      .first()
+      .click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
     await openUploadTabWithFile(page)
@@ -101,7 +106,10 @@ test.describe('Baker > Add Video dialog', () => {
   test('reports an empty folder as empty, not as unreadable', async ({ page }) => {
     await openProject(page, { scenario: 'empty' })
 
-    await page.getByRole('button', { name: /^add video$/i }).first().click()
+    await page
+      .getByRole('button', { name: /^add video$/i })
+      .first()
+      .click()
     await openUploadTabWithFile(page)
 
     await expect(page.getByText(/contains no image files/i)).toBeVisible()
@@ -114,7 +122,10 @@ test.describe('Baker > Add Video dialog', () => {
   }) => {
     await openProject(page, { scenario: 'ready', fontInstalled: false })
 
-    await page.getByRole('button', { name: /^add video$/i }).first().click()
+    await page
+      .getByRole('button', { name: /^add video$/i })
+      .first()
+      .click()
     await openUploadTabWithFile(page)
 
     await expect(page.getByText(/requires Cabrito\.otf/i)).toBeVisible()
@@ -127,7 +138,10 @@ test.describe('Baker > Add Video dialog', () => {
   }) => {
     await openProject(page, { scenario: 'ready' })
 
-    await page.getByRole('button', { name: /^add video$/i }).first().click()
+    await page
+      .getByRole('button', { name: /^add video$/i })
+      .first()
+      .click()
     await openUploadTabWithFile(page)
 
     await expect(
@@ -145,7 +159,10 @@ test.describe('Baker > Set poster frame dialog', () => {
     await openProject(page, { scenario: 'missing', withLinkedVideo: true })
 
     await expect(page.getByText(LINKED_VIDEO_TITLE)).toBeVisible()
-    await page.getByRole('button', { name: /^set poster frame$/i }).first().click()
+    await page
+      .getByRole('button', { name: /^set poster frame$/i })
+      .first()
+      .click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
@@ -159,7 +176,10 @@ test.describe('Baker > Set poster frame dialog', () => {
   test('says the folder is unknown when settings could not be read', async ({ page }) => {
     await openProject(page, { settingsUnreadable: true, withLinkedVideo: true })
 
-    await page.getByRole('button', { name: /^set poster frame$/i }).first().click()
+    await page
+      .getByRole('button', { name: /^set poster frame$/i })
+      .first()
+      .click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByText(/could not read your settings/i)).toBeVisible()

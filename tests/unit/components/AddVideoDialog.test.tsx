@@ -5,19 +5,17 @@
  * TDD Phase: RED - These tests expect the new grouped parameter interface
  */
 
+import { QueryClientProvider } from '@tanstack/react-query'
+import { render as baseRender, screen, type RenderOptions } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createTestQueryClient } from '@tests/utils/queryClientWrapper'
+import React from 'react'
+import { describe, expect, test, vi } from 'vitest'
 import {
   AddVideoDialog,
   type AddVideoDialogProps,
   type PosterFrameDialogState
 } from '../../../src/features/Baker/components/AddVideoDialog'
-import { render as baseRender, screen } from '@testing-library/react'
-import type { RenderOptions } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import React from 'react'
-import { describe, expect, test, vi } from 'vitest'
-
-import { QueryClientProvider } from '@tanstack/react-query'
-import { createTestQueryClient } from '@tests/utils/queryClientWrapper'
 
 /**
  * AddVideoDialog now renders SproutFolderPicker, which reads folder levels
@@ -26,11 +24,12 @@ import { createTestQueryClient } from '@tests/utils/queryClientWrapper'
 const render = (ui: React.ReactElement, options?: RenderOptions) =>
   baseRender(ui, {
     wrapper: ({ children }) => (
-      <QueryClientProvider client={createTestQueryClient()}>{children}</QueryClientProvider>
+      <QueryClientProvider client={createTestQueryClient()}>
+        {children}
+      </QueryClientProvider>
     ),
     ...options
   })
-
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock('framer-motion', () => ({
@@ -255,7 +254,7 @@ describe('AddVideoDialog - URL Mode State Group', () => {
     // When fetching, button should be disabled and show no text (just spinner icon)
     const buttons = screen.getAllByRole('button')
     const fetchButton = buttons.find(
-      (btn) => btn.hasAttribute('disabled') && btn.closest('.flex')
+      btn => btn.hasAttribute('disabled') && btn.closest('.flex')
     )
     expect(fetchButton).toBeDisabled()
   })

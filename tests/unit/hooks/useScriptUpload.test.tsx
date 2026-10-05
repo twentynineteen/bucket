@@ -9,9 +9,9 @@
  * - Transition to next workflow step
  */
 
-import type { ScriptDocument } from '@shared/types/scriptFormatter'
 import { useDocxParser } from '@features/AITools/ScriptFormatter/hooks/useDocxParser'
 import { useScriptUpload } from '@features/AITools/ScriptFormatter/hooks/useScriptUpload'
+import type { ScriptDocument } from '@shared/types/scriptFormatter'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 

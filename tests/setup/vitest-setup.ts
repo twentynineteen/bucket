@@ -72,7 +72,11 @@ vi.mock('framer-motion', () => {
               ...domProps
             } = props
             // Add data-projection-id to simulate framer-motion element
-            return React.createElement(prop, { ...domProps, 'data-projection-id': '1' }, children)
+            return React.createElement(
+              prop,
+              { ...domProps, 'data-projection-id': '1' },
+              children
+            )
           }
       }
     ),
@@ -129,7 +133,11 @@ vi.mock('framer-motion', () => {
               ...domProps
             } = props
             // Add data-projection-id to simulate framer-motion element
-            return React.createElement(prop, { ...domProps, 'data-projection-id': '1' }, children)
+            return React.createElement(
+              prop,
+              { ...domProps, 'data-projection-id': '1' },
+              children
+            )
           }
       }
     )

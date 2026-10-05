@@ -114,8 +114,8 @@ export async function setupSproutMocks(
         if (cfg.failWith) throw cfg.failWith
 
         return {
-          folders: cfg.folders.filter((f) => f.parent_id === parentId),
-          total: cfg.folders.filter((f) => f.parent_id === parentId).length,
+          folders: cfg.folders.filter(f => f.parent_id === parentId),
+          total: cfg.folders.filter(f => f.parent_id === parentId).length,
           truncated: cfg.truncated,
           rate_limit_remaining: cfg.rateLimitRemaining,
           rate_limit_reset: null

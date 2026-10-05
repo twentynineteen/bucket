@@ -8,9 +8,9 @@
  * Mocking strategy: mock the Settings api.ts module; no direct @tauri-apps imports.
  */
 
-import { useAIProvider } from '../../src/features/Settings/hooks/useAIProvider'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useAIProvider } from '../../src/features/Settings/hooks/useAIProvider'
 
 // Mock the Settings api.ts layer (single I/O boundary for Settings module)
 vi.mock('../../src/features/Settings/api', () => ({
@@ -101,13 +101,17 @@ const MOCK_PROVIDERS = [
     id: 'ollama',
     type: 'ollama',
     displayName: 'Ollama (Local)',
-    validateConnection: vi.fn().mockResolvedValue({ success: true, latencyMs: 12, modelsFound: 2 })
+    validateConnection: vi
+      .fn()
+      .mockResolvedValue({ success: true, latencyMs: 12, modelsFound: 2 })
   },
   {
     id: 'openai',
     type: 'openai',
     displayName: 'OpenAI',
-    validateConnection: vi.fn().mockResolvedValue({ success: true, latencyMs: 80, modelsFound: 5 })
+    validateConnection: vi
+      .fn()
+      .mockResolvedValue({ success: true, latencyMs: 80, modelsFound: 5 })
   }
 ]
 
@@ -121,12 +125,13 @@ describe('US-09 — Settings: AI Provider Management', () => {
     localStorage.clear()
 
     // mockReset: true clears implementations between tests — restore them here
-    const { providerRegistry, getDefaultConfig } = await import('@shared/services/ai/providerConfig')
+    const { providerRegistry, getDefaultConfig } =
+      await import('@shared/services/ai/providerConfig')
     const { validateAIConnection } = await import('../../src/features/Settings/api')
 
     vi.mocked(providerRegistry.list).mockReturnValue(MOCK_PROVIDERS as any)
-    vi.mocked(providerRegistry.get).mockImplementation((id: string) =>
-      MOCK_PROVIDERS.find((p) => p.id === id) as any ?? null
+    vi.mocked(providerRegistry.get).mockImplementation(
+      (id: string) => (MOCK_PROVIDERS.find(p => p.id === id) as any) ?? null
     )
     vi.mocked(getDefaultConfig).mockImplementation((id: string) => ({
       apiKey: '',
@@ -251,7 +256,9 @@ describe('US-09 — Settings: AI Provider Management', () => {
     })
 
     await waitFor(() => {
-      const ollamaProvider = result.current.availableProviders.find((p) => p.id === 'ollama')
+      const ollamaProvider = result.current.availableProviders.find(
+        p => p.id === 'ollama'
+      )
       expect(ollamaProvider?.status).toBe('configured')
     })
   })
@@ -275,7 +282,9 @@ describe('US-09 — Settings: AI Provider Management', () => {
     })
 
     await waitFor(() => {
-      const ollamaProvider = result.current.availableProviders.find((p) => p.id === 'ollama')
+      const ollamaProvider = result.current.availableProviders.find(
+        p => p.id === 'ollama'
+      )
       expect(ollamaProvider?.status).toBe('error')
     })
   })
@@ -315,7 +324,7 @@ describe('US-09 — Settings: AI Provider Management', () => {
       })
     })
 
-    const ollamaProvider = result.current.availableProviders.find((p) => p.id === 'ollama')
+    const ollamaProvider = result.current.availableProviders.find(p => p.id === 'ollama')
     expect(ollamaProvider?.configuration.apiKey).toBe('new-key')
     // Active provider should still be ollama (unchanged)
     expect(result.current.activeProvider?.id).toBe('ollama')
@@ -364,8 +373,8 @@ describe('US-09 — Settings: AI Provider Management', () => {
   it('US-09l — should list providers with correct display names', () => {
     const { result } = renderHook(() => useAIProvider())
 
-    const ollama = result.current.availableProviders.find((p) => p.id === 'ollama')
-    const openai = result.current.availableProviders.find((p) => p.id === 'openai')
+    const ollama = result.current.availableProviders.find(p => p.id === 'ollama')
+    const openai = result.current.availableProviders.find(p => p.id === 'openai')
 
     expect(ollama?.displayName).toBe('Ollama (Local)')
     expect(openai?.displayName).toBe('OpenAI')

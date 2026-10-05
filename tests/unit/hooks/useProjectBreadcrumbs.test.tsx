@@ -9,8 +9,8 @@
  * - Update app store with breadcrumbs data
  */
 
-import type { FootageFile } from '@features/BuildProject'
 import { useProjectBreadcrumbs } from '@features/Baker'
+import type { FootageFile } from '@features/BuildProject'
 import { appStore } from '@shared/store'
 import { invoke } from '@tauri-apps/api/core'
 import { writeTextFile } from '@tauri-apps/plugin-fs'

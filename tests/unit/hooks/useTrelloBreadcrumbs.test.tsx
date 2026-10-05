@@ -4,8 +4,11 @@
  */
 
 import { useAppendBreadcrumbs } from '@features/Baker'
-import { useParsedTrelloDescription, useTrelloBreadcrumbs } from '@features/Trello'
-import type { TrelloCard } from '@features/Trello'
+import {
+  useParsedTrelloDescription,
+  useTrelloBreadcrumbs,
+  type TrelloCard
+} from '@features/Trello'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
@@ -287,7 +290,9 @@ describe('useTrelloBreadcrumbs', () => {
         await result.current.handleAppendBreadcrumbs()
       })
 
-      expect(mockToastError).toHaveBeenCalledWith('Failed to save breadcrumbs: String error')
+      expect(mockToastError).toHaveBeenCalledWith(
+        'Failed to save breadcrumbs: String error'
+      )
       expect(consoleErrorSpy).toHaveBeenCalled()
 
       consoleErrorSpy.mockRestore()

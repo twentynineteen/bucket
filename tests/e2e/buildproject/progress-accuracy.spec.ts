@@ -5,11 +5,11 @@
  * Tests monotonic progress, checkpoint accuracy, and resilience to UI interaction.
  */
 
-import { test, expect } from '@playwright/test'
-import { BuildProjectPage } from '../pages/BuildProjectPage'
-import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
-import { SCENARIOS, generateMockFiles } from '../utils/large-file-simulator'
+import { expect, test } from '@playwright/test'
 import { TEST_PROJECTS } from '../fixtures/mock-file-data'
+import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
+import { BuildProjectPage } from '../pages/BuildProjectPage'
+import { generateMockFiles, SCENARIOS } from '../utils/large-file-simulator'
 
 test.describe('Progress Accuracy - Basic Tests', () => {
   test('progress updates correctly across files', async ({ page }) => {
@@ -72,10 +72,10 @@ test.describe('Progress Accuracy - Basic Tests', () => {
     const events = await mock.getEmittedEvents()
 
     // Verify all checkpoints were hit via events
-    const hit25 = events.some((e) => e.percent >= 25)
-    const hit50 = events.some((e) => e.percent >= 50)
-    const hit75 = events.some((e) => e.percent >= 75)
-    const hit100 = events.some((e) => e.percent >= 100)
+    const hit25 = events.some(e => e.percent >= 25)
+    const hit50 = events.some(e => e.percent >= 50)
+    const hit75 = events.some(e => e.percent >= 75)
+    const hit100 = events.some(e => e.percent >= 100)
 
     expect(hit25).toBe(true)
     expect(hit50).toBe(true)
@@ -163,7 +163,7 @@ test.describe('Progress Accuracy - Basic Tests', () => {
     const events = await mock.getEmittedEvents()
 
     // No progress value should exceed 100%
-    events.forEach((e) => {
+    events.forEach(e => {
       expect(e.percent).toBeLessThanOrEqual(100)
     })
 

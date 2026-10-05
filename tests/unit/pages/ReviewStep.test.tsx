@@ -4,11 +4,10 @@
  * Purpose: Test review step UI and button interactions
  */
 
+import { ReviewStep } from '@features/AITools/ScriptFormatter/components/steps/ReviewStep'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-
-import { ReviewStep } from '@features/AITools/ScriptFormatter/components/steps/ReviewStep'
 
 // Mock DiffEditor component to avoid Monaco Editor dependencies
 vi.mock('@features/AITools/ScriptFormatter/components/DiffEditor', () => ({

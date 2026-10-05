@@ -1,5 +1,10 @@
 import * as useMobileHook from '@shared/hooks/use-mobile'
-import { Sidebar, SidebarInset, SidebarRail, SidebarTrigger } from '@shared/ui/sidebar/Sidebar'
+import {
+  Sidebar,
+  SidebarInset,
+  SidebarRail,
+  SidebarTrigger
+} from '@shared/ui/sidebar/Sidebar'
 import { SidebarProvider } from '@shared/ui/sidebar/SidebarProvider'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

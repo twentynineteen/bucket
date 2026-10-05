@@ -3,11 +3,10 @@
  * Handles video info operations for Trello cards
  */
 
-import { useAppendVideoInfo } from '@features/Trello/hooks/useAppendVideoInfo'
-import { useTrelloVideoInfo } from '@features/Trello'
-import { createDefaultSproutUploadResponse } from '@features/Trello/types'
 import { useVideoInfoBlock } from '@features/BuildProject'
-import type { TrelloCard } from '@features/Trello'
+import { useTrelloVideoInfo, type TrelloCard } from '@features/Trello'
+import { useAppendVideoInfo } from '@features/Trello/hooks/useAppendVideoInfo'
+import { createDefaultSproutUploadResponse } from '@features/Trello/types'
 import type { SproutUploadResponse } from '@shared/types/types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'

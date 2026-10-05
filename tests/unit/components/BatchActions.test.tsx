@@ -14,12 +14,11 @@
  * Total: 10 tests
  */
 
-import { BatchActions } from '../../../src/features/Baker/components/BatchActions'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
-import type { Mock } from 'vitest'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
+import { BatchActions } from '../../../src/features/Baker/components/BatchActions'
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock('framer-motion', () => ({

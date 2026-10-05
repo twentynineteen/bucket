@@ -14,7 +14,7 @@ describe('ThemeColorSwatch', () => {
     background: '0 0% 100%',
     foreground: '224 71.4% 4.1%',
     primary: '220.9 39.3% 11%',
-    accent: '220 14.3% 95.9%',
+    accent: '220 14.3% 95.9%'
   }
 
   it('renders a swatch with 4 color bars', () => {

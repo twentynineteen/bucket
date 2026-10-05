@@ -1,0 +1,7 @@
+# Prettier reads only the root .gitignore, so nested build output is listed here.
+src-tauri/target
+src-tauri/gen
+
+# Generated files
+CHANGELOG.md
+.planning

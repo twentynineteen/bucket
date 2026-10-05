@@ -14,13 +14,12 @@
  */
 
 import { logger } from '@shared/utils/logger'
-import { FolderSelector } from '../../../src/features/Baker/components/FolderSelector'
 import { open } from '@tauri-apps/plugin-dialog'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
-import type { Mock } from 'vitest'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
+import { FolderSelector } from '../../../src/features/Baker/components/FolderSelector'
 
 // Mock Tauri dialog
 vi.mock('@tauri-apps/plugin-dialog', () => ({

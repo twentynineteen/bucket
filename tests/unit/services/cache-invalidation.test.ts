@@ -46,7 +46,7 @@ describe('CacheInvalidationService', () => {
       await service.invalidateUserData()
 
       const calls = invalidateSpy.mock.calls.map(([arg]) => arg)
-      const invalidatedKeys = calls.map((c) => (c as { queryKey: unknown }).queryKey)
+      const invalidatedKeys = calls.map(c => (c as { queryKey: unknown }).queryKey)
       expect(invalidatedKeys).not.toContainEqual(queryKeys.app.version())
     })
   })
@@ -346,9 +346,8 @@ describe('CacheInvalidationService', () => {
     })
 
     it('should initialize global cache service', async () => {
-      const { initializeCacheService, CacheInvalidationService } = await import(
-        '@shared/services/cache-invalidation'
-      )
+      const { initializeCacheService, CacheInvalidationService } =
+        await import('@shared/services/cache-invalidation')
       const globalService = initializeCacheService(queryClient)
 
       expect(globalService).toBeInstanceOf(CacheInvalidationService)

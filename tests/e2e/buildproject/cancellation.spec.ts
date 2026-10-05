@@ -5,11 +5,11 @@
  * Validates proper cleanup, state management, and recovery scenarios.
  */
 
-import { test, expect } from '@playwright/test'
-import { BuildProjectPage } from '../pages/BuildProjectPage'
-import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
-import { SCENARIOS, generateMockFiles } from '../utils/large-file-simulator'
+import { expect, test } from '@playwright/test'
 import { TEST_PROJECTS } from '../fixtures/mock-file-data'
+import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
+import { BuildProjectPage } from '../pages/BuildProjectPage'
+import { generateMockFiles, SCENARIOS } from '../utils/large-file-simulator'
 
 test.describe('Transfer Cancellation - User Initiated', { tag: '@slow' }, () => {
   test('can cancel operation mid-transfer via mock', async ({ page }) => {
@@ -85,9 +85,10 @@ test.describe('Transfer Cancellation - User Initiated', { tag: '@slow' }, () => 
 
     // Get current progress before cancellation
     const eventsBeforeCancel = await mock.getDetailedEvents()
-    const progressBeforeCancel = eventsBeforeCancel.length > 0
-      ? eventsBeforeCancel[eventsBeforeCancel.length - 1].percent
-      : 0
+    const progressBeforeCancel =
+      eventsBeforeCancel.length > 0
+        ? eventsBeforeCancel[eventsBeforeCancel.length - 1].percent
+        : 0
 
     // Cancel
     await mock.cancelOperation()

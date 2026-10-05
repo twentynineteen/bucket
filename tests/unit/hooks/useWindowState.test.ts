@@ -3,10 +3,10 @@
  * Purpose: Test window position and size persistence with throttling
  */
 
-import { useWindowState } from '../../../src/shared/hooks/useWindowState'
 import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window'
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useWindowState } from '../../../src/shared/hooks/useWindowState'
 
 // Issue #144: the hook now no-ops outside the Tauri webview, so these
 // in-Tauri behaviours need the bridge reported as present.

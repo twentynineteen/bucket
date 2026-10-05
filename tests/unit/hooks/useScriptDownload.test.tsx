@@ -9,9 +9,9 @@
  * - Download state and errors
  */
 
-import type { ScriptDocument } from '@shared/types/scriptFormatter'
 import { useDocxGenerator } from '@features/AITools/ScriptFormatter/hooks/useDocxGenerator'
 import { useScriptDownload } from '@features/AITools/ScriptFormatter/hooks/useScriptDownload'
+import type { ScriptDocument } from '@shared/types/scriptFormatter'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 

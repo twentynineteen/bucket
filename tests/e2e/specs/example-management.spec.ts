@@ -15,7 +15,6 @@
  * happens to have Ollama listening.
  */
 import { expect, test, type Page } from '@playwright/test'
-
 import { mockOllamaEmbedding, setupTauriMocks } from '../fixtures/mocks.fixture'
 
 const BUNDLED_ONE = 'Educational Script Example'

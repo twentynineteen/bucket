@@ -1,9 +1,9 @@
 import process from 'node:process'
 import react from '@vitejs/plugin-react'
-// vitest/config, not vite: only this defineConfig knows about the `test` key.
-import { defineConfig } from 'vitest/config'
 import monacoEditorPluginModule from 'vite-plugin-monaco-editor'
 import tsconfigPaths from 'vite-tsconfig-paths'
+// vitest/config, not vite: only this defineConfig knows about the `test` key.
+import { defineConfig } from 'vitest/config'
 
 const monacoEditorPlugin = (monacoEditorPluginModule as any).default
 

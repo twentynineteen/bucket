@@ -9,10 +9,9 @@
  * real dialog can check this, hence e2e.
  */
 import { expect, test, type Page } from '@playwright/test'
-
 import {
-  PROJECT_NAME,
-  installBackgroundMocks
+  installBackgroundMocks,
+  PROJECT_NAME
 } from '../fixtures/posterframe-backgrounds.fixture'
 
 /**
@@ -25,7 +24,7 @@ import {
 async function openFolderMenu(page: Page) {
   await installBackgroundMocks(page, { bakerJourney: true })
   await page.addInitScript(
-    (folders) => {
+    folders => {
       const win = window as unknown as {
         __TAURI_INTERNALS__: {
           invoke: (cmd: string, args?: unknown) => Promise<unknown>
@@ -52,7 +51,10 @@ async function openFolderMenu(page: Page) {
   )
 
   await page.goto('/ingest/baker')
-  await page.getByRole('button', { name: /select|choose|browse/i }).first().click()
+  await page
+    .getByRole('button', { name: /select|choose|browse/i })
+    .first()
+    .click()
   await page
     .getByRole('button', { name: /^(start )?scan/i })
     .first()
@@ -81,17 +83,17 @@ async function openFolderMenu(page: Page) {
 }
 
 test.describe('folder picker inside the Add Video dialog (#191)', () => {
-  test('b1_wheel_scrolls_the_menu_despite_the_dialogs_scroll_lock', async ({
-    page
-  }) => {
+  test('b1_wheel_scrolls_the_menu_despite_the_dialogs_scroll_lock', async ({ page }) => {
     const menu = await openFolderMenu(page)
 
-    const overflow = await menu.evaluate((el) => ({
+    const overflow = await menu.evaluate(el => ({
       canScroll: el.scrollHeight > el.clientHeight,
       scrollTop: el.scrollTop
     }))
-    expect(overflow.canScroll, 'the menu must overflow for this test to mean anything')
-      .toBe(true)
+    expect(
+      overflow.canScroll,
+      'the menu must overflow for this test to mean anything'
+    ).toBe(true)
     expect(overflow.scrollTop).toBe(0)
 
     const box = await menu.boundingBox()
@@ -100,13 +102,11 @@ test.describe('folder picker inside the Add Video dialog (#191)', () => {
     await page.mouse.wheel(0, 300)
 
     await expect
-      .poll(async () => menu.evaluate((el) => el.scrollTop), { timeout: 3000 })
+      .poll(async () => menu.evaluate(el => el.scrollTop), { timeout: 3000 })
       .toBeGreaterThan(0)
   })
 
-  test('b2_body_pointer_events_recover_after_menu_and_dialog_close', async ({
-    page
-  }) => {
+  test('b2_body_pointer_events_recover_after_menu_and_dialog_close', async ({ page }) => {
     // Guards the historical Radix bug the old modal={false} workaround
     // existed for: a modal menu nested in a modal dialog left
     // pointer-events: none on the body after both closed.

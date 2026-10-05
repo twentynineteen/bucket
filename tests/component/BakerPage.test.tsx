@@ -6,12 +6,12 @@
  */
 
 // Import after mocks
-import { useBakerScan } from '../../src/features/Baker/hooks/useBakerScan'
 import { BakerPage } from '@features/Baker'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { useBakerScan } from '../../src/features/Baker/hooks/useBakerScan'
 
 // Mock all the hooks used by BakerPage
 vi.mock('../../src/features/Baker/hooks/useBakerScan', () => ({

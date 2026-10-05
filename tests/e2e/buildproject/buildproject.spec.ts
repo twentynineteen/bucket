@@ -5,11 +5,11 @@
  * simulating a user creating a project with files.
  */
 
-import { test, expect } from '@playwright/test'
-import { BuildProjectPage } from '../pages/BuildProjectPage'
+import { expect, test } from '@playwright/test'
+import { TEST_FILE_SETS, TEST_PROJECTS } from '../fixtures/mock-file-data'
 import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
+import { BuildProjectPage } from '../pages/BuildProjectPage'
 import { SCENARIOS } from '../utils/large-file-simulator'
-import { TEST_PROJECTS, TEST_FILE_SETS } from '../fixtures/mock-file-data'
 
 test.describe('BuildProject E2E Workflow', () => {
   let tauriMock: ReturnType<typeof createTauriMock>
@@ -94,7 +94,10 @@ test.describe('BuildProject E2E Workflow', () => {
     await buildPage.goto()
 
     // Fill project details
-    await buildPage.fillProjectDetails(TEST_PROJECTS.BASIC.title, TEST_PROJECTS.BASIC.numCameras)
+    await buildPage.fillProjectDetails(
+      TEST_PROJECTS.BASIC.title,
+      TEST_PROJECTS.BASIC.numCameras
+    )
 
     // Select destination folder (mocked)
     await buildPage.clickSelectDestination()
@@ -168,7 +171,10 @@ test.describe('BuildProject E2E Workflow', () => {
     const buildPage = new BuildProjectPage(page)
     await buildPage.goto()
 
-    await buildPage.createProjectFlow(TEST_PROJECTS.BASIC.title, TEST_PROJECTS.BASIC.numCameras)
+    await buildPage.createProjectFlow(
+      TEST_PROJECTS.BASIC.title,
+      TEST_PROJECTS.BASIC.numCameras
+    )
 
     // Trello section should be visible
     await expect(buildPage.trelloSection).toBeVisible()

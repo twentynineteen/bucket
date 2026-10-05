@@ -13,9 +13,9 @@
  * restored in beforeEach.
  */
 
-import { useFileUpload } from '../../src/features/Upload/hooks/useFileUpload'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useFileUpload } from '../../src/features/Upload/hooks/useFileUpload'
 
 // Mock the Upload api.ts layer (single I/O boundary for Upload module)
 vi.mock('../../src/features/Upload/api', () => ({

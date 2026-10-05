@@ -4,7 +4,7 @@
  * Tests for legacy theme migration utilities.
  */
 
-import { migrateLegacyTheme, isValidThemeId } from '@shared/ui/theme/themeMapper'
+import { isValidThemeId, migrateLegacyTheme } from '@shared/ui/theme/themeMapper'
 import { describe, expect, it } from 'vitest'
 
 describe('themeMapper', () => {

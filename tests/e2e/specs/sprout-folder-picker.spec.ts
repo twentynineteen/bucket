@@ -11,12 +11,11 @@
  * which are in docs/sprout-folder-picker-manual-verification.md.
  */
 import { expect, test } from '@playwright/test'
-
 import {
   DEEP_TREE,
-  SAMPLE_TREE,
   folderCalls,
   resetFolderCalls,
+  SAMPLE_TREE,
   setupSproutMocks,
   wideTree
 } from '../fixtures/sprout-folders.fixture'
@@ -138,7 +137,7 @@ test.describe('folder picker — layout the unit tests cannot see', () => {
 
     const menu = page.getByRole('menu')
 
-    const metrics = await menu.evaluate((el) => ({
+    const metrics = await menu.evaluate(el => ({
       scrollHeight: el.scrollHeight,
       clientHeight: el.clientHeight,
       overflowY: getComputedStyle(el).overflowY,
@@ -179,7 +178,7 @@ test.describe('folder picker — layout the unit tests cannot see', () => {
     await expect(hit).toBeVisible()
 
     // scrollWidth > clientWidth is exactly what CSS truncation looks like.
-    const clipped = await hit.evaluate((el) => el.scrollWidth > el.clientWidth + 1)
+    const clipped = await hit.evaluate(el => el.scrollWidth > el.clientWidth + 1)
     expect(clipped, 'the full path must be visible, not ellipsised').toBe(false)
   })
 

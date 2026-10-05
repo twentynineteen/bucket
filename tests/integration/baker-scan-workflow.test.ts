@@ -11,6 +11,9 @@
  * - useBreadcrumbsManager hook tests (passing)
  */
 
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
+import { useBakerScan } from '../../src/features/Baker/hooks/useBakerScan'
 import type {
   ProjectFolder,
   ScanCompleteEvent,
@@ -18,10 +21,6 @@ import type {
   ScanOptions,
   ScanResult
 } from '../../src/features/Baker/types'
-import { useBakerScan } from '../../src/features/Baker/hooks/useBakerScan'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import type { Mock } from 'vitest'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock Tauri invoke function
 vi.mock('@tauri-apps/api/core', () => ({

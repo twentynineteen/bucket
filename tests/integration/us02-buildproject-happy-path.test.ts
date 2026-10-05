@@ -20,9 +20,8 @@ import { confirm } from '@tauri-apps/plugin-dialog'
 import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
 import { renderHook, waitFor } from '@testing-library/react'
 import { act } from 'react'
-import { createActor } from 'xstate'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { createActor } from 'xstate'
 import { useBuildProject } from '../../src/features/BuildProject/hooks/useBuildProject'
 import {
   buildProjectMachine,
@@ -107,7 +106,7 @@ const waitForState = async (
       )
     }, timeout)
 
-    const subscription = actor.subscribe((snapshot) => {
+    const subscription = actor.subscribe(snapshot => {
       if (snapshot.value === targetState) {
         clearTimeout(timeoutId)
         subscription.unsubscribe()
@@ -153,7 +152,7 @@ describe('US-02 — BuildProject State Machine', () => {
       actor.start()
 
       const visited: string[] = []
-      actor.subscribe((snapshot) => {
+      actor.subscribe(snapshot => {
         const state = String(snapshot.value)
         if (visited[visited.length - 1] !== state) {
           visited.push(state)

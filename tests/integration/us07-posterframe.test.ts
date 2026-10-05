@@ -12,12 +12,12 @@
  * restored in beforeEach.
  */
 
-import { parseSproutVideoUrl } from '../../src/features/Upload/internal/parseSproutVideoUrl'
-import { useSproutVideoApi } from '../../src/features/Upload/hooks/useSproutVideoApi'
-import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useSproutVideoApi } from '../../src/features/Upload/hooks/useSproutVideoApi'
+import { parseSproutVideoUrl } from '../../src/features/Upload/internal/parseSproutVideoUrl'
 
 function makeWrapper() {
   const client = new QueryClient({
@@ -94,9 +94,9 @@ describe('US-07 — parseSproutVideoUrl (pure function)', () => {
     })
 
     it('should extract video ID from embed URL without protocol', () => {
-      expect(
-        parseSproutVideoUrl('videos.sproutvideo.com/embed/abc123/token')
-      ).toBe('abc123')
+      expect(parseSproutVideoUrl('videos.sproutvideo.com/embed/abc123/token')).toBe(
+        'abc123'
+      )
     })
   })
 
@@ -132,9 +132,9 @@ describe('US-07 — parseSproutVideoUrl (pure function)', () => {
 
   describe('Edge cases', () => {
     it('should trim leading/trailing whitespace before parsing', () => {
-      expect(
-        parseSproutVideoUrl('  https://sproutvideo.com/videos/abc123  ')
-      ).toBe('abc123')
+      expect(parseSproutVideoUrl('  https://sproutvideo.com/videos/abc123  ')).toBe(
+        'abc123'
+      )
     })
 
     it('should prefer Pattern 1 match when URL matches both', () => {
@@ -258,7 +258,7 @@ describe('US-07 — useSproutVideoApi hook', () => {
 
     let resolveDetails: ((v: any) => void) | undefined
     vi.mocked(fetchSproutVideoDetails).mockReturnValue(
-      new Promise((resolve) => {
+      new Promise(resolve => {
         resolveDetails = resolve
       })
     )

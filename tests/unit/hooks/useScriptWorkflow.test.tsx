@@ -10,12 +10,12 @@
  * - Navigation warnings for unsaved work
  */
 
-import type { WorkflowStep } from '@shared/types/scriptFormatter'
 import { useAIProcessing } from '@features/AITools/ScriptFormatter/hooks/useAIProcessing'
 import { useScriptDownload } from '@features/AITools/ScriptFormatter/hooks/useScriptDownload'
 import { useScriptReview } from '@features/AITools/ScriptFormatter/hooks/useScriptReview'
 import { useScriptUpload } from '@features/AITools/ScriptFormatter/hooks/useScriptUpload'
 import { useScriptWorkflow } from '@features/AITools/ScriptFormatter/hooks/useScriptWorkflow'
+import type { WorkflowStep } from '@shared/types/scriptFormatter'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 

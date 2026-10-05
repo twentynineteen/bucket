@@ -279,6 +279,7 @@ export async function installBackgroundMocks(
 /** Every folder path the app has tried to list, in order. */
 export async function attemptedListings(page: Page): Promise<string[]> {
   return page.evaluate(
-    () => (window as unknown as { __backgroundListings__: string[] }).__backgroundListings__
+    () =>
+      (window as unknown as { __backgroundListings__: string[] }).__backgroundListings__
   )
 }
