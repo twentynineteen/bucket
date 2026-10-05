@@ -151,7 +151,8 @@ Before making changes, skim these docs:
 2. **[USER_GUIDE.md](./USER_GUIDE.md)** - What breadcrumbs are and what the app does day to day
 3. **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Understand system design
 4. **[API_COMMANDS.md](./API_COMMANDS.md)** - Learn Tauri command API
-5. **[CLAUDE.md](../CLAUDE.md)** - Module conventions and import rules
+5. **[CLAUDE.md](../CLAUDE.md)** - Module rules
+6. **[CODING_STANDARDS.md](../CODING_STANDARDS.md)** - Testing policy and review rules
 
 **Time investment:** 15-20 minutes of reading will save hours later.
 
@@ -430,7 +431,7 @@ Explain the motivation
 
 ### Adding a New Feature Module
 
-See CLAUDE.md section "How to Add a New Feature Module" for the full checklist. In short:
+See ARCHITECTURE.md section "Adding a New Feature Page" for the full checklist. In short:
 
 1. **Create feature directory** with `api.ts`, `types.ts`, `index.ts`, `components/`, `hooks/`, `__contracts__/`
 
@@ -579,7 +580,7 @@ Write tests for:
 **Where to put tests:** Colocate unit tests beside the source file (e.g.
 `src/shared/utils/myFunction.test.ts` next to `myFunction.ts`). Contract tests go in
 `src/features/<Name>/__contracts__/`, integration tests in `tests/integration/`, and E2E
-tests in `tests/e2e/`. See CLAUDE.md's testing policy for the full rules.
+tests in `tests/e2e/`. See the "Testing" section of [CODING_STANDARDS.md](../CODING_STANDARDS.md) for the full rules.
 
 **Example test** (saved as `src/shared/utils/myFunction.test.ts`):
 

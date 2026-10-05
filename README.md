@@ -219,7 +219,8 @@ Each feature module follows a strict convention: an `api.ts` I/O boundary wrappi
 
 Start here:
 
-- **[CLAUDE.md](./CLAUDE.md)** -- Architecture conventions, import rules, and how to add a new feature module
+- **[CLAUDE.md](./CLAUDE.md)** -- Module rules and pointers for agents and developers
+- **[CODING_STANDARDS.md](./CODING_STANDARDS.md)** -- Testing policy and review rules
 - **[docs/ONBOARDING.md](./docs/ONBOARDING.md)** -- Developer onboarding, from clone to first PR
 - **[docs/USER_GUIDE.md](./docs/USER_GUIDE.md)** -- Using the app: breadcrumbs, workflows, settings, troubleshooting
 - **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** -- System design, data flow, and component interactions

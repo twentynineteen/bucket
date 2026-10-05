@@ -6,7 +6,7 @@ This document explains the high-level architecture of Bucket, including how diff
 
 **Target audience:** Developers who need to understand the system design before making significant changes or adding new features.
 
-**Last updated:** August 2026 (v0.19.0)
+**Last updated:** October 2026 (v0.19.2)
 
 ## System Design
 
@@ -75,7 +75,8 @@ This document explains the high-level architecture of Bucket, including how diff
 
 > **Note:** The frontend was reorganized in March 2026 from a flat layout
 > (`src/pages/`, `src/hooks/`, `src/components/`, etc.) into a feature-module
-> architecture. See CLAUDE.md for the canonical module map and conventions.
+> architecture. The tree below is the canonical module map; the rules for
+> writing a module are in CLAUDE.md and CODING_STANDARDS.md.
 
 ```
 bucket/
@@ -351,6 +352,32 @@ User Interaction → React Component → Tauri Command → File System
    - Tauri command returns `Ok(())`
    - Frontend shows success message
    - Optionally opens project folder in Finder
+
+### Baker Feature Flow
+
+1. **Drive Selection**: choose a root directory to scan.
+2. **Structure Validation**: identify BuildProject-compatible folders (`Footage/`, `Graphics/`,
+   `Renders/`, `Projects/`, `Scripts/`).
+3. **Breadcrumbs Management**: update existing `breadcrumbs.json` files or create missing ones.
+4. **Batch Operations**: apply changes to many project folders, with progress tracking.
+
+### Kavanagh QC Flow
+
+Video quality control for rendered exports, checking two properties through ffmpeg:
+
+1. **Watermark Presence**: whether the branded watermark is present throughout the render
+   (excluding the closing dip to white), which corner it occupies, and whether it shifts
+   mid-video. Reference images come from a configured pool folder.
+2. **Closing Sting Validation**: measures the dip-to-white ramp, the sting duration, and
+   whether the sting matches a known reference. Reports a missing peak, a ramp that is too
+   short or too long, or trailing content after the sting.
+3. **Evidence Export**: failure thumbnails are held in memory and written to disk only when
+   the operator asks, so a run is non-destructive by default.
+
+The page composes the workflow through `useKavanaghCheck`. `Kavanagh/api.ts` wraps the four
+backend commands (`kavanagh_detect_ffmpeg`, `kavanagh_run_check`, `kavanagh_cancel_run`,
+`kavanagh_save_evidence`). Settings exposes the ffmpeg directory and reference pool; Upload runs
+Kavanagh as an optional post-upload QC step through `useKavanaghForUpload`.
 
 ### AI Script Formatting Flow (RAG Pipeline)
 
@@ -648,13 +675,24 @@ shared/
    - ❌ `@shared/hooks/` can't import from `@features/Baker/`
    - ✅ `@features/Baker/` can import from `@shared/hooks/`
 
-3. **Cross-feature imports go through barrels only**
+3. **Cross-feature imports go through barrels only** (enforced by ESLint `no-restricted-imports`)
    - ❌ `import { X } from '@features/Trello/components/TrelloCardsManager'`
    - ✅ `import { TrelloCardsManager } from '@features/Trello'`
 
 4. **All Tauri I/O goes through `api.ts`**
    - No direct `@tauri-apps` plugin imports in components/hooks
    - Enforced by no-bypass contract tests in each feature's `__contracts__/`
+
+### Cross-Feature Edges
+
+```
+Trello -------> Baker (bidirectional types), BuildProject (VideoInfoData), Upload (Sprout hooks)
+Baker --------> Trello (integration hooks), BuildProject (FootageFile), Upload (SproutFolderPicker)
+Upload -------> Baker (VideoLink type), Kavanagh (QC hooks)
+Settings -----> Trello (TrelloBoardSelector), Upload (SproutFolderPicker), Kavanagh (availability)
+AITools ------> Settings (useAIProvider)
+BuildProject -> Trello (TrelloCardsManager)
+```
 
 ### External Dependencies (Key Packages)
 
