@@ -1,9 +1,8 @@
-import { AccordionContent, AccordionItem, AccordionTrigger } from '@shared/ui/accordion'
-import { AlertTriangle } from 'lucide-react'
 import { Breadcrumb } from '@shared/types'
-import React, { useMemo } from 'react'
-
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@shared/ui/accordion'
 import { cn, formatBreadcrumbDate } from '@shared/utils'
+import { AlertTriangle } from 'lucide-react'
+import React, { useMemo } from 'react'
 import { useVerifiedPaths } from '../hooks/useVerifiedPaths'
 import FileList from './FileList'
 import KeyValueRow from './KeyValueRow'
@@ -23,7 +22,7 @@ const BreadcrumbsAccordionItem: React.FC<Props> = ({ data }) => {
   // #168). A card can record hundreds of footage paths, so one call per row
   // would be one IPC message per row.
   const probed = useMemo(
-    () => [...(parentFolder ? [parentFolder] : []), ...(files ?? []).map((f) => f.path)],
+    () => [...(parentFolder ? [parentFolder] : []), ...(files ?? []).map(f => f.path)],
     [parentFolder, files]
   )
   const { isPresent } = useVerifiedPaths(probed)

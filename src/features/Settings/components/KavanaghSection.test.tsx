@@ -17,9 +17,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import KavanaghSection from './KavanaghSection'
 import * as api from '../api'
+import KavanaghSection from './KavanaghSection'
 
 vi.mock('../api', () => ({
   openFolderPicker: vi.fn(),
@@ -71,7 +70,7 @@ function renderSection(apiKeys: object = EXISTING_KEYS, settingsUnavailable = fa
  */
 async function settleFolderCheck() {
   await waitFor(() => expect(api.directoryExists).toHaveBeenCalled())
-  await new Promise((resolve) => setTimeout(resolve, 50))
+  await new Promise(resolve => setTimeout(resolve, 50))
 }
 
 beforeEach(async () => {

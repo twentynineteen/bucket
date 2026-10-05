@@ -11,7 +11,6 @@ import type { ProviderConfiguration } from '@shared/types'
 import { createNamespacedLogger } from '@shared/utils'
 import type { LanguageModel } from 'ai'
 import { createOllama } from 'ollama-ai-provider-v2'
-
 import type { ModelInfo, ProviderAdapter, ProviderRegistry } from './types'
 
 const logger = createNamespacedLogger('Ollama')
@@ -151,13 +150,13 @@ const ollamaAdapter: ProviderAdapter = {
 
       logger.log('Models fetched:', data.models?.length || 0)
 
-      return (data.models || []).map((model) => ({
+      return (data.models || []).map(model => ({
         id: model.name,
         name: model.name.replace(':latest', ''),
         size: String(model.size),
         contextLength: model.details?.parameter_size || 4096,
         // Tool calling support detection
-        supportsToolCalling: ['llama3', 'mistral', 'qwen'].some((name) =>
+        supportsToolCalling: ['llama3', 'mistral', 'qwen'].some(name =>
           model.name.toLowerCase().includes(name)
         ),
         supportsStreaming: true // All Ollama models support streaming

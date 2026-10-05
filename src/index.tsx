@@ -1,10 +1,7 @@
 import * as React from 'react'
 import * as ReactDOM from 'react-dom/client'
-
 import App from './App'
-
 import './index.css'
-
 import { logger } from '@shared/utils'
 
 const rootElement = document.getElementById('root')

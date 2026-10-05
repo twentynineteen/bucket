@@ -5,17 +5,20 @@
  * be read on this machine (issue #166). One folder per posterframe template
  * (issue #189): Classic keeps the original key, Rebrand has its own.
  */
-import { toast } from 'sonner'
-import { AlertTriangle } from 'lucide-react'
-import { Button } from '@shared/ui/button'
+import { createQueryError, queryKeys } from '@shared/lib'
 import { useAppStore } from '@shared/store'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { queryKeys, createQueryError } from '@shared/lib'
+import { Button } from '@shared/ui/button'
 import { logger } from '@shared/utils'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle } from 'lucide-react'
 import React from 'react'
-
-import { directoryExists, openFolderPicker, saveSettingsApiKeys } from '../api'
-import type { ApiKeys } from '../api'
+import { toast } from 'sonner'
+import {
+  directoryExists,
+  openFolderPicker,
+  saveSettingsApiKeys,
+  type ApiKeys
+} from '../api'
 
 interface BackgroundsSectionProps {
   apiKeys: ApiKeys
@@ -84,13 +87,13 @@ const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({
   settingsUnavailable = false
 }) => {
   const queryClient = useQueryClient()
-  const defaultBackgroundFolder = useAppStore((state) => state.defaultBackgroundFolder)
+  const defaultBackgroundFolder = useAppStore(state => state.defaultBackgroundFolder)
   const setDefaultBackgroundFolder = useAppStore(
-    (state) => state.setDefaultBackgroundFolder
+    state => state.setDefaultBackgroundFolder
   )
-  const rebrandBackgroundFolder = useAppStore((state) => state.rebrandBackgroundFolder)
+  const rebrandBackgroundFolder = useAppStore(state => state.rebrandBackgroundFolder)
   const setRebrandBackgroundFolder = useAppStore(
-    (state) => state.setRebrandBackgroundFolder
+    state => state.setRebrandBackgroundFolder
   )
 
   const saveMutation = useMutation({
@@ -102,7 +105,7 @@ const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({
         throw createQueryError(`Failed to save API keys: ${error}`, 'SETTINGS_SAVE')
       }
     },
-    onSuccess: (updatedKeys) => {
+    onSuccess: updatedKeys => {
       queryClient.setQueryData(queryKeys.settings.apiKeys(), updatedKeys)
     }
   })

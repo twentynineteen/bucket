@@ -1,24 +1,19 @@
-import { useTrelloApiKeys } from '@shared/hooks'
+import { useBreadcrumb, useTrelloApiKeys, useUsername } from '@shared/hooks'
+import { Button } from '@shared/ui/button'
 import { createNamespacedLogger } from '@shared/utils'
 import { useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
-
-import { useBreadcrumb, useUsername } from '@shared/hooks'
-
-import { Button } from '@shared/ui/button'
-
-import { useBuildProject } from './hooks/useBuildProject'
-import { useCameraAutoRemap } from './hooks/useCameraAutoRemap'
-import { useProjectState } from './hooks/useProjectState'
 // `showConfirmationDialog` drives the post-success "open project folder?"
 // Finder prompt.
 import { showConfirmationDialog } from './api'
-
 import { AddFootageStep } from './components/AddFootageStep'
 import { CreateProjectStep } from './components/CreateProjectStep'
 import ProgressBar from './components/ProgressBar'
 import { ProjectConfigurationStep } from './components/ProjectConfigurationStep'
 import { SuccessSection } from './components/SuccessSection'
+import { useBuildProject } from './hooks/useBuildProject'
+import { useCameraAutoRemap } from './hooks/useCameraAutoRemap'
+import { useProjectState } from './hooks/useProjectState'
 
 const logger = createNamespacedLogger('BuildProject')
 
@@ -127,7 +122,7 @@ const BuildProject: React.FC = () => {
         'Do you want to open the project folder now?',
         'Transfer complete!',
         projectFolder
-      ).catch((err) => logger.error('Completion dialog error:', err))
+      ).catch(err => logger.error('Completion dialog error:', err))
     }
   }, [isComplete, projectFolder])
 

@@ -10,10 +10,9 @@
  * - Unsaved changes warnings
  */
 
+import type { Edit, ProcessedOutput } from '@shared/types'
 import { createNamespacedLogger } from '@shared/utils'
 import { useCallback, useMemo, useState } from 'react'
-
-import type { Edit, ProcessedOutput } from '@shared/types'
 
 const log = createNamespacedLogger('ScriptReview')
 
@@ -58,7 +57,7 @@ export function useScriptReview(options?: UseScriptReviewOptions) {
       log.debug('Text changed, length:', newText.length)
 
       // Add current text to undo stack
-      setUndoStack((prev) => [...prev, modifiedText])
+      setUndoStack(prev => [...prev, modifiedText])
       setRedoStack([]) // Clear redo stack on new change
 
       // Update text
@@ -74,7 +73,7 @@ export function useScriptReview(options?: UseScriptReviewOptions) {
         newValue: newText
       }
 
-      setEditHistory((prev) => [...prev, historyEntry])
+      setEditHistory(prev => [...prev, historyEntry])
 
       // Notify callback
       if (onChange) {
@@ -94,10 +93,10 @@ export function useScriptReview(options?: UseScriptReviewOptions) {
 
     // Pop from undo stack
     const previousText = undoStack[undoStack.length - 1]
-    setUndoStack((prev) => prev.slice(0, -1))
+    setUndoStack(prev => prev.slice(0, -1))
 
     // Push current to redo stack
-    setRedoStack((prev) => [...prev, modifiedText])
+    setRedoStack(prev => [...prev, modifiedText])
 
     // Restore previous text
     setModifiedText(previousText)
@@ -114,10 +113,10 @@ export function useScriptReview(options?: UseScriptReviewOptions) {
 
     // Pop from redo stack
     const nextText = redoStack[redoStack.length - 1]
-    setRedoStack((prev) => prev.slice(0, -1))
+    setRedoStack(prev => prev.slice(0, -1))
 
     // Push current to undo stack
-    setUndoStack((prev) => [...prev, modifiedText])
+    setUndoStack(prev => [...prev, modifiedText])
 
     // Apply next text
     setModifiedText(nextText)

@@ -6,8 +6,8 @@
  */
 
 import { useMutation } from '@tanstack/react-query'
-import { parseSproutVideoUrl } from '../internal/parseSproutVideoUrl'
 import { fetchSproutVideoDetails } from '../api'
+import { parseSproutVideoUrl } from '../internal/parseSproutVideoUrl'
 
 interface FetchVideoDetailsParams {
   videoUrl: string

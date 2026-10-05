@@ -10,14 +10,11 @@
  */
 
 import '@testing-library/jest-dom'
-
 import fs from 'node:fs'
 import path from 'node:path'
-
 import { act, render, waitFor } from '@testing-library/react'
 import { toast } from 'sonner'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { Dialog, DialogContent, DialogTitle } from './dialog'
 import { Toaster } from './sonner'
 import { getAllThemeIds, THEMES, type ThemeId } from './theme/themes'
@@ -160,7 +157,7 @@ const CONCRETE_THEME_IDS = getAllThemeIds().filter(
 )
 
 const THEME_CASES: ReadonlyArray<ThemeCase> = [
-  ...CONCRETE_THEME_IDS.map((id) => ({
+  ...CONCRETE_THEME_IDS.map(id => ({
     label: id,
     theme: id,
     resolvedTheme: id,
@@ -289,8 +286,8 @@ describe('TOAST-05: rich colours are enabled by default', () => {
       document.querySelectorAll<HTMLElement>('[data-sonner-toast]')
     )
 
-    const errorToast = toasts.find((el) => el.textContent?.includes('boom'))
-    const successToast = toasts.find((el) => el.textContent?.includes('yay'))
+    const errorToast = toasts.find(el => el.textContent?.includes('boom'))
+    const successToast = toasts.find(el => el.textContent?.includes('yay'))
 
     expect(errorToast).toBeTruthy()
     expect(successToast).toBeTruthy()
@@ -327,7 +324,7 @@ describe('TOAST-06: toasts rendered over an open dialog', () => {
 
     const toastEl = Array.from(
       document.querySelectorAll<HTMLElement>('[data-sonner-toast]')
-    ).find((el) => el.textContent?.includes('HTTP 413'))
+    ).find(el => el.textContent?.includes('HTTP 413'))
 
     expect(toastEl).toBeTruthy()
 

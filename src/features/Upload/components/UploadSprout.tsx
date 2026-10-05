@@ -5,29 +5,28 @@
  * Follows the standard page template pattern used by BuildProject and Baker pages.
  */
 
+import { useBreadcrumb, useSproutVideoApiKey } from '@shared/hooks'
 import { Button } from '@shared/ui/button'
-import { Input } from '@shared/ui/input'
-import { Label } from '@shared/ui/label'
-import { Progress } from '@shared/ui/progress'
-import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
-import { useSproutVideoApiKey } from '@shared/hooks'
-import { useBreadcrumb } from '@shared/hooks'
-import { fileNameToTitle } from '@shared/utils'
-import { useFileUpload } from '../hooks/useFileUpload'
-import { useKavanaghForUpload } from '../hooks/useKavanaghForUpload'
-import { KavanaghBlockDialog, KavanaghGateControls } from './KavanaghUploadGate'
-import { TitleNamingGuide } from './TitleNamingGuide'
-import { hasColon } from '../internal/namingConventions'
-import { useSproutFolderSelection } from '../hooks/useSproutFolderSelection'
-import { SproutFolderPicker } from './SproutFolderPicker'
-import { useImageRefresh } from '../hooks/useImageRefresh'
-import { useUploadEvents } from '../hooks/useUploadEvents'
-import { formatTransferredBytes } from '../internal/formatTransferredBytes'
 import EmbedCodeInput from '@shared/ui/EmbedCodeInput'
 import ExternalLink from '@shared/ui/ExternalLink'
 import FormattedDate from '@shared/ui/FormattedDate'
+import { Input } from '@shared/ui/input'
+import { Label } from '@shared/ui/label'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { Progress } from '@shared/ui/progress'
+import { fileNameToTitle } from '@shared/utils'
 import { AlertTriangle, RefreshCw, Sprout, X } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
+import { useFileUpload } from '../hooks/useFileUpload'
+import { useImageRefresh } from '../hooks/useImageRefresh'
+import { useKavanaghForUpload } from '../hooks/useKavanaghForUpload'
+import { useSproutFolderSelection } from '../hooks/useSproutFolderSelection'
+import { useUploadEvents } from '../hooks/useUploadEvents'
+import { formatTransferredBytes } from '../internal/formatTransferredBytes'
+import { hasColon } from '../internal/namingConventions'
+import { KavanaghBlockDialog, KavanaghGateControls } from './KavanaghUploadGate'
+import { SproutFolderPicker } from './SproutFolderPicker'
+import { TitleNamingGuide } from './TitleNamingGuide'
 
 /**
  * What the upload button says, given everything that can be happening to it.
@@ -228,7 +227,7 @@ const UploadSproutContent: React.FC = () => {
                     id="sprout-video-title"
                     placeholder="Video title on Sprout Video"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={e => setTitle(e.target.value)}
                     maxLength={200}
                   />
                   <p className="text-muted-foreground text-xs">

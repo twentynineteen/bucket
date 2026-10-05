@@ -5,6 +5,7 @@
 
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useSystemTheme } from './useSystemTheme'
 
 const isTauriMock = vi.fn()
 const getCurrentWindowMock = vi.fn()
@@ -18,8 +19,6 @@ vi.mock('@tauri-apps/api/core', () => ({
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => getCurrentWindowMock()
 }))
-
-import { useSystemTheme } from './useSystemTheme'
 
 beforeEach(() => {
   isTauriMock.mockReset()

@@ -14,7 +14,6 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
-
 import { appVersionQueryOptions } from './app-version-query'
 
 vi.mock('@tauri-apps/api/app', () => ({

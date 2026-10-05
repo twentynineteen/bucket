@@ -73,8 +73,7 @@ export const DEFAULT_MAX_FOLDERS = 20_000
 // account here has ~1200 folders.
 export const DEFAULT_MAX_REQUESTS = 20_001
 
-const defaultSleep = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms))
+const defaultSleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
 /**
  * Walks the folder tree breadth-first from the account root.

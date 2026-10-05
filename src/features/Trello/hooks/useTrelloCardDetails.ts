@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-
 import { fetchCardWithMembers } from '../api'
 import type { TrelloCard, TrelloMember } from '../types'
 

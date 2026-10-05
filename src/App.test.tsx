@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, expect, it, vi } from 'vitest'
+import App from './App'
 
 // Mock next-themes before importing App to avoid matchMedia errors
 vi.mock('next-themes', () => ({
@@ -11,8 +12,6 @@ vi.mock('next-themes', () => ({
     themes: ['light', 'dark']
   })
 }))
-
-import App from './App'
 
 // `mockReset: true` in vite.config.ts wipes the matchMedia implementation the
 // shared setup installs, and the sidebar's useIsMobile calls

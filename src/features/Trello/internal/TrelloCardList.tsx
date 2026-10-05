@@ -9,9 +9,8 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@shared/ui/accordion'
-import React, { useState } from 'react'
-
 import { logger } from '@shared/utils'
+import React, { useState } from 'react'
 import type { TrelloCard } from '../types'
 
 interface TrelloCardListProps {
@@ -65,7 +64,7 @@ const TrelloCardList: React.FC<TrelloCardListProps> = ({ grouped, onSelect }) =>
           </AccordionTrigger>
           <AccordionContent>
             <ul className="ml-5 list-disc space-y-1">
-              {cards.map((card) => (
+              {cards.map(card => (
                 <li
                   key={card.id}
                   className="hover:bg-accent cursor-pointer rounded px-3 py-1 transition-colors"

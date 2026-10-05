@@ -6,9 +6,6 @@
  * first and salvages linked Trello cards / video links where possible.
  */
 
-import { Wrench } from 'lucide-react'
-import React from 'react'
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@shared/ui/alert-dialog'
+import { Wrench } from 'lucide-react'
+import React from 'react'
 
 interface RepairBreadcrumbsDialogProps {
   open: boolean
@@ -56,7 +55,7 @@ export const RepairBreadcrumbsDialog: React.FC<RepairBreadcrumbsDialogProps> = (
         <AlertDialogCancel disabled={isRepairing}>Cancel</AlertDialogCancel>
         <AlertDialogAction
           disabled={isRepairing}
-          onClick={(e) => {
+          onClick={e => {
             e.preventDefault()
             onConfirm()
           }}

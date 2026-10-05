@@ -1,7 +1,5 @@
-import React from 'react'
-
 import { logger } from '@shared/utils'
-
+import React from 'react'
 import { openFolderDialog } from '../api'
 
 type Props = {

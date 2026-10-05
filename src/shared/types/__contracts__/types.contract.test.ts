@@ -5,24 +5,23 @@
  * and core domain types.
  */
 
-import { describe, expect, test } from 'vitest'
-
 import type {
-  // Media types
-  VideoLink,
-  TrelloCard,
-  TrelloBoard,
-  TrelloOrganization,
-  TrelloBoardPrefs,
-  SproutVideoDetails,
+  Breadcrumb,
+  FootageData,
+  GetFoldersResponse,
   SproutAssets,
   // Core domain types
   SproutFolder,
-  GetFoldersResponse,
-  FootageData,
-  Breadcrumb,
-  SproutUploadResponse
+  SproutUploadResponse,
+  SproutVideoDetails,
+  TrelloBoard,
+  TrelloBoardPrefs,
+  TrelloCard,
+  TrelloOrganization,
+  // Media types
+  VideoLink
 } from '@shared/types'
+import { describe, expect, test } from 'vitest'
 
 describe('@shared/types barrel contract', () => {
   describe('shape: all expected type exports resolve', () => {

@@ -21,7 +21,6 @@ import { logger } from '@shared/utils'
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react'
 import React from 'react'
 import { toast } from 'sonner'
-
 import { pickEvidenceFolder, pickVideoFile, saveKavanaghEvidence } from '../api'
 import { useKavanaghAvailability } from '../hooks/useKavanaghAvailability'
 import { useKavanaghCheck } from '../hooks/useKavanaghCheck'
@@ -178,7 +177,7 @@ const PrerequisitesSection: React.FC<{
     {/* Both pools are listed regardless, so a second fault is visible without
         having to fix the first one to discover it. */}
     <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
-      {REFERENCE_POOLS.map((pool) => (
+      {REFERENCE_POOLS.map(pool => (
         <div key={pool} className="border-border rounded-md border p-3">
           <dt className="text-foreground font-medium capitalize">{pool}</dt>
           <dd className="text-muted-foreground mt-0.5">
@@ -412,7 +411,7 @@ const WatermarkReportView: React.FC<{
             Missing watermark
           </h3>
           <ul className="text-muted-foreground space-y-1 text-xs">
-            {report.gaps.map((gap) => (
+            {report.gaps.map(gap => (
               <li key={`${gap.startSeconds}-${gap.endSeconds}`}>
                 {formatTime(gap.startSeconds)} to {formatTime(gap.endSeconds)} (
                 {(gap.endSeconds - gap.startSeconds).toFixed(1)}s), best score{' '}
@@ -428,7 +427,7 @@ const WatermarkReportView: React.FC<{
         <div>
           <h3 className="text-foreground mb-1 text-xs font-semibold">Corner changed</h3>
           <ul className="text-muted-foreground space-y-1 text-xs">
-            {report.cornerChanges.map((change) => (
+            {report.cornerChanges.map(change => (
               <li key={change.atSeconds}>
                 {formatTime(change.atSeconds)}: expected {cornerLabel(change.expected)},
                 found {cornerLabel(change.found)}
@@ -473,7 +472,7 @@ const EvidenceView: React.FC<{
   const sources = React.useMemo(
     () =>
       thumbnails.map(
-        (thumbnail) =>
+        thumbnail =>
           `data:image/jpeg;base64,${bytesToBase64(Uint8Array.from(thumbnail.jpeg))}`
       ),
     [thumbnails]

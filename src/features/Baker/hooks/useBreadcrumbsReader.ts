@@ -5,7 +5,6 @@
  */
 
 import { useCallback, useState } from 'react'
-
 import { bakerReadBreadcrumbs } from '../api'
 import type { BreadcrumbsFile } from '../types'
 

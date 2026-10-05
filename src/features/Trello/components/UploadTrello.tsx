@@ -5,15 +5,14 @@
  * Refactored to use consistent UI template pattern from BuildProject/Baker pages.
  */
 
-import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { useBreadcrumb } from '@shared/hooks'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
-import { useBreadcrumb } from '@shared/hooks'
-import TrelloCardList from '../internal/TrelloCardList'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import { AlertTriangle, RefreshCw, Search } from 'lucide-react'
 import React from 'react'
-
 import { useUploadTrello } from '../hooks/useUploadTrello'
+import TrelloCardList from '../internal/TrelloCardList'
 import { CardDetailsDialog } from './CardDetailsDialog'
 
 // Trello icon SVG component
@@ -107,7 +106,7 @@ const UploadTrelloContent: React.FC = () => {
                 <Input
                   placeholder="Search cards by name or description..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={e => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>

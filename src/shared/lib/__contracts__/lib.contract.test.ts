@@ -6,32 +6,30 @@
  * in query-client-config and prefetch-strategies.
  */
 
-import { describe, expect, test } from 'vitest'
-
 // Import from sub-modules that don't require Tauri runtime
 import {
-  queryKeys,
-  invalidationRules,
-  createQueryKey,
-  isQueryKeyMatch,
-  getInvalidationQueries,
-  validateQueryKey,
   createPaginatedQueryKey,
+  createQueryKey,
   createTimeRangeQueryKey,
-  createUserScopedQueryKey
+  createUserScopedQueryKey,
+  getInvalidationQueries,
+  invalidationRules,
+  isQueryKeyMatch,
+  queryKeys,
+  validateQueryKey
 } from '@shared/lib/query-keys'
-
 import {
-  QUERY_PROFILES,
-  createQueryOptions,
+  calculateProgress,
   createMutationOptions,
-  retryStrategies,
-  shouldRetry,
+  createQueryError,
+  createQueryOptions,
   getRetryDelay,
   inferErrorType,
-  createQueryError,
-  calculateProgress
+  QUERY_PROFILES,
+  retryStrategies,
+  shouldRetry
 } from '@shared/lib/query-utils'
+import { describe, expect, test } from 'vitest'
 
 describe('@shared/lib barrel contract', () => {
   describe('shape: all expected exports exist', () => {
@@ -84,7 +82,7 @@ describe('@shared/lib barrel contract', () => {
     test('invalidationRules is a non-empty array with valid entries', () => {
       expect(Array.isArray(invalidationRules)).toBe(true)
       expect(invalidationRules.length).toBeGreaterThan(0)
-      invalidationRules.forEach((rule) => {
+      invalidationRules.forEach(rule => {
         expect(rule).toHaveProperty('trigger')
         expect(rule).toHaveProperty('invalidates')
         expect(rule).toHaveProperty('strategy')

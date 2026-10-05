@@ -9,11 +9,10 @@
  */
 
 import { describe, expect, it } from 'vitest'
-
 import {
-  POSTERFRAME_TEMPLATES,
-  POSTERFRAME_TEMPLATE_STORAGE_KEY,
   isOffAspectBackground,
+  POSTERFRAME_TEMPLATE_STORAGE_KEY,
+  POSTERFRAME_TEMPLATES,
   resolveInitialTemplate,
   resolvePosterframeLayout,
   wrapPosterframeTitle

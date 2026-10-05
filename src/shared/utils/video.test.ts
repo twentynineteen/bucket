@@ -2,7 +2,6 @@
  * Tests for video utilities: duration suffix formatting and title derivation
  */
 import { describe, expect, it } from 'vitest'
-
 import {
   fileNameToTitle,
   formatDurationSuffix,

@@ -63,7 +63,7 @@ export function matchesPoolFolder(entryName: string, pool: ReferencePool): boole
 
 /** Keeps only files QC can actually decode as a reference image. */
 export function filterReferenceImages(names: string[]): string[] {
-  return names.filter((name) => {
+  return names.filter(name => {
     const dot = name.lastIndexOf('.')
     // `dot > 0` rather than `!== -1`: a name that is only an extension, like a
     // bare ".png", is a dotfile with nothing to match against.

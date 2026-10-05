@@ -8,17 +8,14 @@
  */
 
 import '@testing-library/jest-dom'
-
+import * as bakerModule from '@features/Baker'
+import * as uploadModule from '@features/Upload'
+import * as apiKeysModule from '@shared/hooks'
 import { queryKeys } from '@shared/lib'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import React, { type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import * as apiKeysModule from '@shared/hooks'
-import * as bakerModule from '@features/Baker'
-import * as uploadModule from '@features/Upload'
-
 import * as trelloCardsModule from './useBreadcrumbsTrelloCards'
 import * as cardPosterFrameModule from './useCardPosterFrame'
 import * as replaceVideoModule from './useReplaceVideo'
@@ -34,13 +31,13 @@ vi.mock('./useBreadcrumbsTrelloCards')
 vi.mock('./useCardPosterFrame')
 vi.mock('./useReplaceVideo')
 
-vi.mock('@shared/hooks', async (importOriginal) => ({
+vi.mock('@shared/hooks', async importOriginal => ({
   ...(await importOriginal<typeof import('@shared/hooks')>()),
   useSproutVideoApiKey: vi.fn(),
   useTrelloApiKeys: vi.fn()
 }))
 
-vi.mock('@features/Baker', async (importOriginal) => ({
+vi.mock('@features/Baker', async importOriginal => ({
   ...(await importOriginal<typeof import('@features/Baker')>()),
   useBreadcrumbsVideoLinks: vi.fn(),
   generateBreadcrumbsBlock: vi.fn(() => ''),
@@ -48,7 +45,7 @@ vi.mock('@features/Baker', async (importOriginal) => ({
 }))
 
 // Partial mock: useUploadEvents stays real so it keeps writing to the cache.
-vi.mock('@features/Upload', async (importOriginal) => ({
+vi.mock('@features/Upload', async importOriginal => ({
   ...(await importOriginal<typeof import('@features/Upload')>()),
   useFileUpload: vi.fn(),
   usePosterFrameForUpload: vi.fn(),

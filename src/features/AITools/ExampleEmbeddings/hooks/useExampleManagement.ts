@@ -7,7 +7,6 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as api from '../../api'
-
 import type { ReplaceRequest, UploadRequest } from '../../types'
 
 export function useExampleManagement() {

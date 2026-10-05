@@ -1,10 +1,8 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys, createQueryOptions } from '@shared/lib'
+import { createQueryOptions, queryKeys } from '@shared/lib'
+import { logger } from '@shared/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
-
-import { logger } from '@shared/utils'
-
 import {
   listenUploadCancelled,
   listenUploadComplete,
@@ -136,7 +134,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
 
     const setupListeners = async () => {
       try {
-        unlistenProgress = await listenUploadProgress((event) => {
+        unlistenProgress = await listenUploadProgress(event => {
           if (isMounted) {
             const { percentage, bytesSent: sent, totalBytes: total } = event.payload
             updateUploadState({
@@ -164,7 +162,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
           }
         })
 
-        unlistenError = await listenUploadError((event) => {
+        unlistenError = await listenUploadError(event => {
           if (isMounted) {
             updateUploadState({
               message: { text: event.payload.message, severity: 'error' },
@@ -190,7 +188,7 @@ export const useUploadEvents = (): UseUploadEventsReturn => {
 
         // Non-terminal: it changes nothing about `uploading` or `message`, and a
         // null payload message withdraws a warning the transfer has recovered from.
-        unlistenStallWarning = await listenUploadStallWarning((event) => {
+        unlistenStallWarning = await listenUploadStallWarning(event => {
           if (isMounted) {
             updateUploadState({ stallWarning: event.payload.message })
           }

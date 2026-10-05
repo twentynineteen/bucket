@@ -4,11 +4,9 @@
  * Purpose: Upload .docx files with validation
  */
 
+import { logger } from '@shared/utils'
 import { AlertCircle, FileText, Upload } from 'lucide-react'
 import React, { useState } from 'react'
-
-import { logger } from '@shared/utils'
-
 import { openDocxFileDialog, readDocxFile } from '../../api'
 
 interface FileUploaderProps {

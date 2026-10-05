@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useUpdateManager } from './useUpdateManager'
 
 const askMock = vi.fn()
 const messageMock = vi.fn()
@@ -43,8 +44,6 @@ vi.mock('@tauri-apps/plugin-updater', () => ({
 vi.mock('./useVersionCheck', () => ({
   useVersionCheck: () => ({ refetch: vi.fn() })
 }))
-
-import { useUpdateManager } from './useUpdateManager'
 
 function createWrapper() {
   const queryClient = new QueryClient({

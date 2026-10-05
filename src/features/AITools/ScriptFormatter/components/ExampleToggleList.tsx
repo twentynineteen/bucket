@@ -5,7 +5,6 @@
 
 import { CheckCircle2, Circle } from 'lucide-react'
 import React from 'react'
-
 import type { ExampleWithMetadata } from '../../types'
 
 interface ExampleToggleListProps {
@@ -37,7 +36,7 @@ export function ExampleToggleList({
     )
   }
 
-  const enabledCount = examples.filter((ex) => enabledIds.has(ex.id)).length
+  const enabledCount = examples.filter(ex => enabledIds.has(ex.id)).length
   const totalCount = examples.length
 
   return (
@@ -50,7 +49,7 @@ export function ExampleToggleList({
         <div className="flex gap-2">
           <button
             onClick={() =>
-              examples.forEach((ex) => !enabledIds.has(ex.id) && onToggle(ex.id))
+              examples.forEach(ex => !enabledIds.has(ex.id) && onToggle(ex.id))
             }
             className="text-info hover:text-info/90 text-xs"
             disabled={enabledCount === totalCount}
@@ -59,7 +58,7 @@ export function ExampleToggleList({
           </button>
           <button
             onClick={() =>
-              examples.forEach((ex) => enabledIds.has(ex.id) && onToggle(ex.id))
+              examples.forEach(ex => enabledIds.has(ex.id) && onToggle(ex.id))
             }
             className="text-muted-foreground hover:text-foreground text-xs"
             disabled={enabledCount === 0}
@@ -71,7 +70,7 @@ export function ExampleToggleList({
 
       {/* Example list */}
       <div className="max-h-64 space-y-1 overflow-y-auto">
-        {examples.map((example) => {
+        {examples.map(example => {
           const isEnabled = enabledIds.has(example.id)
           return (
             <button

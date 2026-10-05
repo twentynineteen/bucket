@@ -5,7 +5,6 @@
  */
 
 import { describe, expect, it } from 'vitest'
-
 import { validateCustomTheme } from './customTheme'
 
 describe('validateCustomTheme (B2)', () => {

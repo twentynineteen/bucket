@@ -7,13 +7,11 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
-import type { Event } from '@tauri-apps/api/event'
+import { listen, type Event } from '@tauri-apps/api/event'
 import { ask, confirm, open as openDialog } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { open as openShell } from '@tauri-apps/plugin-shell'
-
 import type {
   BatchUpdateResult,
   BreadcrumbsFile,

@@ -12,7 +12,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import React, { type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { useUploadEvents } from './useUploadEvents'
 
 type Listener = (event: { payload: unknown }) => void
@@ -33,7 +32,7 @@ vi.mock('../api', () => ({
     if (eventBus.failSetup) {
       // Let the query's own resolver land first so the catch-path write is the
       // last one to touch the cache.
-      await new Promise((resolve) => setTimeout(resolve, 20))
+      await new Promise(resolve => setTimeout(resolve, 20))
       throw new Error('listen() rejected')
     }
     eventBus.progress = cb
@@ -43,7 +42,7 @@ vi.mock('../api', () => ({
     if (eventBus.failSetup) {
       // Let the query's own resolver land first so the catch-path write is the
       // last one to touch the cache.
-      await new Promise((resolve) => setTimeout(resolve, 20))
+      await new Promise(resolve => setTimeout(resolve, 20))
       throw new Error('listen() rejected')
     }
     eventBus.complete = cb
@@ -53,7 +52,7 @@ vi.mock('../api', () => ({
     if (eventBus.failSetup) {
       // Let the query's own resolver land first so the catch-path write is the
       // last one to touch the cache.
-      await new Promise((resolve) => setTimeout(resolve, 20))
+      await new Promise(resolve => setTimeout(resolve, 20))
       throw new Error('listen() rejected')
     }
     eventBus.error = cb
@@ -61,7 +60,7 @@ vi.mock('../api', () => ({
   },
   listenUploadCancelled: async (cb: Listener) => {
     if (eventBus.failSetup) {
-      await new Promise((resolve) => setTimeout(resolve, 20))
+      await new Promise(resolve => setTimeout(resolve, 20))
       throw new Error('listen() rejected')
     }
     eventBus.cancelled = cb
@@ -69,7 +68,7 @@ vi.mock('../api', () => ({
   },
   listenUploadStallWarning: async (cb: Listener) => {
     if (eventBus.failSetup) {
-      await new Promise((resolve) => setTimeout(resolve, 20))
+      await new Promise(resolve => setTimeout(resolve, 20))
       throw new Error('listen() rejected')
     }
     eventBus.stallWarning = cb

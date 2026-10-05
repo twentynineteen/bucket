@@ -1,6 +1,4 @@
-import { ChunkErrorBoundary } from '@shared/ui/layout/ChunkErrorBoundary'
-import { RouteLoadingSpinner } from '@shared/ui/layout/RouteLoadingSpinner'
-import { AppSidebar } from '@shared/ui/layout/app-sidebar'
+import { useBreadcrumbStore } from '@shared/store'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -9,10 +7,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from '@shared/ui/breadcrumb'
+import { AppSidebar } from '@shared/ui/layout/app-sidebar'
+import { ChunkErrorBoundary } from '@shared/ui/layout/ChunkErrorBoundary'
+import { RouteLoadingSpinner } from '@shared/ui/layout/RouteLoadingSpinner'
 import { Separator } from '@shared/ui/separator'
 import { SidebarInset, SidebarTrigger } from '@shared/ui/sidebar/Sidebar'
 import { SidebarProvider } from '@shared/ui/sidebar/SidebarProvider'
-import { useBreadcrumbStore } from '@shared/store'
 import React, { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 

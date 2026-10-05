@@ -8,10 +8,18 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-
+import type { Event } from '@tauri-apps/api/event'
 import { act, renderHook } from '@testing-library/react'
-import type { Mock } from 'vitest'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, type Mock } from 'vitest'
+import * as bakerApi from '../api'
+// --- useBakerScan Behavioral Tests ---
+
+import { useBakerScan } from '../hooks/useBakerScan'
+// --- useRefreshBreadcrumbSizes Behavioral Tests ---
+
+import { useRefreshBreadcrumbSizes } from '../hooks/useRefreshBreadcrumbSizes'
+import * as bakerBarrel from '../index'
+import type { ScanOptions, ScanResult } from '../types'
 
 // Mock the api layer (single mock point for all Baker I/O)
 vi.mock('../api', () => ({
@@ -136,9 +144,6 @@ vi.mock('@shared/lib/query-keys', () => ({
     }
   }
 }))
-
-import * as bakerBarrel from '../index'
-import * as bakerApi from '../api'
 
 // --- Shape Tests (Barrel Exports) ---
 
@@ -366,7 +371,7 @@ describe('Baker Module - No Direct Plugin Imports', () => {
       if (entry.isDirectory()) {
         if (entry.name === '__contracts__' || entry.name === 'node_modules') continue
         files.push(...getFilesRecursive(fullPath, extensions))
-      } else if (extensions.some((ext) => entry.name.endsWith(ext))) {
+      } else if (extensions.some(ext => entry.name.endsWith(ext))) {
         files.push(fullPath)
       }
     }
@@ -375,11 +380,11 @@ describe('Baker Module - No Direct Plugin Imports', () => {
 
   it('all non-api.ts files have zero direct @tauri-apps imports', () => {
     const allFiles = getFilesRecursive(modulePath, ['.ts', '.tsx'])
-    const nonApiFiles = allFiles.filter((f) => !f.endsWith('/api.ts'))
+    const nonApiFiles = allFiles.filter(f => !f.endsWith('/api.ts'))
     for (const file of nonApiFiles) {
       const content = fs.readFileSync(file, 'utf-8')
       const lines = content.split('\n')
-      const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
+      const tauriImports = lines.filter(line => line.includes("from '@tauri-apps"))
       expect(tauriImports, `Found @tauri-apps import in ${file}`).toEqual([])
     }
   })
@@ -390,7 +395,7 @@ describe('Baker Module - No Direct Plugin Imports', () => {
       const content = fs.readFileSync(file, 'utf-8')
       const lines = content.split('\n')
       const alertCalls = lines.filter(
-        (line) =>
+        line =>
           line.includes('alert(') &&
           !line.includes('AlertCircle') &&
           !line.includes('AlertDescription') &&
@@ -402,10 +407,6 @@ describe('Baker Module - No Direct Plugin Imports', () => {
     }
   })
 })
-
-// --- useRefreshBreadcrumbSizes Behavioral Tests ---
-
-import { useRefreshBreadcrumbSizes } from '../hooks/useRefreshBreadcrumbSizes'
 
 describe('useRefreshBreadcrumbSizes - Behavior', () => {
   it('returns expected interface shape', () => {
@@ -479,12 +480,6 @@ describe('useRefreshBreadcrumbSizes - Behavior', () => {
   })
 })
 
-// --- useBakerScan Behavioral Tests ---
-
-import { useBakerScan } from '../hooks/useBakerScan'
-import type { ScanOptions, ScanResult } from '../types'
-import type { Event } from '@tauri-apps/api/event'
-
 describe('useBakerScan - Behavior', () => {
   const defaultOptions: ScanOptions = {
     maxDepth: 5,
@@ -510,7 +505,7 @@ describe('useBakerScan - Behavior', () => {
     // Capture the completion callback so we can fire it manually
     let capturedCompleteCallback: ((event: Event<unknown>) => void) | null = null
     const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
-    mockListenComplete.mockImplementation(async (cb) => {
+    mockListenComplete.mockImplementation(async cb => {
       capturedCompleteCallback = cb as unknown as (event: Event<unknown>) => void
       return () => {}
     })
@@ -545,7 +540,7 @@ describe('useBakerScan - Behavior', () => {
   it('error event path: sets error state and isScanning=false', async () => {
     let capturedErrorCallback: ((event: Event<unknown>) => void) | null = null
     const mockListenError = vi.mocked(bakerApi.listenScanError)
-    mockListenError.mockImplementation(async (cb) => {
+    mockListenError.mockImplementation(async cb => {
       capturedErrorCallback = cb as unknown as (event: Event<unknown>) => void
       return () => {}
     })
@@ -587,7 +582,7 @@ describe('useBakerScan - Behavior', () => {
     const hookPath = path.resolve(__dirname, '../hooks/useBakerScan.ts')
     const content = fs.readFileSync(hookPath, 'utf-8')
     const lines = content.split('\n')
-    const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
+    const tauriImports = lines.filter(line => line.includes("from '@tauri-apps"))
     expect(
       tauriImports,
       'useBakerScan should not have direct @tauri-apps imports'
@@ -597,7 +592,7 @@ describe('useBakerScan - Behavior', () => {
   it('timestamp tracking: scanStartTime set on start, cleared on completion', async () => {
     let capturedCompleteCallback: ((event: Event<unknown>) => void) | null = null
     const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
-    mockListenComplete.mockImplementation(async (cb) => {
+    mockListenComplete.mockImplementation(async cb => {
       capturedCompleteCallback = cb as unknown as (event: Event<unknown>) => void
       return () => {}
     })
@@ -636,7 +631,7 @@ describe('useBakerScan - Behavior', () => {
 
     let capturedCompleteCallback: ((event: Event<unknown>) => void) | null = null
     const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
-    mockListenComplete.mockImplementation(async (cb) => {
+    mockListenComplete.mockImplementation(async cb => {
       capturedCompleteCallback = cb as unknown as (event: Event<unknown>) => void
       return () => {}
     })
@@ -696,7 +691,7 @@ describe('useBakerScan - Behavior', () => {
   it('refreshProject: re-validates one project and patches it into scanResult', async () => {
     let capturedCompleteCallback: ((event: Event<unknown>) => void) | null = null
     const mockListenComplete = vi.mocked(bakerApi.listenScanComplete)
-    mockListenComplete.mockImplementation(async (cb) => {
+    mockListenComplete.mockImplementation(async cb => {
       capturedCompleteCallback = cb as unknown as (event: Event<unknown>) => void
       return () => {}
     })

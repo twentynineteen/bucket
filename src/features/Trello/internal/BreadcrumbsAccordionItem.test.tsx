@@ -8,15 +8,12 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-
 import '@testing-library/jest-dom'
-
+import type { Breadcrumb } from '@shared/types'
+import { Accordion } from '@shared/ui/accordion'
 import { render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import { Accordion } from '@shared/ui/accordion'
-import type { Breadcrumb } from '@shared/types'
 import * as trelloApi from '../api'
 import BreadcrumbsAccordionItem from './BreadcrumbsAccordionItem'
 
@@ -72,7 +69,7 @@ describe('B5 - Trello card breadcrumbs', () => {
   })
 
   it('B5.2 marks the recorded folder when it does not resolve here', async () => {
-    answerProbe((path) => path !== RECORDED_FOLDER)
+    answerProbe(path => path !== RECORDED_FOLDER)
     renderItem()
 
     expect(await screen.findByLabelText(NOT_FOUND_LABEL)).toBeInTheDocument()
@@ -89,7 +86,7 @@ describe('B5 - Trello card breadcrumbs', () => {
   })
 
   it('B5.3 strikes through a file row whose recorded path does not resolve here', async () => {
-    answerProbe((path) => path !== FILE_B)
+    answerProbe(path => path !== FILE_B)
     renderItem()
 
     const marked = await screen.findByLabelText(NOT_FOUND_LABEL)

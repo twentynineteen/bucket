@@ -9,18 +9,16 @@
  * that colours come from theme variables and never from hardcoded values --
  * which is the property that actually breaks per-theme.
  */
+import { getAllThemeIds } from '@shared/ui/theme/themes'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-vi.mock('../api', () => ({ getFolders: vi.fn() }))
-
-import { getAllThemeIds } from '@shared/ui/theme/themes'
-
 import { getFolders } from '../api'
 import { SproutFolderPicker } from './SproutFolderPicker'
+
+vi.mock('../api', () => ({ getFolders: vi.fn() }))
 
 const rootPage = {
   folders: [{ id: 'f1', name: 'Marketing', parent_id: null }],

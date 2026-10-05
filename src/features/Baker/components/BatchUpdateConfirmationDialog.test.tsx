@@ -8,7 +8,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
-
 import type { BreadcrumbsFile, BreadcrumbsPreview, FileInfo } from '../types'
 import { BatchUpdateConfirmationDialog } from './BatchUpdateConfirmationDialog'
 

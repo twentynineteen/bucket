@@ -1,5 +1,5 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys, createQueryOptions } from '@shared/lib'
+import { createQueryOptions, queryKeys } from '@shared/lib'
 import { useBreadcrumbStore } from '@shared/store'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo } from 'react'
@@ -16,7 +16,7 @@ interface BreadcrumbData {
 }
 
 export const useBreadcrumb = (items: BreadcrumbItem[]) => {
-  const setBreadcrumbs = useBreadcrumbStore((state) => state.setBreadcrumbs)
+  const setBreadcrumbs = useBreadcrumbStore(state => state.setBreadcrumbs)
   const queryClient = useQueryClient()
 
   /**
@@ -44,8 +44,8 @@ export const useBreadcrumb = (items: BreadcrumbItem[]) => {
       queryKey,
       async (): Promise<BreadcrumbData> => {
         // Convert items to breadcrumb data format
-        const path = items.map((item) => item.label).join(' > ')
-        const breadcrumbItems = items.map((item) => ({
+        const path = items.map(item => item.label).join(' > ')
+        const breadcrumbItems = items.map(item => ({
           name: item.label,
           url: item.href || '#'
         }))
@@ -67,8 +67,8 @@ export const useBreadcrumb = (items: BreadcrumbItem[]) => {
 
   const updateBreadcrumbs = useCallback(() => {
     // Update both React Query cache and Zustand store
-    const path = stableItems.map((item) => item.label).join(' > ')
-    const breadcrumbItems = stableItems.map((item) => ({
+    const path = stableItems.map(item => item.label).join(' > ')
+    const breadcrumbItems = stableItems.map(item => ({
       name: item.label,
       url: item.href || '#'
     }))

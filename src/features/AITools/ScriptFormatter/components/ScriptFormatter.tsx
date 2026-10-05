@@ -5,13 +5,12 @@
  * Refactored: 2025-11-18 - Extracted state to useScriptFormatterState, step components to /steps
  */
 
-import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
-import { Button } from '@shared/ui/button'
 import { useBreadcrumb } from '@shared/hooks'
-import { useScriptFormatterState } from '../hooks/useScriptFormatterState'
+import { Button } from '@shared/ui/button'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import React from 'react'
-
+import { useScriptFormatterState } from '../hooks/useScriptFormatterState'
 import { FileUploader } from './FileUploader'
 import { SaveExampleDialog } from './SaveExampleDialog'
 import { DownloadCompleteStep } from './steps/DownloadCompleteStep'

@@ -6,7 +6,6 @@
 
 import { CheckCircle, Loader2, XCircle, Zap } from 'lucide-react'
 import React from 'react'
-
 import type { AIProvider, ProviderConfiguration } from '../../types'
 
 interface ProviderSelectorProps {
@@ -27,7 +26,7 @@ export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   const handleProviderSelect = (providerId: string) => {
     onSelect(providerId)
     // Auto-validate after selection
-    const provider = providers.find((p) => p.id === providerId)
+    const provider = providers.find(p => p.id === providerId)
     if (provider) {
       onValidate(providerId, provider.configuration)
     }
@@ -38,7 +37,7 @@ export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
       <label className="text-foreground block text-sm font-medium">AI Provider</label>
 
       <div className="space-y-2">
-        {providers.map((provider) => (
+        {providers.map(provider => (
           <div
             key={provider.id}
             className={`cursor-pointer rounded-lg border p-4 transition-all ${

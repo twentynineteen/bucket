@@ -12,7 +12,6 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
-
 import {
   getFolders,
   openJsonFileDialog,
@@ -22,15 +21,13 @@ import {
   writeFolderIndex,
   writeFolderIndexTo
 } from '../api'
-import type { CrawlProgress } from '../internal/crawlSproutFolders'
-import { crawlSproutFolders } from '../internal/crawlSproutFolders'
-import type { FolderIndex } from '../internal/folderIndex'
+import { crawlSproutFolders, type CrawlProgress } from '../internal/crawlSproutFolders'
 import {
   indexAgeInDays,
   mergeFolderIndex,
-  parseFolderIndex
+  parseFolderIndex,
+  type FolderIndex
 } from '../internal/folderIndex'
-import { withPaths } from '../internal/folderPaths'
 import {
   assessImport,
   describeVerdict,
@@ -38,6 +35,7 @@ import {
   mergeImportedIndex,
   parseImportedIndex
 } from '../internal/folderIndexTransfer'
+import { withPaths } from '../internal/folderPaths'
 import { remainingBudget } from '../internal/sproutRateBudget'
 import type { SelectedSproutFolder } from '../types'
 import { folderIndexQueryKey, useSavedFolderIndex } from './useSavedFolderIndex'
@@ -116,13 +114,13 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
       const result = await crawlSproutFolders({
         // Routed through api.ts, so the shared budget guard serialises these and
         // refuses them near the reserve — an upload keeps its headroom.
-        fetchLevel: async (parentId) => (await getFolders(apiKey, parentId)).folders,
+        fetchLevel: async parentId => (await getFolders(apiKey, parentId)).folders,
         signal: controller.signal,
         onProgress: setProgress,
         paceMs: paceFromBudget,
         // A full pass over a large account runs for minutes, so progress is
         // written as it goes and an interruption keeps what was found.
-        onCheckpoint: (folders) => save(folders, false).then(() => undefined)
+        onCheckpoint: folders => save(folders, false).then(() => undefined)
       })
 
       const index = await save(result.folders, !result.incomplete)
@@ -155,7 +153,7 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
       await writeFolderIndexTo(path, current)
       return current.folders.length
     },
-    onSuccess: (count) => {
+    onSuccess: count => {
       setTransferFailed(false)
       setTransferMessage(
         count === null
@@ -183,7 +181,7 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
 
       // One request, versus the minutes the import is replacing. Folder ids are
       // account-scoped, so overlapping roots prove the index belongs here.
-      const roots = (await getFolders(apiKey, null)).folders.map((folder) => folder.id)
+      const roots = (await getFolders(apiKey, null)).folders.map(folder => folder.id)
       const verdict = assessImport(imported, roots)
       if (!verdict.ok) throw new Error(describeVerdict(verdict, 0))
 
@@ -201,7 +199,7 @@ export function useSproutFolderIndex(apiKey: string | null): UseSproutFolderInde
 
       return { merged, message: describeVerdict(verdict, merged.folders.length) }
     },
-    onSuccess: (result) => {
+    onSuccess: result => {
       setTransferFailed(false)
       if (!result) return
       queryClient.setQueryData(folderIndexQueryKey(apiKey ?? ''), result.merged)

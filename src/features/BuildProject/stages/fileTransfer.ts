@@ -7,26 +7,23 @@
  * Compatible with XState v5 fromPromise actors and the Tauri event system.
  */
 import { fromPromise } from 'xstate'
-
 import {
   cancelFileTransfer,
   listenFileTransferComplete,
   listenFileTransferProgress,
   transferFilesWithProgress
 } from '../api'
-import type {
-  FileTransferItem,
-  FileTransferProgressHandler,
-  FileTransferStageData,
-  StageConfig,
-  StageResult
-} from '../types'
 import {
   BuildProjectError,
   createStageFailure,
   createStageSuccess,
   DEFAULT_STAGE_CONFIGS,
-  ErrorKind
+  ErrorKind,
+  type FileTransferItem,
+  type FileTransferProgressHandler,
+  type FileTransferStageData,
+  type StageConfig,
+  type StageResult
 } from '../types'
 
 // =============================================================================
@@ -252,19 +249,19 @@ export async function transferFiles(
         stallTimeoutId = setTimeout(checkStall, 5000)
 
         // Listen for progress events
-        listenFileTransferProgress((event) => {
+        listenFileTransferProgress(event => {
           if (event.payload.operationId === operationId) {
             lastProgressTime = Date.now()
             onProgress?.(event.payload)
           }
         })
-          .then((unlisten) => {
+          .then(unlisten => {
             unlisteners.push(unlisten)
           })
           .catch(reject)
 
         // Listen for completion event
-        listenFileTransferComplete((event) => {
+        listenFileTransferComplete(event => {
           if (event.payload.operationId === operationId) {
             const duration = performance.now() - startTime
 
@@ -289,7 +286,7 @@ export async function transferFiles(
             }
           }
         })
-          .then((unlisten) => {
+          .then(unlisten => {
             unlisteners.push(unlisten)
           })
           .catch(reject)
@@ -308,7 +305,7 @@ export async function transferFiles(
                   )
                 )
               })
-              .catch((err) => {
+              .catch(err => {
                 resolve(
                   createStageFailure(
                     ErrorKind.Cancelled,
@@ -430,7 +427,7 @@ export async function startTransfer(
   let resolved = false
 
   // Create completion promise
-  const completion = new Promise<StageResult<FileTransferStageData>>((resolve) => {
+  const completion = new Promise<StageResult<FileTransferStageData>>(resolve => {
     const cleanup = () => {
       if (stallTimeoutId) clearTimeout(stallTimeoutId)
       progressUnlisten?.()
@@ -466,16 +463,16 @@ export async function startTransfer(
     stallTimeoutId = setTimeout(checkStall, 5000)
 
     // Progress listener
-    listenFileTransferProgress((event) => {
+    listenFileTransferProgress(event => {
       if (event.payload.operationId === operationId) {
         lastProgressTime = Date.now()
         onProgress?.(event.payload)
       }
     })
-      .then((unlisten) => {
+      .then(unlisten => {
         progressUnlisten = unlisten
       })
-      .catch((err) => {
+      .catch(err => {
         resolveOnce(
           createStageFailure(
             ErrorKind.Unknown,
@@ -487,7 +484,7 @@ export async function startTransfer(
       })
 
     // Completion listener
-    listenFileTransferComplete((event) => {
+    listenFileTransferComplete(event => {
       if (event.payload.operationId === operationId) {
         const duration = performance.now() - startTime
 
@@ -510,10 +507,10 @@ export async function startTransfer(
         }
       }
     })
-      .then((unlisten) => {
+      .then(unlisten => {
         completeUnlisten = unlisten
       })
-      .catch((err) => {
+      .catch(err => {
         resolveOnce(
           createStageFailure(
             ErrorKind.Unknown,

@@ -26,7 +26,6 @@
 import { readFileSync } from 'node:fs'
 import { relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
-
 import {
   REPO_ROOT,
   RUST_COMMANDS_DIR,
@@ -253,7 +252,7 @@ describe('Tauri IPC argument contract', () => {
       for (const key of site.keys) {
         if (command.expectedKeys.has(key)) continue
 
-        const snakeGuess = key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
+        const snakeGuess = key.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`)
         const hint = command.expectedKeys.has(toLowerCamelCase(snakeGuess))
           ? ` -- did you mean '${toLowerCamelCase(snakeGuess)}'? Tauri camelCases arguments and has no snake_case fallback.`
           : ` -- '${site.command}' accepts [${[...command.expectedKeys].join(', ')}]`
@@ -295,7 +294,7 @@ describe('Tauri IPC argument contract', () => {
     expect(getFolders?.expectedKeys.has('parentId')).toBe(true)
     expect(getFolders?.expectedKeys.has('folderId')).toBe(false)
 
-    const callSites = sites.filter((site) => site.command === 'get_folders')
+    const callSites = sites.filter(site => site.command === 'get_folders')
     expect(callSites.length).toBeGreaterThan(0)
     for (const site of callSites) {
       expect(site.keys).toContain('parentId')

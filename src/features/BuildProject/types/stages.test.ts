@@ -6,7 +6,6 @@
  */
 
 import { describe, expect, it } from 'vitest'
-
 import {
   BuildProjectError,
   createAlreadyExistsError,
@@ -121,7 +120,7 @@ describe('Stage Types and Helpers', () => {
       it('should handle different error kinds', () => {
         const kinds = ['IO', 'Timeout', 'Cancelled', 'NotFound', 'Unknown']
 
-        kinds.forEach((kind) => {
+        kinds.forEach(kind => {
           const result = createStageFailure(kind, `${kind} error`, true, 10)
           expect(result.error.kind).toBe(kind)
         })

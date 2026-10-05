@@ -12,6 +12,8 @@
  * key must fail here rather than degrade to root at runtime.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getFolders, replaceVideo, uploadVideo } from '../api'
+import { __resetBudget } from '../internal/sproutRateBudget'
 
 // vi.mock is hoisted above module-level consts, so the spy has to be too.
 const { invokeMock } = vi.hoisted(() => ({ invokeMock: vi.fn() }))
@@ -39,9 +41,6 @@ vi.mock('@tauri-apps/api/path', () => ({
   appDataDir: async () => '/appdata',
   join: async (...parts: string[]) => parts.join('/').replace(/\/{2,}/g, '/')
 }))
-
-import { getFolders, replaceVideo, uploadVideo } from '../api'
-import { __resetBudget } from '../internal/sproutRateBudget'
 
 const emptyPage = {
   folders: [],

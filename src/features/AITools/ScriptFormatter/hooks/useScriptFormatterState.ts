@@ -8,11 +8,9 @@
  * - Additional feature: Save formatted text as example for RAG
  */
 
+import { ExampleCategory } from '@shared/types'
 import { createNamespacedLogger } from '@shared/utils'
 import { useCallback, useState } from 'react'
-
-import { ExampleCategory } from '@shared/types'
-
 import { useExampleManagement } from '../../ExampleEmbeddings/hooks/useExampleManagement'
 import { useOllamaEmbedding } from './useOllamaEmbedding'
 import { useScriptWorkflow } from './useScriptWorkflow'

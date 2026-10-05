@@ -12,12 +12,11 @@
  */
 
 import { describe, expect, it } from 'vitest'
-
 import {
-  NAMING_CATEGORIES,
-  OTHER_CATEGORY_ID,
   hasColon,
   matchTitle,
+  NAMING_CATEGORIES,
+  OTHER_CATEGORY_ID,
   stripColons
 } from './namingConventions'
 
@@ -59,7 +58,7 @@ describe('NAMING_CATEGORIES', () => {
   it('B2.3 lists exactly the 12 agreed WBS categories', () => {
     // The specific set, not a bare count: a changed id is a spec change, and
     // that is what should force this test to be revisited.
-    expect(NAMING_CATEGORIES.map((c) => c.id).sort()).toEqual(
+    expect(NAMING_CATEGORIES.map(c => c.id).sort()).toEqual(
       [
         'elective-promotional-module-overview',
         'events-conferences',
@@ -87,8 +86,8 @@ describe('NAMING_CATEGORIES', () => {
   })
 
   it('B2.2 carries a Trello reference for the five categories that have one', () => {
-    const withReference = NAMING_CATEGORIES.filter((c) => c.trelloReference)
-    expect(withReference.map((c) => c.id).sort()).toEqual(
+    const withReference = NAMING_CATEGORIES.filter(c => c.trelloReference)
+    expect(withReference.map(c => c.id).sort()).toEqual(
       [
         'events-conferences',
         'module-content',

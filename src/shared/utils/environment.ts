@@ -12,7 +12,6 @@
  */
 
 import { isTauri } from '@tauri-apps/api/core'
-
 import { logger } from './logger'
 
 let hasWarnedMissingRuntime = false

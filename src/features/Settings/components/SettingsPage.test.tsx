@@ -8,13 +8,12 @@
  * a file whose contents are merely unparseable rather than lost.
  */
 
-import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import SettingsPage from './SettingsPage'
 import * as api from '../api'
+import SettingsPage from './SettingsPage'
 
 vi.mock('../api', () => ({
   loadSettingsApiKeys: vi.fn(),
@@ -23,7 +22,7 @@ vi.mock('../api', () => ({
   directoryExists: vi.fn().mockResolvedValue(true)
 }))
 
-vi.mock('@shared/hooks', async (importOriginal) => {
+vi.mock('@shared/hooks', async importOriginal => {
   const actual = await importOriginal<typeof import('@shared/hooks')>()
   return { ...actual, useBreadcrumb: vi.fn() }
 })

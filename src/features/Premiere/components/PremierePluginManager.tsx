@@ -5,7 +5,7 @@
  * Automatically deploys plugin updates to your Premiere Pro installation.
  */
 
-import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { useBreadcrumb } from '@shared/hooks'
 import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert'
 import {
   AlertDialog,
@@ -17,7 +17,7 @@ import {
   AlertDialogTitle
 } from '@shared/ui/alert-dialog'
 import { Button } from '@shared/ui/button'
-import { useBreadcrumb } from '@shared/hooks'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import { logger } from '@shared/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -30,7 +30,6 @@ import {
 } from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
-
 import { getAvailablePlugins, installPlugin, openCepFolder } from '../api'
 import type { InstallResult } from '../types'
 
@@ -97,7 +96,7 @@ const PremierePluginManagerContent: React.FC = () => {
       const result: InstallResult = await installPlugin(filename, name)
       return { ...result, displayName }
     },
-    onSuccess: (result) => {
+    onSuccess: result => {
       // Show temporary toast for debugging
       toast.success(`Plugin installed to: ${result.installedPath}`)
 
@@ -202,7 +201,7 @@ const PremierePluginManagerContent: React.FC = () => {
             {/* Plugin List */}
             {plugins && plugins.length > 0 && (
               <div className="mt-3 space-y-3">
-                {plugins.map((plugin) => (
+                {plugins.map(plugin => (
                   <div
                     key={plugin.name}
                     className="bg-card border-border rounded-xl border p-4 shadow-sm"
@@ -214,7 +213,7 @@ const PremierePluginManagerContent: React.FC = () => {
                           src={plugin.icon}
                           alt={`${plugin.displayName} icon`}
                           className="h-10 w-10 object-contain"
-                          onError={(e) => {
+                          onError={e => {
                             // Fallback to Package icon if image fails to load
                             e.currentTarget.style.display = 'none'
                             const fallback = e.currentTarget
@@ -360,7 +359,7 @@ const PremierePluginManagerContent: React.FC = () => {
       {/* Success Dialog */}
       <AlertDialog
         open={successDialog.open}
-        onOpenChange={(open) => setSuccessDialog((prev) => ({ ...prev, open }))}
+        onOpenChange={open => setSuccessDialog(prev => ({ ...prev, open }))}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -418,7 +417,7 @@ const PremierePluginManagerContent: React.FC = () => {
           </div>
           <AlertDialogFooter>
             <AlertDialogAction
-              onClick={() => setSuccessDialog((prev) => ({ ...prev, open: false }))}
+              onClick={() => setSuccessDialog(prev => ({ ...prev, open: false }))}
             >
               Got it!
             </AlertDialogAction>

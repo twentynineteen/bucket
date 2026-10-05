@@ -44,7 +44,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
     if (keysA.length !== keysB.length) return false
 
     // Recursive object comparison
-    return keysA.every((key) =>
+    return keysA.every(key =>
       deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])
     )
   }
@@ -175,7 +175,7 @@ export function compareBreadcrumbsMeaningful(
   const fullDiff = compareBreadcrumbs(current, updated, true)
 
   // Filter out maintenance changes
-  const meaningfulChanges = fullDiff.changes.filter((change) => {
+  const meaningfulChanges = fullDiff.changes.filter(change => {
     // Always exclude scannedBy (pure maintenance)
     if (change.field === 'scannedBy') {
       return false

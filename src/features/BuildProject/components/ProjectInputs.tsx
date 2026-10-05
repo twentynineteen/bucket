@@ -31,7 +31,7 @@ const ProjectInputs: React.FC<ProjectInputsProps> = ({
         <input
           id="project-title"
           value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
+          onChange={e => onTitleChange(e.target.value)}
           className="bg-secondary border-input text-foreground focus:ring-info focus:border-info hover:border-input/80 block w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:ring-2"
           placeholder="e.g. DBA - IB1234 - J Doe - Introductions 060626"
         />
@@ -66,7 +66,7 @@ const ProjectInputs: React.FC<ProjectInputsProps> = ({
           className="bg-secondary border-input text-foreground focus:ring-info focus:border-info hover:border-input/80 block w-full rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-200 focus:ring-2"
           placeholder={String(PROJECT_LIMITS.DEFAULT_CAMERAS)}
           value={numCameras}
-          onChange={(e) => onNumCamerasChange(Number(e.target.value))}
+          onChange={e => onNumCamerasChange(Number(e.target.value))}
           required
         />
       </div>

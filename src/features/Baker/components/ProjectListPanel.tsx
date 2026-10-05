@@ -10,16 +10,14 @@
  * - Pulse animation for stale breadcrumb badges
  */
 
-import { useVirtualizer } from '@tanstack/react-virtual'
-import { motion } from 'framer-motion'
-import React, { useMemo, useState } from 'react'
-
 import { BAKER_ANIMATIONS } from '@shared/constants'
 import { useReducedMotion } from '@shared/hooks'
 import { Input } from '@shared/ui/input'
-import type { ProjectFolder } from '../types'
-
 import { formatFileSize } from '@shared/utils'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { motion } from 'framer-motion'
+import React, { useMemo, useState } from 'react'
+import type { ProjectFolder } from '../types'
 
 // Threshold for enabling virtual scrolling (performance optimization for large lists)
 const VIRTUAL_SCROLLING_THRESHOLD = 50
@@ -103,7 +101,7 @@ const ProjectStatusPills: React.FC<ProjectStatusPillsProps> = ({
       {project.invalidBreadcrumbs && onRepairProject && (
         <button
           type="button"
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation()
             onRepairProject(project.path)
           }}
@@ -196,14 +194,14 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
           label: 'Invalid',
           count: projects.filter(isInvalid).length
         }
-      ].filter((chip) => chip.key === 'all' || chip.count > 0),
+      ].filter(chip => chip.key === 'all' || chip.count > 0),
     [projects]
   )
 
   const filteredProjects = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     const filtered = projects.filter(
-      (project) =>
+      project =>
         matchesStatus(project, statusFilter) &&
         (normalized === '' ||
           project.name.toLowerCase().includes(normalized) ||
@@ -263,11 +261,11 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
         <input
           type="checkbox"
           checked={isChecked}
-          onChange={(e) => {
+          onChange={e => {
             e.stopPropagation()
             onProjectSelection(project.path, e.target.checked)
           }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
           className="mt-0.5 flex-shrink-0"
         />
 
@@ -345,7 +343,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
         <Input
           placeholder="Filter projects…"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={e => setQuery(e.target.value)}
           className="h-8 text-xs"
         />
 
@@ -356,7 +354,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
               { key: 'scan', label: 'Scan order' },
               { key: 'size', label: 'Size' }
             ] as const
-          ).map((option) => (
+          ).map(option => (
             <button
               key={option.key}
               type="button"
@@ -374,7 +372,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          {filterChips.map((chip) => (
+          {filterChips.map(chip => (
             <button
               key={chip.key}
               type="button"
@@ -412,7 +410,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
               position: 'relative'
             }}
           >
-            {virtualizer.getVirtualItems().map((virtualItem) => {
+            {virtualizer.getVirtualItems().map(virtualItem => {
               const project = filteredProjects[virtualItem.index]
               return renderProjectItem(project, virtualItem.index, {
                 position: 'absolute',

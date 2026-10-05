@@ -1,9 +1,7 @@
-import { Button } from '@shared/ui/button'
 import { STEP_CARD_ANIMATION } from '@shared/constants'
+import { Button } from '@shared/ui/button'
 import { RefreshCw, Upload } from 'lucide-react'
-
 import type { FootageFile } from '../types'
-
 import ProjectFileList from './ProjectFileList'
 
 interface AddFootageStepProps {

@@ -5,11 +5,9 @@
  * Grid display of script examples with loading and empty states
  */
 
-import { FileText } from 'lucide-react'
-
 import { Skeleton } from '@shared/ui/skeleton'
+import { FileText } from 'lucide-react'
 import type { ExampleWithMetadata } from '../../types'
-
 import { ExampleCard } from './ExampleCard'
 
 interface ExampleListProps {
@@ -64,7 +62,7 @@ export function ExampleList({
   // Grid of examples
   return (
     <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-      {examples.map((example) => (
+      {examples.map(example => (
         <ExampleCard
           key={example.id}
           example={example}

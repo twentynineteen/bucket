@@ -12,7 +12,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import type { UseKavanaghAvailabilityResult } from '../hooks/useKavanaghAvailability'
 import type {
   KavanaghCheckReport,
@@ -21,6 +20,7 @@ import type {
   KavanaghTailAnalysis,
   KavanaghWatermarkReport
 } from '../types'
+import KavanaghPage from './KavanaghPage'
 
 const mockAvailability = vi.fn<() => UseKavanaghAvailabilityResult>()
 
@@ -46,7 +46,7 @@ vi.mock('../api', () => ({
   listenKavanaghProgress: (
     callback: (event: { payload: KavanaghProgressEvent }) => void
   ) => {
-    emitProgress = (payload) => callback({ payload })
+    emitProgress = payload => callback({ payload })
     return Promise.resolve(() => {
       emitProgress = null
     })
@@ -55,7 +55,7 @@ vi.mock('../api', () => ({
 
 // Spread the real module: Button reaches for useReducedMotion from here too, and
 // replacing the whole module wholesale breaks every component that renders one.
-vi.mock('@shared/hooks', async (importOriginal) => ({
+vi.mock('@shared/hooks', async importOriginal => ({
   ...(await importOriginal<typeof import('@shared/hooks')>()),
   useBreadcrumb: vi.fn(),
   useApiKeys: () => ({ data: { kavanaghMatchThreshold: undefined }, isPending: false })
@@ -66,8 +66,6 @@ const toastError = vi.fn()
 vi.mock('sonner', () => ({
   toast: { success: (m: string) => toastSuccess(m), error: (m: string) => toastError(m) }
 }))
-
-import KavanaghPage from './KavanaghPage'
 
 const READY: UseKavanaghAvailabilityResult = {
   available: true,
@@ -254,7 +252,7 @@ describe('KavanaghPage watermark run', () => {
   it('B8.1 shows progress with its phase, then renders the report', async () => {
     let settle: (report: KavanaghCheckReport) => void = () => {}
     runKavanaghCheck.mockImplementation(
-      () => new Promise<KavanaghCheckReport>((resolve) => (settle = resolve))
+      () => new Promise<KavanaghCheckReport>(resolve => (settle = resolve))
     )
 
     renderPage()

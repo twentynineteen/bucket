@@ -1,5 +1,4 @@
 import { openFileDialog } from '../api'
-
 import type { FootageFile } from '../types'
 
 export async function selectFiles(): Promise<FootageFile[]> {
@@ -7,7 +6,7 @@ export async function selectFiles(): Promise<FootageFile[]> {
 
   if (!selectedPaths) return []
 
-  return (Array.isArray(selectedPaths) ? selectedPaths : [selectedPaths]).map((path) => ({
+  return (Array.isArray(selectedPaths) ? selectedPaths : [selectedPaths]).map(path => ({
     file: { path, name: path.split('/').pop() || 'unknown' },
     camera: 1
   }))

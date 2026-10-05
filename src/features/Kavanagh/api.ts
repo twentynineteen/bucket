@@ -8,11 +8,9 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
-import type { Event } from '@tauri-apps/api/event'
+import { listen, type Event } from '@tauri-apps/api/event'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { exists, readDir } from '@tauri-apps/plugin-fs'
-
 import {
   filterReferenceImages,
   matchesPoolFolder,
@@ -60,7 +58,7 @@ export async function listReferencePool(
     if (!(await exists(folder))) return { status: 'missing' }
     const rootEntries = await readDir(folder)
     const match = rootEntries.find(
-      (entry) => entry.isDirectory && matchesPoolFolder(entry.name || '', pool)
+      entry => entry.isDirectory && matchesPoolFolder(entry.name || '', pool)
     )
     if (!match) return { status: 'missing' }
     poolPath = `${folder}/${match.name}`
@@ -156,7 +154,7 @@ export async function saveKavanaghEvidence(
   return invoke<string[]>('kavanagh_save_evidence', {
     folder,
     prefix,
-    items: thumbnails.map((thumbnail) => ({
+    items: thumbnails.map(thumbnail => ({
       label: thumbnail.label,
       jpeg: thumbnail.jpeg
     }))
@@ -203,15 +201,15 @@ async function collectReferenceImages(dir: string, depth = 0): Promise<string[]>
   const entries = await readDir(dir)
 
   const files = filterReferenceImages(
-    entries.filter((e) => !e.isDirectory).map((e) => e.name || '')
-  ).map((name) => `${dir}/${name}`)
+    entries.filter(e => !e.isDirectory).map(e => e.name || '')
+  ).map(name => `${dir}/${name}`)
 
   if (depth >= MAX_POOL_DEPTH) return files
 
   const nested = await Promise.all(
     entries
-      .filter((entry) => entry.isDirectory && entry.name)
-      .map(async (entry) => {
+      .filter(entry => entry.isDirectory && entry.name)
+      .map(async entry => {
         try {
           return await collectReferenceImages(`${dir}/${entry.name}`, depth + 1)
         } catch {

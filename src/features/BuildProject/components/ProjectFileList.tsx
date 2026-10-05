@@ -4,7 +4,6 @@ import { FILE_LIST_ANIMATION } from '@shared/constants'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Film, Trash2, Video } from 'lucide-react'
 import React from 'react'
-
 import type { FootageFile } from '../types'
 
 // Threshold for enabling virtual scrolling (performance optimization for large lists)
@@ -74,9 +73,9 @@ const FileListItem = React.memo<FileListItemProps>(
               aria-label={`Select camera for ${item.file.name}`}
               className="border-input bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-ring cursor-pointer rounded-md border px-3 py-1.5 text-xs transition-colors focus:ring-2 focus:outline-none"
               value={item.camera}
-              onChange={(e) => onUpdateCamera(index, Number(e.target.value))}
+              onChange={e => onUpdateCamera(index, Number(e.target.value))}
             >
-              {Array.from({ length: numCameras }, (_, i) => i + 1).map((cam) => (
+              {Array.from({ length: numCameras }, (_, i) => i + 1).map(cam => (
                 <option key={cam} value={cam}>
                   Camera {cam}
                 </option>
@@ -159,7 +158,7 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({
             position: 'relative'
           }}
         >
-          {items.map((virtualItem) => {
+          {items.map(virtualItem => {
             const item = files[virtualItem.index]
             return (
               <div

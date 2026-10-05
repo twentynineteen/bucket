@@ -27,11 +27,10 @@
 import { readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
-
 import {
+  invokeSites,
   REPO_ROOT,
   RUST_COMMANDS_DIR,
-  invokeSites,
   walkFiles
 } from './internal/tauri-command-surface'
 

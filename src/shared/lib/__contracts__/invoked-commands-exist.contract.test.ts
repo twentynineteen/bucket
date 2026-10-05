@@ -23,13 +23,12 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-
 import {
-  REPO_ROOT,
   handledCommandsIn,
   invokeSites,
   invokeSitesIn,
   registeredCommands,
+  REPO_ROOT,
   walkFiles,
   type InvokeSite
 } from './internal/tauri-command-surface'
@@ -67,9 +66,9 @@ function unregisteredCommands(sites: InvokeSite[], registered: string[]): string
   const known = new Set(registered)
 
   return sites
-    .filter((site) => site.kind === 'static' && !known.has(site.command))
+    .filter(site => site.kind === 'static' && !known.has(site.command))
     .map(
-      (site) =>
+      site =>
         `${site.file}:${site.line} invokes '${site.command}', which is not in ` +
         'generate_handler![...] in src-tauri/src/main.rs'
     )
@@ -79,7 +78,7 @@ describe('every invoked Tauri command is registered in the Rust handler list', (
   const registered = registeredCommands()
   const sites = invokeSites()
   const invoked = new Set(
-    sites.filter((site) => site.kind === 'static').map((site) => site.command)
+    sites.filter(site => site.kind === 'static').map(site => site.command)
   )
 
   it('reads both sides of the boundary (guards a vacuous pass)', () => {
@@ -112,8 +111,8 @@ describe('every invoked Tauri command is registered in the Rust handler list', (
     // reported rather than skipped. `tauri-ipc.contract.test.ts` skipping the
     // names it could not resolve is how it went blind to this whole bug class.
     const unreadable = sites
-      .filter((site) => site.kind === 'dynamic')
-      .map((site) => `${site.file}:${site.line} invokes ${site.expression}`)
+      .filter(site => site.kind === 'dynamic')
+      .map(site => `${site.file}:${site.line} invokes ${site.expression}`)
 
     expect(
       unreadable,
@@ -150,7 +149,7 @@ describe('every invoked Tauri command is registered in the Rust handler list', (
 
       const found = invokeSitesIn([forms])
 
-      expect(found.map((site) => [site.kind, site.expression])).toEqual([
+      expect(found.map(site => [site.kind, site.expression])).toEqual([
         ['static', 'bare_form'],
         ['static', 'qualified_generic_form'],
         ['static', 'template_form'],
@@ -160,7 +159,7 @@ describe('every invoked Tauri command is registered in the Rust handler list', (
       ])
 
       // A payload offset only where a payload was actually passed.
-      expect(found.map((site) => site.payloadStart !== null)).toEqual([
+      expect(found.map(site => site.payloadStart !== null)).toEqual([
         false,
         true,
         false,
@@ -181,8 +180,8 @@ describe('every invoked Tauri command is registered in the Rust handler list', (
 
   it('every registered command has a caller, or is listed as unreachable', () => {
     const unreachable = registered
-      .filter((command) => !invoked.has(command))
-      .filter((command) => !UNINVOKED_COMMANDS.has(command))
+      .filter(command => !invoked.has(command))
+      .filter(command => !UNINVOKED_COMMANDS.has(command))
 
     expect(
       unreachable,
@@ -192,7 +191,7 @@ describe('every invoked Tauri command is registered in the Rust handler list', (
   })
 
   it('the unreachable list names only commands that are still unreachable', () => {
-    const nowInvoked = [...UNINVOKED_COMMANDS].filter((command) => invoked.has(command))
+    const nowInvoked = [...UNINVOKED_COMMANDS].filter(command => invoked.has(command))
 
     expect(
       nowInvoked,
@@ -205,7 +204,7 @@ describe('every invoked Tauri command is registered in the Rust handler list', (
     // has never existed. A list naming a command the crate no longer registers is
     // the same lie in a different place.
     const notRegistered = [...UNINVOKED_COMMANDS].filter(
-      (command) => !registered.includes(command)
+      command => !registered.includes(command)
     )
 
     expect(
@@ -237,18 +236,18 @@ describe('E2E fixtures handle only commands that exist in the Rust handler list'
     // below pass by comparing against an empty list.
     expect(fixtureFiles.length).toBeGreaterThan(2)
     expect(handled.length).toBeGreaterThan(10)
-    expect(handled.map((h) => h.command)).toContain('get_username')
+    expect(handled.map(h => h.command)).toContain('get_username')
   })
 
   it('every static command a fixture handles is registered in generate_handler!', () => {
     const known = new Set(registered)
 
     const phantoms = handled
-      .filter((h) => h.kind === 'static')
-      .filter((h) => !ENVELOPE_COMMANDS.has(h.command))
-      .filter((h) => !known.has(h.command))
+      .filter(h => h.kind === 'static')
+      .filter(h => !ENVELOPE_COMMANDS.has(h.command))
+      .filter(h => !known.has(h.command))
       .map(
-        (h) =>
+        h =>
           `${h.file}:${h.line} handles '${h.command}', which is not in ` +
           'generate_handler![...] in src-tauri/src/main.rs'
       )
@@ -288,7 +287,7 @@ describe('E2E fixtures handle only commands that exist in the Rust handler list'
 
       const found = handledCommandsIn([file])
 
-      expect(found.map((h) => [h.kind, h.command])).toEqual([
+      expect(found.map(h => [h.kind, h.command])).toEqual([
         ['static', 'baker_start_scan'],
         ['plugin', 'plugin:fs|exists'],
         ['static', 'tauri'],
@@ -297,7 +296,7 @@ describe('E2E fixtures handle only commands that exist in the Rust handler list'
       ])
 
       // windowCmd comparisons are not extracted.
-      expect(found.map((h) => h.command)).not.toContain('outer_position')
+      expect(found.map(h => h.command)).not.toContain('outer_position')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

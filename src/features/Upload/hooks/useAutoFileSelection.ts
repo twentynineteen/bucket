@@ -31,7 +31,7 @@ export function useAutoFileSelection({
     if (selectedFilePath || files.length === 0) return
 
     if (preferVideo) {
-      const video = files.find((file) => /\.(mp4|mov|avi|mkv)$/i.test(file))
+      const video = files.find(file => /\.(mp4|mov|avi|mkv)$/i.test(file))
       if (video) {
         selectFile(video)
         return
@@ -39,7 +39,7 @@ export function useAutoFileSelection({
     }
 
     if (preferImage) {
-      const image = files.find((file) => /\.(jpg|jpeg|png|gif|webp)$/i.test(file))
+      const image = files.find(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file))
       if (image) {
         selectFile(image)
         return

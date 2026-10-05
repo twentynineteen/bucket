@@ -14,12 +14,11 @@
  * boundary so downstream callers can rely on a stable surface.
  */
 
-import { describe, expect, it } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
-
-import * as buildProjectBarrel from '../index'
+import { describe, expect, it } from 'vitest'
 import * as buildProjectApi from '../api'
+import * as buildProjectBarrel from '../index'
 
 // --- Shape Tests (Barrel Exports) ---
 
@@ -191,7 +190,7 @@ describe('BuildProject Module - No Direct Plugin Imports', () => {
       if (entry.isDirectory()) {
         if (entry.name === '__contracts__' || entry.name === 'node_modules') continue
         files.push(...getFilesRecursive(fullPath, extensions))
-      } else if (extensions.some((ext) => entry.name.endsWith(ext))) {
+      } else if (extensions.some(ext => entry.name.endsWith(ext))) {
         files.push(fullPath)
       }
     }
@@ -264,8 +263,8 @@ describe('BuildProject Module - no legacy IPC names', () => {
   for (const legacyName of ['move_files', 'copy_progress', 'copy_complete']) {
     it(`contains no references to the deleted \`${legacyName}\``, () => {
       const offenders = getProductionFiles()
-        .filter((file) => fs.readFileSync(file, 'utf-8').includes(legacyName))
-        .map((file) => path.relative(projectRoot, file))
+        .filter(file => fs.readFileSync(file, 'utf-8').includes(legacyName))
+        .map(file => path.relative(projectRoot, file))
       expect(offenders).toEqual([])
     })
   }

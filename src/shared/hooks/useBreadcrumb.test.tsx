@@ -41,7 +41,7 @@ describe('useBreadcrumb', () => {
     vi.clearAllMocks()
 
     // Mock the Zustand store selector
-    vi.mocked(useBreadcrumbStore).mockImplementation((selector) =>
+    vi.mocked(useBreadcrumbStore).mockImplementation(selector =>
       selector({ breadcrumbs: [], setBreadcrumbs: mockSetBreadcrumbs })
     )
   })
@@ -347,7 +347,7 @@ describe('useBreadcrumb', () => {
 
       // Wait for any pending updates to settle
       await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50))
+        await new Promise(resolve => setTimeout(resolve, 50))
       })
 
       // Get the fetch status before focus
@@ -358,7 +358,7 @@ describe('useBreadcrumb', () => {
       await act(async () => {
         window.dispatchEvent(new Event('focus'))
         // Wait a bit to ensure no refetch happens
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 100))
       })
 
       // Query should not be fetching after focus (refetchOnWindowFocus: false)

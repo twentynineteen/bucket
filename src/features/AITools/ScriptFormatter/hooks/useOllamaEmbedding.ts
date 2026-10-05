@@ -5,9 +5,8 @@
  */
 
 import { createNamespacedLogger } from '@shared/utils'
-
-import { checkOllamaModels, generateOllamaEmbedding } from '../../api'
 import { useEffect, useState } from 'react'
+import { checkOllamaModels, generateOllamaEmbedding } from '../../api'
 
 const logger = createNamespacedLogger('useOllamaEmbedding')
 
@@ -42,11 +41,11 @@ export function useOllamaEmbedding(): UseOllamaEmbeddingResult {
 
         logger.log(
           'Available models:',
-          models.map((m) => m.name)
+          models.map(m => m.name)
         )
 
         // Check if nomic-embed-text is installed
-        const hasEmbeddingModel = models.some((m) => m.name.includes(EMBEDDING_MODEL))
+        const hasEmbeddingModel = models.some(m => m.name.includes(EMBEDDING_MODEL))
 
         if (!hasEmbeddingModel) {
           throw new Error(

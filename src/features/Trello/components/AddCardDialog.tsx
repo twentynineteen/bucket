@@ -3,10 +3,6 @@
  * DEBT-007: Refactored with grouped parameters (19 -> 6 parameter groups)
  */
 
-import TrelloCardList from '../internal/TrelloCardList'
-import type { TrelloCard } from '../types'
-import { AlertCircle, Loader2, Plus, Search } from 'lucide-react'
-
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
 import {
@@ -21,6 +17,9 @@ import {
 import { Input } from '@shared/ui/input'
 import { Label } from '@shared/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
+import { AlertCircle, Loader2, Plus, Search } from 'lucide-react'
+import TrelloCardList from '../internal/TrelloCardList'
+import type { TrelloCard } from '../types'
 
 // Type definitions for grouped parameters
 export interface DialogState {
@@ -98,7 +97,7 @@ export function AddCardDialog({
 
         <Tabs
           value={mode.addMode}
-          onValueChange={(v) => mode.onAddModeChange(v as 'url' | 'select')}
+          onValueChange={v => mode.onAddModeChange(v as 'url' | 'select')}
         >
           {dialog.hasApiCredentials && (
             <TabsList className="grid w-full grid-cols-2">
@@ -153,7 +152,7 @@ function SelectFromBoardContent({
             id="search"
             placeholder="Search by name or description..."
             value={selectMode.searchTerm}
-            onChange={(e) => selectMode.onSearchTermChange(e.target.value)}
+            onChange={e => selectMode.onSearchTermChange(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -193,7 +192,7 @@ function UrlInputContent({
           id="card-url"
           placeholder="https://trello.com/c/abc12345/card-name"
           value={urlMode.cardUrl}
-          onChange={(e) => urlMode.onCardUrlChange(e.target.value)}
+          onChange={e => urlMode.onCardUrlChange(e.target.value)}
         />
         <p className="text-muted-foreground text-xs">
           {hasApiCredentials

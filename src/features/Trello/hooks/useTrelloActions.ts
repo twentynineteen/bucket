@@ -3,9 +3,9 @@
  * Handles opening cards in browser and dialog management
  */
 
-import type { SelectedCard } from '../types'
-import { openExternalUrl } from '../api'
 import { useCallback } from 'react'
+import { openExternalUrl } from '../api'
+import type { SelectedCard } from '../types'
 
 export function useTrelloActions(
   selectedCard: SelectedCard | null,

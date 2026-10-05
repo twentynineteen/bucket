@@ -3,13 +3,12 @@
  * DEBT-014: Make Trello board ID configurable in Settings
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-
+import { useApiKeys } from '@shared/hooks'
 import { queryKeys } from '@shared/lib'
 import { useAppStore } from '@shared/store'
 import { TrelloBoard } from '@shared/types'
-import { useApiKeys } from '@shared/hooks'
 import { saveApiKeys } from '@shared/utils'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { validateBoardAccess } from '../internal/trelloBoardValidation'
 
 // Default board ID (original hardcoded value)
@@ -29,8 +28,8 @@ interface UseTrelloBoardIdReturn {
  */
 export function useTrelloBoardId(): UseTrelloBoardIdReturn {
   const queryClient = useQueryClient()
-  const storeBoardId = useAppStore((state) => state.trelloBoardId)
-  const setStoreBoardId = useAppStore((state) => state.setTrelloBoardId)
+  const storeBoardId = useAppStore(state => state.trelloBoardId)
+  const setStoreBoardId = useAppStore(state => state.setTrelloBoardId)
 
   // Load board ID from storage
   // One definition of this query, in @shared/hooks (issue #155 P5-a).
@@ -60,7 +59,7 @@ export function useTrelloBoardId(): UseTrelloBoardIdReturn {
 
       return updatedKeys
     },
-    onSuccess: (updatedKeys) => {
+    onSuccess: updatedKeys => {
       // Update query cache
       queryClient.setQueryData(queryKeys.settings.apiKeys(), updatedKeys)
     }

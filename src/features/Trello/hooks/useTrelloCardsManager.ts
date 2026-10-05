@@ -4,17 +4,15 @@
  * Extracted to reduce component complexity (DEBT-002)
  */
 
-import { extractTrelloCardId, validateTrelloCard, logger } from '@shared/utils'
+import type { TrelloCard } from '@features/Baker'
+import { useFuzzySearch } from '@shared/hooks'
+import { extractTrelloCardId, logger, validateTrelloCard } from '@shared/utils'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-
-import type { TrelloCard } from '@features/Baker'
-
 import { fetchTrelloCardById, readBreadcrumbsFile } from '../api'
 // Aliased: TrelloCard above is Baker's breadcrumbs card, this one is a board card.
 import type { TrelloCard as TrelloBoardCard } from '../types'
 import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
-import { useFuzzySearch } from '@shared/hooks'
 import { useTrelloBoard } from './useTrelloBoard'
 
 interface UseTrelloCardsManagerProps {
@@ -34,7 +32,7 @@ function validateCardCanBeAdded(
   if (trelloCards.length >= 50) {
     return 'Maximum of 50 Trello cards per project reached'
   }
-  if (trelloCards.some((card) => card.cardId === cardId)) {
+  if (trelloCards.some(card => card.cardId === cardId)) {
     return 'This Trello card is already associated with the project'
   }
   return null
@@ -79,7 +77,7 @@ export function useTrelloCardsManager({
   // Flatten all cards for search
   const allCards = useMemo(() => {
     const cards: TrelloBoardCard[] = []
-    Object.values(grouped).forEach((cardList) => {
+    Object.values(grouped).forEach(cardList => {
       cards.push(...cardList)
     })
     return cards
@@ -102,9 +100,9 @@ export function useTrelloCardsManager({
     }
 
     const result: Record<string, TrelloBoardCard[]> = {}
-    filteredCards.forEach((card) => {
+    filteredCards.forEach(card => {
       Object.entries(grouped).forEach(([listName, cards]) => {
-        if (cards.some((c) => c.id === card.id)) {
+        if (cards.some(c => c.id === card.id)) {
           if (!result[listName]) {
             result[listName] = []
           }
@@ -153,7 +151,7 @@ export function useTrelloCardsManager({
       }
 
       const results = await Promise.allSettled(
-        cards.map(async (card) => {
+        cards.map(async card => {
           const apiCard = { id: card.cardId, name: '', desc: '', idList: '' }
 
           try {
@@ -178,7 +176,7 @@ export function useTrelloCardsManager({
       if (failed.length > 0) {
         logger.error(
           'Some Trello cards failed to sync:',
-          failed.map((r) => r.reason)
+          failed.map(r => r.reason)
         )
         toast.error(`${failed.length} of ${cards.length} Trello card(s) failed to update`)
       }

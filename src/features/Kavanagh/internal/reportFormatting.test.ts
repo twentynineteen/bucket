@@ -3,7 +3,6 @@
  */
 
 import { describe, expect, it } from 'vitest'
-
 import { bytesToBase64, evidencePrefix, formatTime } from './reportFormatting'
 
 describe('formatTime', () => {

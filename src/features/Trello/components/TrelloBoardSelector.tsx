@@ -1,3 +1,4 @@
+import { TrelloBoard } from '@shared/types'
 import { Label } from '@shared/ui/label'
 import {
   Select,
@@ -9,9 +10,7 @@ import {
   SelectValue
 } from '@shared/ui/select'
 import { Skeleton } from '@shared/ui/skeleton'
-import { TrelloBoard } from '@shared/types'
 import React from 'react'
-
 import { useTrelloBoards } from '../hooks/useTrelloBoards'
 import {
   categorizeBoardStatus,

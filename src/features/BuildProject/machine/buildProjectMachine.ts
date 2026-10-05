@@ -8,7 +8,6 @@
  * Uses XState v5 actor pattern with fromPromise for async operations.
  */
 import { assign, fromPromise, setup } from 'xstate'
-
 import {
   confirmDialog,
   copyPremiereProject,
@@ -315,7 +314,7 @@ export const buildProjectMachine = setup({
       const breadcrumbs: Breadcrumb = {
         projectTitle: context.projectName.trim(),
         numberOfCameras: context.numCameras,
-        files: context.files.map((f) => ({
+        files: context.files.map(f => ({
           camera: f.camera,
           name: f.file.name,
           path: f.file.path

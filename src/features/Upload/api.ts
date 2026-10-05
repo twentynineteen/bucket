@@ -4,9 +4,12 @@
  * All external calls (Tauri invoke, events, dialog, fs plugins)
  * are wrapped here. Mock this one file to isolate the entire module.
  */
+import { isRateLimited } from '@shared/lib'
+import type { GetFoldersResponse, SproutVideoDetails } from '@shared/types'
+import { resolveAppDataFile } from '@shared/utils'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
-import type { Event } from '@tauri-apps/api/event'
+import { listen, type Event } from '@tauri-apps/api/event'
+import { fontDir, join } from '@tauri-apps/api/path'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import {
   exists,
@@ -16,11 +19,11 @@ import {
   writeFile,
   writeTextFile
 } from '@tauri-apps/plugin-fs'
-import { fontDir, join } from '@tauri-apps/api/path'
-
-import { isRateLimited } from '@shared/lib'
-import { resolveAppDataFile } from '@shared/utils'
-import type { GetFoldersResponse, SproutVideoDetails } from '@shared/types'
+import {
+  recordBudget,
+  recordRateLimited,
+  runBrowseRequest
+} from './internal/sproutRateBudget'
 import type {
   UploadCancelledEvent,
   UploadCompleteEvent,
@@ -28,12 +31,6 @@ import type {
   UploadProgressEvent,
   UploadStallWarningEvent
 } from './types'
-
-import {
-  recordBudget,
-  recordRateLimited,
-  runBrowseRequest
-} from './internal/sproutRateBudget'
 
 // --- Tauri Command Wrappers ---
 
@@ -280,12 +277,12 @@ export async function listDirectory(folderPath: string): Promise<BackgroundFolde
   try {
     const entries = await readDir(folderPath)
     const files = entries
-      .filter((entry) => {
+      .filter(entry => {
         const name = entry.name || ''
         const ext = name.slice(name.lastIndexOf('.')).toLowerCase()
         return IMAGE_EXTENSIONS.has(ext)
       })
-      .map((entry) => `${folderPath}/${entry.name}`)
+      .map(entry => `${folderPath}/${entry.name}`)
       .sort()
     return { status: 'ok', files }
   } catch (error) {

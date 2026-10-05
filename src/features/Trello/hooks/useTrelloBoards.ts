@@ -1,10 +1,8 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys } from '@shared/lib'
-import { useQuery } from '@tanstack/react-query'
-import { TrelloBoard } from '@shared/types'
-
 import { useApiKeys } from '@shared/hooks'
-
+import { queryKeys } from '@shared/lib'
+import { TrelloBoard } from '@shared/types'
+import { useQuery } from '@tanstack/react-query'
 import { fetchTrelloBoards } from '../api'
 
 export interface UseTrelloBoardsReturn {

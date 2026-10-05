@@ -1,6 +1,5 @@
 import { appStore } from '@shared/store'
 import { exists, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
-
 import { removeMisplacedResidue, resolveAppDataFile } from './appDataPath'
 import { logger } from './logger'
 

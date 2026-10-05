@@ -7,13 +7,11 @@
  * toggle always reflects reality and no schema migration is required.
  */
 
+import { queryKeys } from '@shared/lib'
+import { logger } from '@shared/utils'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { toast } from 'sonner'
-
-import { queryKeys } from '@shared/lib'
-import { logger } from '@shared/utils'
-
 import {
   addMemberToCard,
   fetchCardMembers,
@@ -56,7 +54,7 @@ export function useTrelloSelfAssignment({
 
   // Members for each card -- the source of truth for assignment state.
   const memberQueries = useQueries({
-    queries: cardIds.map((cardId) => ({
+    queries: cardIds.map(cardId => ({
       queryKey: ['trello', 'cardMembers', cardId],
       queryFn: () => fetchCardMembers(cardId, trelloApiKey!, trelloApiToken!),
       enabled
@@ -82,7 +80,7 @@ export function useTrelloSelfAssignment({
         throw new Error('Current Trello user is not available')
       }
       const assigned = (membersByCard.get(cardId)?.members ?? []).some(
-        (member) => member.id === currentMember.id
+        member => member.id === currentMember.id
       )
       if (assigned) {
         await removeMemberFromCard(
@@ -102,7 +100,7 @@ export function useTrelloSelfAssignment({
         nowAssigned ? 'Assigned you to the card' : 'Removed you from the card'
       )
     },
-    onError: (error) => {
+    onError: error => {
       logger.error('Failed to toggle Trello card assignment:', error)
       toast.error(
         `Failed to update assignment: ${
@@ -115,7 +113,7 @@ export function useTrelloSelfAssignment({
   const isAssigned = (cardId: string): boolean => {
     if (!currentMember?.id) return false
     return (membersByCard.get(cardId)?.members ?? []).some(
-      (member) => member.id === currentMember.id
+      member => member.id === currentMember.id
     )
   }
 

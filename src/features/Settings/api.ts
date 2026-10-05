@@ -4,14 +4,12 @@
  * All external calls (Tauri plugins, storage utils, AI provider validation)
  * are wrapped here. Mock this one file to isolate the entire module.
  */
+import { providerRegistry } from '@shared/services/ai/providerConfig'
+import type { ProviderConfiguration } from '@shared/types'
+import { loadApiKeys, saveApiKeys } from '@shared/utils'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { exists } from '@tauri-apps/plugin-fs'
 import { open as openShell } from '@tauri-apps/plugin-shell'
-
-import { providerRegistry } from '@shared/services/ai/providerConfig'
-import { loadApiKeys, saveApiKeys } from '@shared/utils'
-
-import type { ProviderConfiguration } from '@shared/types'
 
 // Re-export type for consumers
 export type { ApiKeys } from '@shared/utils'

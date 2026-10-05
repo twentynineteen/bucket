@@ -9,7 +9,6 @@
 
 import { Info } from 'lucide-react'
 import React, { useState } from 'react'
-
 import type { ChangeRow, ChangeRowType } from '../utils/changeRows'
 
 const DEFAULT_ROW_CAP = 10

@@ -5,7 +5,9 @@
  * saw a resolved promise whether or not anything reached disk -- so the user was
  * told a setting saved, and it was gone at next launch.
  */
+import { useAppStore } from '@shared/store'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { loadApiKeys, saveApiKeys } from './storage'
 
 const { writeTextFileMock, readTextFileMock, existsMock, appDataDirMock, joinMock } =
   vi.hoisted(() => ({
@@ -30,10 +32,6 @@ vi.mock('@tauri-apps/api/path', () => ({
   appDataDir: appDataDirMock,
   join: joinMock
 }))
-
-import { useAppStore } from '@shared/store'
-
-import { loadApiKeys, saveApiKeys } from './storage'
 
 beforeEach(() => {
   writeTextFileMock.mockReset().mockResolvedValue(undefined)

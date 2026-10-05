@@ -13,7 +13,6 @@
 
 import { logger } from '@shared/utils'
 import React from 'react'
-
 import { DEFAULT_CATEGORY_ID, isKnownCategory } from '../internal/namingConventions'
 
 const PREFS_KEY = 'sprout-title-guide-preferences'
@@ -73,7 +72,7 @@ export function useTitleNamingGuide(): UseTitleNamingGuideResult {
   const [prefs, setPrefs] = React.useState<TitleGuidePreferences>(loadPreferences)
 
   const setShowGuide = React.useCallback((show: boolean) => {
-    setPrefs((current) => {
+    setPrefs(current => {
       const next = { ...current, showGuide: show }
       savePreferences(next)
       return next
@@ -81,7 +80,7 @@ export function useTitleNamingGuide(): UseTitleNamingGuideResult {
   }, [])
 
   const setCategory = React.useCallback((category: string) => {
-    setPrefs((current) => {
+    setPrefs(current => {
       const next = { ...current, category }
       savePreferences(next)
       return next

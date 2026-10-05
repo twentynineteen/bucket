@@ -11,9 +11,6 @@
  * - Update and Cancel action buttons
  */
 
-import { ArrowRight, Download } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-
 import { Button } from '@shared/ui/button'
 import {
   Dialog,
@@ -23,6 +20,8 @@ import {
   DialogHeader,
   DialogTitle
 } from '@shared/ui/dialog'
+import { ArrowRight, Download } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 
 interface UpdateDialogProps {
   open: boolean
@@ -42,7 +41,7 @@ export function UpdateDialog({
   onCancel
 }: UpdateDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
+    <Dialog open={open} onOpenChange={isOpen => !isOpen && onCancel()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

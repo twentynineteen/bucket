@@ -5,8 +5,6 @@
  * Displays a single script example with metadata and actions
  */
 
-import { Download, RefreshCw, Trash2 } from 'lucide-react'
-
 import { Badge } from '@shared/ui/badge'
 import { Button } from '@shared/ui/button'
 import {
@@ -17,6 +15,7 @@ import {
   CardHeader,
   CardTitle
 } from '@shared/ui/card'
+import { Download, RefreshCw, Trash2 } from 'lucide-react'
 import type { ExampleWithMetadata } from '../../types'
 
 interface ExampleCardProps {
@@ -82,7 +81,7 @@ export function ExampleCard({
         <Button
           variant="outline"
           size="sm"
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation()
             onDownload(example.id)
           }}
@@ -97,7 +96,7 @@ export function ExampleCard({
             <Button
               variant="outline"
               size="sm"
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation()
                 onReplace(example.id)
               }}
@@ -110,7 +109,7 @@ export function ExampleCard({
             <Button
               variant="destructive"
               size="sm"
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation()
                 onDelete(example.id)
               }}

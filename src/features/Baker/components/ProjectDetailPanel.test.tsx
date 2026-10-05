@@ -17,15 +17,12 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-
 import '@testing-library/jest-dom'
-
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from 'sonner'
 import React from 'react'
+import { toast } from 'sonner'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import * as bakerApi from '../api'
 import type { BreadcrumbsFile, ProjectFolder } from '../types'
 import { ProjectDetailPanel } from './ProjectDetailPanel'
@@ -337,7 +334,7 @@ describe('B3 - copy project path', () => {
     stubClipboard()
     // The live project path resolves; the location recorded in breadcrumbs
     // does not. The toast must speak for the string the button copies.
-    answerProbe((path) => path === PROJECT_PATH)
+    answerProbe(path => path === PROJECT_PATH)
     renderPanel()
 
     await screen.findByText('Location not found')
@@ -365,7 +362,7 @@ describe('B4 - footage file paths', () => {
 
   it('B4.2 strikes through each unresolved row and summarises the count', async () => {
     const user = userEvent.setup()
-    answerProbe((path) => path !== FILE_B)
+    answerProbe(path => path !== FILE_B)
     renderPanel()
     await openFilesTab(user)
 
@@ -403,7 +400,7 @@ describe('B4 - footage file paths', () => {
     const filesCall = vi
       .mocked(bakerApi.pathsExist)
       .mock.calls.map(([paths]) => paths)
-      .find((paths) => paths.includes(FILE_A))
+      .find(paths => paths.includes(FILE_A))
 
     expect(filesCall).toEqual(expect.arrayContaining([FILE_A, FILE_B, FILE_C]))
   })

@@ -7,7 +7,6 @@
  */
 
 import { afterEach, describe, expect, it } from 'vitest'
-
 import { appStore, useAppStore, useBreadcrumbStore } from '../index'
 
 describe('Store Barrel Exports - Shape', () => {

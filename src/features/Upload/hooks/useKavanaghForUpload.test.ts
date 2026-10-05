@@ -7,10 +7,9 @@
  * gate's decisions and the block state are the real thing.
  */
 
+import type { KavanaghCheckReport } from '@features/Kavanagh'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import type { KavanaghCheckReport } from '@features/Kavanagh'
 
 const run = vi.fn()
 const resetRun = vi.fn()

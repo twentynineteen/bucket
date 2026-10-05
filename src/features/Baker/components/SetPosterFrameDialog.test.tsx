@@ -8,11 +8,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
-
-import { SetPosterFrameDialog } from './SetPosterFrameDialog'
-import type {
-  SetPosterFrameDialogProps,
-  SetPosterFramePanelState
+import {
+  SetPosterFrameDialog,
+  type SetPosterFrameDialogProps,
+  type SetPosterFramePanelState
 } from './SetPosterFrameDialog'
 
 const BACKGROUNDS = ['/backgrounds/wbs-blue.jpg', '/backgrounds/wbs-red.png']

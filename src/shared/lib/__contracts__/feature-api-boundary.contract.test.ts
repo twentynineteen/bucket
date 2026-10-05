@@ -51,7 +51,7 @@ const TAURI_IMPORT = /(?:from\s*|import\s*\(\s*)['"]@tauri-apps\//
 
 function featureModules(): string[] {
   return readdirSync(FEATURES_DIR)
-    .filter((entry) => statSync(join(FEATURES_DIR, entry)).isDirectory())
+    .filter(entry => statSync(join(FEATURES_DIR, entry)).isDirectory())
     .sort()
 }
 
@@ -88,11 +88,11 @@ function hasApiBoundary(module: string): boolean {
 
 /** The matcher itself, over any list of files. Shared with the fixture below. */
 function filesWithTauriImport(files: string[]): string[] {
-  return files.filter((file) => TAURI_IMPORT.test(readFileSync(file, 'utf8')))
+  return files.filter(file => TAURI_IMPORT.test(readFileSync(file, 'utf8')))
 }
 
 function directTauriImports(module: string): string[] {
-  return filesWithTauriImport(featureSourceFiles(module)).map((file) =>
+  return filesWithTauriImport(featureSourceFiles(module)).map(file =>
     relative(REPO_ROOT, file)
   )
 }
@@ -151,8 +151,8 @@ describe('feature modules keep their Tauri I/O behind api.ts', () => {
 
   it('every feature module has an api.ts', () => {
     const missing = modules
-      .filter((module) => !WITHOUT_API_BOUNDARY.has(module))
-      .filter((module) => !hasApiBoundary(module))
+      .filter(module => !WITHOUT_API_BOUNDARY.has(module))
+      .filter(module => !hasApiBoundary(module))
 
     expect(
       missing,
@@ -171,7 +171,7 @@ describe('feature modules keep their Tauri I/O behind api.ts', () => {
 
   it('no file outside api.ts imports @tauri-apps directly', () => {
     const violations = modules
-      .filter((module) => !WITH_DIRECT_TAURI_IMPORTS.has(module))
+      .filter(module => !WITH_DIRECT_TAURI_IMPORTS.has(module))
       .flatMap(directTauriImports)
 
     expect(
@@ -182,7 +182,7 @@ describe('feature modules keep their Tauri I/O behind api.ts', () => {
 
   it('the import exception list names only modules that still have strays', () => {
     const nowClean = [...WITH_DIRECT_TAURI_IMPORTS].filter(
-      (module) => directTauriImports(module).length === 0
+      module => directTauriImports(module).length === 0
     )
 
     expect(

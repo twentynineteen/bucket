@@ -17,7 +17,6 @@ import {
 } from '@shared/utils'
 import pLimit from 'p-limit'
 import { useCallback, useMemo, useState } from 'react'
-
 import { bakerReadBreadcrumbs, bakerScanCurrentFiles, getFolderSize } from '../api'
 import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '../types'
 
@@ -116,7 +115,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
 
           // Update the diff to reflect folder size changes
           const existingChange = preview.diff.changes.find(
-            (c) => c.field === 'folderSizeBytes'
+            c => c.field === 'folderSizeBytes'
           )
 
           if (existingChange) {
@@ -168,7 +167,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
           logger.warn(`Failed to calculate folder size for ${projectPath}:`, sizeError)
         }
 
-        setPreviews((prev) => new Map(prev.set(projectPath, preview)))
+        setPreviews(prev => new Map(prev.set(projectPath, preview)))
         return preview
       } catch (previewError) {
         const errorMessage =
@@ -192,12 +191,12 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
       try {
         // Generate previews with concurrency control to prevent system overload
         // Uses p-limit to ensure max CONCURRENCY_LIMIT operations run simultaneously
-        const previewPromises = projects.map((project) =>
+        const previewPromises = projects.map(project =>
           limit(async () => {
             const preview = await generatePreview(project.path, project)
             if (preview) {
               // Update previews incrementally as each completes (for progress tracking)
-              setPreviews((prev) => new Map(prev.set(project.path, preview)))
+              setPreviews(prev => new Map(prev.set(project.path, preview)))
               return [project.path, preview] as const
             }
             return null
@@ -206,7 +205,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
 
         const results = await Promise.all(previewPromises)
 
-        results.forEach((result) => {
+        results.forEach(result => {
           if (result) {
             newPreviews.set(result[0], result[1])
           }

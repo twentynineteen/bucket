@@ -6,18 +6,16 @@
  * Refactored to align with Baker/BuildProject UI patterns.
  */
 
-import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
-import { Button } from '@shared/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
 import { useBreadcrumb } from '@shared/hooks'
-import { useExampleManagement } from '../hooks/useExampleManagement'
+import { Button } from '@shared/ui/button'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
 import { AlertTriangle, Download, RefreshCw, Upload } from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
-
 import { createDirectory, exportExampleDialog, writeTextToFile } from '../../api'
 import type { ExampleCategory, ExampleSource } from '../../types'
-
+import { useExampleManagement } from '../hooks/useExampleManagement'
 import { DeleteConfirm } from './DeleteConfirm'
 import { ExampleList } from './ExampleList'
 import { ReplaceDialog } from './ReplaceDialog'
@@ -44,13 +42,11 @@ const ExampleEmbeddingsContent: React.FC = () => {
 
   // Filter examples by source
   const filteredExamples =
-    filterSource === 'all'
-      ? examples
-      : examples.filter((ex) => ex.source === filterSource)
+    filterSource === 'all' ? examples : examples.filter(ex => ex.source === filterSource)
 
   // Count by source
-  const bundledCount = examples.filter((ex) => ex.source === 'bundled').length
-  const uploadedCount = examples.filter((ex) => ex.source === 'user-uploaded').length
+  const bundledCount = examples.filter(ex => ex.source === 'bundled').length
+  const uploadedCount = examples.filter(ex => ex.source === 'user-uploaded').length
 
   // Handle delete
   const handleDeleteClick = (id: string) => {
@@ -130,7 +126,7 @@ const ExampleEmbeddingsContent: React.FC = () => {
 
   // Handle download individual example
   const handleDownloadClick = async (id: string) => {
-    const example = examples.find((ex) => ex.id === id)
+    const example = examples.find(ex => ex.id === id)
     if (!example) return
 
     try {
@@ -203,7 +199,7 @@ const ExampleEmbeddingsContent: React.FC = () => {
     }
   }
 
-  const selectedExample = examples.find((ex) => ex.id === selectedExampleId)
+  const selectedExample = examples.find(ex => ex.id === selectedExampleId)
 
   return (
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
@@ -243,7 +239,7 @@ const ExampleEmbeddingsContent: React.FC = () => {
               {/* Tabs for filtering */}
               <Tabs
                 value={filterSource}
-                onValueChange={(value) => setFilterSource(value as typeof filterSource)}
+                onValueChange={value => setFilterSource(value as typeof filterSource)}
               >
                 <TabsList>
                   <TabsTrigger value="all">All ({examples.length})</TabsTrigger>

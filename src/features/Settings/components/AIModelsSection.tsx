@@ -3,19 +3,17 @@
  *
  * Ollama URL configuration and connection testing.
  */
-import { toast } from 'sonner'
-import { Button } from '@shared/ui/button'
+import { createQueryError, queryKeys } from '@shared/lib'
 import { useAppStore } from '@shared/store'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import ApiKeyInput from '@shared/ui/ApiKeyInput'
-import { queryKeys, createQueryError } from '@shared/lib'
+import { Button } from '@shared/ui/button'
 import { logger } from '@shared/utils'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle, Loader2, XCircle } from 'lucide-react'
 import React, { useState } from 'react'
-
+import { toast } from 'sonner'
+import { saveSettingsApiKeys, type ApiKeys } from '../api'
 import { useAIProvider } from '../hooks/useAIProvider'
-import { saveSettingsApiKeys } from '../api'
-import type { ApiKeys } from '../api'
 import type { ConnectionStatus } from '../types'
 
 interface AIModelsSectionProps {
@@ -33,8 +31,8 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({
   settingsUnavailable = false
 }) => {
   const queryClient = useQueryClient()
-  const ollamaUrl = useAppStore((state) => state.ollamaUrl)
-  const setOllamaUrl = useAppStore((state) => state.setOllamaUrl)
+  const ollamaUrl = useAppStore(state => state.ollamaUrl)
+  const setOllamaUrl = useAppStore(state => state.setOllamaUrl)
   const { validateProvider } = useAIProvider()
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     status: 'idle'
@@ -49,7 +47,7 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({
         throw createQueryError(`Failed to save API keys: ${error}`, 'SETTINGS_SAVE')
       }
     },
-    onSuccess: (updatedKeys) => {
+    onSuccess: updatedKeys => {
       queryClient.setQueryData(queryKeys.settings.apiKeys(), updatedKeys)
     }
   })

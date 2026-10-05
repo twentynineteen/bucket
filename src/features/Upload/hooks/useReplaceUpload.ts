@@ -12,10 +12,8 @@
  * for the dialog to render, and honours only events that carry its own
  * operation id -- there is no permissive window (see awaitUploadOutcome).
  */
-import { useRef, useState } from 'react'
-
 import { logger } from '@shared/utils'
-
+import { useRef, useState } from 'react'
 import { cancelUpload as cancelUploadCommand, openFileDialog, replaceVideo } from '../api'
 import { awaitUploadOutcome } from '../internal/awaitUploadOutcome'
 import type {
@@ -131,7 +129,7 @@ export const useReplaceUpload = (): UseReplaceUploadReturn => {
       const outcome = await awaitUploadOutcome({
         start: () => replaceVideo(file, apiKey, videoId),
         beforeIdKnown: 'buffer',
-        onOperationId: (id) => {
+        onOperationId: id => {
           operationIdRef.current = id
           if (pendingCancelRef.current) {
             pendingCancelRef.current = false

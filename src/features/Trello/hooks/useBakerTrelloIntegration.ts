@@ -5,10 +5,8 @@
  * Lives in Trello module per CONTEXT.md locked decision.
  */
 
-import { useCallback } from 'react'
-
 import { logger } from '@shared/utils'
-
+import { useCallback } from 'react'
 import { fetchTrelloCardById, readBreadcrumbsFile } from '../api'
 
 interface TrelloError {
@@ -113,15 +111,14 @@ async function updateProjectTrelloCards(
 
   // Priority 1: Check for new trelloCards array (Phase 004)
   const trelloCards = breadcrumbsData.trelloCards as
-    | Array<{ cardId: string; url: string }>
-    | undefined
+    Array<{ cardId: string; url: string }> | undefined
 
   if (trelloCards && trelloCards.length > 0) {
     // Update ALL cards in the array. Use allSettled so every card is attempted
     // even if some fail, then aggregate failures so the caller can surface them
     // (previously failures were only logged, making updates silently no-op).
     const results = await Promise.allSettled(
-      trelloCards.map((card) =>
+      trelloCards.map(card =>
         updateSingleTrelloCard(
           card.cardId,
           block,

@@ -1,7 +1,7 @@
-import { AppRouter } from './AppRouter'
 import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AppRouter } from './AppRouter'
 
 // The updater's Update type is a class with private fields, so a plain object
 // literal is not assignable to it. `as never` stands in for the full instance
@@ -128,7 +128,7 @@ describe('AppRouter', () => {
       const { check } = await import('@tauri-apps/plugin-updater')
       const { relaunch } = await import('@tauri-apps/plugin-process')
 
-      const mockDownloadAndInstall = vi.fn(async (callback) => {
+      const mockDownloadAndInstall = vi.fn(async callback => {
         // Simulate download events
         callback({ event: 'Started', data: { contentLength: 1000 } })
         callback({ event: 'Progress', data: { chunkLength: 500 } })
@@ -203,7 +203,7 @@ describe('AppRouter', () => {
 
       let progressCallback: ((event: DownloadEvent) => void) | undefined
 
-      const mockDownloadAndInstall = vi.fn(async (callback) => {
+      const mockDownloadAndInstall = vi.fn(async callback => {
         progressCallback = callback
         callback({ event: 'Started', data: { contentLength: 1000 } })
         callback({ event: 'Progress', data: { chunkLength: 250 } })

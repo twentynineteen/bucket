@@ -25,7 +25,7 @@ describe('createPersistedQueryClient retry policy', () => {
     return retry as (failureCount: number, error: unknown) => boolean
   }
 
-  describe.each(['queries', 'mutations'] as const)('%s', (scope) => {
+  describe.each(['queries', 'mutations'] as const)('%s', scope => {
     it('does not retry a bare-string 429', () => {
       expect(
         retryFor(scope)(

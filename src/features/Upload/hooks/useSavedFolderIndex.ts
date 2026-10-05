@@ -15,10 +15,8 @@
  */
 import { CACHE } from '@shared/constants'
 import { useQuery } from '@tanstack/react-query'
-
 import { readFolderIndex } from '../api'
-import type { FolderIndex } from '../internal/folderIndex'
-import { parseFolderIndex } from '../internal/folderIndex'
+import { parseFolderIndex, type FolderIndex } from '../internal/folderIndex'
 
 /**
  * Keyed on the account, not the key: the index for one Sprout account says

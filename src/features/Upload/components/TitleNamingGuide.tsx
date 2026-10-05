@@ -28,13 +28,12 @@ import {
 } from '@shared/ui/select'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import React from 'react'
-
 import { useTitleNamingGuide } from '../hooks/useTitleNamingGuide'
 import {
-  NAMING_CATEGORIES,
-  OTHER_CATEGORY_ID,
   hasColon,
   matchTitle,
+  NAMING_CATEGORIES,
+  OTHER_CATEGORY_ID,
   stripColons
 } from '../internal/namingConventions'
 
@@ -47,7 +46,7 @@ export const TitleNamingGuide: React.FC<{
   const { showGuide, setShowGuide, category, setCategory } = useTitleNamingGuide()
 
   const colon = hasColon(title)
-  const selected = NAMING_CATEGORIES.find((c) => c.id === category)
+  const selected = NAMING_CATEGORIES.find(c => c.id === category)
   // Advisory shows as soon as a specific format is selected and the title is
   // non-blank - the prefilled title included (#274). Filenames here are usually
   // already dash-formatted, so gating on a manual edit hid the warning in the
@@ -85,7 +84,7 @@ export const TitleNamingGuide: React.FC<{
         <Checkbox
           id="show-naming-guide"
           checked={showGuide}
-          onCheckedChange={(checked) => setShowGuide(checked === true)}
+          onCheckedChange={checked => setShowGuide(checked === true)}
         />
         <Label htmlFor="show-naming-guide" className="text-xs font-medium">
           Show naming guide
@@ -103,7 +102,7 @@ export const TitleNamingGuide: React.FC<{
                 <SelectValue placeholder="Choose a format" />
               </SelectTrigger>
               <SelectContent>
-                {NAMING_CATEGORIES.map((c) => (
+                {NAMING_CATEGORIES.map(c => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.label}
                   </SelectItem>

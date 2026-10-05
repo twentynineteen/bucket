@@ -5,13 +5,12 @@
  * workspace below keeps the vertical space after a scan completes.
  */
 
-import { FolderOpen, Play, RefreshCw, Square } from 'lucide-react'
-import React, { useCallback } from 'react'
-
-import { openFolderDialog } from '../api'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { logger } from '@shared/utils'
+import { FolderOpen, Play, RefreshCw, Square } from 'lucide-react'
+import React, { useCallback } from 'react'
+import { openFolderDialog } from '../api'
 
 interface FolderSelectorProps {
   selectedFolder: string

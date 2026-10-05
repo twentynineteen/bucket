@@ -5,42 +5,41 @@
  * debounce, validation, version utilities, and breadcrumbs formatting.
  */
 
-import { describe, expect, test, vi } from 'vitest'
-
 import {
-  // Logger
-  logger,
+  categorizeField,
+  compareBreadcrumbs,
+  compareBreadcrumbsMeaningful,
+  compareVersions,
+  createDetailedFieldChange,
   createNamespacedLogger,
   // Debounce
   debounce,
-  // Validation
-  validateVideoLink,
-  validateTrelloCard,
+  debugComparison,
   extractTrelloCardId,
-  isValidHttpsUrl,
-  isValidIso8601,
-  isWithinLength,
-  // Version utilities
-  normalizeVersion,
-  parseVersion,
-  compareVersions,
-  isUpdateAvailable,
   // Breadcrumbs utilities
   formatBreadcrumbDate,
   formatBreadcrumbDateSimple,
   formatFieldName,
   formatFieldValue,
   formatFileSize,
-  compareBreadcrumbs,
-  compareBreadcrumbsMeaningful,
-  categorizeField,
-  createDetailedFieldChange,
-  generateProjectChangeDetail,
   generateBreadcrumbsPreview,
-  debugComparison,
+  generateProjectChangeDetail,
   // Runtime environment (Issue #144)
-  isTauriRuntime
+  isTauriRuntime,
+  isUpdateAvailable,
+  isValidHttpsUrl,
+  isValidIso8601,
+  isWithinLength,
+  // Logger
+  logger,
+  // Version utilities
+  normalizeVersion,
+  parseVersion,
+  validateTrelloCard,
+  // Validation
+  validateVideoLink
 } from '@shared/utils'
+import { describe, expect, test, vi } from 'vitest'
 
 // Storage exports require Tauri runtime, test shape only via dynamic import
 // import { saveApiKeys, loadApiKeys } from '@shared/utils'

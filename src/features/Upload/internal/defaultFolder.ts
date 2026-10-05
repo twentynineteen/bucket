@@ -111,7 +111,7 @@ export function resolveDefaultFolder({
   // Paths are composed from the whole index so a verified folder shows its
   // current breadcrumb rather than the label captured when it was chosen -- a
   // folder renamed on Sprout reads correctly here.
-  const indexed = withPaths(index.folders).find((folder) => folder.id === storedId)
+  const indexed = withPaths(index.folders).find(folder => folder.id === storedId)
   if (indexed) return { status: 'verified', folder: indexed, reason: null }
 
   // A crawl that was cancelled, bounded or errored has holes in it by

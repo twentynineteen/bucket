@@ -7,13 +7,6 @@
  * collapse to headers with +/~/− counts.
  */
 
-import { AlertTriangle, CheckCircle, ChevronRight, Clock } from 'lucide-react'
-import React, { useEffect, useMemo, useState } from 'react'
-
-import { cn } from '@shared/utils'
-import type { BreadcrumbsPreview } from '../types'
-import { buildProjectChangeRows, sumChangeCounts } from '../utils/changeRows'
-
 import { Button } from '@shared/ui/button'
 import {
   Dialog,
@@ -23,9 +16,16 @@ import {
   DialogHeader,
   DialogTitle
 } from '@shared/ui/dialog'
+import { cn } from '@shared/utils'
+import { AlertTriangle, CheckCircle, ChevronRight, Clock } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import type { BreadcrumbsPreview } from '../types'
+import {
+  buildProjectChangeRows,
+  sumChangeCounts,
+  type ProjectChangeRows
+} from '../utils/changeRows'
 import { ChangeCounts, ChangeDiffList } from './ChangeDiffList'
-
-import type { ProjectChangeRows } from '../utils/changeRows'
 
 // Above this many changed projects the dialog collapses to accordion headers
 const AUTO_EXPAND_THRESHOLD = 5
@@ -112,7 +112,7 @@ export const BatchUpdateConfirmationDialog: React.FC<
 }) => {
   const projectChanges = useMemo(
     () =>
-      previews.map((preview) => ({
+      previews.map(preview => ({
         projectPath: preview.detailedChanges?.projectPath ?? preview.updated.parentFolder,
         projectName: preview.detailedChanges?.projectName ?? preview.updated.projectTitle,
         changes: buildProjectChangeRows(preview)
@@ -121,12 +121,12 @@ export const BatchUpdateConfirmationDialog: React.FC<
   )
 
   const projectsWithChanges = useMemo(
-    () => projectChanges.filter((project) => project.changes.hasChanges),
+    () => projectChanges.filter(project => project.changes.hasChanges),
     [projectChanges]
   )
   const skippedCount = selectedProjects.length - projectsWithChanges.length
   const totals = useMemo(
-    () => sumChangeCounts(projectsWithChanges.map((project) => project.changes)),
+    () => sumChangeCounts(projectsWithChanges.map(project => project.changes)),
     [projectsWithChanges]
   )
   const hasChanges = projectsWithChanges.length > 0
@@ -139,14 +139,14 @@ export const BatchUpdateConfirmationDialog: React.FC<
     if (!isOpen) return
     setExpandedPaths(
       projectsWithChanges.length <= AUTO_EXPAND_THRESHOLD
-        ? new Set(projectsWithChanges.map((project) => project.projectPath))
+        ? new Set(projectsWithChanges.map(project => project.projectPath))
         : new Set()
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, previews])
 
   const toggleProject = (projectPath: string) => {
-    setExpandedPaths((prev) => {
+    setExpandedPaths(prev => {
       const next = new Set(prev)
       if (next.has(projectPath)) {
         next.delete(projectPath)
@@ -225,7 +225,7 @@ export const BatchUpdateConfirmationDialog: React.FC<
 
               {/* Per-project change blocks */}
               <div className="space-y-2.5">
-                {projectsWithChanges.map((project) => (
+                {projectsWithChanges.map(project => (
                   <ProjectChangeBlock
                     key={project.projectPath}
                     projectName={project.projectName}

@@ -6,14 +6,12 @@
  * — showing one account's folder names while uploading to another would be
  * worse than offering no search at all.
  */
-import { describe, expect, it } from 'vitest'
-
 import type { SproutFolder } from '@shared/types'
-
+import { describe, expect, it } from 'vitest'
 import {
-  FOLDER_INDEX_VERSION,
   accountFingerprint,
   createFolderIndex,
+  FOLDER_INDEX_VERSION,
   indexAgeInDays,
   mergeFolderIndex,
   parseFolderIndex
@@ -145,7 +143,7 @@ describe('merging a crawl into an existing index', () => {
 
     const merged = mergeFolderIndex(existing, partial, false, KEY, NOW)
 
-    expect(merged.folders.map((f) => f.id).sort()).toEqual(['m1', 'm2', 'p1'])
+    expect(merged.folders.map(f => f.id).sort()).toEqual(['m1', 'm2', 'p1'])
   })
 
   it('marks a merged index partial so the UI does not imply full coverage', () => {
@@ -160,7 +158,7 @@ describe('merging a crawl into an existing index', () => {
     const merged = mergeFolderIndex(existing, found, false, KEY, NOW)
 
     expect(merged.folders).toHaveLength(4)
-    expect(merged.folders.map((f) => f.id)).toContain('y1')
+    expect(merged.folders.map(f => f.id)).toContain('y1')
   })
 
   it('lets the fresher crawl win on a renamed folder', () => {
@@ -169,7 +167,7 @@ describe('merging a crawl into an existing index', () => {
 
     const merged = mergeFolderIndex(existing, renamed, false, KEY, NOW)
 
-    expect(merged.folders.find((f) => f.id === 'm1')!.name).toBe('IB9X7 (retired)')
+    expect(merged.folders.find(f => f.id === 'm1')!.name).toBe('IB9X7 (retired)')
   })
 
   it('replaces wholesale on a complete crawl, so deleted folders drop out', () => {

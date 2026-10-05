@@ -12,10 +12,9 @@
  * to prevent.
  */
 
+import { queryKeys } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-
-import { queryKeys } from '@shared/lib'
 import { pathsExist } from '../api'
 
 export interface VerifiedPaths {
@@ -29,7 +28,7 @@ export interface VerifiedPaths {
 
 export function useVerifiedPaths(paths: string[]): VerifiedPaths {
   const unique = useMemo(
-    () => [...new Set(paths.filter((path) => !!path))],
+    () => [...new Set(paths.filter(path => !!path))],
     // Derived from the list's contents, not its identity. Callers build the
     // array inline from breadcrumbs on every render, so depending on identity
     // would rebuild the query key - and refetch - on every render.
@@ -54,7 +53,7 @@ export function useVerifiedPaths(paths: string[]): VerifiedPaths {
     () => ({
       isPresent: (path: string) => data?.get(path),
       missingCount: data
-        ? [...data.values()].filter((present) => !present).length
+        ? [...data.values()].filter(present => !present).length
         : undefined,
       probedCount: unique.length
     }),

@@ -6,7 +6,6 @@
  */
 
 import { describe, expect, it } from 'vitest'
-
 import type { FfmpegAvailability } from '../types'
 import { resolveKavanaghAvailability } from './availability'
 import type { ReferencePoolState } from './referencePool'

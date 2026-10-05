@@ -1,8 +1,8 @@
-import { appStore } from '@shared/store'
-import { useQueryClient } from '@tanstack/react-query'
 import type { TrelloCard as LegacyTrelloCard } from '@features/Trello'
+import { appStore } from '@shared/store'
 import type { Breadcrumb } from '@shared/types'
-
+import { logger } from '@shared/utils'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   addTrelloCardComment,
   askDialog,
@@ -11,7 +11,6 @@ import {
   readTextFileContents,
   updateTrelloCardDesc
 } from '../api'
-import { logger } from '@shared/utils'
 
 function formatBreadcrumbsForHumans(breadcrumbs: Breadcrumb): string {
   const lines = ['PROJECT DETAILS', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━']
@@ -83,7 +82,7 @@ function formatBreadcrumbsForHumans(breadcrumbs: Breadcrumb): string {
 
     // Group files by camera
     const filesByCamera: Record<number, number> = {}
-    breadcrumbs.files.forEach((file) => {
+    breadcrumbs.files.forEach(file => {
       filesByCamera[file.camera] = (filesByCamera[file.camera] || 0) + 1
     })
 

@@ -6,7 +6,6 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-
 import { useDocxParser } from '../../ScriptFormatter/hooks/useDocxParser'
 import { useOllamaEmbedding } from '../../ScriptFormatter/hooks/useOllamaEmbedding'
 import { ExampleCategory, type ExampleMetadata } from '../../types'
@@ -51,7 +50,7 @@ export function useUploadDialogForm({ onUpload, onClose }: UseUploadDialogFormPr
     const file = e.target.files?.[0] || null
     setBeforeFile(file)
     if (file) {
-      setErrors((prev) => ({ ...prev, beforeFile: '' }))
+      setErrors(prev => ({ ...prev, beforeFile: '' }))
     }
   }
 
@@ -59,7 +58,7 @@ export function useUploadDialogForm({ onUpload, onClose }: UseUploadDialogFormPr
     const file = e.target.files?.[0] || null
     setAfterFile(file)
     if (file) {
-      setErrors((prev) => ({ ...prev, afterFile: '' }))
+      setErrors(prev => ({ ...prev, afterFile: '' }))
     }
   }
 
@@ -67,8 +66,8 @@ export function useUploadDialogForm({ onUpload, onClose }: UseUploadDialogFormPr
   const handleTagsChange = (value: string) => {
     const tagArray = value
       .split(',')
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0)
+      .map(t => t.trim())
+      .filter(t => t.length > 0)
     setTags(tagArray)
   }
 

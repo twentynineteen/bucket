@@ -3,14 +3,13 @@
  * Comprehensive update management hook that handles GitHub releases and Tauri updater compatibility
  */
 
+import { createNamespacedLogger, logger } from '@shared/utils'
 import { useMutation } from '@tanstack/react-query'
 import { ask, message } from '@tauri-apps/plugin-dialog'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { check } from '@tauri-apps/plugin-updater'
-import { createNamespacedLogger, logger } from '@shared/utils'
 import { useState } from 'react'
-
 import { useVersionCheck } from './useVersionCheck'
 
 const log = createNamespacedLogger('UpdateManager')
@@ -152,7 +151,7 @@ async function performUpdate(): Promise<void> {
       })
 
       // Use Tauri's built-in downloadAndInstall
-      await update.downloadAndInstall((event) => {
+      await update.downloadAndInstall(event => {
         log.debug('Update progress:', event)
         // Could add progress UI here if needed
       })

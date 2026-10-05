@@ -14,10 +14,9 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { confirm, open } from '@tauri-apps/plugin-dialog'
 import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
-import { listen } from '@tauri-apps/api/event'
-
 import type {
   FileTransferProgress,
   TransferCompleteEvent,

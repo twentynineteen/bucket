@@ -8,9 +8,10 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import * as api from '../api'
+import * as settingsBarrel from '../index'
 
 // Mock the api layer (single mock point for all Settings I/O)
 vi.mock('../api', () => ({
@@ -96,7 +97,7 @@ vi.mock('@shared/utils/logger', () => ({
   }))
 }))
 
-vi.mock('@shared/constants/timing', async (importOriginal) => {
+vi.mock('@shared/constants/timing', async importOriginal => {
   const actual = await importOriginal<typeof import('@shared/constants/timing')>()
   return { ...actual }
 })
@@ -196,9 +197,6 @@ vi.mock('@tanstack/react-query', () => ({
   })
 }))
 
-import * as settingsBarrel from '../index'
-import * as api from '../api'
-
 // --- Shape Tests: Barrel ---
 
 describe('Settings Barrel Exports - Shape', () => {
@@ -232,7 +230,7 @@ describe('Settings API Layer - Shape', () => {
   ]
 
   it('exports all expected functions', () => {
-    expectedFunctions.forEach((name) => {
+    expectedFunctions.forEach(name => {
       expect(typeof (api as Record<string, unknown>)[name]).toBe('function')
     })
   })
@@ -396,7 +394,7 @@ describe('Settings Module - No Direct Plugin Imports', () => {
       if (entry.isDirectory()) {
         if (entry.name === '__contracts__' || entry.name === 'node_modules') continue
         files.push(...getFilesRecursive(fullPath, extensions))
-      } else if (extensions.some((ext) => entry.name.endsWith(ext))) {
+      } else if (extensions.some(ext => entry.name.endsWith(ext))) {
         files.push(fullPath)
       }
     }
@@ -405,11 +403,11 @@ describe('Settings Module - No Direct Plugin Imports', () => {
 
   it('all non-api.ts files have zero direct @tauri-apps imports', () => {
     const allFiles = getFilesRecursive(modulePath, ['.ts', '.tsx'])
-    const nonApiFiles = allFiles.filter((f) => !f.endsWith('/api.ts'))
+    const nonApiFiles = allFiles.filter(f => !f.endsWith('/api.ts'))
     for (const file of nonApiFiles) {
       const content = fs.readFileSync(file, 'utf-8')
       const lines = content.split('\n')
-      const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
+      const tauriImports = lines.filter(line => line.includes("from '@tauri-apps"))
       expect(tauriImports).toEqual([])
     }
   })

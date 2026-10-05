@@ -5,27 +5,26 @@
  * animation, and project constants.
  */
 
-import { describe, expect, test } from 'vitest'
-
 import {
+  BAKER_ANIMATIONS,
+  BUTTON_ANIMATIONS,
+  CACHE,
+  FILE_LIST_ANIMATION,
+  getBackoffDelay,
+  HOURS,
+  LIMITS,
+  MINUTES,
+  // Project
+  PROJECT_LIMITS,
+  REFRESH,
+  RETRY,
   // Timing
   SECONDS,
-  MINUTES,
-  HOURS,
-  TIMEOUTS,
-  RETRY,
-  CACHE,
-  REFRESH,
-  LIMITS,
-  getBackoffDelay,
   // Animations
   STEP_CARD_ANIMATION,
-  FILE_LIST_ANIMATION,
-  BUTTON_ANIMATIONS,
-  BAKER_ANIMATIONS,
-  // Project
-  PROJECT_LIMITS
+  TIMEOUTS
 } from '@shared/constants'
+import { describe, expect, test } from 'vitest'
 
 describe('@shared/constants barrel contract', () => {
   describe('shape: all expected exports exist', () => {

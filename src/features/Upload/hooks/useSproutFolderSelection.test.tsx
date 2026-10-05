@@ -9,10 +9,15 @@
  * instead of swallowed. Sprout allows 200 requests/minute account-wide (#155
  * R1), so validation must cost zero requests -- asserted, not assumed.
  */
+import { useAppStore } from '@shared/store'
+import type { SproutFolder } from '@shared/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getFolders, readFolderIndex } from '../api'
+import { accountFingerprint, createFolderIndex } from '../internal/folderIndex'
+import { useSproutFolderSelection } from './useSproutFolderSelection'
 
 const { useApiKeysMock } = vi.hoisted(() => ({ useApiKeysMock: vi.fn() }))
 vi.mock('@shared/hooks', () => ({ useApiKeys: useApiKeysMock }))
@@ -21,13 +26,6 @@ vi.mock('../api', () => ({
   readFolderIndex: vi.fn(),
   getFolders: vi.fn()
 }))
-
-import type { SproutFolder } from '@shared/types'
-import { useAppStore } from '@shared/store'
-
-import { getFolders, readFolderIndex } from '../api'
-import { accountFingerprint, createFolderIndex } from '../internal/folderIndex'
-import { useSproutFolderSelection } from './useSproutFolderSelection'
 
 const folderA = { id: 'a', name: 'Alpha', path: 'Alpha' }
 const folderB = { id: 'b', name: 'Beta', path: 'Marketing / Beta' }
@@ -169,7 +167,7 @@ describe('validating the stored default against the saved index', () => {
     vi.mocked(readFolderIndex).mockResolvedValue(
       createFolderIndex(
         API_KEY,
-        TREE.filter((folder) => folder.id !== 'd1'),
+        TREE.filter(folder => folder.id !== 'd1'),
         false,
         NOW_ISO
       )
@@ -188,7 +186,7 @@ describe('validating the stored default against the saved index', () => {
     vi.mocked(readFolderIndex).mockResolvedValue(
       createFolderIndex(
         API_KEY,
-        TREE.filter((folder) => folder.id !== 'd1'),
+        TREE.filter(folder => folder.id !== 'd1'),
         true,
         NOW_ISO
       )
@@ -222,7 +220,7 @@ describe('validating the stored default against the saved index', () => {
     useApiKeysMock.mockReturnValue(withDefault())
     let release: (value: unknown) => void = () => {}
     vi.mocked(readFolderIndex).mockReturnValue(
-      new Promise((resolve) => {
+      new Promise(resolve => {
         release = resolve
       })
     )
@@ -237,7 +235,7 @@ describe('validating the stored default against the saved index', () => {
       release(
         createFolderIndex(
           API_KEY,
-          TREE.filter((folder) => folder.id !== 'd1'),
+          TREE.filter(folder => folder.id !== 'd1'),
           false,
           NOW_ISO
         )
@@ -253,7 +251,7 @@ describe('validating the stored default against the saved index', () => {
     vi.mocked(readFolderIndex).mockResolvedValue(
       createFolderIndex(
         API_KEY,
-        TREE.filter((folder) => folder.id !== 'd1'),
+        TREE.filter(folder => folder.id !== 'd1'),
         false,
         NOW_ISO
       )

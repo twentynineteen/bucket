@@ -3,23 +3,20 @@
  *
  * SproutVideo API key input and save.
  */
-import { toast } from 'sonner'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { queryKeys, createQueryError } from '@shared/lib'
-import { logger } from '@shared/utils'
-import ApiKeyInput from '@shared/ui/ApiKeyInput'
-import { AlertTriangle } from 'lucide-react'
-import React, { useState } from 'react'
-
 import {
   SproutFolderIndexPanel,
   SproutFolderPicker,
-  useDefaultSproutFolder
+  useDefaultSproutFolder,
+  type SelectedSproutFolder
 } from '@features/Upload'
-import type { SelectedSproutFolder } from '@features/Upload'
-
-import { saveSettingsApiKeys } from '../api'
-import type { ApiKeys } from '../api'
+import { createQueryError, queryKeys } from '@shared/lib'
+import ApiKeyInput from '@shared/ui/ApiKeyInput'
+import { logger } from '@shared/utils'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle } from 'lucide-react'
+import React, { useState } from 'react'
+import { toast } from 'sonner'
+import { saveSettingsApiKeys, type ApiKeys } from '../api'
 
 interface SproutVideoSectionProps {
   apiKeys: ApiKeys
@@ -54,7 +51,7 @@ const SproutVideoSection: React.FC<SproutVideoSectionProps> = ({
         throw createQueryError(`Failed to save API keys: ${error}`, 'SETTINGS_SAVE')
       }
     },
-    onSuccess: (updatedKeys) => {
+    onSuccess: updatedKeys => {
       queryClient.setQueryData(queryKeys.settings.apiKeys(), updatedKeys)
     }
   })

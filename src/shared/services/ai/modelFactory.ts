@@ -4,10 +4,8 @@
  * Purpose: Runtime model instantiation with provider switching
  */
 
-import type { LanguageModel } from 'ai'
-
 import type { ProviderConfiguration } from '@shared/types'
-
+import type { LanguageModel } from 'ai'
 import { providerRegistry } from './providerConfig'
 import type { ModelCreationOptions } from './types'
 
@@ -29,7 +27,7 @@ export class ModelFactory {
       throw new Error(
         `Provider "${providerId}" not found. Available providers: ${providerRegistry
           .list()
-          .map((p) => p.id)
+          .map(p => p.id)
           .join(', ')}`
       )
     }

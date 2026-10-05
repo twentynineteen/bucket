@@ -9,7 +9,6 @@
  * failure that wasted a debugging session cannot come back quietly.
  */
 import { describe, expect, it } from 'vitest'
-
 import { clampWindowState } from './useWindowState'
 
 /** A 2560x1440 display at the origin — the machine this bug was found on. */

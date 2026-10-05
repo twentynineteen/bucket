@@ -7,23 +7,11 @@
  * account runs for minutes, so an interrupted re-index must add to the saved
  * index rather than replace it with the little it managed to find.
  */
+import type { SproutFolder } from '@shared/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-vi.mock('../api', () => ({
-  getFolders: vi.fn(),
-  readFolderIndex: vi.fn(),
-  writeFolderIndex: vi.fn(),
-  saveFileDialog: vi.fn(),
-  openJsonFileDialog: vi.fn(),
-  writeFolderIndexTo: vi.fn(),
-  readFolderIndexFrom: vi.fn()
-}))
-
-import type { SproutFolder } from '@shared/types'
-
 import {
   getFolders,
   openJsonFileDialog,
@@ -34,12 +22,22 @@ import {
   writeFolderIndexTo
 } from '../api'
 import { accountFingerprint, createFolderIndex } from '../internal/folderIndex'
-import { paceFromBudget, useSproutFolderIndex } from './useSproutFolderIndex'
 import {
   __resetBudget,
   recordBudget,
   recordRateLimited
 } from '../internal/sproutRateBudget'
+import { paceFromBudget, useSproutFolderIndex } from './useSproutFolderIndex'
+
+vi.mock('../api', () => ({
+  getFolders: vi.fn(),
+  readFolderIndex: vi.fn(),
+  writeFolderIndex: vi.fn(),
+  saveFileDialog: vi.fn(),
+  openJsonFileDialog: vi.fn(),
+  writeFolderIndexTo: vi.fn(),
+  readFolderIndexFrom: vi.fn()
+}))
 
 const KEY = 'key-1'
 const NOW_ISO = '2026-08-10T09:30:00.000Z'
@@ -71,7 +69,7 @@ beforeEach(() => {
   vi.mocked(readFolderIndex).mockResolvedValue(null)
   vi.mocked(writeFolderIndex).mockResolvedValue(undefined)
   vi.mocked(getFolders).mockImplementation(async (_key, parentId) =>
-    page(TREE.filter((f) => f.parent_id === parentId))
+    page(TREE.filter(f => f.parent_id === parentId))
   )
   vi.mocked(saveFileDialog).mockResolvedValue('/tmp/index.json')
   vi.mocked(openJsonFileDialog).mockResolvedValue('/tmp/theirs.json')
@@ -201,7 +199,7 @@ describe('sharing an index with the team', () => {
     const saved = vi.mocked(writeFolderIndex).mock.calls.at(-1)![0] as {
       folders: SproutFolder[]
     }
-    expect(saved.folders.map((f) => f.id).sort()).toEqual(['m1', 'mine', 'p1'])
+    expect(saved.folders.map(f => f.id).sort()).toEqual(['m1', 'mine', 'p1'])
   })
 })
 
@@ -223,7 +221,7 @@ describe('building an index', () => {
       folders: SproutFolder[]
       partial: boolean
     }
-    expect(saved.folders.map((f) => f.id).sort()).toEqual(['m1', 'p1'])
+    expect(saved.folders.map(f => f.id).sort()).toEqual(['m1', 'p1'])
     expect(saved.partial).toBe(false)
   })
 
@@ -237,7 +235,7 @@ describe('building an index', () => {
       timeout: 10_000
     })
 
-    expect(result.current.folders.map((f) => f.path)).toContain('Postgraduate / IB9X7')
+    expect(result.current.folders.map(f => f.path)).toContain('Postgraduate / IB9X7')
   })
 })
 
@@ -275,7 +273,7 @@ describe('an interrupted re-index never shrinks the saved index', () => {
       partial: boolean
     }
     // Previously findable folders survive, and the new one is added.
-    expect(saved.folders.map((f) => f.id).sort()).toEqual(['old1', 'old2', 'p1'])
+    expect(saved.folders.map(f => f.id).sort()).toEqual(['old1', 'old2', 'p1'])
     expect(saved.partial).toBe(true)
   })
 

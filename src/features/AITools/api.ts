@@ -5,6 +5,8 @@
  * are wrapped here. Mock this one file to isolate the entire module.
  */
 
+import { ModelFactory } from '@shared/services/ai/modelFactory'
+import { providerRegistry } from '@shared/services/ai/providerConfig'
 import { invoke } from '@tauri-apps/api/core'
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog'
 import {
@@ -14,9 +16,6 @@ import {
   writeFile,
   writeTextFile
 } from '@tauri-apps/plugin-fs'
-import { ModelFactory } from '@shared/services/ai/modelFactory'
-import { providerRegistry } from '@shared/services/ai/providerConfig'
-
 import type {
   ExampleWithMetadata,
   OllamaTagsResponse,

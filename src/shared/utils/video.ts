@@ -81,8 +81,8 @@ export function fileNameToTitle(filePath: string): string {
 export function titleToPosterFrameText(title: string): string {
   const segments = title
     .split(' - ')
-    .map((segment) => segment.trim())
-    .filter((segment) => segment.length > 0)
+    .map(segment => segment.trim())
+    .filter(segment => segment.length > 0)
 
   return segments.length > 0 ? segments[segments.length - 1] : ''
 }

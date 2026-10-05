@@ -14,10 +14,9 @@
  * not answered. Callers must render nothing at all for `undefined`.
  */
 
+import { queryKeys } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-
-import { queryKeys } from '@shared/lib'
 import { pathsExist } from '../api'
 
 export interface VerifiedPaths {
@@ -27,7 +26,7 @@ export interface VerifiedPaths {
 
 export function useVerifiedPaths(paths: string[]): VerifiedPaths {
   const unique = useMemo(
-    () => [...new Set(paths.filter((path) => !!path))],
+    () => [...new Set(paths.filter(path => !!path))],
     // Derived from the list's contents, not its identity: the caller builds the
     // array inline from the parsed card on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps

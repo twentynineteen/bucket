@@ -4,8 +4,6 @@
  * Displays success state after a successful upload.
  */
 
-import { CheckCircle } from 'lucide-react'
-
 import { Button } from '@shared/ui/button'
 import {
   DialogDescription,
@@ -13,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@shared/ui/dialog'
+import { CheckCircle } from 'lucide-react'
 
 interface UploadSuccessViewProps {
   uploadedTitle: string

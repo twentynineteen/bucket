@@ -1,8 +1,8 @@
 // Target: @features/AppShell
 import { CACHE } from '@shared/constants'
+import { isUpdateAvailable, normalizeVersion } from '@shared/utils'
 import { useQuery } from '@tanstack/react-query'
 import { getVersion } from '@tauri-apps/api/app'
-import { isUpdateAvailable, normalizeVersion } from '@shared/utils'
 
 interface GitHubRelease {
   tag_name: string
