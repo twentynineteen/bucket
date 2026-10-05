@@ -141,39 +141,6 @@ vi.mock('@shared/lib/query-utils', () => ({
   shouldRetry: () => false
 }))
 
-vi.mock('@services/ai/providerConfig', () => ({
-  providerRegistry: {
-    list: () => [
-      {
-        id: 'ollama',
-        displayName: 'Ollama (Local)',
-        type: 'ollama',
-        validateConnection: vi
-          .fn()
-          .mockResolvedValue({ success: true, modelsFound: 3, latencyMs: 50 })
-      }
-    ],
-    get: (id: string) => {
-      if (id === 'ollama') {
-        return {
-          id: 'ollama',
-          displayName: 'Ollama (Local)',
-          type: 'ollama',
-          validateConnection: vi
-            .fn()
-            .mockResolvedValue({ success: true, modelsFound: 3, latencyMs: 50 })
-        }
-      }
-      return undefined
-    }
-  },
-  getDefaultConfig: () => ({
-    serviceUrl: 'http://localhost:11434',
-    connectionStatus: 'not-configured',
-    timeout: 5000
-  })
-}))
-
 // Mock React Query
 const mockMutate = vi.fn()
 const mockMutateAsync = vi.fn().mockResolvedValue(undefined)

@@ -72,15 +72,6 @@ vi.mock('../../src/features/Baker/hooks/useBreadcrumbsPreview', () => ({
   }))
 }))
 
-vi.mock('hooks/useTrelloBoard', () => ({
-  useTrelloBoard: vi.fn(() => ({
-    apiKey: 'test-api-key',
-    token: 'test-token',
-    grouped: {},
-    isLoading: false
-  }))
-}))
-
 vi.mock('@features/Trello', () => ({
   useBakerTrelloIntegration: vi.fn(() => ({
     updateTrelloCards: vi.fn().mockResolvedValue([])

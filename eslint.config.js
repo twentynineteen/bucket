@@ -27,12 +27,13 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
+import bucket from './eslint-rules/index.js'
 
 export default tseslint.config(
   { ignores: ['dist'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser
@@ -56,7 +57,7 @@ export default tseslint.config(
   },
   // Module boundary enforcement (eslint-plugin-boundaries)
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
     plugins: {
       boundaries
     },
@@ -132,6 +133,26 @@ export default tseslint.config(
       // All boundary rules at error severity -- violations fail lint
       'boundaries/no-unknown-files': ['error'],
       'boundaries/no-unknown': ['error']
+    }
+  },
+  // tests/ is linted only for the rules below, so its disable comments for the
+  // full rule set would all report as unused.
+  {
+    files: ['tests/**'],
+    linterOptions: { reportUnusedDisableDirectives: 'off' }
+  },
+  // Mechanical rules from the testing policy (CODING_STANDARDS.md, "Testing")
+  {
+    files: [
+      '**/*.test.{ts,tsx}',
+      '**/__contracts__/**/*.{ts,tsx}',
+      'tests/**/*.{ts,tsx}'
+    ],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { bucket, '@typescript-eslint': tseslint.plugin },
+    rules: {
+      'bucket/vi-mock-resolves': 'error',
+      'bucket/no-export-count': 'error'
     }
   }
 )

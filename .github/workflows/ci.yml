@@ -23,12 +23,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
         run: bun install
+
+      - name: Check test locations
+        if: github.event_name == 'pull_request'
+        run: scripts/check-test-locations.sh "origin/${{ github.base_ref }}...HEAD"
 
       - name: Run ESLint
         run: bun run eslint

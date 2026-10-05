@@ -12,6 +12,8 @@ pre-commit:
       glob: 'src/**/*.{ts,tsx,js,jsx}'
       run: bunx eslint --fix --no-warn-ignored {staged_files}
       stage_fixed: true
+    - name: test-locations
+      run: scripts/check-test-locations.sh
 
 pre-push:
   jobs:
