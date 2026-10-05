@@ -4,7 +4,6 @@
  */
 
 import { useAppendBreadcrumbs } from '@features/Baker'
-import { useVideoInfoBlock } from '@features/BuildProject'
 import { useFuzzySearch } from '@shared/hooks'
 import { queryKeys } from '@shared/lib'
 import { appStore } from '@shared/store'
@@ -25,6 +24,7 @@ import { useTrelloBoard } from './useTrelloBoard'
 import { useTrelloBoardId } from './useTrelloBoardId'
 import { useTrelloBoards } from './useTrelloBoards'
 import { useTrelloCardDetails } from './useTrelloCardDetails'
+import { useVideoInfoBlock } from './useVideoInfoBlock'
 
 export function useUploadTrello() {
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null)

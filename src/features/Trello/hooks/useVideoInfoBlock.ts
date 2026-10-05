@@ -1,5 +1,5 @@
+import type { VideoInfoData } from '@features/BuildProject'
 import { useMemo } from 'react'
-import type { VideoInfoData } from '../types'
 
 // Re-export the type for backward compatibility
 export type { VideoInfoData }

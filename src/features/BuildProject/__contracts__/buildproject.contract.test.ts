@@ -28,8 +28,6 @@ describe('BuildProject Barrel Exports - Shape', () => {
     'BuildProjectPage',
     // Workflow hook (the page's entry point into the machine)
     'useBuildProject',
-    // Hook (consumed by Trello module)
-    'useVideoInfoBlock',
     // Error surface consumers branch on
     'BuildProjectError',
     'ErrorKind',
@@ -47,10 +45,6 @@ describe('BuildProject Barrel Exports - Shape', () => {
 
   it('exports BuildProjectPage as a function (React component)', () => {
     expect(typeof buildProjectBarrel.BuildProjectPage).toBe('function')
-  })
-
-  it('exports useVideoInfoBlock as a function', () => {
-    expect(typeof buildProjectBarrel.useVideoInfoBlock).toBe('function')
   })
 
   it('exports useBuildProject as a function (React hook)', () => {

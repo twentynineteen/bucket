@@ -10,8 +10,6 @@
 export { default as BuildProjectPage } from './BuildProjectPage'
 /** Main orchestration hook -- drives the BuildProject workflow via XState v5 */
 export { useBuildProject } from './hooks/useBuildProject'
-/** Hook for reading and caching video metadata blocks from project breadcrumbs */
-export { useVideoInfoBlock } from './hooks/useVideoInfoBlock'
 /** Structured error class for BuildProject failures (kind, recoverable, code) */
 export { BuildProjectError } from './types/errors'
 /** Error category enum used by BuildProjectError.kind (Validation, IO, Timeout, ...) */
