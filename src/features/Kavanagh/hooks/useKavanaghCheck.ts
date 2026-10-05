@@ -14,7 +14,6 @@
 
 import { useMutation } from '@tanstack/react-query'
 import React from 'react'
-
 import {
   cancelKavanaghRun,
   listenKavanaghProgress,
@@ -59,8 +58,8 @@ export function useKavanaghCheck(): UseKavanaghCheckResult {
     let unlisten: (() => void) | null = null
     let cancelled = false
 
-    listenKavanaghProgress((event) => setProgress(event.payload))
-      .then((stop) => {
+    listenKavanaghProgress(event => setProgress(event.payload))
+      .then(stop => {
         if (cancelled) {
           stop()
           return
@@ -88,8 +87,8 @@ export function useKavanaghCheck(): UseKavanaghCheckResult {
       setReport(null)
       setError(null)
     },
-    onSuccess: (result) => setReport(result),
-    onError: (raised) => {
+    onSuccess: result => setReport(result),
+    onError: raised => {
       const normalised = asKavanaghError(raised)
       // A cancellation is the operator's own doing, so it clears the run rather
       // than showing a failure they would read as a bug.

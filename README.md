@@ -162,27 +162,27 @@ gates on it (#178).
 
 Six GitHub Actions workflows cover tests, releases and dependency bumps:
 
-| Workflow | Trigger | What it does |
-|----------|---------|--------------|
-| **CI** (`ci.yml`) | Push/PR to `master`, `release` | Lint, typecheck, unit + Rust tests, E2E tests, macOS build |
-| **E2E Slow Suite** (`e2e-tests.yml`) | Push to `master`, `release` touching `src/**` or `tests/e2e/**` | The `@slow` E2E specs (large transfer simulations) |
-| **Auto Release PR** (`auto-release-pr.yml`) | Push to `master` touching `package.json` | Detects a version bump, runs tests, opens the release PR |
-| **Publish** (`publish.yml`) | Push to `release` | Build app, create GitHub release, upload artifacts |
-| **Update NodeJS Dependencies** (`update-node-dependencies.yml`) | Push to `renovate/**` touching `package.json` | Build check for dependency bumps |
-| **Update Rust Packages** (`update-rust-packages.yml`) | Push to `renovate/**` touching `Cargo.toml` | Rust test run for crate bumps |
+| Workflow                                                        | Trigger                                                         | What it does                                               |
+| --------------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
+| **CI** (`ci.yml`)                                               | Push/PR to `master`, `release`                                  | Lint, typecheck, unit + Rust tests, E2E tests, macOS build |
+| **E2E Slow Suite** (`e2e-tests.yml`)                            | Push to `master`, `release` touching `src/**` or `tests/e2e/**` | The `@slow` E2E specs (large transfer simulations)         |
+| **Auto Release PR** (`auto-release-pr.yml`)                     | Push to `master` touching `package.json`                        | Detects a version bump, runs tests, opens the release PR   |
+| **Publish** (`publish.yml`)                                     | Push to `release`                                               | Build app, create GitHub release, upload artifacts         |
+| **Update NodeJS Dependencies** (`update-node-dependencies.yml`) | Push to `renovate/**` touching `package.json`                   | Build check for dependency bumps                           |
+| **Update Rust Packages** (`update-rust-packages.yml`)           | Push to `renovate/**` touching `Cargo.toml`                     | Rust test run for crate bumps                              |
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 19.2 + TypeScript 5.9 + Vite 7.3 |
-| Backend | Tauri 2 (Rust 2021 edition) |
-| UI | TailwindCSS 4 + Radix UI + Lucide icons |
-| State | Zustand + TanStack React Query |
-| State machines | XState (BuildProject workflow) |
-| Testing | Vitest + Testing Library + Playwright |
-| AI | Vercel AI SDK + Ollama (local LLM) |
-| Formatting | Prettier + ESLint (auto-configured) |
+| Layer          | Technology                              |
+| -------------- | --------------------------------------- |
+| Frontend       | React 19.2 + TypeScript 5.9 + Vite 7.3  |
+| Backend        | Tauri 2 (Rust 2021 edition)             |
+| UI             | TailwindCSS 4 + Radix UI + Lucide icons |
+| State          | Zustand + TanStack React Query          |
+| State machines | XState (BuildProject workflow)          |
+| Testing        | Vitest + Testing Library + Playwright   |
+| AI             | Vercel AI SDK + Ollama (local LLM)      |
+| Formatting     | Prettier + ESLint (auto-configured)     |
 
 ## Project Structure
 
@@ -219,7 +219,8 @@ Each feature module follows a strict convention: an `api.ts` I/O boundary wrappi
 
 Start here:
 
-- **[CLAUDE.md](./CLAUDE.md)** -- Architecture conventions, import rules, and how to add a new feature module
+- **[CLAUDE.md](./CLAUDE.md)** -- Module rules and pointers for agents and developers
+- **[CODING_STANDARDS.md](./CODING_STANDARDS.md)** -- Testing policy and review rules
 - **[docs/ONBOARDING.md](./docs/ONBOARDING.md)** -- Developer onboarding, from clone to first PR
 - **[docs/USER_GUIDE.md](./docs/USER_GUIDE.md)** -- Using the app: breadcrumbs, workflows, settings, troubleshooting
 - **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** -- System design, data flow, and component interactions

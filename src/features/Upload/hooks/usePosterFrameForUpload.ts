@@ -7,25 +7,23 @@
  * retry policy for the Sprout request.
  */
 
+import { logger, titleToPosterFrameText } from '@shared/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
-
-import { logger, titleToPosterFrameText } from '@shared/utils'
-
-import type { PosterFrameRunResult, PosterFrameStatus } from '../types'
-import {
-  POSTER_FRAME_MAX_BYTES,
-  exportCanvasJpegUnder,
-  posterFrameDelay,
-  posterFrameFileStem,
-  sendPosterFrameWithRetry
-} from '../internal/posterFrame'
 import {
   fetchSproutVideoDetails,
   posterFrameFontAvailable,
   savePosterFrameCopy,
   setSproutPosterFrame
 } from '../api'
+import {
+  exportCanvasJpegUnder,
+  POSTER_FRAME_MAX_BYTES,
+  posterFrameDelay,
+  posterFrameFileStem,
+  sendPosterFrameWithRetry
+} from '../internal/posterFrame'
+import type { PosterFrameRunResult, PosterFrameStatus } from '../types'
 import { useBackgroundFolder } from './useBackgroundFolder'
 import { useFileSelection } from './useFileSelection'
 import { usePosterframeAutoRedraw } from './usePosterframeAutoRedraw'
@@ -152,7 +150,7 @@ export function usePosterFrameForUpload({
     unavailableReason === null && fontAvailable === true && backgrounds.length > 0
 
   const setEnabled = useCallback((enabled: boolean) => {
-    setPreferences((current) => {
+    setPreferences(current => {
       const next = { ...current, enabled }
       savePreferences(next)
       return next
@@ -160,7 +158,7 @@ export function usePosterFrameForUpload({
   }, [])
 
   const setSaveCopy = useCallback((saveCopy: boolean) => {
-    setPreferences((current) => {
+    setPreferences(current => {
       const next = { ...current, saveCopy }
       savePreferences(next)
       return next
@@ -229,7 +227,7 @@ export function usePosterFrameForUpload({
       // the Posterframe page's upload action share one copy of it (#142).
       const outcome = await sendPosterFrameWithRetry(
         bytes,
-        (payload) => setSproutPosterFrame(videoId, apiKey, payload, `${fileStem}.jpg`),
+        payload => setSproutPosterFrame(videoId, apiKey, payload, `${fileStem}.jpg`),
         posterFrameDelay
       )
 

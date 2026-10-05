@@ -3,13 +3,13 @@
  *
  * Theme selector accordion wrapper.
  */
-import { ThemeSelector } from '@shared/ui/theme/ThemeSelector'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
 } from '@shared/ui/accordion'
+import { ThemeSelector } from '@shared/ui/theme/ThemeSelector'
 import React from 'react'
 
 const AppearanceSection: React.FC = () => {

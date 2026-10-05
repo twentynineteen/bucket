@@ -1,54 +1,52 @@
 // tauri auto updater on app launch
+import { createNamespacedLogger } from '@shared/utils'
 import { relaunch } from '@tauri-apps/plugin-process'
-import { check } from '@tauri-apps/plugin-updater'
-import type { DownloadEvent, Update } from '@tauri-apps/plugin-updater'
+import { check, type DownloadEvent, type Update } from '@tauri-apps/plugin-updater'
 import React, { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-
 // The top level component, Page, acts as the provider for the layout
 // subsequent components are loaded within the page window via the Outlet component.
 
 import Page from './app/dashboard/page'
-import { createNamespacedLogger } from '@shared/utils'
 
 // Lazy-loaded route components -- each produces a separate chunk for
 // smaller initial bundle and faster startup.
 const ExampleEmbeddings = React.lazy(() =>
-  import('@features/AITools').then((m) => ({ default: m.ExampleEmbeddings }))
+  import('@features/AITools').then(m => ({ default: m.ExampleEmbeddings }))
 )
 const ScriptFormatter = React.lazy(() =>
-  import('@features/AITools').then((m) => ({ default: m.ScriptFormatter }))
+  import('@features/AITools').then(m => ({ default: m.ScriptFormatter }))
 )
 const Baker = React.lazy(() =>
-  import('@features/Baker').then((m) => ({ default: m.BakerPage }))
+  import('@features/Baker').then(m => ({ default: m.BakerPage }))
 )
 const BuildProjectPage = React.lazy(() =>
-  import('@features/BuildProject').then((m) => ({
+  import('@features/BuildProject').then(m => ({
     default: m.BuildProjectPage
   }))
 )
 const Settings = React.lazy(() =>
-  import('@features/Settings').then((m) => ({ default: m.Settings }))
+  import('@features/Settings').then(m => ({ default: m.Settings }))
 )
 const Posterframe = React.lazy(() =>
-  import('@features/Upload').then((m) => ({ default: m.Posterframe }))
+  import('@features/Upload').then(m => ({ default: m.Posterframe }))
 )
 const UploadOtter = React.lazy(() =>
-  import('@features/Upload').then((m) => ({ default: m.UploadOtter }))
+  import('@features/Upload').then(m => ({ default: m.UploadOtter }))
 )
 const UploadSprout = React.lazy(() =>
-  import('@features/Upload').then((m) => ({ default: m.UploadSprout }))
+  import('@features/Upload').then(m => ({ default: m.UploadSprout }))
 )
 const PremierePluginManager = React.lazy(() =>
-  import('@features/Premiere').then((m) => ({
+  import('@features/Premiere').then(m => ({
     default: m.PremierePluginManager
   }))
 )
 const UploadTrello = React.lazy(() =>
-  import('@features/Trello').then((m) => ({ default: m.UploadTrello }))
+  import('@features/Trello').then(m => ({ default: m.UploadTrello }))
 )
 const KavanaghPage = React.lazy(() =>
-  import('@features/Kavanagh').then((m) => ({ default: m.KavanaghPage }))
+  import('@features/Kavanagh').then(m => ({ default: m.KavanaghPage }))
 )
 
 const log = createNamespacedLogger('AppRouter')

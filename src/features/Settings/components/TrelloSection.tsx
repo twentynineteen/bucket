@@ -3,17 +3,15 @@
  *
  * Trello API key, token, authorization, and board selector.
  */
-import { toast } from 'sonner'
-import { Button } from '@shared/ui/button'
 import { TrelloBoardSelector } from '@features/Trello'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { queryKeys, createQueryError } from '@shared/lib'
-import { logger } from '@shared/utils'
+import { createQueryError, queryKeys } from '@shared/lib'
 import ApiKeyInput from '@shared/ui/ApiKeyInput'
+import { Button } from '@shared/ui/button'
+import { logger } from '@shared/utils'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import React, { useState } from 'react'
-
-import { openExternalUrl, saveSettingsApiKeys } from '../api'
-import type { ApiKeys } from '../api'
+import { toast } from 'sonner'
+import { openExternalUrl, saveSettingsApiKeys, type ApiKeys } from '../api'
 
 interface TrelloSectionProps {
   apiKeys: ApiKeys
@@ -54,7 +52,7 @@ const TrelloSection: React.FC<TrelloSectionProps> = ({
         throw createQueryError(`Failed to save API keys: ${error}`, 'SETTINGS_SAVE')
       }
     },
-    onSuccess: (updatedKeys) => {
+    onSuccess: updatedKeys => {
       queryClient.setQueryData(queryKeys.settings.apiKeys(), updatedKeys)
     }
   })

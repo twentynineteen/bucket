@@ -5,15 +5,14 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-
 import {
-  POSTER_FRAME_MAX_BYTES,
-  POSTER_FRAME_RETRY_DELAYS_MS,
-  PosterFrameTooLargeError,
   describePosterFrameError,
   exportCanvasJpegUnder,
   isTransientPosterFrameError,
-  posterFrameFileStem
+  POSTER_FRAME_MAX_BYTES,
+  POSTER_FRAME_RETRY_DELAYS_MS,
+  posterFrameFileStem,
+  PosterFrameTooLargeError
 } from './posterFrame'
 
 describe('posterFrameFileStem', () => {
@@ -139,7 +138,7 @@ describe('exportCanvasJpegUnder (#189)', () => {
     const result = await exportCanvasJpegUnder(canvas, POSTER_FRAME_MAX_BYTES, encode)
 
     expect(result).toBe(fits)
-    expect(encode.mock.calls.map((call) => call[1])).toEqual([undefined, 0.9, 0.8])
+    expect(encode.mock.calls.map(call => call[1])).toEqual([undefined, 0.9, 0.8])
   })
 
   it('b5_3_fails_clearly_when_even_the_quality_floor_is_over_the_limit', async () => {
@@ -150,7 +149,7 @@ describe('exportCanvasJpegUnder (#189)', () => {
     ).rejects.toBeInstanceOf(PosterFrameTooLargeError)
 
     // Descends to the 0.5 floor and no further.
-    expect(encode.mock.calls.map((call) => call[1])).toEqual([
+    expect(encode.mock.calls.map(call => call[1])).toEqual([
       undefined,
       0.9,
       0.8,

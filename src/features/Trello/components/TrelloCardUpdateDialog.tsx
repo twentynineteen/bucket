@@ -3,13 +3,10 @@
  * Feature: 004-embed-multiple-video
  */
 
-import { AlertCircle, Loader2 } from 'lucide-react'
-import { useState } from 'react'
-
+import type { TrelloCard } from '@features/Baker'
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
 import { Checkbox } from '@shared/ui/checkbox'
-import { Label } from '@shared/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -18,7 +15,9 @@ import {
   DialogHeader,
   DialogTitle
 } from '@shared/ui/dialog'
-import type { TrelloCard } from '@features/Baker'
+import { Label } from '@shared/ui/label'
+import { AlertCircle, Loader2 } from 'lucide-react'
+import { useState } from 'react'
 
 interface TrelloCardUpdateDialogProps {
   open: boolean
@@ -45,8 +44,8 @@ export function TrelloCardUpdateDialog({
   const [error, setError] = useState<string | null>(null)
 
   const handleToggle = (index: number) => {
-    setSelectedIndexes((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    setSelectedIndexes(prev =>
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
     )
   }
 
@@ -139,7 +138,7 @@ export function TrelloCardUpdateDialog({
             <Checkbox
               id="rename-trello-cards"
               checked={renameCards}
-              onCheckedChange={(checked) => setRenameCards(checked === true)}
+              onCheckedChange={checked => setRenameCards(checked === true)}
               disabled={updating}
             />
             <div className="flex-1">

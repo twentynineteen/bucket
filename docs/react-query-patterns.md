@@ -56,7 +56,6 @@ query is the canonical example - it was previously duplicated in `NavUser` and
 // src/shared/lib/app-version-query.ts
 import { CACHE } from '@shared/constants'
 import { getVersion } from '@tauri-apps/api/app'
-
 import { queryKeys } from './query-keys'
 import { createQueryError, createQueryOptions, shouldRetry } from './query-utils'
 
@@ -168,14 +167,14 @@ function useSaveSettings() {
         throw createQueryError(`Failed to save settings: ${error}`, 'settings')
       }
     },
-    onSuccess: (savedSettings) => {
+    onSuccess: savedSettings => {
       // Update the cache with new data
       queryClient.setQueryData(queryKeys.settings.apiKeys(), savedSettings)
 
       // Or invalidate to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all })
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Settings save failed:', error)
       // Could show toast notification here
     }
@@ -357,27 +356,13 @@ export const queryKeys = {
       ['sprout', 'folders', fingerprint(apiKey), parentId || 'root'] as const
     // videos, video...
   },
-  projects: {
-    /* all, lists, list, details, detail, status */
-  },
-  files: {
-    /* all, selections, selection, tree, progress, autoSelection */
-  },
-  upload: {
-    /* all, events, event, progress, status, backgroundFolder, sprout */
-  },
-  baker: {
-    /* all, pathsPresent */
-  },
-  kavanagh: {
-    /* all, ffmpeg, referencePool, referenceFolderPresent */
-  },
-  images: {
-    /* all, refresh, zoomPan, posterframe */
-  },
-  camera: {
-    /* all, mapping, autoRemap, assignment */
-  }
+  projects: {/* all, lists, list, details, detail, status */},
+  files: {/* all, selections, selection, tree, progress, autoSelection */},
+  upload: {/* all, events, event, progress, status, backgroundFolder, sprout */},
+  baker: {/* all, pathsPresent */},
+  kavanagh: {/* all, ffmpeg, referencePool, referenceFolderPresent */},
+  images: {/* all, refresh, zoomPan, posterframe */},
+  camera: {/* all, mapping, autoRemap, assignment */}
 }
 ```
 
@@ -438,7 +423,7 @@ const performanceMonitor = getPerformanceMonitor()
 
 // Get insights
 const insights = performanceMonitor.getPerformanceInsights()
-insights.forEach((insight) => {
+insights.forEach(insight => {
   console.log(`${insight.type}: ${insight.message}`)
 })
 

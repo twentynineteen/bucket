@@ -5,10 +5,9 @@
  */
 
 import { REFRESH, SECONDS } from '@shared/constants'
-import { getAIProvider } from '../../api'
-import { useQuery } from '@tanstack/react-query'
-
 import { queryKeys, type AIModel, type ProviderConfiguration } from '@shared/types'
+import { useQuery } from '@tanstack/react-query'
+import { getAIProvider } from '../../api'
 
 interface UseAIModelsOptions {
   providerId: string
@@ -45,7 +44,7 @@ export function useAIModels({
       const modelInfoList = await adapter.listModels(configuration)
 
       // Convert to AIModel format
-      const aiModels: AIModel[] = modelInfoList.map((info) => ({
+      const aiModels: AIModel[] = modelInfoList.map(info => ({
         id: info.id,
         displayName: info.name,
         modelId: info.id,

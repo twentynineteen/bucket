@@ -14,7 +14,6 @@ import { queryKeys } from '@shared/lib'
 import { logger } from '@shared/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
-
 import { detectFfmpeg, listReferencePool } from '../api'
 import {
   resolveKavanaghAvailability,

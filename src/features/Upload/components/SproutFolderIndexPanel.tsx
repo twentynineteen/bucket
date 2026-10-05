@@ -17,7 +17,6 @@ import {
   Upload as UploadIcon
 } from 'lucide-react'
 import React from 'react'
-
 import { useSproutFolderIndex } from '../hooks/useSproutFolderIndex'
 
 export interface SproutFolderIndexPanelProps {

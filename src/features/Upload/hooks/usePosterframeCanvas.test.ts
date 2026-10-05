@@ -18,15 +18,13 @@
  * updated for the template parameter (issue #189).
  */
 import { act, renderHook } from '@testing-library/react'
-import type { Mock } from 'vitest'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-
+import { afterEach, beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
+import { loadFont } from '../internal/loadFont'
 import { usePosterframeCanvas } from './usePosterframeCanvas'
 
 vi.mock('../internal/loadFont', () => ({
   loadFont: vi.fn()
 }))
-import { loadFont } from '../internal/loadFont'
 
 // ============================================================================
 // Image + Canvas2D mocks

@@ -10,7 +10,6 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks'
 import { afterEach, describe, expect, it } from 'vitest'
 

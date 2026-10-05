@@ -5,7 +5,6 @@
  */
 
 import type { BreadcrumbsFile } from '@shared/types'
-
 import { createNamespacedLogger } from '../logger'
 import { compareBreadcrumbs, compareBreadcrumbsMeaningful } from './comparison'
 
@@ -30,9 +29,9 @@ export function debugComparison(
   log.log('Meaningful Diff:', meaningfulDiff)
 
   log.log('Change Analysis:')
-  fullDiff.changes.forEach((change) => {
+  fullDiff.changes.forEach(change => {
     const isMeaningful = meaningfulDiff.changes.some(
-      (mc) => mc.field === change.field && mc.type === change.type
+      mc => mc.field === change.field && mc.type === change.type
     )
     log.log(
       `  ${change.field}: ${change.type} ${isMeaningful ? 'MEANINGFUL' : 'MAINTENANCE'}`

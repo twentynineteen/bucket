@@ -12,13 +12,11 @@
  * Lines: ~110
  */
 
+import { type FootageFile } from '@features/BuildProject'
 import { appStore } from '@shared/store'
 import { Breadcrumb } from '@shared/types'
-
-import { getFolderSize, writeTextFileContents } from '../api'
 import { logger } from '@shared/utils'
-
-import { type FootageFile } from '@features/BuildProject'
+import { getFolderSize, writeTextFileContents } from '../api'
 
 interface CreateBreadcrumbsParams {
   title: string
@@ -70,7 +68,7 @@ export function useProjectBreadcrumbs() {
     const breadcrumbs: Breadcrumb = {
       projectTitle: title,
       numberOfCameras: numCameras,
-      files: files.map((f) => ({
+      files: files.map(f => ({
         camera: f.camera,
         name: f.file.name,
         path: f.file.path

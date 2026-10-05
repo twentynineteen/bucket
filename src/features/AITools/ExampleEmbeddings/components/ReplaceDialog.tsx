@@ -7,10 +7,6 @@
  * Supports both .txt and .docx files
  */
 
-import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
-import { useState } from 'react'
-import { toast } from 'sonner'
-
 import { Button } from '@shared/ui/button'
 import {
   Dialog,
@@ -22,6 +18,9 @@ import {
 } from '@shared/ui/dialog'
 import { Input } from '@shared/ui/input'
 import { Label } from '@shared/ui/label'
+import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
 import { useDocxParser } from '../../ScriptFormatter/hooks/useDocxParser'
 import { useOllamaEmbedding } from '../../ScriptFormatter/hooks/useOllamaEmbedding'
 import type { ExampleWithMetadata } from '../../types'
@@ -63,7 +62,7 @@ export function ReplaceDialog({ open, example, onClose, onReplace }: ReplaceDial
     const file = e.target.files?.[0] || null
     setBeforeFile(file)
     if (file) {
-      setErrors((prev) => ({ ...prev, beforeFile: '' }))
+      setErrors(prev => ({ ...prev, beforeFile: '' }))
     }
   }
 
@@ -71,7 +70,7 @@ export function ReplaceDialog({ open, example, onClose, onReplace }: ReplaceDial
     const file = e.target.files?.[0] || null
     setAfterFile(file)
     if (file) {
-      setErrors((prev) => ({ ...prev, afterFile: '' }))
+      setErrors(prev => ({ ...prev, afterFile: '' }))
     }
   }
 

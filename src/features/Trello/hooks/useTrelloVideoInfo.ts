@@ -4,11 +4,10 @@
  */
 
 import { appStore } from '@shared/store'
-import type { TrelloCard } from '../types'
 import { useCallback, useMemo } from 'react'
-
+import type { TrelloCard } from '../types'
 import { useAppendVideoInfo } from './useAppendVideoInfo'
-import { useVideoInfoBlock } from '@features/BuildProject'
+import { useVideoInfoBlock } from './useVideoInfoBlock'
 
 /**
  * Hook to manage video info operations for Trello cards

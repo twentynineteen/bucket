@@ -9,7 +9,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
-
 import type { FootageFile } from '../types'
 import { useCameraAutoRemap } from './useCameraAutoRemap'
 
@@ -45,7 +44,7 @@ describe('useCameraAutoRemap', () => {
     renderHook(() => useCameraAutoRemap(files, 0, setFiles), { wrapper })
 
     // Give the query a beat to settle, then assert nothing was remapped.
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await new Promise(resolve => setTimeout(resolve, 50))
     expect(setFiles).not.toHaveBeenCalled()
   })
 })

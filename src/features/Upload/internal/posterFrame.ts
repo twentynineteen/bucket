@@ -67,13 +67,12 @@ export function describePosterFrameError(error: unknown, byteLength: number): st
 
 /** Awaitable sleep, isolated here so tests can skip the real backoff. */
 export function posterFrameDelay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 /** Whether Sprout accepted the frame, with the reason it did not. */
 export type PosterFrameSendOutcome =
-  | { ok: true; error: null }
-  | { ok: false; error: string }
+  { ok: true; error: null } | { ok: false; error: string }
 
 /**
  * Sends poster frame bytes to Sprout, retrying only failures that another
@@ -122,7 +121,7 @@ export function exportCanvasJpeg(
 ): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      async (blob) => {
+      async blob => {
         if (!blob) {
           reject(new Error('Could not render the poster frame from the canvas'))
           return

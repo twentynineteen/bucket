@@ -6,16 +6,14 @@
  * stopping: on cancellation, on bounds, on error, and on a malformed parent
  * chain that would otherwise loop forever.
  */
-import { describe, expect, it, vi } from 'vitest'
-
 import type { SproutFolder } from '@shared/types'
-
+import { describe, expect, it, vi } from 'vitest'
 import { crawlSproutFolders } from './crawlSproutFolders'
 
 /** Builds a fetcher over a flat folder list, as Sprout would serve it. */
 function fetcherFor(folders: SproutFolder[]) {
   return vi.fn(async (parentId: string | null) =>
-    folders.filter((folder) => folder.parent_id === parentId)
+    folders.filter(folder => folder.parent_id === parentId)
   )
 }
 
@@ -40,7 +38,7 @@ describe('walking the tree', () => {
 
     expect(result.stoppedBecause).toBe('complete')
     expect(result.incomplete).toBe(false)
-    expect(result.folders.map((f) => f.id).sort()).toEqual(
+    expect(result.folders.map(f => f.id).sort()).toEqual(
       ['m1', 'm2', 'p1', 'p2', 'y1', 'y2'].sort()
     )
   })
@@ -107,7 +105,7 @@ describe('stopping', () => {
     const controller = new AbortController()
     const fetchLevel = vi.fn(async (parentId: string | null) => {
       controller.abort() // cancel during the first level
-      return TREE.filter((f) => f.parent_id === parentId)
+      return TREE.filter(f => f.parent_id === parentId)
     })
 
     const result = await crawlSproutFolders({
@@ -152,7 +150,7 @@ describe('stopping', () => {
     const fetchLevel = vi.fn(async (parentId: string | null) => {
       call += 1
       if (call > 2) throw 'Sprout rate limit reached (HTTP 429).'
-      return TREE.filter((f) => f.parent_id === parentId)
+      return TREE.filter(f => f.parent_id === parentId)
     })
 
     const result = await crawlSproutFolders({ fetchLevel, sleep: noSleep })
@@ -226,7 +224,7 @@ describe('checkpointing', () => {
       fetchLevel: fetcherFor(wide),
       sleep: noSleep,
       checkpointEvery: 4,
-      onCheckpoint: (folders) => {
+      onCheckpoint: folders => {
         seen.push(folders.length)
       }
     })

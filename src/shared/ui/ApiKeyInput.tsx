@@ -32,15 +32,12 @@ const ApiKeyInput: React.FC<Props> = ({
         id={id}
         type={inputType === 'text' ? 'text' : showApiKey ? 'text' : 'password'}
         value={apiKey}
-        onChange={(e) => setApiKey(e.target.value)}
+        onChange={e => setApiKey(e.target.value)}
         placeholder={placeholder}
         style={{ flex: 1 }}
       />
       {/* Button to toggle visibility */}
-      <Button
-        onClick={() => setShowApiKey((prev) => !prev)}
-        style={{ marginLeft: '8px' }}
-      >
+      <Button onClick={() => setShowApiKey(prev => !prev)} style={{ marginLeft: '8px' }}>
         {showApiKey ? 'Hide' : 'Show'}
       </Button>
       {/* Button to save the API key */}

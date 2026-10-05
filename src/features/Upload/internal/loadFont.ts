@@ -1,5 +1,4 @@
 import { Font, parse } from 'opentype.js'
-
 import { fileExists, posterFrameFontPath, readFileAsBytes } from '../api'
 
 let parsedFont: Font | null = null

@@ -7,6 +7,7 @@
  * comment. It now rejects, like the other card writes in this file.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { addCardComment } from './api'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 vi.mock('@tauri-apps/plugin-fs', () => ({
@@ -19,8 +20,6 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: vi.fn()
 }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }))
-
-import { addCardComment } from './api'
 
 const fetchMock = vi.fn()
 

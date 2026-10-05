@@ -126,10 +126,7 @@ export interface KavanaghTailAnalysis {
  * a tail that is not a held still is wrong whatever it correlates with.
  */
 export type KavanaghStingOutcome =
-  | 'matched'
-  | 'unrecognised'
-  | 'notFrozen'
-  | 'poolUnavailable'
+  'matched' | 'unrecognised' | 'notFrozen' | 'poolUnavailable'
 
 /** Everything the sting check measured. */
 export interface KavanaghStingReport {

@@ -5,6 +5,7 @@
 
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useWindowState } from './useWindowState'
 
 const isTauriMock = vi.fn()
 const getCurrentWindowMock = vi.fn()
@@ -37,8 +38,6 @@ vi.mock('@tauri-apps/api/window', () => ({
       scaleFactor: 2
     })
 }))
-
-import { useWindowState } from './useWindowState'
 
 beforeEach(() => {
   localStorage.clear()

@@ -9,12 +9,6 @@
  * separate "size unavailable" section rather than being rendered as 0 bytes.
  */
 
-import { HardDrive, RefreshCw } from 'lucide-react'
-import { toast } from 'sonner'
-import React, { useMemo, useRef, useState } from 'react'
-
-import { useRefreshBreadcrumbSizes } from '../hooks/useRefreshBreadcrumbSizes'
-import { computeTreemapLayout } from '../internal/treemapLayout'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,9 +20,13 @@ import {
   AlertDialogTitle
 } from '@shared/ui/alert-dialog'
 import { Button } from '@shared/ui/button'
-import type { ProjectFolder } from '../types'
-
 import { formatFileSize } from '@shared/utils'
+import { HardDrive, RefreshCw } from 'lucide-react'
+import React, { useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { useRefreshBreadcrumbSizes } from '../hooks/useRefreshBreadcrumbSizes'
+import { computeTreemapLayout } from '../internal/treemapLayout'
+import type { ProjectFolder } from '../types'
 
 // Beyond this many tiles the treemap becomes unreadable; the remainder is
 // aggregated into a single "Other projects" tile.
@@ -69,7 +67,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
     const element = containerRef.current
     if (!element) return
 
-    const observer = new ResizeObserver((entries) => {
+    const observer = new ResizeObserver(entries => {
       const entry = entries[0]
       if (entry) {
         setContainerSize({
@@ -85,13 +83,13 @@ export const StorageView: React.FC<StorageViewProps> = ({
   const sizedProjects = useMemo(
     () =>
       projects
-        .filter((p) => typeof p.folderSizeBytes === 'number')
+        .filter(p => typeof p.folderSizeBytes === 'number')
         .sort((a, b) => (b.folderSizeBytes ?? 0) - (a.folderSizeBytes ?? 0)),
     [projects]
   )
 
   const unsizedProjects = useMemo(
-    () => projects.filter((p) => typeof p.folderSizeBytes !== 'number'),
+    () => projects.filter(p => typeof p.folderSizeBytes !== 'number'),
     [projects]
   )
 
@@ -102,16 +100,14 @@ export const StorageView: React.FC<StorageViewProps> = ({
 
   const refreshablePaths = useMemo(
     () =>
-      projects
-        .filter((p) => p.hasBreadcrumbs && !p.invalidBreadcrumbs)
-        .map((p) => p.path),
+      projects.filter(p => p.hasBreadcrumbs && !p.invalidBreadcrumbs).map(p => p.path),
     [projects]
   )
 
   const treemapEntries = useMemo<TreemapEntry[]>(() => {
     const top = sizedProjects.slice(0, MAX_TREEMAP_TILES)
     const rest = sizedProjects.slice(MAX_TREEMAP_TILES)
-    const entries: TreemapEntry[] = top.map((p) => ({
+    const entries: TreemapEntry[] = top.map(p => ({
       key: p.path,
       label: p.name,
       sizeBytes: p.folderSizeBytes ?? 0,
@@ -132,7 +128,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
   const treemapRects = useMemo(
     () =>
       computeTreemapLayout(
-        treemapEntries.map((e) => ({ key: e.key, weight: e.sizeBytes })),
+        treemapEntries.map(e => ({ key: e.key, weight: e.sizeBytes })),
         containerSize.width,
         containerSize.height
       ),
@@ -147,7 +143,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
         toast.error(
           `Sizes refreshed for ${result.successful.length} project(s), ` +
             `${result.failed.length} failed:\n` +
-            result.failed.map((f) => `• ${f.path}: ${f.error}`).join('\n')
+            result.failed.map(f => `• ${f.path}: ${f.error}`).join('\n')
         )
       } else {
         toast.success(`Sizes refreshed for ${result.successful.length} project(s)`)
@@ -200,7 +196,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
           className="relative h-full w-full overflow-hidden rounded-lg"
         >
           {treemapEntries.map((entry, index) => {
-            const rect = treemapRects.find((r) => r.key === entry.key)
+            const rect = treemapRects.find(r => r.key === entry.key)
             if (!rect || rect.width < 1 || rect.height < 1) return null
 
             const showLabel = rect.width >= 60 && rect.height >= 32
@@ -240,7 +236,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
 
       {/* Sorted breakdown table */}
       <div className="border-border max-h-56 flex-shrink-0 overflow-y-auto border-t">
-        {sizedProjects.map((project) => {
+        {sizedProjects.map(project => {
           const share =
             totalSizedBytes > 0 ? (project.folderSizeBytes ?? 0) / totalSizedBytes : 0
           return (
@@ -264,7 +260,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
             </button>
           )
         })}
-        {unsizedProjects.map((project) => (
+        {unsizedProjects.map(project => (
           <button
             key={project.path}
             type="button"

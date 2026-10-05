@@ -14,9 +14,8 @@
  * the same reason #166 declined to auto-clear a stored folder.
  */
 
-import { describe, expect, it } from 'vitest'
-
 import type { Breadcrumb } from '@shared/types'
+import { describe, expect, it } from 'vitest'
 import { generateBreadcrumbsBlock } from './useAppendBreadcrumbs'
 
 const RECORDED_LOCATION = '/Volumes/Archive/Shoots/Project A'

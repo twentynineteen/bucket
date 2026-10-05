@@ -15,29 +15,10 @@
  * such window: events that arrive before the id is known are buffered and
  * only replayed if they turn out to be ours.
  */
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-/** Shape of a Tauri event, declared locally so this file stays clear of the no-bypass rule. */
-type Event<T> = { event: string; id: number; payload: T }
-
-vi.mock('../api', () => ({
-  replaceVideo: vi.fn(),
-  cancelUpload: vi.fn(),
-  openFileDialog: vi.fn(),
-  listenUploadComplete: vi.fn(),
-  listenUploadError: vi.fn(),
-  listenUploadProgress: vi.fn(),
-  listenUploadCancelled: vi.fn(),
-  listenUploadStallWarning: vi.fn()
-}))
-vi.mock('sonner', () => ({
-  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warning: vi.fn() }
-}))
-
 import { appStore } from '@shared/store'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { toast } from 'sonner'
-
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cancelUpload,
   listenUploadCancelled,
@@ -56,6 +37,23 @@ import type {
   UploadProgressEvent
 } from '../types'
 import { useReplaceUpload } from './useReplaceUpload'
+
+/** Shape of a Tauri event, declared locally so this file stays clear of the no-bypass rule. */
+type Event<T> = { event: string; id: number; payload: T }
+
+vi.mock('../api', () => ({
+  replaceVideo: vi.fn(),
+  cancelUpload: vi.fn(),
+  openFileDialog: vi.fn(),
+  listenUploadComplete: vi.fn(),
+  listenUploadError: vi.fn(),
+  listenUploadProgress: vi.fn(),
+  listenUploadCancelled: vi.fn(),
+  listenUploadStallWarning: vi.fn()
+}))
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warning: vi.fn() }
+}))
 
 type Handler<T> = (event: Event<T>) => void | Promise<void>
 
@@ -101,19 +99,19 @@ beforeEach(() => {
   vi.mocked(replaceVideo).mockReset().mockResolvedValue('op-1')
   vi.mocked(cancelUpload).mockReset().mockResolvedValue(true)
   vi.mocked(openFileDialog).mockReset().mockResolvedValue('/renders/WBS_intro_v2.mp4')
-  vi.mocked(listenUploadProgress).mockImplementation(async (cb) => {
+  vi.mocked(listenUploadProgress).mockImplementation(async cb => {
     handlers.progress = cb
     return () => undefined
   })
-  vi.mocked(listenUploadComplete).mockImplementation(async (cb) => {
+  vi.mocked(listenUploadComplete).mockImplementation(async cb => {
     handlers.complete = cb
     return () => undefined
   })
-  vi.mocked(listenUploadError).mockImplementation(async (cb) => {
+  vi.mocked(listenUploadError).mockImplementation(async cb => {
     handlers.error = cb
     return () => undefined
   })
-  vi.mocked(listenUploadCancelled).mockImplementation(async (cb) => {
+  vi.mocked(listenUploadCancelled).mockImplementation(async cb => {
     handlers.cancelled = cb
     return () => undefined
   })

@@ -11,14 +11,13 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { openExternalUrl } from '../api'
+import type { VideoLink } from '../types'
+import { VideoLinkCard } from './VideoLinkCard'
 
 vi.mock('../api', () => ({
   openExternalUrl: vi.fn()
 }))
-
-import { openExternalUrl } from '../api'
-import type { VideoLink } from '../types'
-import { VideoLinkCard } from './VideoLinkCard'
 
 const LINK: VideoLink = {
   url: 'https://sproutvideo.com/videos/abc123',

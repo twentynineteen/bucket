@@ -14,7 +14,6 @@
  */
 import { appDataDir, join } from '@tauri-apps/api/path'
 import { exists, mkdir, remove, rename, stat } from '@tauri-apps/plugin-fs'
-
 import { logger } from './logger'
 
 /**
@@ -151,8 +150,8 @@ export async function resolveAppDataFile(filename: string): Promise<string> {
   if (cached) return cached
 
   const attempt = appDataDir()
-    .then((dir) => migrateAndResolve(dir, filename))
-    .catch((error) => {
+    .then(dir => migrateAndResolve(dir, filename))
+    .catch(error => {
       // Evicted whichever way this settles, so a transient failure cannot pin
       // the session to the old location or cache a rejection.
       resolved.delete(filename)

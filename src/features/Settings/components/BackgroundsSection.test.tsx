@@ -6,16 +6,14 @@
  * Before this fix it answered "yes" for a path that returns os error 2.
  */
 
+import { useAppStore } from '@shared/store'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import { useAppStore } from '@shared/store'
-
-import BackgroundsSection from './BackgroundsSection'
 import * as api from '../api'
 import type { ApiKeys } from '../api'
+import BackgroundsSection from './BackgroundsSection'
 
 vi.mock('../api', () => ({
   openFolderPicker: vi.fn(),

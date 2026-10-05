@@ -7,10 +7,10 @@
 
 // Import and re-export media types for convenience
 import type {
-  TrelloCard,
-  VideoLink,
   BreadcrumbsFile,
-  BreadcrumbsPreview
+  BreadcrumbsPreview,
+  TrelloCard,
+  VideoLink
 } from '@shared/types'
 
 export type { VideoLink, TrelloCard }

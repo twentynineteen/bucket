@@ -6,6 +6,8 @@
  */
 
 import { UploadTrello } from '@features/Trello'
+// Import after mocks
+import { useUploadTrello } from '@features/Trello/hooks/useUploadTrello'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -44,9 +46,6 @@ vi.mock('@features/Trello/hooks/useUploadTrello', () => ({
 vi.mock('@shared/hooks/useBreadcrumb', () => ({
   useBreadcrumb: vi.fn()
 }))
-
-// Import after mocks
-import { useUploadTrello } from '@features/Trello/hooks/useUploadTrello'
 
 // Helper to render with providers
 function renderWithProviders(ui: React.ReactElement) {

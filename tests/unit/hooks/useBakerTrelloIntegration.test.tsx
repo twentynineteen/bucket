@@ -6,12 +6,12 @@
  * silently swallowed.
  */
 
-import { useBakerTrelloIntegration } from '@features/Trello/hooks/useBakerTrelloIntegration'
 import {
   generateBreadcrumbsBlock,
   updateTrelloCardWithBreadcrumbs
 } from '@features/Baker'
 import { fetchTrelloCardById, readBreadcrumbsFile } from '@features/Trello/api'
+import { useBakerTrelloIntegration } from '@features/Trello/hooks/useBakerTrelloIntegration'
 import { logger } from '@shared/utils/logger'
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -102,7 +102,9 @@ describe('useBakerTrelloIntegration', () => {
       const errors = await result.current.updateTrelloCards([mockProjectPath])
 
       expect(errors).toEqual([])
-      expect(mockReadBreadcrumbs).toHaveBeenCalledWith(`${mockProjectPath}/breadcrumbs.json`)
+      expect(mockReadBreadcrumbs).toHaveBeenCalledWith(
+        `${mockProjectPath}/breadcrumbs.json`
+      )
       expect(mockUpdateCard).toHaveBeenCalledTimes(1)
     })
 
@@ -127,7 +129,7 @@ describe('useBakerTrelloIntegration', () => {
       expect(errors).toEqual([])
       // One update call per linked card
       expect(mockUpdateCard).toHaveBeenCalledTimes(3)
-      const updatedIds = mockUpdateCard.mock.calls.map((call) => call[0].id)
+      const updatedIds = mockUpdateCard.mock.calls.map(call => call[0].id)
       expect(updatedIds).toEqual(['aaa', 'bbb', 'ccc'])
     })
 

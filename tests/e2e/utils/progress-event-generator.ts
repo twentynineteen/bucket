@@ -55,7 +55,11 @@ export function generateExpectedProgressEvents(
   for (let fileIndex = 0; fileIndex < scenario.fileCount; fileIndex++) {
     for (let i = 0; i < eventsPerFile; i++) {
       const fileProgress = (i + 1) / eventsPerFile
-      const percent = calculateOverallProgress(fileIndex, fileProgress, scenario.fileCount)
+      const percent = calculateOverallProgress(
+        fileIndex,
+        fileProgress,
+        scenario.fileCount
+      )
 
       events.push({
         percent,
@@ -116,8 +120,18 @@ export class ProgressEventGenerator {
    * Run the file operation simulation
    * Emits progress events at realistic intervals
    */
-  async simulate(): Promise<{ success: boolean; completedFiles: string[]; errors: string[] }> {
-    const { speedMultiplier = 1, failureConfig, onProgress, onComplete, onError } = this.options
+  async simulate(): Promise<{
+    success: boolean
+    completedFiles: string[]
+    errors: string[]
+  }> {
+    const {
+      speedMultiplier = 1,
+      failureConfig,
+      onProgress,
+      onComplete,
+      onError
+    } = this.options
 
     const completedFiles: string[] = []
     const errors: string[] = []
@@ -143,7 +157,11 @@ export class ProgressEventGenerator {
         if (this.aborted) break
 
         const fileProgress = (i + 1) / eventsPerFile
-        const percent = calculateOverallProgress(fileIndex, fileProgress, this.scenario.fileCount)
+        const percent = calculateOverallProgress(
+          fileIndex,
+          fileProgress,
+          this.scenario.fileCount
+        )
 
         const event: ProgressEvent = {
           percent,
@@ -176,7 +194,7 @@ export class ProgressEventGenerator {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, Math.max(1, ms)))
+    return new Promise(resolve => setTimeout(resolve, Math.max(1, ms)))
   }
 }
 
@@ -219,7 +237,7 @@ export function createProgressTracker() {
      * Check if progress reached 100%
      */
     reachedCompletion(): boolean {
-      return events.some((val) => val >= 100)
+      return events.some(val => val >= 100)
     },
 
     /**

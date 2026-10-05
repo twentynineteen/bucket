@@ -6,16 +6,16 @@
  * for professional video production where footage is ingested from memory cards.
  */
 
-import { test, expect } from '@playwright/test'
-import { BuildProjectPage } from '../pages/BuildProjectPage'
+import { expect, test } from '@playwright/test'
+import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
+import { BuildProjectPage } from '../pages/BuildProjectPage'
 import {
-  SCENARIOS,
   generateMockFiles,
-  generateMultiVolumeFiles
+  generateMultiVolumeFiles,
+  SCENARIOS
 } from '../utils/large-file-simulator'
 import { readLongestFrameGap, startFrameGapProbe } from '../utils/memory-monitor'
-import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 
 /**
  * Large-drive ingest simulations need longer than the config's 5 minute
@@ -274,7 +274,9 @@ test.describe('External Drive - Latency Simulation', { tag: '@slow' }, () => {
     await expect(buildPage.successMessage).toBeVisible()
   })
 
-  test('progress updates visible during slow external drive operation', async ({ page }) => {
+  test('progress updates visible during slow external drive operation', async ({
+    page
+  }) => {
     const mock = createTauriMock(page)
     mock
       .setScenario(SCENARIOS.SMOKE_TEST)
@@ -301,7 +303,7 @@ test.describe('External Drive - Latency Simulation', { tag: '@slow' }, () => {
     const events = await mock.getEmittedEvents()
 
     // Should have captured multiple distinct progress values
-    const uniqueProgress = [...new Set(events.map((e) => Math.floor(e.percent)))]
+    const uniqueProgress = [...new Set(events.map(e => Math.floor(e.percent)))]
     expect(uniqueProgress.length).toBeGreaterThan(3)
 
     await expect(buildPage.successMessage).toBeVisible()

@@ -11,20 +11,18 @@
  * upload. Everything about the Sprout side lives here.
  */
 
-import { useCallback, useState } from 'react'
-import { toast } from 'sonner'
-
 import { useSproutVideoApiKey } from '@shared/hooks'
 import { logger } from '@shared/utils'
-
-import type { PosterFrameStatus } from '../types'
+import { useCallback, useState } from 'react'
+import { toast } from 'sonner'
+import { fetchSproutVideoDetails, setSproutPosterFrame } from '../api'
+import { sproutVideoReferenceToId } from '../internal/parseSproutVideoUrl'
 import {
   posterFrameDelay,
   posterFrameFileStem,
   sendPosterFrameWithRetry
 } from '../internal/posterFrame'
-import { sproutVideoReferenceToId } from '../internal/parseSproutVideoUrl'
-import { fetchSproutVideoDetails, setSproutPosterFrame } from '../api'
+import type { PosterFrameStatus } from '../types'
 
 const NO_API_KEY_REASON = 'Sprout Video API key not configured. Go to Settings to add it.'
 const NOT_A_REFERENCE_REASON = 'That is not a Sprout video URL or ID.'
@@ -155,7 +153,7 @@ export function usePosterframeSproutUpload({
 
     const outcome = await sendPosterFrameWithRetry(
       bytes,
-      (payload) =>
+      payload =>
         setSproutPosterFrame(
           target.id,
           apiKey,

@@ -5,7 +5,7 @@
  * Injects CSS styles into the document for user-imported themes.
  */
 
-import type { CustomThemeDefinition, CSSVariableName } from './customTheme'
+import type { CSSVariableName, CustomThemeDefinition } from './customTheme'
 
 /**
  * Required CSS variables that must be defined in every theme
@@ -31,7 +31,7 @@ export function validateThemeCompleteness(theme: CustomThemeDefinition): {
   valid: boolean
   missing: string[]
 } {
-  const missing = REQUIRED_VARIABLES.filter((varName) => !theme.colors[varName])
+  const missing = REQUIRED_VARIABLES.filter(varName => !theme.colors[varName])
 
   return {
     valid: missing.length === 0,
@@ -109,7 +109,7 @@ export function unloadCustomTheme(themeId: string): void {
  */
 export function getLoadedCustomThemes(): string[] {
   const styleElements = document.querySelectorAll('[id^="custom-theme-"]')
-  return Array.from(styleElements).map((el) => el.id.replace('custom-theme-', ''))
+  return Array.from(styleElements).map(el => el.id.replace('custom-theme-', ''))
 }
 
 /**
@@ -150,7 +150,7 @@ export function loadCustomThemesFromStorage(): CustomThemeDefinition[] {
  */
 export function initializeCustomThemes(): void {
   const customThemes = loadCustomThemesFromStorage()
-  customThemes.forEach((theme) => {
+  customThemes.forEach(theme => {
     loadCustomTheme(theme)
   })
 }

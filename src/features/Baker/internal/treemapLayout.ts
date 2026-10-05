@@ -58,20 +58,20 @@ export function computeTreemapLayout(
 ): TreemapRect[] {
   const rects: TreemapRect[] = []
   if (width <= 0 || height <= 0) {
-    return items.map((item) => ({ key: item.key, x: 0, y: 0, width: 0, height: 0 }))
+    return items.map(item => ({ key: item.key, x: 0, y: 0, width: 0, height: 0 }))
   }
 
-  const positive = items.filter((item) => item.weight > 0)
-  const zeroes = items.filter((item) => item.weight <= 0)
+  const positive = items.filter(item => item.weight > 0)
+  const zeroes = items.filter(item => item.weight <= 0)
   const totalWeight = positive.reduce((acc, item) => acc + item.weight, 0)
 
   if (totalWeight === 0) {
-    return items.map((item) => ({ key: item.key, x: 0, y: 0, width: 0, height: 0 }))
+    return items.map(item => ({ key: item.key, x: 0, y: 0, width: 0, height: 0 }))
   }
 
   // Normalize weights to areas in layout units.
   const scale = (width * height) / totalWeight
-  let remaining = positive.map((item) => ({
+  let remaining = positive.map(item => ({
     key: item.key,
     area: item.weight * scale
   }))
@@ -89,12 +89,12 @@ export function computeTreemapLayout(
     // Grow the row while it improves (or keeps) the worst aspect ratio.
     while (rest.length > 0) {
       const current = worstAspect(
-        row.map((r) => r.area),
+        row.map(r => r.area),
         side,
         w * h
       )
       const withNext = worstAspect(
-        [...row, rest[0]].map((r) => r.area),
+        [...row, rest[0]].map(r => r.area),
         side,
         w * h
       )
@@ -136,6 +136,6 @@ export function computeTreemapLayout(
   }
 
   // Preserve caller ordering in the output.
-  const byKey = new Map(rects.map((r) => [r.key, r]))
-  return items.map((item) => byKey.get(item.key)!)
+  const byKey = new Map(rects.map(r => [r.key, r]))
+  return items.map(item => byKey.get(item.key)!)
 }

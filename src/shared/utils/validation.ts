@@ -4,7 +4,6 @@
  */
 
 import { LIMITS } from '@shared/constants'
-
 import type { TrelloCard, VideoLink } from '@shared/types'
 
 /**

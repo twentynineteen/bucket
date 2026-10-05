@@ -17,9 +17,10 @@
  * them as props and re-reading would let the two copies disagree.
  */
 import { useMemo } from 'react'
-
-import type { ResolvedDefaultFolder } from '../internal/defaultFolder'
-import { resolveDefaultFolder } from '../internal/defaultFolder'
+import {
+  resolveDefaultFolder,
+  type ResolvedDefaultFolder
+} from '../internal/defaultFolder'
 import { useSavedFolderIndex } from './useSavedFolderIndex'
 
 export interface UseDefaultSproutFolderInput {

@@ -6,10 +6,9 @@
  * never consumes layout space during inspection.
  */
 
+import { Button } from '@shared/ui/button'
 import { CheckCircle, RefreshCw } from 'lucide-react'
 import React from 'react'
-
-import { Button } from '@shared/ui/button'
 
 interface BatchActionsProps {
   selectedProjects: string[]

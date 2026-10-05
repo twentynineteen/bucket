@@ -1,5 +1,4 @@
 import { invoke } from '@tauri-apps/api/core'
-
 import type { InstallResult, PluginInfo } from './types'
 
 export async function getAvailablePlugins(): Promise<PluginInfo[]> {

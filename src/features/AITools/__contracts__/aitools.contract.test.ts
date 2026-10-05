@@ -8,8 +8,9 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-
 import { describe, expect, it, vi } from 'vitest'
+import * as api from '../api'
+import * as aitoolsBarrel from '../index'
 
 // Mock the api layer (single mock point for all AITools I/O)
 vi.mock('../api', () => ({
@@ -83,9 +84,6 @@ vi.mock('@tanstack/react-query', () => ({
   })
 }))
 
-import * as aitoolsBarrel from '../index'
-import * as api from '../api'
-
 // --- Shape Tests: Barrel ---
 
 describe('AITools Barrel Exports - Shape', () => {
@@ -127,7 +125,7 @@ describe('AITools Barrel Exports - Shape', () => {
       'useDocxGenerator',
       'useUploadDialogForm'
     ]
-    internalHooks.forEach((hookName) => {
+    internalHooks.forEach(hookName => {
       expect(exportNames).not.toContain(hookName)
     })
   })
@@ -159,7 +157,7 @@ describe('AITools API Layer - Shape', () => {
   ]
 
   it('exports every documented function', () => {
-    expectedFunctions.forEach((name) => {
+    expectedFunctions.forEach(name => {
       expect(typeof (api as Record<string, unknown>)[name]).toBe('function')
     })
   })
@@ -179,7 +177,7 @@ describe('AITools Module - No Direct Plugin Imports', () => {
       if (entry.isDirectory()) {
         if (entry.name === '__contracts__' || entry.name === 'node_modules') continue
         files.push(...getFilesRecursive(fullPath, extensions))
-      } else if (extensions.some((ext) => entry.name.endsWith(ext))) {
+      } else if (extensions.some(ext => entry.name.endsWith(ext))) {
         files.push(fullPath)
       }
     }
@@ -188,11 +186,11 @@ describe('AITools Module - No Direct Plugin Imports', () => {
 
   it('all non-api.ts files have zero direct @tauri-apps imports', () => {
     const allFiles = getFilesRecursive(modulePath, ['.ts', '.tsx'])
-    const nonApiFiles = allFiles.filter((f) => !f.endsWith('/api.ts'))
+    const nonApiFiles = allFiles.filter(f => !f.endsWith('/api.ts'))
     for (const file of nonApiFiles) {
       const content = fs.readFileSync(file, 'utf-8')
       const lines = content.split('\n')
-      const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
+      const tauriImports = lines.filter(line => line.includes("from '@tauri-apps"))
       expect(tauriImports).toEqual([])
     }
   })

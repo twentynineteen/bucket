@@ -4,8 +4,8 @@
  */
 
 import { useTrelloBoard } from '@features/Trello'
-import { loadApiKeys } from '@shared/utils/storage'
 import { fetchBoardCards, fetchBoardLists } from '@features/Trello/api'
+import { loadApiKeys } from '@shared/utils/storage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
@@ -287,11 +287,7 @@ describe('useTrelloBoard', () => {
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
-      expect(fetchBoardCards).toHaveBeenCalledWith(
-        'board1',
-        'test-api-key',
-        'test-token'
-      )
+      expect(fetchBoardCards).toHaveBeenCalledWith('board1', 'test-api-key', 'test-token')
 
       // Change board ID
       vi.clearAllMocks()

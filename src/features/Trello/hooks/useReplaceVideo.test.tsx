@@ -8,8 +8,13 @@
  * reported as a warning against a replace that did happen, the same policy
  * useCardPosterFrame set for poster frames.
  */
+import type { TrelloCard, VideoLink } from '@features/Baker'
+import * as uploadModule from '@features/Upload'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { addCardComment } from '../api'
+import { useReplaceVideo } from './useReplaceVideo'
 
 vi.mock('../api', () => ({
   addCardComment: vi.fn()
@@ -17,19 +22,11 @@ vi.mock('../api', () => ({
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warning: vi.fn() }
 }))
-vi.mock('@features/Upload', async (importOriginal) => ({
+vi.mock('@features/Upload', async importOriginal => ({
   ...(await importOriginal<typeof import('@features/Upload')>()),
   useReplaceUpload: vi.fn(),
   useSproutVideoApi: vi.fn()
 }))
-
-import { toast } from 'sonner'
-
-import type { TrelloCard, VideoLink } from '@features/Baker'
-import * as uploadModule from '@features/Upload'
-
-import { addCardComment } from '../api'
-import { useReplaceVideo } from './useReplaceVideo'
 
 const LINK: VideoLink = {
   url: 'https://sproutvideo.com/videos/a09bd4b21e1b',
@@ -722,7 +719,7 @@ describe('useReplaceVideo - follow-up reporting', () => {
   })
 
   it('b9_2_names_exactly_the_cards_that_did_not_get_the_comment', async () => {
-    vi.mocked(addCardComment).mockImplementation(async (cardId) => {
+    vi.mocked(addCardComment).mockImplementation(async cardId => {
       if (cardId === 'c2') throw new Error('HTTP 401')
     })
     const { result } = renderHook(() => useReplaceVideo(options()))

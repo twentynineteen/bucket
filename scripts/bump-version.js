@@ -13,10 +13,10 @@
  *   bun run version:minor  # 0.9.7 → 0.10.0
  *   bun run version:major  # 0.9.7 → 1.0.0
  */
-
+import { execSync } from 'child_process'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { execSync } from 'child_process'
+import { format, resolveConfig } from 'prettier'
 
 const bumpType = process.argv[2]
 
@@ -58,10 +58,7 @@ console.log('Updated package.json')
 // Update src-tauri/Cargo.toml
 const cargoTomlPath = join(process.cwd(), 'src-tauri', 'Cargo.toml')
 let cargoToml = readFileSync(cargoTomlPath, 'utf8')
-cargoToml = cargoToml.replace(
-  /^version = ".*"$/m,
-  `version = "${newVersion}"`
-)
+cargoToml = cargoToml.replace(/^version = ".*"$/m, `version = "${newVersion}"`)
 writeFileSync(cargoTomlPath, cargoToml)
 console.log('Updated src-tauri/Cargo.toml')
 
@@ -69,7 +66,16 @@ console.log('Updated src-tauri/Cargo.toml')
 const tauriConfPath = join(process.cwd(), 'src-tauri', 'tauri.conf.json')
 const tauriConf = JSON.parse(readFileSync(tauriConfPath, 'utf8'))
 tauriConf.version = newVersion
-writeFileSync(tauriConfPath, JSON.stringify(tauriConf, null, 2) + '\n')
+// Format through Prettier: JSON.stringify spreads short arrays over several lines,
+// which `bun run prettier` then rejects.
+const prettierOptions = await resolveConfig(tauriConfPath)
+writeFileSync(
+  tauriConfPath,
+  await format(JSON.stringify(tauriConf, null, 2), {
+    ...prettierOptions,
+    filepath: tauriConfPath
+  })
+)
 console.log('Updated src-tauri/tauri.conf.json')
 
 // Update Cargo.lock by running cargo check
@@ -87,9 +93,12 @@ try {
 
 // Git commit
 try {
-  execSync('git add package.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json', {
-    stdio: 'pipe'
-  })
+  execSync(
+    'git add package.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json',
+    {
+      stdio: 'pipe'
+    }
+  )
 
   const commitMessage = `chore: bump version to ${newVersion}`
   execSync(`git commit -m "${commitMessage}"`, {

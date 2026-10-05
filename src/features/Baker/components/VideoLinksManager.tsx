@@ -4,11 +4,8 @@
  * Refactored: 2025-11-18 - Extracted state to useVideoLinksManager, dialog to AddVideoDialog
  */
 
-import { useVideoLinksManager } from '@features/Trello'
-import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
-
+import { TrelloCardUpdateDialog, useVideoLinksManager } from '@features/Trello'
 import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert'
-import { Button } from '@shared/ui/button'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,13 +16,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@shared/ui/alert-dialog'
-
-import { TrelloCardUpdateDialog } from '@features/Trello'
+import { Button } from '@shared/ui/button'
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 import { describeVideoLinksError } from '../internal/videoLinksError'
-import { VideoLinkCard } from './VideoLinkCard'
 import { AddVideoDialog } from './AddVideoDialog'
 import { ReplaceVideoDialog } from './ReplaceVideoDialog'
 import { SetPosterFrameDialog } from './SetPosterFrameDialog'
+import { VideoLinkCard } from './VideoLinkCard'
 
 interface VideoLinksManagerProps {
   projectPath: string
@@ -340,7 +337,7 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
       {/* Remove video link confirmation dialog */}
       <AlertDialog
         open={pendingRemoveVideoIndex !== null}
-        onOpenChange={(open) => !open && cancelRemoveVideo()}
+        onOpenChange={open => !open && cancelRemoveVideo()}
       >
         <AlertDialogContent>
           <AlertDialogHeader>

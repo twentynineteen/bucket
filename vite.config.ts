@@ -1,9 +1,9 @@
 import process from 'node:process'
 import react from '@vitejs/plugin-react'
-// vitest/config, not vite: only this defineConfig knows about the `test` key.
-import { defineConfig } from 'vitest/config'
 import monacoEditorPluginModule from 'vite-plugin-monaco-editor'
 import tsconfigPaths from 'vite-tsconfig-paths'
+// vitest/config, not vite: only this defineConfig knows about the `test` key.
+import { defineConfig } from 'vitest/config'
 
 const monacoEditorPlugin = (monacoEditorPluginModule as any).default
 
@@ -68,7 +68,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup/vitest-setup.ts', './tests/setup/msw-server.ts'],
     mockReset: true,
-    exclude: ['**/node_modules/**', '**/dist/**', '**/tests/e2e/**'],
+    // .claude/ holds agent worktrees: whole copies of the repo whose tests are not ours.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/tests/e2e/**', '.claude/**'],
     // Increased from the default 5000ms to accommodate async dialog interactions
     // with Radix UI components which can be slow in the JSDOM environment.
     testTimeout: 10000

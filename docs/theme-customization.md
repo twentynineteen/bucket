@@ -5,41 +5,48 @@ Bucket supports multiple color themes to personalize your workspace. Choose from
 ## Available Themes
 
 ### System (Default)
+
 - **Description**: Automatically follows your operating system's light/dark mode preference
 - **Best For**: Users who want the app to follow their OS setting
 
 ### Light Themes
 
 #### Light
+
 - **Description**: Clean light theme with high contrast
 - **Colors**: White background, dark blue-gray text, blue accents
 - **Best For**: Bright environments, daytime work
 
 #### Catppuccin Latte
+
 - **Description**: Warm light theme with soft pastel colors
 - **Colors**: Soft gray background, muted text, lavender and blue accents
 - **Best For**: Reduced eye strain in bright environments
 - **Author**: Catppuccin
 
 #### Solarized Light
+
 - **Description**: Classic warm theme with cream tones and blue accents
 - **Colors**: Cream background, dark teal text, blue and cyan accents
 - **Best For**: Extended reading and editing sessions
 - **Author**: Ethan Schoonover
 
 #### GitHub Light
+
 - **Description**: Clean minimal theme inspired by GitHub
 - **Colors**: White background, dark gray text, blue and green accents
 - **Best For**: Familiar GitHub-style coding environment
 - **Author**: GitHub
 
 #### Nord Light
+
 - **Description**: Cool arctic-inspired theme with muted tones
 - **Colors**: Light gray background, dark text, muted blue accents
 - **Best For**: Calm, distraction-free working
 - **Author**: Arctic Ice Studio
 
 #### One Light
+
 - **Description**: Atom editor's popular warm light theme
 - **Colors**: Off-white background, dark gray text, blue and purple accents
 - **Best For**: Atom editor fans
@@ -48,35 +55,41 @@ Bucket supports multiple color themes to personalize your workspace. Choose from
 ### Dark Themes
 
 #### Dark
+
 - **Description**: Default dark theme with blue tones
 - **Colors**: Very dark blue background, light gray text
 - **Best For**: Low-light environments, nighttime work
 
 #### Dracula
+
 - **Description**: Dark theme with vibrant purple and pink accents
 - **Colors**: Dark gray background, purple primary, pink accents, cyan highlights
 - **Best For**: High contrast lovers, vibrant color enthusiasts
 - **Author**: Zeno Rocha
 
 #### Tokyo Night
+
 - **Description**: Deep blue dark theme inspired by Tokyo at night
 - **Colors**: Deep blue background, soft blue-gray text, cyan and blue accents
 - **Best For**: Fans of deep blue-toned dark themes
 - **Author**: enkia
 
 #### Catppuccin Frappé
+
 - **Description**: Medium-dark theme with cool blue-gray tones
 - **Colors**: Blue-gray background, soft blue and lavender accents
 - **Best For**: Balanced contrast without pure black
 - **Author**: Catppuccin
 
 #### Catppuccin Macchiato
+
 - **Description**: Medium-dark theme with warm purple undertones
 - **Colors**: Warm dark background, purple-tinted accents
 - **Best For**: Warm color preference in dark mode
 - **Author**: Catppuccin
 
 #### Catppuccin Mocha
+
 - **Description**: Rich dark theme with deep blacks and vibrant accents
 - **Colors**: Very dark background, vibrant blue and lavender
 - **Best For**: Maximum contrast, OLED screens
@@ -95,6 +108,7 @@ Bucket supports multiple color themes to personalize your workspace. Choose from
 5. Click a theme to apply it permanently
 
 **Features:**
+
 - Live preview on hover
 - Color swatches for visual identification
 - Theme descriptions to help you choose
@@ -154,6 +168,7 @@ All themes have been tested for WCAG AA color contrast compliance:
 - Interactive elements: ≥3:1
 
 **High Contrast Recommendations:**
+
 - **Light**: Best high-contrast light theme
 - **Dracula**: Best high-contrast dark theme
 - **Catppuccin Mocha**: Excellent for OLED screens
@@ -176,21 +191,25 @@ The architecture is already in place. Stay tuned for this feature!
 ## Troubleshooting
 
 ### Theme not applying
+
 1. Refresh the page (Cmd+R / Ctrl+R)
 2. Check if the theme is selected in Settings → Appearance
 3. Try switching to a different theme, then back
 
 ### Live preview not working
+
 1. Ensure you're hovering directly over theme names
 2. Try closing and reopening the dropdown
 3. Live preview is disabled during theme transitions (wait 0.3s)
 
 ### Theme resets on restart
+
 1. Check browser localStorage is enabled
 2. Ensure you're not in private/incognito mode
 3. Clear browser cache and reselect theme
 
 ### Colors look wrong
+
 1. Verify you're on the latest version of Bucket
 2. Check if any browser extensions are modifying colors
 3. Try a different theme to isolate the issue
@@ -200,12 +219,15 @@ The architecture is already in place. Stay tuned for this feature!
 ## Developer Notes
 
 ### Theme Storage
+
 - Location: `localStorage` key `"theme"`
 - Format: String (theme ID)
 - Values: `"system"`, `"light"`, `"dark"`, `"dracula"`, `"tokyo-night"`, `"catppuccin-latte"`, `"catppuccin-frappe"`, `"catppuccin-macchiato"`, `"catppuccin-mocha"`, `"solarized-light"`, `"github-light"`, `"nord-light"`, `"one-light"`
 
 ### CSS Variables
+
 All themes use CSS custom properties (variables) defined in `src/index.css`:
+
 - `--background`, `--foreground`
 - `--primary`, `--secondary`, `--accent`
 - `--destructive`, `--success`, `--warning`, `--info`
@@ -213,7 +235,9 @@ All themes use CSS custom properties (variables) defined in `src/index.css`:
 - Sidebar and chart colors
 
 ### Theme Classes
+
 Themes are applied via class names on the `<html>` element:
+
 - `.light`, `.dark`, `.dracula`, `.tokyo-night`
 - `.catppuccin-latte`, `.catppuccin-frappe`, `.catppuccin-macchiato`, `.catppuccin-mocha`
 - `.solarized-light`, `.github-light`, `.nord-light`, `.one-light`
@@ -236,6 +260,7 @@ Themes are applied via class names on the `<html>` element:
 ## Feedback
 
 Have a theme suggestion or found an issue?
+
 - Report bugs: [GitHub Issues](https://github.com/your-org/bucket/issues)
 - Request themes: Open a feature request
 - Share your custom themes: Coming soon!

@@ -1,10 +1,8 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { Mock } from 'vitest'
-import { describe, test, expect, beforeEach, vi } from 'vitest'
 import { useTrelloCardDetails } from '@features/Trello'
-import type { ReactNode } from 'react'
-import { createElement } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { renderHook, waitFor } from '@testing-library/react'
+import { createElement, type ReactNode } from 'react'
+import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
 
 // Mock fetch globally
 global.fetch = vi.fn()
@@ -143,9 +141,7 @@ describe('useTrelloCardDetails', () => {
     })
 
     test('should handle network error', async () => {
-      ;(global.fetch as Mock).mockRejectedValueOnce(
-        new Error('Network error')
-      )
+      ;(global.fetch as Mock).mockRejectedValueOnce(new Error('Network error'))
 
       const { result } = renderHook(
         () => useTrelloCardDetails('card123', 'test-key', 'test-token'),
@@ -298,8 +294,7 @@ describe('useTrelloCardDetails', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      const fetchCallCount = (global.fetch as Mock).mock
-        .calls.length
+      const fetchCallCount = (global.fetch as Mock).mock.calls.length
 
       // Rerender should use cached data
       rerender()
@@ -309,9 +304,7 @@ describe('useTrelloCardDetails', () => {
       expect(result.current.members).toEqual([])
 
       // Should not make another API call on rerender
-      expect((global.fetch as Mock).mock.calls.length).toBe(
-        fetchCallCount
-      )
+      expect((global.fetch as Mock).mock.calls.length).toBe(fetchCallCount)
     })
   })
 })

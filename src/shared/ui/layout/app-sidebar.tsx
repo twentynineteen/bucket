@@ -1,17 +1,13 @@
-import { NavMain } from './nav-main'
-import { NavUser } from './nav-user'
-import { TeamSwitcher } from './team-switcher'
-import { ThemeToggle } from '@shared/ui/theme/theme-toggle'
+import { useUsername } from '@shared/hooks'
+import { useMacOSEffects } from '@shared/hooks/useMacOSEffects'
+import { useUpdateManager } from '@shared/hooks/useUpdateManager'
 import { Sidebar, SidebarRail } from '@shared/ui/sidebar/Sidebar'
 import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader
 } from '@shared/ui/sidebar/SidebarLayout'
-import { UpdateDialog } from './UpdateDialog'
-import { useMacOSEffects } from '@shared/hooks/useMacOSEffects'
-import { useUpdateManager } from '@shared/hooks/useUpdateManager'
-import { useUsername } from '@shared/hooks'
+import { ThemeToggle } from '@shared/ui/theme/theme-toggle'
 import {
   Clapperboard,
   FileText,
@@ -21,6 +17,10 @@ import {
   Settings
 } from 'lucide-react'
 import * as React from 'react'
+import { NavMain } from './nav-main'
+import { NavUser } from './nav-user'
+import { TeamSwitcher } from './team-switcher'
+import { UpdateDialog } from './UpdateDialog'
 
 // This is sample data. User data is located just before function return statement
 const data = {

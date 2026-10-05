@@ -8,7 +8,6 @@
  */
 
 import { fromPromise } from 'xstate'
-
 import { pathExists } from '../api'
 import {
   createStageFailure,
@@ -277,7 +276,7 @@ function validateCameraAssignments(
   }
 
   if (invalidAssignments.length > 0) {
-    const fileNames = invalidAssignments.map((a) => a.fileName).join(', ')
+    const fileNames = invalidAssignments.map(a => a.fileName).join(', ')
     return {
       field: 'cameraAssignments',
       message: `Invalid camera assignments found. Camera must be between 1 and ${numCameras}. Invalid files: ${fileNames}`,
@@ -340,7 +339,7 @@ export async function validateInputs(
 
     // If there are validation errors, return failure
     if (errors.length > 0) {
-      const errorMessages = errors.map((e) => e.message).join('; ')
+      const errorMessages = errors.map(e => e.message).join('; ')
       return createStageFailure('Validation', errorMessages, true, durationMs)
     }
 
@@ -472,5 +471,5 @@ export function getInvalidCameraAssignments(
   files: FileWithCamera[],
   numCameras: number
 ): FileWithCamera[] {
-  return files.filter((file) => file.camera < 1 || file.camera > numCameras)
+  return files.filter(file => file.camera < 1 || file.camera > numCameras)
 }

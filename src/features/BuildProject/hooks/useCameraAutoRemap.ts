@@ -1,8 +1,7 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys, createQueryOptions } from '@shared/lib'
+import { createQueryOptions, queryKeys } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
-
 import type { FootageFile } from '../types'
 
 export function useCameraAutoRemap(
@@ -12,7 +11,7 @@ export function useCameraAutoRemap(
 ) {
   // Create a unique query key based on files and camera count for memoization
   const filesHash = useMemo(
-    () => JSON.stringify(files.map((f) => ({ path: f.file.path, camera: f.camera }))),
+    () => JSON.stringify(files.map(f => ({ path: f.file.path, camera: f.camera }))),
     [files]
   )
 
@@ -27,13 +26,13 @@ export function useCameraAutoRemap(
         if (files.length === 0 || numCameras === 0) return files
 
         const hasInvalidCameras = files.some(
-          (file) => file.camera > numCameras || file.camera < 1
+          file => file.camera > numCameras || file.camera < 1
         )
 
         if (!hasInvalidCameras) return files
 
         // Return remapped files with invalid cameras set to 1
-        return files.map((file) => ({
+        return files.map(file => ({
           ...file,
           camera: file.camera > numCameras || file.camera < 1 ? 1 : file.camera
         }))

@@ -10,7 +10,6 @@
  * dialog is worse than a second small formatter. See issue #225.
  */
 import { describe, expect, it } from 'vitest'
-
 import { formatTransferredBytes } from './formatTransferredBytes'
 
 describe('formatTransferredBytes', () => {

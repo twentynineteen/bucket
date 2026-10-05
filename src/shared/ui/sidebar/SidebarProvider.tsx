@@ -1,10 +1,9 @@
 'use client'
 
-import { useIsMobile } from '../../hooks/use-mobile'
-import { cn } from '../../utils/cn'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import * as React from 'react'
-
+import { useIsMobile } from '../../hooks/use-mobile'
+import { cn } from '../../utils/cn'
 import { SidebarContext } from '../use-sidebar'
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state'
@@ -57,7 +56,7 @@ export const SidebarProvider = React.forwardRef<
 
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
-      return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
+      return isMobile ? setOpenMobile(open => !open) : setOpen(open => !open)
     }, [isMobile, setOpen, setOpenMobile])
 
     // Adds a keyboard shortcut to toggle the sidebar.

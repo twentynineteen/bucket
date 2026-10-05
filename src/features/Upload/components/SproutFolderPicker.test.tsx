@@ -6,24 +6,22 @@
  * clips long folder levels with no scrollbar. Both look like styling bugs and
  * neither throws.
  */
+import { queryKeys } from '@shared/lib'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getFolders, readFolderIndex } from '../api'
+import { accountFingerprint } from '../internal/folderIndex'
+import type { SelectedSproutFolder } from '../types'
+import { SproutFolderPicker } from './SproutFolderPicker'
 
 vi.mock('../api', () => ({
   getFolders: vi.fn(),
   readFolderIndex: vi.fn().mockResolvedValue(null),
   writeFolderIndex: vi.fn().mockResolvedValue(undefined)
 }))
-
-import { queryKeys } from '@shared/lib'
-
-import { getFolders, readFolderIndex } from '../api'
-import { accountFingerprint } from '../internal/folderIndex'
-import type { SelectedSproutFolder } from '../types'
-import { SproutFolderPicker } from './SproutFolderPicker'
 
 const rootPage = {
   folders: [

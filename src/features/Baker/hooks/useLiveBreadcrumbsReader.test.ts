@@ -7,17 +7,15 @@
 
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { bakerReadBreadcrumbs, bakerScanCurrentFiles } from '../api'
 import type { BreadcrumbsFile, FileInfo } from '../types'
+import { useLiveBreadcrumbsReader } from './useLiveBreadcrumbsReader'
 
 vi.mock('../api', () => ({
   bakerReadBreadcrumbs: vi.fn(),
   bakerReadRawBreadcrumbs: vi.fn(),
   bakerScanCurrentFiles: vi.fn()
 }))
-
-import { bakerReadBreadcrumbs, bakerScanCurrentFiles } from '../api'
-import { useLiveBreadcrumbsReader } from './useLiveBreadcrumbsReader'
 
 const breadcrumbs = (overrides: Partial<BreadcrumbsFile> = {}): BreadcrumbsFile => ({
   projectTitle: 'Podcast Ep 1',

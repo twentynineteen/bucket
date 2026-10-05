@@ -18,9 +18,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import React from 'react'
 import { toast } from 'sonner'
-
-import type { ApiKeys } from '../api'
-import { directoryExists, openFolderPicker, saveSettingsApiKeys } from '../api'
+import {
+  directoryExists,
+  openFolderPicker,
+  saveSettingsApiKeys,
+  type ApiKeys
+} from '../api'
 
 interface KavanaghSectionProps {
   apiKeys: ApiKeys
@@ -79,7 +82,7 @@ const KavanaghSection: React.FC<KavanaghSectionProps> = ({
         throw createQueryError(`Failed to save API keys: ${error}`, 'SETTINGS_SAVE')
       }
     },
-    onSuccess: (updatedKeys) => {
+    onSuccess: updatedKeys => {
       queryClient.setQueryData(queryKeys.settings.apiKeys(), updatedKeys)
     }
   })
@@ -231,7 +234,7 @@ const KavanaghSection: React.FC<KavanaghSectionProps> = ({
               type="text"
               inputMode="decimal"
               value={matchThreshold}
-              onChange={(event) => setMatchThreshold(event.target.value)}
+              onChange={event => setMatchThreshold(event.target.value)}
               placeholder={String(KAVANAGH_THRESHOLDS.matchConfidence)}
               aria-invalid={thresholdProblem !== null}
               aria-describedby={

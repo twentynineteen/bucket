@@ -98,7 +98,9 @@ test.describe('Smoke Tests', () => {
     await expect(page.getByRole('heading', { name: 'Build a Project' })).toBeVisible()
 
     const readLog = () =>
-      page.evaluate(() => (window as unknown as { __IPC_LOG__: string[] }).__IPC_LOG__.length)
+      page.evaluate(
+        () => (window as unknown as { __IPC_LOG__: string[] }).__IPC_LOG__.length
+      )
 
     // Startup legitimately issues commands; measure only the idle window after.
     await page.waitForTimeout(1000)
@@ -109,7 +111,10 @@ test.describe('Smoke Tests', () => {
     const commands = await page.evaluate(() =>
       (window as unknown as { __IPC_LOG__: string[] }).__IPC_LOG__.slice(-5)
     )
-    expect(after - before, `commands seen while idle, last five: ${commands.join(', ')}`).toBeLessThan(20)
+    expect(
+      after - before,
+      `commands seen while idle, last five: ${commands.join(', ')}`
+    ).toBeLessThan(20)
   })
 })
 

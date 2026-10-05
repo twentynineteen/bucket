@@ -1,5 +1,5 @@
-import { QueryClient, QueryObserver } from '@tanstack/react-query'
 import { createNamespacedLogger } from '@shared/utils'
+import { QueryClient, QueryObserver } from '@tanstack/react-query'
 import React from 'react'
 
 const logger = createNamespacedLogger('Performance')
@@ -58,7 +58,7 @@ export class QueryPerformanceMonitor {
     const queryCache = this.queryClient.getQueryCache()
 
     // Listen for query state changes
-    queryCache.subscribe((event) => {
+    queryCache.subscribe(event => {
       if (event.type === 'added') {
         this.onQueryAdded(event.query)
       } else if (event.type === 'updated') {
@@ -178,17 +178,17 @@ export class QueryPerformanceMonitor {
     const totalResponseTime = allMetrics.reduce((sum, m) => sum + m.duration, 0)
     const averageResponseTime = totalResponseTime / totalQueries
 
-    const cacheHits = allMetrics.filter((m) => m.cacheHit).length
+    const cacheHits = allMetrics.filter(m => m.cacheHit).length
     const cacheHitRate = (cacheHits / totalQueries) * 100
 
-    const errors = allMetrics.filter((m) => m.status === 'error')
+    const errors = allMetrics.filter(m => m.status === 'error')
     const errorRate = (errors.length / totalQueries) * 100
 
     // Define "slow" queries as those taking longer than 95th percentile
     const sortedByDuration = [...allMetrics].sort((a, b) => a.duration - b.duration)
     const p95Index = Math.floor(0.95 * sortedByDuration.length)
     const slowThreshold = sortedByDuration[p95Index]?.duration || 1000
-    const slowQueries = allMetrics.filter((m) => m.duration > slowThreshold)
+    const slowQueries = allMetrics.filter(m => m.duration > slowThreshold)
 
     return {
       totalQueries,
@@ -214,7 +214,7 @@ export class QueryPerformanceMonitor {
 
     return {
       estimatedSizeBytes: totalSize,
-      activeQueries: queries.filter((q) => q.getObserversCount() > 0).length,
+      activeQueries: queries.filter(q => q.getObserversCount() > 0).length,
       cachedQueries: queries.length
     }
   }

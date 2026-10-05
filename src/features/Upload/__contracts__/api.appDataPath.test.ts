@@ -73,7 +73,7 @@ const files = new Set<string>()
 
 function present(...paths: string[]) {
   files.clear()
-  paths.forEach((p) => files.add(p))
+  paths.forEach(p => files.add(p))
 }
 
 async function freshSession() {

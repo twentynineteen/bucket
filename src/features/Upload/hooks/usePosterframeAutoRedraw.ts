@@ -1,9 +1,8 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@shared/lib'
-import { useQuery } from '@tanstack/react-query'
+import { createQueryError, createQueryOptions, queryKeys, shouldRetry } from '@shared/lib'
 import { debounce } from '@shared/utils'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef } from 'react'
-
 import type { PosterframeTemplateId } from '../internal/posterframeTemplates'
 
 interface AutoRedrawProps {

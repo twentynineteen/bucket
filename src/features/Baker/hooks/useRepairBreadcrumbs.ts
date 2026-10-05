@@ -6,7 +6,6 @@
  */
 
 import { useCallback, useState } from 'react'
-
 import { bakerRepairBreadcrumbs } from '../api'
 import type { BreadcrumbsFile } from '../types'
 

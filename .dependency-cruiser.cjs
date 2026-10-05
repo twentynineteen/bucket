@@ -8,8 +8,8 @@ module.exports = {
         'This dependency is part of a circular relationship. You might want to revise your solution.',
       from: {},
       to: {
-        circular: true,
-      },
+        circular: true
+      }
     },
     {
       name: 'no-orphans',
@@ -24,15 +24,14 @@ module.exports = {
           '(^|/)tsconfig\\.json$',
           '(^|/)vite\\.config\\.ts$',
           '\\.test\\.(ts|tsx)$',
-          'tests/',
-        ],
+          'tests/'
+        ]
       },
-      to: {},
+      to: {}
     },
     {
       name: 'no-deprecated-core',
-      comment:
-        'A module depends on a node core module that has been deprecated.',
+      comment: 'A module depends on a node core module that has been deprecated.',
       severity: 'warn',
       from: {},
       to: {
@@ -54,9 +53,9 @@ module.exports = {
           '^constants$',
           '^sys$',
           '^_linklist$',
-          '^_stream_wrap$',
-        ],
-      },
+          '^_stream_wrap$'
+        ]
+      }
     },
     {
       name: 'not-to-deprecated',
@@ -65,8 +64,8 @@ module.exports = {
       severity: 'warn',
       from: {},
       to: {
-        dependencyTypes: ['deprecated'],
-      },
+        dependencyTypes: ['deprecated']
+      }
     },
     {
       name: 'no-non-package-json',
@@ -75,43 +74,43 @@ module.exports = {
         "This module depends on an npm package that isn't in the 'dependencies' section of your package.json.",
       from: {},
       to: {
-        dependencyTypes: ['npm-no-pkg', 'npm-unknown'],
-      },
+        dependencyTypes: ['npm-no-pkg', 'npm-unknown']
+      }
     },
     {
       name: 'not-to-unresolvable',
       comment:
-        "This module depends on a module that cannot be resolved. This could be a typo, a missing dependency, or an alias.",
+        'This module depends on a module that cannot be resolved. This could be a typo, a missing dependency, or an alias.',
       severity: 'error',
       from: {},
       to: {
-        couldNotResolve: true,
-      },
+        couldNotResolve: true
+      }
     },
     {
       name: 'no-duplicate-dep-types',
       comment:
-        "This module depends on an external package that appears in both dependencies and devDependencies. Pick one.",
+        'This module depends on an external package that appears in both dependencies and devDependencies. Pick one.',
       severity: 'warn',
       from: {},
       to: {
         moreThanOneDependencyType: true,
-        dependencyTypesNot: ['type-only'],
-      },
-    },
+        dependencyTypesNot: ['type-only']
+      }
+    }
   ],
   options: {
     doNotFollow: {
-      path: 'node_modules',
+      path: 'node_modules'
     },
     tsPreCompilationDeps: true,
     tsConfig: {
-      fileName: 'tsconfig.json',
+      fileName: 'tsconfig.json'
     },
     enhancedResolveOptions: {
       exportsFields: ['exports'],
       conditionNames: ['import', 'require', 'node', 'default', 'types'],
-      mainFields: ['module', 'main', 'types', 'typings'],
+      mainFields: ['module', 'main', 'types', 'typings']
     },
     reporterOptions: {
       dot: {
@@ -119,36 +118,36 @@ module.exports = {
         theme: {
           graph: {
             splines: 'ortho',
-            rankdir: 'TB',
+            rankdir: 'TB'
           },
           modules: [
             {
               criteria: { source: '^src/pages' },
-              attributes: { fillcolor: '#ffcccc' },
+              attributes: { fillcolor: '#ffcccc' }
             },
             {
               criteria: { source: '^src/components' },
-              attributes: { fillcolor: '#ccffcc' },
+              attributes: { fillcolor: '#ccffcc' }
             },
             {
               criteria: { source: '^src/hooks' },
-              attributes: { fillcolor: '#ccccff' },
+              attributes: { fillcolor: '#ccccff' }
             },
             {
               criteria: { source: '^src/utils' },
-              attributes: { fillcolor: '#ffffcc' },
+              attributes: { fillcolor: '#ffffcc' }
             },
             {
               criteria: { source: '^src/services' },
-              attributes: { fillcolor: '#ffccff' },
+              attributes: { fillcolor: '#ffccff' }
             },
             {
               criteria: { source: '^src/store' },
-              attributes: { fillcolor: '#ccffff' },
-            },
-          ],
-        },
-      },
-    },
-  },
+              attributes: { fillcolor: '#ccffff' }
+            }
+          ]
+        }
+      }
+    }
+  }
 }

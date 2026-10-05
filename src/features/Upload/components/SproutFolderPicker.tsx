@@ -51,7 +51,6 @@ import {
   Search
 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
-
 import { useSproutFolderIndex } from '../hooks/useSproutFolderIndex'
 import { useSproutFolders } from '../hooks/useSproutFolders'
 import { matchFolders, withPaths } from '../internal/folderPaths'
@@ -130,7 +129,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
       {index.index?.partial ? ' (partial index)' : ''}
     </DropdownMenuLabel>
 
-    {matches.map((folder) => (
+    {matches.map(folder => (
       <DropdownMenuItem key={folder.id} onSelect={() => onSelect(folder)}>
         <Folder className="text-muted-foreground shrink-0" />
         <span className="truncate" title={folder.path}>
@@ -159,7 +158,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
             variant="outline"
             size="sm"
             className="mt-2 h-7 w-full text-xs"
-            onClick={(event) => {
+            onClick={event => {
               event.preventDefault()
               index.build()
             }}
@@ -186,7 +185,7 @@ const IndexStatus: React.FC<{ index: ReturnType<typeof useSproutFolderIndex> }> 
           variant="outline"
           size="sm"
           className="h-6 text-xs"
-          onClick={(event) => {
+          onClick={event => {
             event.preventDefault()
             index.cancel()
           }}
@@ -214,7 +213,7 @@ const IndexStatus: React.FC<{ index: ReturnType<typeof useSproutFolderIndex> }> 
         variant="outline"
         size="sm"
         className="h-6 text-xs"
-        onClick={(event) => {
+        onClick={event => {
           event.preventDefault()
           index.build()
         }}
@@ -235,7 +234,7 @@ const LevelHeader: React.FC<{
   <>
     {/* Drilling keeps the menu open, so this must not auto-close. */}
     <DropdownMenuItem
-      onSelect={(event) => {
+      onSelect={event => {
         event.preventDefault()
         onBack()
       }}
@@ -271,7 +270,7 @@ const RootHeader: React.FC<{
         <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
           Recent
         </DropdownMenuLabel>
-        {recentFolders.map((folder) => (
+        {recentFolders.map(folder => (
           <DropdownMenuItem key={`recent-${folder.id}`} onSelect={() => onSelect(folder)}>
             <Folder className="text-muted-foreground shrink-0" />
             <span className="truncate" title={folder.path}>
@@ -322,7 +321,7 @@ const LevelBody: React.FC<{
           variant="outline"
           size="sm"
           className="mt-2 h-7 w-full text-xs"
-          onClick={(event) => {
+          onClick={event => {
             event.preventDefault()
             void level.refetch()
           }}
@@ -342,10 +341,10 @@ const LevelBody: React.FC<{
 
   return (
     <>
-      {children.map((folder) => (
+      {children.map(folder => (
         <DropdownMenuItem
           key={folder.id}
-          onSelect={(event) => {
+          onSelect={event => {
             // Navigating is not choosing, so the menu must stay open.
             event.preventDefault()
             onDrillInto(folder)
@@ -472,8 +471,8 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
             placeholder="Search folders by name or code…"
             value={filter}
             autoFocus
-            onChange={(event) => setFilter(event.target.value)}
-            onKeyDown={(event) => {
+            onChange={event => setFilter(event.target.value)}
+            onKeyDown={event => {
               // Let Radix keep navigation and dismissal; swallow the rest so
               // typeahead cannot steal focus mid-word. See note 2 in the header.
               const navigational =

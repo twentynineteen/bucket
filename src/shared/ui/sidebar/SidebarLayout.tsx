@@ -1,10 +1,10 @@
 'use client'
 
-import { cn } from '../../utils/cn'
+import { Slot } from '@radix-ui/react-slot'
 import { Input } from '@shared/ui/input'
 import { Separator } from '@shared/ui/separator'
-import { Slot } from '@radix-ui/react-slot'
 import * as React from 'react'
+import { cn } from '../../utils/cn'
 
 export const SidebarInput = React.forwardRef<
   React.ElementRef<typeof Input>,

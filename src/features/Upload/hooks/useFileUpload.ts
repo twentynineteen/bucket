@@ -1,11 +1,8 @@
 import { appStore } from '@shared/store'
 import { SproutUploadResponse } from '@shared/types'
-import type { SelectedSproutFolder } from '../types'
+import { logger } from '@shared/utils'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-
-import { logger } from '@shared/utils'
-
 import {
   cancelUpload as cancelUploadCommand,
   getVideoDuration,
@@ -13,6 +10,7 @@ import {
   uploadVideo
 } from '../api'
 import { awaitUploadOutcome } from '../internal/awaitUploadOutcome'
+import type { SelectedSproutFolder } from '../types'
 
 interface UseFileUploadReturn {
   selectedFile: string | null
@@ -73,8 +71,8 @@ export const useFileUpload = (): UseFileUploadReturn => {
       // hasn't finished processing at Trello-update time. Non-fatal.
       setLocalDuration(null)
       getVideoDuration(file)
-        .then((duration) => setLocalDuration(duration))
-        .catch((error) => {
+        .then(duration => setLocalDuration(duration))
+        .catch(error => {
           logger.warn('Could not read local video duration:', error)
           setLocalDuration(null)
         })
@@ -142,7 +140,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
             title?.trim() || null
           ),
         beforeIdKnown: 'accept',
-        onOperationId: (registeredOperationId) => {
+        onOperationId: registeredOperationId => {
           operationIdRef.current = registeredOperationId
         }
       })

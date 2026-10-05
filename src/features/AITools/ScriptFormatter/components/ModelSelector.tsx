@@ -6,7 +6,6 @@
 
 import { Brain, Loader2, Wrench, Zap } from 'lucide-react'
 import React from 'react'
-
 import type { AIModel } from '../../types'
 
 interface ModelSelectorProps {
@@ -46,7 +45,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       <label className="text-foreground block text-sm font-medium">Select Model</label>
 
       <div className="space-y-2">
-        {models.map((model) => (
+        {models.map(model => (
           <div
             key={model.id}
             className={`cursor-pointer rounded-lg border p-4 transition-all ${
@@ -98,7 +97,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
       {selectedModel && (
         <p className="text-muted-foreground text-xs">
-          Selected: {models.find((m) => m.id === selectedModel)?.displayName}
+          Selected: {models.find(m => m.id === selectedModel)?.displayName}
         </p>
       )}
     </div>

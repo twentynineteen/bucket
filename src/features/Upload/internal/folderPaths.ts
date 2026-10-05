@@ -5,7 +5,6 @@
  * the same either way -- `2026 Projects / MSc Programmes / Module X`.
  */
 import type { SproutFolder } from '@shared/types'
-
 import type { SelectedSproutFolder } from '../types'
 
 /**
@@ -49,7 +48,7 @@ export function withPaths(
   }
 
   return [...byId.values()]
-    .map((folder) => ({ id: folder.id, name: folder.name, path: pathOf(folder) }))
+    .map(folder => ({ id: folder.id, name: folder.name, path: pathOf(folder) }))
     .sort((a, b) => a.path.localeCompare(b.path))
 }
 
@@ -60,5 +59,5 @@ export function matchFolders(
 ): SelectedSproutFolder[] {
   const needle = query.trim().toLowerCase()
   if (!needle) return []
-  return folders.filter((folder) => folder.path.toLowerCase().includes(needle))
+  return folders.filter(folder => folder.path.toLowerCase().includes(needle))
 }

@@ -3,27 +3,22 @@
  * Handles video info operations for Trello cards
  */
 
-import { useAppendVideoInfo } from '@features/Trello/hooks/useAppendVideoInfo'
-import { useTrelloVideoInfo } from '@features/Trello'
+import { useTrelloVideoInfo, type TrelloCard } from '@features/Trello'
 import { createDefaultSproutUploadResponse } from '@features/Trello/types'
-import { useVideoInfoBlock } from '@features/BuildProject'
-import type { TrelloCard } from '@features/Trello'
 import type { SproutUploadResponse } from '@shared/types/types'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { useAppendVideoInfo } from './useAppendVideoInfo'
+import { useVideoInfoBlock } from './useVideoInfoBlock'
 
 // Mock dependencies
 vi.mock('@features/Trello/hooks/useAppendVideoInfo', () => ({
   useAppendVideoInfo: vi.fn()
 }))
 
-vi.mock('@features/BuildProject', async () => {
-  const actual = await vi.importActual('@features/BuildProject')
-  return {
-    ...actual,
-    useVideoInfoBlock: vi.fn()
-  }
-})
+vi.mock('./useVideoInfoBlock', () => ({
+  useVideoInfoBlock: vi.fn()
+}))
 
 // vi.hoisted so the fn is available inside the hoisted vi.mock factory.
 // Locally scoped to avoid the full AppState type constraint - the test
@@ -113,7 +108,7 @@ describe('useTrelloVideoInfo', () => {
     test('handles card with no description', () => {
       const cardWithoutDesc = { ...mockCard, desc: '' }
 
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useTrelloVideoInfo('api-key', 'token', cardWithoutDesc, mockRefetchCard)
       )
 
@@ -196,7 +191,7 @@ describe('useTrelloVideoInfo', () => {
 
   describe('video info parsing', () => {
     test('updates when card description changes', () => {
-      const { result, rerender } = renderHook<
+      const { rerender } = renderHook<
         ReturnType<typeof useTrelloVideoInfo>,
         { card: TrelloCard | null }
       >(({ card }) => useTrelloVideoInfo('api-key', 'token', card, mockRefetchCard), {
@@ -213,7 +208,7 @@ describe('useTrelloVideoInfo', () => {
     })
 
     test('handles empty description', () => {
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useTrelloVideoInfo('api-key', 'token', { ...mockCard, desc: '' }, mockRefetchCard)
       )
 
@@ -223,7 +218,7 @@ describe('useTrelloVideoInfo', () => {
 
   describe('API credentials', () => {
     test('uses provided API credentials', () => {
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useTrelloVideoInfo('custom-key', 'custom-token', mockCard, mockRefetchCard)
       )
 
@@ -231,9 +226,7 @@ describe('useTrelloVideoInfo', () => {
     })
 
     test('handles null credentials', () => {
-      const { result } = renderHook(() =>
-        useTrelloVideoInfo(null, null, mockCard, mockRefetchCard)
-      )
+      renderHook(() => useTrelloVideoInfo(null, null, mockCard, mockRefetchCard))
 
       expect(useAppendVideoInfo).toHaveBeenCalledWith(null, null)
     })

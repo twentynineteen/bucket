@@ -5,7 +5,6 @@
 
 import { AlertCircle } from 'lucide-react'
 import React, { useState } from 'react'
-
 import { ExampleCategory } from '../../types'
 
 interface SaveExampleDialogProps {
@@ -89,7 +88,7 @@ export function SaveExampleDialog({
                 id="title"
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={e => setTitle(e.target.value)}
                 className="border-input focus:ring-info w-full rounded-md border px-3 py-2 focus:ring-2 focus:outline-none"
                 placeholder="e.g., Educational Lecture - Business School"
                 maxLength={200}
@@ -111,7 +110,7 @@ export function SaveExampleDialog({
               <select
                 id="category"
                 value={category}
-                onChange={(e) => setCategory(e.target.value as ExampleCategory)}
+                onChange={e => setCategory(e.target.value as ExampleCategory)}
                 className="border-input focus:ring-info w-full rounded-md border px-3 py-2 focus:ring-2 focus:outline-none"
                 disabled={isSaving}
               >
@@ -139,7 +138,7 @@ export function SaveExampleDialog({
                   min="1"
                   max="5"
                   value={qualityScore}
-                  onChange={(e) => setQualityScore(Number(e.target.value))}
+                  onChange={e => setQualityScore(Number(e.target.value))}
                   className="flex-1"
                   disabled={isSaving}
                 />

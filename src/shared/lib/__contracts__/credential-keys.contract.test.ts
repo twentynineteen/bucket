@@ -9,10 +9,9 @@
  * (or fixed key segment) can collide with them by accident.
  */
 
-import { describe, expect, test } from 'vitest'
-
 import { fingerprint } from '@shared/lib/fingerprint'
 import { queryKeys } from '@shared/lib/query-keys'
+import { describe, expect, test } from 'vitest'
 
 const SPROUT_KEY = 'RAW_SPROUT_API_KEY_SENTINEL'
 const SPROUT_KEY_B = 'RAW_SPROUT_API_KEY_SENTINEL_B'
@@ -21,7 +20,7 @@ const TRELLO_TOKEN = 'RAW_TRELLO_TOKEN_SENTINEL'
 
 /** True if any segment reveals the secret verbatim or as a truncation. */
 function leaksSecret(key: readonly unknown[], secret: string): boolean {
-  return key.some((rawSegment) => {
+  return key.some(rawSegment => {
     // Non-string segments (objects, arrays) can smuggle a secret through
     // properties -- compare their serialised form too.
     const segment =

@@ -4,15 +4,13 @@
  * All external calls (Tauri invoke, Trello REST API, file plugins)
  * are wrapped here. Mock this one file to isolate the entire module.
  */
-import { invoke } from '@tauri-apps/api/core'
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
-import { ask, confirm, open as openDialog } from '@tauri-apps/plugin-dialog'
-import { openUrl } from '@tauri-apps/plugin-opener'
-
 import type { TrelloBoard } from '@shared/types'
-import type { TrelloCard, TrelloList, TrelloMember } from './types'
-
 import { logger } from '@shared/utils'
+import { invoke } from '@tauri-apps/api/core'
+import { ask, confirm, open as openDialog } from '@tauri-apps/plugin-dialog'
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import type { TrelloCard, TrelloList, TrelloMember } from './types'
 
 // --- Tauri Commands ---
 

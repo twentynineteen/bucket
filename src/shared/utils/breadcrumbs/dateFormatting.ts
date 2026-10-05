@@ -5,7 +5,6 @@
  */
 
 import { format, parse } from 'date-fns'
-
 import { logger } from '../logger'
 
 /**

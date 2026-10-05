@@ -8,7 +8,6 @@
 
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { useAutoFileSelection } from './useAutoFileSelection'
 
 const CLASSIC_FILES = ['/backgrounds/classic/a.jpg', '/backgrounds/classic/b.jpg']

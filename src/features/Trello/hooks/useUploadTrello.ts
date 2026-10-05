@@ -3,28 +3,28 @@
  * Extracted from UploadTrello.tsx (DEBT-002)
  */
 
+import { useAppendBreadcrumbs } from '@features/Baker'
+import { useFuzzySearch } from '@shared/hooks'
 import { queryKeys } from '@shared/lib'
 import { appStore } from '@shared/store'
 import { SproutUploadResponse } from '@shared/types'
-import { useMemo, useState } from 'react'
-
-import { useFuzzySearch } from '@shared/hooks'
-import { useAppendBreadcrumbs } from '@features/Baker'
-import { useAppendVideoInfo } from './useAppendVideoInfo'
-import { useVideoInfoBlock } from '@features/BuildProject'
-import { openExternalUrl } from '../api'
 import { logger } from '@shared/utils'
+import { useQuery } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-
-import { writeBreadcrumbsFile } from '../api'
-import { createDefaultSproutUploadResponse } from '../types'
-import type { SelectedCard, TrelloCard } from '../types'
+import { openExternalUrl, writeBreadcrumbsFile } from '../api'
+import {
+  createDefaultSproutUploadResponse,
+  type SelectedCard,
+  type TrelloCard
+} from '../types'
+import { useAppendVideoInfo } from './useAppendVideoInfo'
 import { useParsedTrelloDescription } from './useParsedTrelloDescription'
 import { useTrelloBoard } from './useTrelloBoard'
 import { useTrelloBoardId } from './useTrelloBoardId'
 import { useTrelloBoards } from './useTrelloBoards'
 import { useTrelloCardDetails } from './useTrelloCardDetails'
-import { useQuery } from '@tanstack/react-query'
+import { useVideoInfoBlock } from './useVideoInfoBlock'
 
 export function useUploadTrello() {
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null)
@@ -35,13 +35,13 @@ export function useUploadTrello() {
 
   // Fetch all boards to get the selected board's name
   const { boards } = useTrelloBoards()
-  const selectedBoard = boards.find((board) => board.id === boardId)
+  const selectedBoard = boards.find(board => board.id === boardId)
   const boardName = selectedBoard?.name || 'Small Projects'
 
   // Flatten all cards for search
   const allCards = useMemo(() => {
     const cards: TrelloCard[] = []
-    Object.values(grouped).forEach((cardList) => {
+    Object.values(grouped).forEach(cardList => {
       cards.push(...cardList)
     })
     return cards
@@ -64,9 +64,9 @@ export function useUploadTrello() {
     }
 
     const result: Record<string, TrelloCard[]> = {}
-    filteredCards.forEach((card) => {
+    filteredCards.forEach(card => {
       Object.entries(grouped).forEach(([listName, cards]) => {
-        if (cards.some((c) => c.id === card.id)) {
+        if (cards.some(c => c.id === card.id)) {
           if (!result[listName]) {
             result[listName] = []
           }

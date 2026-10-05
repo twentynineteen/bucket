@@ -7,7 +7,6 @@
  */
 
 import { describe, expect, it } from 'vitest'
-
 import type { BreadcrumbsFile, BreadcrumbsPreview, FileInfo } from '../types'
 import { buildProjectChangeRows, diffFileLists, sumChangeCounts } from './changeRows'
 
@@ -83,7 +82,7 @@ describe('diffFileLists', () => {
     const rows = diffFileLists(current, updated)
 
     expect(rows).toHaveLength(2)
-    expect(rows.map((r) => r.type).sort()).toEqual(['added', 'removed'])
+    expect(rows.map(r => r.type).sort()).toEqual(['added', 'removed'])
   })
 
   it('treats a null current list as all files added', () => {
@@ -95,7 +94,7 @@ describe('diffFileLists', () => {
     const rows = diffFileLists(null, updated)
 
     expect(rows).toHaveLength(2)
-    expect(rows.every((r) => r.type === 'added')).toBe(true)
+    expect(rows.every(r => r.type === 'added')).toBe(true)
   })
 
   it('returns no rows when lists match', () => {

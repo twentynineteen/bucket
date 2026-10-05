@@ -4,9 +4,9 @@
  * Purpose: Generate .docx files from HTML using docx package
  */
 
-import { saveDocxDialog, writeDocxFile } from '../../api'
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx'
 import { useState } from 'react'
+import { saveDocxDialog, writeDocxFile } from '../../api'
 
 interface UseDocxGeneratorResult {
   generateFile: (html: string, defaultFilename: string) => Promise<void>
@@ -71,7 +71,7 @@ function htmlToDocxParagraphs(html: string): Paragraph[] {
   const paragraphs: Paragraph[] = []
 
   // Process each element in the body
-  doc.body.childNodes.forEach((node) => {
+  doc.body.childNodes.forEach(node => {
     if (node.nodeType === Node.ELEMENT_NODE) {
       const element = node as Element
 
@@ -116,7 +116,7 @@ function htmlToDocxParagraphs(html: string): Paragraph[] {
 function parseTextRuns(element: Element): TextRun[] {
   const runs: TextRun[] = []
 
-  element.childNodes.forEach((child) => {
+  element.childNodes.forEach(child => {
     if (child.nodeType === Node.TEXT_NODE) {
       const text = child.textContent || ''
       if (text.trim()) {

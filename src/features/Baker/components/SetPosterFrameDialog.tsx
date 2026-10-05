@@ -8,11 +8,7 @@
  * second AlertDialog sits on top of it.
  */
 
-import { AlertCircle, Image as ImageIcon, Loader2 } from 'lucide-react'
-import type { RefObject } from 'react'
-
 import type { PosterframeTemplateId } from '@features/Upload'
-
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
 import { Checkbox } from '@shared/ui/checkbox'
@@ -33,6 +29,8 @@ import {
   SelectTrigger,
   SelectValue
 } from '@shared/ui/select'
+import { AlertCircle, Image as ImageIcon, Loader2 } from 'lucide-react'
+import type { RefObject } from 'react'
 
 /** Poster frame state the dialog renders but never owns */
 export interface SetPosterFramePanelState {
@@ -92,7 +90,7 @@ export function SetPosterFrameDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => {
+      onOpenChange={next => {
         // Closing mid-request would tear down the in-flight PUT (B5.3)
         if (!next && working) return
         onOpenChange(next)
@@ -123,7 +121,7 @@ export function SetPosterFrameDialog({
                 <Label htmlFor="card-poster-frame-template">Template</Label>
                 <Select
                   value={posterFrame.template}
-                  onValueChange={(value) =>
+                  onValueChange={value =>
                     posterFrame.onTemplateChange(value as PosterframeTemplateId)
                   }
                   disabled={working}
@@ -151,7 +149,7 @@ export function SetPosterFrameDialog({
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="max-h-[240px]">
-                    {posterFrame.backgrounds.map((file) => (
+                    {posterFrame.backgrounds.map(file => (
                       <SelectItem key={file} value={file}>
                         {file.split('/').pop()}
                       </SelectItem>
@@ -165,7 +163,7 @@ export function SetPosterFrameDialog({
                 <Input
                   id="card-poster-frame-text"
                   value={posterFrame.text}
-                  onChange={(event) => posterFrame.onTextChange(event.target.value)}
+                  onChange={event => posterFrame.onTextChange(event.target.value)}
                   maxLength={200}
                   disabled={working}
                 />
@@ -203,7 +201,7 @@ export function SetPosterFrameDialog({
                 <Checkbox
                   id="card-poster-frame-save-copy"
                   checked={posterFrame.saveCopy}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={checked =>
                     posterFrame.onSaveCopyChange(checked === true)
                   }
                   disabled={working}

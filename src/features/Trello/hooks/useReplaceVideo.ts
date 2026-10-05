@@ -15,13 +15,11 @@
  * One instance per VideoLinksManager, like useCardPosterFrame: the form is
  * re-derived from whichever link is targeted.
  */
+import type { TrelloCard, VideoLink } from '@features/Baker'
+import { useReplaceUpload, useSproutVideoApi } from '@features/Upload'
 import { logger } from '@shared/utils'
 import { useState } from 'react'
 import { toast } from 'sonner'
-
-import type { TrelloCard, VideoLink } from '@features/Baker'
-import { useReplaceUpload, useSproutVideoApi } from '@features/Upload'
-
 import { addCardComment } from '../api'
 import {
   NO_API_KEY_REASON,
@@ -79,7 +77,7 @@ function defaultComment(link: VideoLink): string {
 
 const basename = (path: string) => path.split('/').pop() ?? path
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
 type PosterOutcome = 'kept' | 'regenerated' | 'processing'
 
@@ -161,7 +159,7 @@ export function useReplaceVideo({
     upload.clearFile()
     setPosterMode('keep')
     setTrelloEnabled(true)
-    setSelectedCardIds(cards.map((card) => card.cardId))
+    setSelectedCardIds(cards.map(card => card.cardId))
     setCommentText(defaultComment(link))
     setTargetIndex(index)
   }
@@ -173,9 +171,9 @@ export function useReplaceVideo({
   }
 
   const toggleCard = (cardId: string) => {
-    setSelectedCardIds((current) =>
+    setSelectedCardIds(current =>
       current.includes(cardId)
-        ? current.filter((id) => id !== cardId)
+        ? current.filter(id => id !== cardId)
         : [...current, cardId]
     )
   }
@@ -254,7 +252,7 @@ export function useReplaceVideo({
   const writeBreadcrumbs = (index: number, updatedLink: VideoLink): Promise<boolean> =>
     updateVideoLinkAsync({ videoIndex: index, updatedLink })
       .then(() => true)
-      .catch((error) => {
+      .catch(error => {
         logger.warn('Could not write the replaced video to breadcrumbs:', error)
         return false
       })
@@ -267,10 +265,10 @@ export function useReplaceVideo({
   ): Promise<string[]> => {
     if (!auth || targets.length === 0) return []
     const outcomes = await Promise.all(
-      targets.map((card) =>
+      targets.map(card =>
         addCardComment(card.cardId, text, auth.apiKey, auth.token)
           .then(() => null)
-          .catch((error) => {
+          .catch(error => {
             logger.warn(`Could not comment on Trello card "${card.title}":`, error)
             return card.title
           })
@@ -341,7 +339,7 @@ export function useReplaceVideo({
     // Captured now: the form is reset when the dialog closes below.
     const comment = commentText.trim()
     const commentCards = commentActive
-      ? cards.filter((card) => selectedCardIds.includes(card.cardId))
+      ? cards.filter(card => selectedCardIds.includes(card.cardId))
       : []
     const mode = posterMode
     const auth = credentials

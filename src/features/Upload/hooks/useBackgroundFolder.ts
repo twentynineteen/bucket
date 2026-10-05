@@ -4,7 +4,6 @@ import { useAppStore } from '@shared/store'
 import { logger } from '@shared/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
-
 import { listDirectory } from '../api'
 import {
   POSTERFRAME_TEMPLATES,
@@ -72,7 +71,7 @@ const cannotReadReason = (label: string, path: string) =>
 export function useBackgroundFolder(
   templateId: PosterframeTemplateId
 ): BackgroundFolderData {
-  const defaultFolder = useAppStore((state) =>
+  const defaultFolder = useAppStore(state =>
     templateId === 'rebrand'
       ? state.rebrandBackgroundFolder
       : state.defaultBackgroundFolder

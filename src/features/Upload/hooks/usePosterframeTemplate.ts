@@ -13,7 +13,6 @@
 import { useAppStore } from '@shared/store'
 import { logger } from '@shared/utils'
 import { useCallback } from 'react'
-
 import {
   POSTERFRAME_TEMPLATE_STORAGE_KEY,
   resolveInitialTemplate,
@@ -33,13 +32,13 @@ export function usePosterframeTemplate(): {
   template: PosterframeTemplateId
   setTemplate: (template: PosterframeTemplateId) => void
 } {
-  const sessionChoice = useAppStore((state) => state.posterframeTemplateChoice)
-  const setSessionChoice = useAppStore((state) => state.setPosterframeTemplateChoice)
+  const sessionChoice = useAppStore(state => state.posterframeTemplateChoice)
+  const setSessionChoice = useAppStore(state => state.setPosterframeTemplateChoice)
   // Boolean(), not `!== null`: a pre-#189 settings file hydrates the store
   // field as undefined, and treating that as configured would default every
   // existing install onto a Rebrand template with no backgrounds (review
   // round, finding 1).
-  const rebrandFolderConfigured = useAppStore((state) =>
+  const rebrandFolderConfigured = useAppStore(state =>
     Boolean(state.rebrandBackgroundFolder)
   )
 

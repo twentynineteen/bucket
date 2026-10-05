@@ -7,9 +7,8 @@
  * "there, readable, no images" without matching on Tauri's error strings.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as tauriFs from '@tauri-apps/plugin-fs'
-
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listDirectory } from '../api'
 
 vi.mock('@tauri-apps/plugin-fs', () => ({

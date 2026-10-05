@@ -174,17 +174,17 @@ export type MatchResult = 'match' | 'mismatch' | 'none'
  */
 export function matchTitle(title: string, categoryId: string): MatchResult {
   if (categoryId === OTHER_CATEGORY_ID) return 'none'
-  const category = NAMING_CATEGORIES.find((c) => c.id === categoryId)
+  const category = NAMING_CATEGORIES.find(c => c.id === categoryId)
   if (!category) return 'none'
 
-  const parts = title.split(/\s+[–-]\s+/).map((part) => part.trim())
-  const allFilled = parts.every((part) => part.length > 0)
+  const parts = title.split(/\s+[–-]\s+/).map(part => part.trim())
+  const allFilled = parts.every(part => part.length > 0)
   return category.matches(parts, allFilled) ? 'match' : 'mismatch'
 }
 
 /** Whether an id names a real category the guide can judge against. */
 export function isKnownCategory(categoryId: string): boolean {
   return (
-    categoryId === OTHER_CATEGORY_ID || NAMING_CATEGORIES.some((c) => c.id === categoryId)
+    categoryId === OTHER_CATEGORY_ID || NAMING_CATEGORIES.some(c => c.id === categoryId)
   )
 }

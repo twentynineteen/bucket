@@ -10,12 +10,15 @@
  * - Processing error handling
  */
 
-import type { ProcessedOutput, ProviderConfiguration } from '@shared/types/scriptFormatter'
+import { useExampleManagement } from '@features/AITools/ExampleEmbeddings/hooks/useExampleManagement'
 import { useAIModels } from '@features/AITools/ScriptFormatter/hooks/useAIModels'
 import { useAIProcessing } from '@features/AITools/ScriptFormatter/hooks/useAIProcessing'
-import { useAIProvider } from '@features/Settings'
-import { useExampleManagement } from '@features/AITools/ExampleEmbeddings/hooks/useExampleManagement'
 import { useScriptProcessor } from '@features/AITools/ScriptFormatter/hooks/useScriptProcessor'
+import { useAIProvider } from '@features/Settings'
+import type {
+  ProcessedOutput,
+  ProviderConfiguration
+} from '@shared/types/scriptFormatter'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 

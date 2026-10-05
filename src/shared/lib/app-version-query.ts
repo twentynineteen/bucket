@@ -1,6 +1,5 @@
 import { CACHE } from '@shared/constants'
 import { getVersion } from '@tauri-apps/api/app'
-
 import { queryKeys } from './query-keys'
 import { createQueryError, createQueryOptions, shouldRetry } from './query-utils'
 

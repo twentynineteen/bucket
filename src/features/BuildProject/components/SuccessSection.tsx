@@ -1,6 +1,5 @@
-import { RefreshCw } from 'lucide-react'
-
 import { TrelloCardsManager } from '@features/Trello'
+import { RefreshCw } from 'lucide-react'
 
 interface SuccessSectionProps {
   showSuccess: boolean

@@ -24,10 +24,9 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { mockReducedMotion } from '@tests/utils/animation-testing'
 import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-
-import { mockReducedMotion } from '@tests/utils/animation-testing'
 import type { ProjectFolder } from '../types'
 import { ProjectListPanel } from './ProjectListPanel'
 
@@ -106,8 +105,8 @@ const invalidProj = project({
 const visibleProjectNames = () =>
   screen
     .getAllByRole('button')
-    .filter((btn) => btn.hasAttribute('aria-pressed'))
-    .map((btn) => {
+    .filter(btn => btn.hasAttribute('aria-pressed'))
+    .map(btn => {
       const p = btn.querySelector('p')
       return p?.textContent ?? ''
     })

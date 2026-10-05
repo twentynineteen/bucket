@@ -10,10 +10,9 @@
  * by hand per docs/posterframe-background-verification.md.
  */
 import { expect, test } from '@playwright/test'
-
 import {
-  DEFAULT_FOLDER,
   attemptedListings,
+  DEFAULT_FOLDER,
   installBackgroundMocks
 } from '../fixtures/posterframe-backgrounds.fixture'
 

@@ -4,14 +4,7 @@
  * Refactored: 2025-11-18 - Extracted state to useTrelloCardsManager, dialog to AddCardDialog
  */
 
-import { useMemo } from 'react'
-
-import { useTrelloCardsManager } from '../hooks/useTrelloCardsManager'
-import { useTrelloSelfAssignment } from '../hooks/useTrelloSelfAssignment'
-import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
-
 import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert'
-import { Button } from '@shared/ui/button'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,10 +15,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@shared/ui/alert-dialog'
-
+import { Button } from '@shared/ui/button'
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
+import { useMemo } from 'react'
+import { useTrelloCardsManager } from '../hooks/useTrelloCardsManager'
+import { useTrelloSelfAssignment } from '../hooks/useTrelloSelfAssignment'
 import { describeTrelloCardsError } from '../internal/trelloCardsError'
-import { TrelloCardItem } from './TrelloCardItem'
 import { AddCardDialog } from './AddCardDialog'
+import { TrelloCardItem } from './TrelloCardItem'
 
 interface TrelloCardsManagerProps {
   projectPath: string
@@ -89,7 +86,7 @@ export function TrelloCardsManager({
     autoSyncToTrello
   })
 
-  const cardIds = useMemo(() => trelloCards.map((card) => card.cardId), [trelloCards])
+  const cardIds = useMemo(() => trelloCards.map(card => card.cardId), [trelloCards])
   const assignment = useTrelloSelfAssignment({
     cardIds,
     trelloApiKey,
@@ -256,7 +253,7 @@ export function TrelloCardsManager({
       {/* Remove card confirmation dialog */}
       <AlertDialog
         open={pendingRemoveCardIndex !== null}
-        onOpenChange={(open) => !open && cancelRemoveCard()}
+        onOpenChange={open => !open && cancelRemoveCard()}
       >
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -7,9 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-
-import { computeTreemapLayout } from './treemapLayout'
-import type { TreemapItem, TreemapRect } from './treemapLayout'
+import { computeTreemapLayout, type TreemapItem, type TreemapRect } from './treemapLayout'
 
 const area = (r: TreemapRect) => r.width * r.height
 
@@ -50,7 +48,7 @@ describe('computeTreemapLayout', () => {
     const totalWeight = 450
 
     for (const item of items) {
-      const rect = rects.find((r) => r.key === item.key)!
+      const rect = rects.find(r => r.key === item.key)!
       expect(area(rect)).toBeCloseTo((item.weight / totalWeight) * totalArea, 4)
     }
   })
@@ -61,7 +59,7 @@ describe('computeTreemapLayout', () => {
       weight: (i + 1) * 7
     })).reverse()
     const rects = computeTreemapLayout(items, 800, 500)
-    const positive = rects.filter((r) => area(r) > 0)
+    const positive = rects.filter(r => area(r) > 0)
 
     for (let i = 0; i < positive.length; i++) {
       for (let j = i + 1; j < positive.length; j++) {
@@ -95,7 +93,7 @@ describe('computeTreemapLayout', () => {
       { key: 'third', weight: 10 }
     ]
     const rects = computeTreemapLayout(items, 100, 100)
-    expect(rects.map((r) => r.key)).toEqual(['first', 'second', 'third'])
+    expect(rects.map(r => r.key)).toEqual(['first', 'second', 'third'])
   })
 
   it('returns zero-area rects for zero and negative weights', () => {
@@ -105,9 +103,9 @@ describe('computeTreemapLayout', () => {
       { key: 'negative', weight: -5 }
     ]
     const rects = computeTreemapLayout(items, 200, 100)
-    expect(area(rects.find((r) => r.key === 'real')!)).toBeCloseTo(200 * 100, 4)
-    expect(area(rects.find((r) => r.key === 'empty')!)).toBe(0)
-    expect(area(rects.find((r) => r.key === 'negative')!)).toBe(0)
+    expect(area(rects.find(r => r.key === 'real')!)).toBeCloseTo(200 * 100, 4)
+    expect(area(rects.find(r => r.key === 'empty')!)).toBe(0)
+    expect(area(rects.find(r => r.key === 'negative')!)).toBe(0)
   })
 
   it('handles an empty item list', () => {
@@ -120,7 +118,7 @@ describe('computeTreemapLayout', () => {
       { key: 'b', weight: 0 }
     ]
     const rects = computeTreemapLayout(items, 100, 100)
-    expect(rects.every((r) => area(r) === 0)).toBe(true)
+    expect(rects.every(r => area(r) === 0)).toBe(true)
   })
 
   it('handles a degenerate bounding box', () => {

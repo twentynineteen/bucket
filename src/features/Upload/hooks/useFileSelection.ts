@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
-
 import { readFileAsBytes } from '../api'
 
 interface FileSelectionData {

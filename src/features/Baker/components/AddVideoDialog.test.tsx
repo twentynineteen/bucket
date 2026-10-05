@@ -3,21 +3,22 @@
  * Issue #140 (B1.1, B1.3-B1.5, B2.2, B4.1-B4.3, B5.2, B5.3, B5.6, B7.1)
  */
 
+import { QueryClientProvider } from '@tanstack/react-query'
 import {
-  fireEvent,
   render as baseRender,
-  type RenderOptions,
-  screen
+  fireEvent,
+  screen,
+  type RenderOptions
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createTestQueryClient } from '@tests/utils/queryClientWrapper'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
-
-import { AddVideoDialog } from './AddVideoDialog'
-import type { AddVideoDialogProps, PosterFrameDialogState } from './AddVideoDialog'
-
-import { QueryClientProvider } from '@tanstack/react-query'
-import { createTestQueryClient } from '@tests/utils/queryClientWrapper'
+import {
+  AddVideoDialog,
+  type AddVideoDialogProps,
+  type PosterFrameDialogState
+} from './AddVideoDialog'
 
 /**
  * AddVideoDialog now renders SproutFolderPicker, which reads folder levels

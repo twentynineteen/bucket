@@ -4,15 +4,14 @@
  * Layout-only parent with header and 5 per-domain section components.
  * Follows BuildProject/Baker UI patterns with ErrorBoundary wrapper.
  */
-import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
-import { Button } from '@shared/ui/button'
 import { CACHE } from '@shared/constants'
 import { useBreadcrumb } from '@shared/hooks'
-import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@shared/lib'
+import { createQueryError, createQueryOptions, queryKeys, shouldRetry } from '@shared/lib'
+import { Button } from '@shared/ui/button'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import React from 'react'
-
 import { loadSettingsApiKeys } from '../api'
 import { useSettingsScroll } from '../hooks/useSettingsScroll'
 import AIModelsSection from './AIModelsSection'

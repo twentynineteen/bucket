@@ -4,7 +4,7 @@
  * Create custom thumbnails with branded backgrounds and video titles.
  */
 
-import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { useBreadcrumb } from '@shared/hooks'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +18,7 @@ import {
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Label } from '@shared/ui/label'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
 import {
   Select,
   SelectContent,
@@ -25,26 +26,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@shared/ui/select'
-import { useAutoFileSelection } from '../hooks/useAutoFileSelection'
-import { useBackgroundFolder } from '../hooks/useBackgroundFolder'
-import { useBreadcrumb } from '@shared/hooks'
-import { useFileSelection } from '../hooks/useFileSelection'
-import { usePosterframeAutoRedraw } from '../hooks/usePosterframeAutoRedraw'
-import type { PosterframeFontStatus } from '../hooks/usePosterframeCanvas'
-import { usePosterframeCanvas } from '../hooks/usePosterframeCanvas'
-import { usePosterframeSproutUpload } from '../hooks/usePosterframeSproutUpload'
-import { usePosterframeTemplate } from '../hooks/usePosterframeTemplate'
-import { useZoomPan } from '../hooks/useZoomPan'
-import {
-  POSTERFRAME_TEMPLATES,
-  POSTERFRAME_TEMPLATE_IDS
-} from '../internal/posterframeTemplates'
-import {
-  POSTER_FRAME_MAX_BYTES,
-  PosterFrameTooLargeError,
-  exportCanvasJpegUnder
-} from '../internal/posterFrame'
-import { openFolder, openFolderDialog, saveFile } from '../api'
+import { logger, titleToPosterFrameText } from '@shared/utils'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -61,8 +43,27 @@ import {
 } from 'lucide-react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-
-import { logger, titleToPosterFrameText } from '@shared/utils'
+import { openFolder, openFolderDialog, saveFile } from '../api'
+import { useAutoFileSelection } from '../hooks/useAutoFileSelection'
+import { useBackgroundFolder } from '../hooks/useBackgroundFolder'
+import { useFileSelection } from '../hooks/useFileSelection'
+import { usePosterframeAutoRedraw } from '../hooks/usePosterframeAutoRedraw'
+import {
+  usePosterframeCanvas,
+  type PosterframeFontStatus
+} from '../hooks/usePosterframeCanvas'
+import { usePosterframeSproutUpload } from '../hooks/usePosterframeSproutUpload'
+import { usePosterframeTemplate } from '../hooks/usePosterframeTemplate'
+import { useZoomPan } from '../hooks/useZoomPan'
+import {
+  exportCanvasJpegUnder,
+  POSTER_FRAME_MAX_BYTES,
+  PosterFrameTooLargeError
+} from '../internal/posterFrame'
+import {
+  POSTERFRAME_TEMPLATE_IDS,
+  POSTERFRAME_TEMPLATES
+} from '../internal/posterframeTemplates'
 
 /**
  * Off-aspect notice for the live preview (issue #189 B4.2). A warning, not a
@@ -137,7 +138,7 @@ const SproutUploadPanel: React.FC<{
             type="text"
             placeholder="https://sproutvideo.com/videos/..."
             value={upload.videoReference}
-            onChange={(e) => upload.setVideoReference(e.target.value)}
+            onChange={e => upload.setVideoReference(e.target.value)}
             disabled={working}
           />
         </div>
@@ -347,7 +348,7 @@ const PosterframeContent: React.FC = () => {
     // Only ever fills a blank field, so a title the user typed is never
     // overwritten by the one stored on Sprout (B1.9).
     onVideoResolved: useCallback((resolvedTitle: string) => {
-      setVideoTitle((current) =>
+      setVideoTitle(current =>
         current.trim() ? current : titleToPosterFrameText(resolvedTitle)
       )
     }, [])
@@ -441,13 +442,13 @@ const PosterframeContent: React.FC = () => {
                       the template is a per-thumbnail choice (issue #189). */}
                   <Select
                     value={template}
-                    onValueChange={(value) => setTemplate(value as typeof template)}
+                    onValueChange={value => setTemplate(value as typeof template)}
                   >
                     <SelectTrigger className="w-full" aria-label="Template">
                       <SelectValue placeholder="Select a template" />
                     </SelectTrigger>
                     <SelectContent>
-                      {POSTERFRAME_TEMPLATE_IDS.map((id) => (
+                      {POSTERFRAME_TEMPLATE_IDS.map(id => (
                         <SelectItem key={id} value={id}>
                           {POSTERFRAME_TEMPLATES[id].label}
                         </SelectItem>
@@ -511,7 +512,7 @@ const PosterframeContent: React.FC = () => {
 
                   <Button
                     onClick={() =>
-                      openFolderDialog().then((path) => {
+                      openFolderDialog().then(path => {
                         if (typeof path === 'string') loadFolder(path)
                       })
                     }
@@ -543,13 +544,13 @@ const PosterframeContent: React.FC = () => {
                   {backgroundFiles.length > 0 && (
                     <Select
                       value={selectedFilePath || ''}
-                      onValueChange={(path) => selectFile(path)}
+                      onValueChange={path => selectFile(path)}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a background file" />
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px]">
-                        {backgroundFiles.map((file) => (
+                        {backgroundFiles.map(file => (
                           <SelectItem key={file} value={file}>
                             {file.split('/').pop()}
                           </SelectItem>
@@ -573,7 +574,7 @@ const PosterframeContent: React.FC = () => {
                   type="text"
                   placeholder="Enter video title..."
                   value={videoTitle}
-                  onChange={(e) => setVideoTitle(e.target.value)}
+                  onChange={e => setVideoTitle(e.target.value)}
                 />
               </div>
 
@@ -700,7 +701,7 @@ const PosterframeContent: React.FC = () => {
                 {/* Vertical Zoom Controls */}
                 <div className="flex flex-col gap-2">
                   <Button
-                    onClick={() => setZoomLevel((z) => Math.min(3, z + 0.25))}
+                    onClick={() => setZoomLevel(z => Math.min(3, z + 0.25))}
                     variant="outline"
                     size="icon"
                     className="h-10 w-10"
@@ -718,7 +719,7 @@ const PosterframeContent: React.FC = () => {
                     <Maximize2 className="h-4 w-4" />
                   </Button>
                   <Button
-                    onClick={() => setZoomLevel((z) => Math.max(0.25, z - 0.25))}
+                    onClick={() => setZoomLevel(z => Math.max(0.25, z - 0.25))}
                     variant="outline"
                     size="icon"
                     className="h-10 w-10"

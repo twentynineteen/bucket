@@ -6,7 +6,6 @@
 import { queryKeys } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-
 import type { SelectedCard } from '../types'
 import { useTrelloCardDetails } from './useTrelloCardDetails'
 

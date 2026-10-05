@@ -1,3 +1,5 @@
+import type { Font } from 'opentype.js'
+import { useCallback, useRef, useState } from 'react'
 import { loadFont } from '../internal/loadFont'
 import {
   isOffAspectBackground,
@@ -5,8 +7,6 @@ import {
   wrapPosterframeTitle,
   type PosterframeTemplateId
 } from '../internal/posterframeTemplates'
-import type { Font } from 'opentype.js'
-import { useCallback, useRef, useState } from 'react'
 
 /**
  * Outcome of attempting to load the Cabrito font.

@@ -8,6 +8,15 @@
  */
 
 import {
+  TrelloCardsManager,
+  useTrelloCardsManager,
+  useTrelloSelfAssignment
+} from '@features/Trello'
+import { Button } from '@shared/ui/button'
+import { Input } from '@shared/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
+import { cn, formatBreadcrumbDateSimple } from '@shared/utils'
+import {
   AlertTriangle,
   Calendar,
   Camera,
@@ -29,16 +38,11 @@ import {
   Video,
   Wrench
 } from 'lucide-react'
-import { toast } from 'sonner'
 import React, { useEffect, useMemo, useState } from 'react'
-
+import { toast } from 'sonner'
 import { openInShell } from '../api'
 import { useVerifiedPaths } from '../hooks/useVerifiedPaths'
 import { formatFileSize } from '../internal/fieldUtils'
-import { buildProjectChangeRows } from '../utils/changeRows'
-import { Button } from '@shared/ui/button'
-import { Input } from '@shared/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
 import type {
   BreadcrumbsFile,
   BreadcrumbsPreview,
@@ -47,13 +51,7 @@ import type {
   TrelloCard,
   VideoLink
 } from '../types'
-
-import {
-  TrelloCardsManager,
-  useTrelloCardsManager,
-  useTrelloSelfAssignment
-} from '@features/Trello'
-import { cn, formatBreadcrumbDateSimple } from '@shared/utils'
+import { buildProjectChangeRows } from '../utils/changeRows'
 import { ChangeDiffList } from './ChangeDiffList'
 import { VideoLinksManager } from './VideoLinksManager'
 
@@ -557,7 +555,7 @@ const OverviewStats: React.FC<{ breadcrumbs: BreadcrumbsFile }> = ({ breadcrumbs
 
   return (
     <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
-      {stats.map((stat) => (
+      {stats.map(stat => (
         <div key={stat.label} className="bg-muted/40 border-border rounded-lg border p-3">
           <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium">
             {stat.icon}
@@ -599,14 +597,14 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
   const videoLinks: VideoLink[] = breadcrumbs.videoLinks ?? []
 
   const cardIds = useMemo(
-    () => (manager.trelloCards ?? []).map((card) => card.cardId),
+    () => (manager.trelloCards ?? []).map(card => card.cardId),
     [manager.trelloCards]
   )
   const assignment = useTrelloSelfAssignment({ cardIds, trelloApiKey, trelloApiToken })
 
   // Hide the legacy row once a linked card with the same id exists (migrated)
   const legacyMigrated =
-    legacyCardId !== null && linkedCards.some((card) => card.cardId === legacyCardId)
+    legacyCardId !== null && linkedCards.some(card => card.cardId === legacyCardId)
   const showLegacy = !!legacyUrl && !legacyMigrated
 
   const { setCardUrl, handleFetchAndAdd, cardUrl } = manager
@@ -643,7 +641,7 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
         </p>
       ) : (
         <div className="space-y-2">
-          {linkedCards.map((card) => (
+          {linkedCards.map(card => (
             <ResourceRow
               key={card.cardId}
               icon={<CreditCard className="h-4 w-4" />}
@@ -659,7 +657,7 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
             />
           ))}
 
-          {videoLinks.map((video) => (
+          {videoLinks.map(video => (
             <ResourceRow
               key={video.url}
               icon={<Video className="h-4 w-4" />}
@@ -823,12 +821,12 @@ const FilesTab: React.FC<{ files?: FileInfo[] }> = ({ files }) => {
   // row would be one IPC message per row - hundreds on a normal shoot. Probing
   // the whole set rather than the filtered set also means the summary count does
   // not change as the user types in the filter box.
-  const allPaths = useMemo(() => (files ?? []).map((file) => file.path), [files])
+  const allPaths = useMemo(() => (files ?? []).map(file => file.path), [files])
   const { isPresent, missingCount, probedCount } = useVerifiedPaths(allPaths)
 
   const cameraGroups = useMemo(() => {
     const filtered = (files ?? []).filter(
-      (file) =>
+      file =>
         query.trim() === '' ||
         file.name.toLowerCase().includes(query.toLowerCase()) ||
         file.path.toLowerCase().includes(query.toLowerCase())
@@ -852,7 +850,7 @@ const FilesTab: React.FC<{ files?: FileInfo[] }> = ({ files }) => {
   }
 
   const toggleCamera = (camera: number) => {
-    setCollapsedCameras((prev) => {
+    setCollapsedCameras(prev => {
       const next = new Set(prev)
       if (next.has(camera)) {
         next.delete(camera)
@@ -869,7 +867,7 @@ const FilesTab: React.FC<{ files?: FileInfo[] }> = ({ files }) => {
         <Input
           placeholder="Filter files…"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={e => setQuery(e.target.value)}
           className="h-8 max-w-64 text-xs"
         />
         {/*

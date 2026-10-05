@@ -4,11 +4,9 @@
  * Issue #189 (B3.4, B3.5)
  */
 
+import { useAppStore } from '@shared/store'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-
-import { useAppStore } from '@shared/store'
-
 import { POSTERFRAME_TEMPLATE_STORAGE_KEY } from '../internal/posterframeTemplates'
 import { usePosterframeTemplate } from './usePosterframeTemplate'
 

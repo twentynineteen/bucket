@@ -18,19 +18,19 @@
  * two of these tests beyond use.
  */
 
-import { test, expect } from '@playwright/test'
-import { BuildProjectPage } from '../pages/BuildProjectPage'
+import { expect, test } from '@playwright/test'
+import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
-import { SCENARIOS, generateMockFiles } from '../utils/large-file-simulator'
+import { BuildProjectPage } from '../pages/BuildProjectPage'
+import { generateMockFiles, SCENARIOS } from '../utils/large-file-simulator'
 import {
-  MemorySampler,
-  measureMemory,
   collectGarbage,
   formatMemory,
+  measureMemory,
+  MemorySampler,
   readLongestFrameGap,
   startFrameGapProbe
 } from '../utils/memory-monitor'
-import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 
 test.describe('Memory Stability - Long Running Operations', () => {
   test('no memory leak during 50 file operation', async ({ page }) => {
@@ -200,7 +200,7 @@ test.describe('Memory Stability - Long Running Operations', () => {
     console.log(`Operation ran for ${operationDuration}ms`)
     console.log(`Longest frame gap over the operation: ${longestFrameGap.toFixed(0)}ms`)
 
-    interactions.forEach((i) => {
+    interactions.forEach(i => {
       expect(i.success, `${i.action} during transfer`).toBe(true)
     })
 
@@ -351,7 +351,10 @@ test.describe('Memory Stability - Long Running Operations', () => {
       heapMeasurements.push(finalMemory.usedJSHeapSize!)
     }
 
-    console.log('Heap measurements across operations:', heapMeasurements.map(formatMemory))
+    console.log(
+      'Heap measurements across operations:',
+      heapMeasurements.map(formatMemory)
+    )
 
     // Calculate growth trend
     if (heapMeasurements.length >= 2) {
@@ -363,7 +366,6 @@ test.describe('Memory Stability - Long Running Operations', () => {
       expect(growth).toBeLessThan(20 * 1024 * 1024)
     }
   })
-
 })
 
 test.describe('Memory Stability - Stress Tests', { tag: '@slow' }, () => {

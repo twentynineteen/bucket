@@ -19,25 +19,8 @@
  * one test file rather than one per topic.
  */
 import { act, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
-vi.mock('../api', () => ({
-  uploadVideo: vi.fn().mockResolvedValue('op-1'),
-  cancelUpload: vi.fn().mockResolvedValue(true),
-  getVideoDuration: vi.fn().mockResolvedValue(0),
-  openFileDialog: vi.fn(),
-  listenUploadComplete: vi.fn().mockResolvedValue(() => undefined),
-  listenUploadError: vi.fn().mockResolvedValue(() => undefined),
-  listenUploadProgress: vi.fn().mockResolvedValue(() => undefined),
-  listenUploadCancelled: vi.fn().mockResolvedValue(() => undefined),
-  listenUploadStallWarning: vi.fn().mockResolvedValue(() => undefined)
-}))
-vi.mock('sonner', () => ({
-  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() }
-}))
-
 import { toast } from 'sonner'
-
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cancelUpload,
   getVideoDuration,
@@ -56,6 +39,21 @@ import type {
   UploadProgressEvent
 } from '../types'
 import { useFileUpload } from './useFileUpload'
+
+vi.mock('../api', () => ({
+  uploadVideo: vi.fn().mockResolvedValue('op-1'),
+  cancelUpload: vi.fn().mockResolvedValue(true),
+  getVideoDuration: vi.fn().mockResolvedValue(0),
+  openFileDialog: vi.fn(),
+  listenUploadComplete: vi.fn().mockResolvedValue(() => undefined),
+  listenUploadError: vi.fn().mockResolvedValue(() => undefined),
+  listenUploadProgress: vi.fn().mockResolvedValue(() => undefined),
+  listenUploadCancelled: vi.fn().mockResolvedValue(() => undefined),
+  listenUploadStallWarning: vi.fn().mockResolvedValue(() => undefined)
+}))
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() }
+}))
 
 const folder: SelectedSproutFolder = {
   id: 'folder-abc',
@@ -200,11 +198,11 @@ describe('useFileUpload stall handling', () => {
     progressHandlers = []
     errorHandlers = []
 
-    vi.mocked(listenUploadProgress).mockImplementation((callback) => {
+    vi.mocked(listenUploadProgress).mockImplementation(callback => {
       progressHandlers.push(callback)
       return Promise.resolve(() => undefined)
     })
-    vi.mocked(listenUploadError).mockImplementation((callback) => {
+    vi.mocked(listenUploadError).mockImplementation(callback => {
       errorHandlers.push(callback)
       return Promise.resolve(() => undefined)
     })
@@ -376,7 +374,7 @@ describe('useFileUpload cancellation', () => {
 
   beforeEach(() => {
     cancelledHandlers = []
-    vi.mocked(listenUploadCancelled).mockImplementation((callback) => {
+    vi.mocked(listenUploadCancelled).mockImplementation(callback => {
       cancelledHandlers.push(callback)
       return Promise.resolve(() => undefined)
     })

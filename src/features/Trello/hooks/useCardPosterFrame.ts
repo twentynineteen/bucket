@@ -12,12 +12,11 @@
  * link's title, which is why it can't share the upload flow's instance.
  */
 
+import type { VideoLink } from '@features/Baker'
+import { usePosterFrameForUpload } from '@features/Upload'
 import { logger, sproutVideoIdFromUrl } from '@shared/utils'
 import { useState } from 'react'
 import { toast } from 'sonner'
-
-import type { VideoLink } from '@features/Baker'
-import { usePosterFrameForUpload } from '@features/Upload'
 
 export const NO_SPROUT_ID_REASON =
   'No Sprout video ID could be determined from this link.'
@@ -83,7 +82,7 @@ export function useCardPosterFrame({
    * frame (or a replaced video, #282) becomes visible.
    */
   const bumpThumbnailCacheKey = (url: string) => {
-    setThumbnailCacheKeys((current) => ({ ...current, [url]: Date.now() }))
+    setThumbnailCacheKeys(current => ({ ...current, [url]: Date.now() }))
   }
 
   /** Records the refreshed thumbnail, reporting whether the write stuck */

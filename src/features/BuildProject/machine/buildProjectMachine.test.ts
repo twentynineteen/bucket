@@ -8,9 +8,8 @@
 import { invoke } from '@tauri-apps/api/core'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import { exists, mkdir, remove, writeTextFile } from '@tauri-apps/plugin-fs'
-import { createActor } from 'xstate'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { createActor } from 'xstate'
 import { buildProjectMachine, type BuildProjectInput } from './buildProjectMachine'
 
 // Mock Tauri APIs
@@ -98,7 +97,7 @@ describe('BuildProject State Machine', () => {
         )
       }, timeout)
 
-      const subscription = actor.subscribe((snapshot) => {
+      const subscription = actor.subscribe(snapshot => {
         if (snapshot.value === targetState) {
           clearTimeout(timeoutId)
           subscription.unsubscribe()
@@ -314,7 +313,7 @@ describe('BuildProject State Machine', () => {
       actor.start()
 
       const visitedStates: string[] = []
-      actor.subscribe((snapshot) => {
+      actor.subscribe(snapshot => {
         visitedStates.push(String(snapshot.value))
       })
 

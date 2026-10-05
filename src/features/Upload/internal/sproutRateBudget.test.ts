@@ -5,16 +5,15 @@
  * upload. These tests pin that asymmetry, plus the accounting that supports it.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import {
-  BudgetError,
-  RESERVE,
   __budgetState,
   __resetBudget,
+  BudgetError,
   checkBrowseAllowed,
   describeRefusal,
   recordBudget,
   recordRateLimited,
+  RESERVE,
   runBrowseRequest
 } from './sproutRateBudget'
 
@@ -135,7 +134,7 @@ describe('runBrowseRequest', () => {
     const request = vi.fn().mockImplementation(async () => {
       concurrent += 1
       peak = Math.max(peak, concurrent)
-      await new Promise((resolve) => setTimeout(resolve, 5))
+      await new Promise(resolve => setTimeout(resolve, 5))
       concurrent -= 1
       return 'ok'
     })

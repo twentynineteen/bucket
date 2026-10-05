@@ -5,15 +5,14 @@
  * instead of stale cached breadcrumbs data.
  */
 
+import { logger } from '@shared/utils'
 import { useCallback, useState } from 'react'
-
 import {
   bakerReadBreadcrumbs,
   bakerReadRawBreadcrumbs,
   bakerScanCurrentFiles
 } from '../api'
 import type { BreadcrumbsFile, FileInfo } from '../types'
-import { logger } from '@shared/utils'
 
 // Constants
 const RAW_CONTENT_PREVIEW_LIMIT = 200
@@ -24,7 +23,7 @@ const RAW_CONTENT_PREVIEW_LIMIT = 200
  * (usually the recorded numberOfCameras) is used instead.
  */
 const liveCameraCount = (files: FileInfo[], fallback: number): number =>
-  files.length > 0 ? Math.max(...files.map((f) => f.camera)) : fallback
+  files.length > 0 ? Math.max(...files.map(f => f.camera)) : fallback
 
 interface UseLiveBreadcrumbsReaderResult {
   breadcrumbs: BreadcrumbsFile | null

@@ -3,6 +3,9 @@
  * Extracted from UploadTrello.tsx (DEBT-002)
  */
 
+import { type VideoInfoData } from '@features/BuildProject'
+import { appStore } from '@shared/store'
+import { Breadcrumb, SproutUploadResponse } from '@shared/types'
 import { Button } from '@shared/ui/button'
 import {
   Dialog,
@@ -11,15 +14,11 @@ import {
   DialogHeader,
   DialogTitle
 } from '@shared/ui/dialog'
-import { type VideoInfoData } from '@features/BuildProject'
-import { appStore } from '@shared/store'
+import { ExternalLink } from 'lucide-react'
+import React from 'react'
 import CardDetailsAccordion from '../internal/CardDetailsAccordion'
 import TooltipPreview from '../internal/TooltipPreview'
 import VideoInfoTooltip from '../internal/VideoInfoTooltip'
-import { Breadcrumb, SproutUploadResponse } from '@shared/types'
-import { ExternalLink } from 'lucide-react'
-import React from 'react'
-
 import type { SelectedCard, TrelloCard, TrelloMember } from '../types'
 
 interface CardDetailsDialogProps {
@@ -115,7 +114,7 @@ const MembersList: React.FC<MembersListProps> = ({ members }) => (
   <div>
     <h3 className="font-semibold">Members</h3>
     <ul className="ml-5 list-disc text-sm">
-      {members.map((member) => (
+      {members.map(member => (
         <li key={member.id}>{member.fullName}</li>
       ))}
     </ul>

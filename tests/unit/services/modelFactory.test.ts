@@ -10,7 +10,10 @@ import {
   ModelFactory
 } from '@shared/services/ai/modelFactory'
 import { providerRegistry } from '@shared/services/ai/providerConfig'
-import type { ConnectionValidationResult, ProviderAdapter } from '@shared/services/ai/types'
+import type {
+  ConnectionValidationResult,
+  ProviderAdapter
+} from '@shared/services/ai/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock the provider registry

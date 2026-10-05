@@ -5,11 +5,10 @@
  * progress with an elapsed timer during a scan and a results summary after.
  */
 
+import { formatFileSize } from '@shared/utils'
 import { RefreshCw } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
-
 import type { ScanResult } from '../types'
-import { formatFileSize } from '@shared/utils'
 
 interface ScanResultsProps {
   scanResult: ScanResult | null
@@ -89,13 +88,11 @@ export const ScanResults: React.FC<ScanResultsProps> = ({
 
   // Stats after scan completes
   const validBreadcrumbs = scanResult.projects.filter(
-    (p) => p.hasBreadcrumbs && !p.invalidBreadcrumbs
+    p => p.hasBreadcrumbs && !p.invalidBreadcrumbs
   ).length
-  const invalidBreadcrumbs = scanResult.projects.filter(
-    (p) => p.invalidBreadcrumbs
-  ).length
+  const invalidBreadcrumbs = scanResult.projects.filter(p => p.invalidBreadcrumbs).length
   const missingBreadcrumbs = scanResult.projects.filter(
-    (p) => !p.hasBreadcrumbs && !p.invalidBreadcrumbs
+    p => !p.hasBreadcrumbs && !p.invalidBreadcrumbs
   ).length
 
   const elapsedSeconds = scanResult.endTime

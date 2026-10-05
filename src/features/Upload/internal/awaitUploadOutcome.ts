@@ -8,7 +8,6 @@
  * `'buffer'`, which closes the permissive window described below.
  */
 import { logger } from '@shared/utils'
-
 import {
   listenUploadCancelled,
   listenUploadComplete,
@@ -41,8 +40,7 @@ import type {
 export const BACKEND_SILENCE_TIMEOUT_MS = 150_000
 
 export type UploadOutcome =
-  | { kind: 'complete'; video: SproutUploadResponse }
-  | { kind: 'cancelled' }
+  { kind: 'complete'; video: SproutUploadResponse } | { kind: 'cancelled' }
 
 export interface AwaitUploadOutcomeOptions {
   /** Invokes the backend command and resolves with the operation id it registered. */
@@ -178,21 +176,21 @@ export function awaitUploadOutcome(
 
     // At most one of these per 100ms on the Rust side, so any transfer that is
     // alive at all keeps the deadline pushed out.
-    progressUnlisten = listenUploadProgress((event) =>
+    progressUnlisten = listenUploadProgress(event =>
       route({ channel: 'progress', payload: event.payload })
     )
-    completeUnlisten = listenUploadComplete((event) =>
+    completeUnlisten = listenUploadComplete(event =>
       route({ channel: 'complete', payload: event.payload })
     )
-    errorUnlisten = listenUploadError((event) =>
+    errorUnlisten = listenUploadError(event =>
       route({ channel: 'error', payload: event.payload })
     )
-    cancelledUnlisten = listenUploadCancelled((event) =>
+    cancelledUnlisten = listenUploadCancelled(event =>
       route({ channel: 'cancelled', payload: event.payload })
     )
 
     start()
-      .then(async (registeredOperationId) => {
+      .then(async registeredOperationId => {
         if (settled) return
         operationId = registeredOperationId
         onOperationId?.(registeredOperationId)
@@ -202,7 +200,7 @@ export function awaitUploadOutcome(
           if (event.payload.operationId === operationId) await handle(event)
         }
       })
-      .catch(async (error) => {
+      .catch(async error => {
         await cleanup()
         reject(error)
       })

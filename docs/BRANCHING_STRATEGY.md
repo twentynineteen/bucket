@@ -10,6 +10,7 @@ This project uses a **Trunk-Based Development with Release Branch** strategy:
 ## Branch Purposes
 
 ### `master` (Default Branch)
+
 - **Purpose**: Integration and staging
 - **Source**: All feature branches merge here
 - **Target**: PRs from feature branches
@@ -17,6 +18,7 @@ This project uses a **Trunk-Based Development with Release Branch** strategy:
 - **Protection**: CI must pass, code review required
 
 ### `release` (Production Branch)
+
 - **Purpose**: Production-ready, stable code
 - **Source**: Merge commits from `master` release PRs — **never squash** (see Merge Methods)
 - **Target**: PRs only from `master` branch
@@ -27,11 +29,11 @@ This project uses a **Trunk-Based Development with Release Branch** strategy:
 
 The merge method matters. Use the right one per PR type:
 
-| PR type | Method | Why |
-|---------|--------|-----|
-| feature → `master` | **Squash and merge** | One clean commit per change on master |
+| PR type              | Method                    | Why                                           |
+| -------------------- | ------------------------- | --------------------------------------------- |
+| feature → `master`   | **Squash and merge**      | One clean commit per change on master         |
 | `master` → `release` | **Create a merge commit** | Preserves shared history between the branches |
-| hotfix → `release` | **Create a merge commit** | Same reason; merge back to master afterwards |
+| hotfix → `release`   | **Create a merge commit** | Same reason; merge back to master afterwards  |
 
 > ⚠️ **Never squash-merge a release PR.** Squashing `master` → `release` writes a brand-new
 > commit onto `release` that `master` doesn't share, permanently forking the two histories.
@@ -107,6 +109,7 @@ gh pr create --base release --head master \
 ### 4. Post-Release
 
 After merging to `release`:
+
 - GitHub Actions automatically builds the app
 - Creates a GitHub release with changelog
 - Attaches built artifacts (DMG, etc.)
@@ -153,16 +156,16 @@ After merging to `release`:
 
 ## Quick Reference
 
-| Action | Command |
-|--------|---------|
-| Start new feature | `git checkout master && git pull && git checkout -b feature/name` |
-| Create PR to master | `gh pr create --base master` |
-| Bump patch version | `bun run version:patch` |
-| Bump minor version | `bun run version:minor` |
-| Bump major version | `bun run version:major` |
-| Create release PR | `gh pr create --base release --head master` |
-| Merge release PR | "Create a merge commit" — never squash |
-| View current version | `node -p "require('./package.json').version"` |
+| Action               | Command                                                           |
+| -------------------- | ----------------------------------------------------------------- |
+| Start new feature    | `git checkout master && git pull && git checkout -b feature/name` |
+| Create PR to master  | `gh pr create --base master`                                      |
+| Bump patch version   | `bun run version:patch`                                           |
+| Bump minor version   | `bun run version:minor`                                           |
+| Bump major version   | `bun run version:major`                                           |
+| Create release PR    | `gh pr create --base release --head master`                       |
+| Merge release PR     | "Create a merge commit" — never squash                            |
+| View current version | `node -p "require('./package.json').version"`                     |
 
 ## Version Numbering (Semantic Versioning)
 
@@ -212,6 +215,7 @@ gh pr create --base release --head master \
 ## Troubleshooting
 
 ### "Cannot merge to release - not up to date"
+
 ```bash
 # Make sure master has all changes from release
 git checkout master
@@ -220,6 +224,7 @@ git push origin master
 ```
 
 ### "CI failing on release PR"
+
 - Ensure all tests pass on master first
 - Check that version was incremented properly
 - Verify Cargo.lock is updated (run `cargo check` in src-tauri/)
@@ -243,6 +248,7 @@ The release PR will report mergeable again. Prevent recurrence by merging releas
 PRs with a merge commit (see Merge Methods).
 
 ### "Want to hotfix production"
+
 ```bash
 # Create hotfix branch from release
 git checkout release && git pull

@@ -3,7 +3,9 @@
  * Feature: 004-embed-multiple-video
  */
 
-import { openExternalUrl } from '../api'
+import type { TrelloCard } from '@features/Baker'
+import { Button } from '@shared/ui/button'
+import { logger } from '@shared/utils'
 import {
   ExternalLink,
   Loader2,
@@ -12,10 +14,7 @@ import {
   UserCheck,
   UserPlus
 } from 'lucide-react'
-
-import { Button } from '@shared/ui/button'
-import type { TrelloCard } from '@features/Baker'
-import { logger } from '@shared/utils'
+import { openExternalUrl } from '../api'
 
 interface TrelloCardItemProps {
   trelloCard: TrelloCard

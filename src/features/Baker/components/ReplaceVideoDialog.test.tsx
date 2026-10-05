@@ -8,9 +8,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
-
-import { ReplaceVideoDialog } from './ReplaceVideoDialog'
-import type { ReplaceVideoDialogProps } from './ReplaceVideoDialog'
+import { ReplaceVideoDialog, type ReplaceVideoDialogProps } from './ReplaceVideoDialog'
 
 const CARDS = [
   { cardId: 'c1', title: 'Card One', boardName: 'MSc Board' },

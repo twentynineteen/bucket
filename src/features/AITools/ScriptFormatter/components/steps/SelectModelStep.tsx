@@ -3,24 +3,22 @@
  * Step 2: AI Provider and Model Selection
  */
 
-import { Button } from '@shared/ui/button'
-import { Database, Sparkles } from 'lucide-react'
-import React from 'react'
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
 } from '@shared/ui/accordion'
-import type { ExampleWithMetadata } from '../../../types'
+import { Button } from '@shared/ui/button'
+import { Database, Sparkles } from 'lucide-react'
+import React from 'react'
 import type {
   AIModel,
   AIProvider,
+  ExampleWithMetadata,
   ProviderConfiguration,
   ScriptDocument
 } from '../../../types'
-
 import { ExampleToggleList } from '../ExampleToggleList'
 import { ModelSelector } from '../ModelSelector'
 import { ProviderSelector } from '../ProviderSelector'

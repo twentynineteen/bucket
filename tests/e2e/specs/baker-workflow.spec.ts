@@ -18,7 +18,6 @@
  * emitted event, so the project list is deliberately awaited generously.
  */
 import { expect, test, type Page } from '@playwright/test'
-
 import { SCAN_ROOT, setupTauriMocks } from '../fixtures/mocks.fixture'
 
 const CURRENT_PROJECT = 'Project One'

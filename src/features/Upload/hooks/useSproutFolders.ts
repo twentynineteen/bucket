@@ -10,7 +10,6 @@ import { CACHE } from '@shared/constants'
 import { isAuthError, isRateLimited, queryKeys } from '@shared/lib'
 import type { GetFoldersResponse } from '@shared/types'
 import { useQuery } from '@tanstack/react-query'
-
 import { getFolders } from '../api'
 import { useDebouncedFlag } from './useDebouncedFlag'
 

@@ -5,8 +5,7 @@
  * in E2E tests. Encapsulates locators and common actions.
  */
 
-import type { Page, Locator } from '@playwright/test'
-import { expect } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 /**
  * How long a navigation to this page may take to render, which is deliberately
@@ -59,7 +58,9 @@ export class BuildProjectPage {
 
     // Page elements - using text content and roles for reliability
     this.pageTitle = page.getByRole('heading', { name: 'Build a Project' })
-    this.titleInput = page.getByPlaceholder('e.g. DBA - IB1234 - J Doe - Introductions 060626')
+    this.titleInput = page.getByPlaceholder(
+      'e.g. DBA - IB1234 - J Doe - Introductions 060626'
+    )
     this.camerasInput = page.getByRole('spinbutton', { name: /number of cameras/i })
     this.folderSelector = page.getByRole('button', { name: /select destination/i })
 
@@ -157,7 +158,9 @@ export class BuildProjectPage {
     // Wait for it to appear with a reasonable timeout
     await this.clearAllButton.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
       // If Clear button doesn't appear, the form might already be in reset state
-      console.log('[BuildProjectPage] Clear button not visible, form may already be reset')
+      console.log(
+        '[BuildProjectPage] Clear button not visible, form may already be reset'
+      )
     })
     if (await this.clearAllButton.isVisible()) {
       await this.clearAllButton.click()
@@ -177,7 +180,10 @@ export class BuildProjectPage {
   async getProgress(): Promise<number> {
     try {
       // Look for text like "50.0%" or "100%"
-      const progressText = await this.page.locator('text=/\\d+\\.?\\d*%/').first().textContent()
+      const progressText = await this.page
+        .locator('text=/\\d+\\.?\\d*%/')
+        .first()
+        .textContent()
       if (progressText) {
         const match = progressText.match(/(\d+\.?\d*)%/)
         if (match) {

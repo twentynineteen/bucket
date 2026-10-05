@@ -14,11 +14,7 @@
  * Stages execute in this order: validation -> folders -> template -> breadcrumbs -> file-transfer
  */
 export type StageName =
-  | 'validation'
-  | 'folders'
-  | 'template'
-  | 'breadcrumbs'
-  | 'file-transfer'
+  'validation' | 'folders' | 'template' | 'breadcrumbs' | 'file-transfer'
 
 /**
  * Current execution status of a stage

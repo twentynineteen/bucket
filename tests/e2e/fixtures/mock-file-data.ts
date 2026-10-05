@@ -4,7 +4,11 @@
  * Pre-configured test data for BuildProject E2E tests
  */
 
-import { SCENARIOS, generateMockFiles, type MockFile } from '../utils/large-file-simulator'
+import {
+  generateMockFiles,
+  SCENARIOS,
+  type MockFile
+} from '../utils/large-file-simulator'
 
 /**
  * Pre-configured file sets for different test scenarios
@@ -67,7 +71,9 @@ export function generateCustomFiles(
 
   const videoExtensions = ['mp4', 'mov', 'mxf', 'braw']
   const imageExtensions = ['jpeg', 'jpg', 'png']
-  const extensions = includeImages ? [...videoExtensions, ...imageExtensions] : videoExtensions
+  const extensions = includeImages
+    ? [...videoExtensions, ...imageExtensions]
+    : videoExtensions
 
   return Array.from({ length: count }, (_, i) => {
     // Camera assignment based on distribution
@@ -115,7 +121,7 @@ export function generateFilesWithFailures(
   const files = generateMockFiles(count, numCameras, SCENARIOS.MEDIUM)
 
   // Mark which files will fail (for reference)
-  const validFailureIndices = failureIndices.filter((i) => i >= 0 && i < count)
+  const validFailureIndices = failureIndices.filter(i => i >= 0 && i < count)
 
   return {
     files,

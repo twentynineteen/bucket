@@ -34,11 +34,9 @@
  * reset()
  */
 
+import { logger } from '@shared/utils'
 import { useMachine } from '@xstate/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-
-import { logger } from '@shared/utils'
-
 import { listenFileTransferProgress } from '../api'
 import {
   buildProjectMachine,
@@ -209,7 +207,7 @@ export function useBuildProject(): UseBuildProjectReturn {
         // Forward throttled progress events from the new Rust transfer command
         // (`transfer_files_with_progress`) into the state machine as
         // PROGRESS_UPDATE so `context.progress` stays current during a transfer.
-        progressUnlisten = await listenFileTransferProgress((event) => {
+        progressUnlisten = await listenFileTransferProgress(event => {
           if (!isMounted) return
           send({ type: 'PROGRESS_UPDATE', progress: event.payload.percentage })
         })

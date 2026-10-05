@@ -14,7 +14,7 @@
  * Delete this file and a spec can go unexecuted with no signal.
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -45,7 +45,7 @@ interface Listing {
 
 /** Every `*.spec.ts` file under `tests/e2e`, relative to that directory. */
 function specFilesOnDisk(dir: string = e2eRoot): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+  return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) return specFilesOnDisk(full)
     if (!entry.name.endsWith('.spec.ts')) return []
@@ -97,8 +97,8 @@ function trackedConfigs(): string[] {
 function workflowSources(): string[] {
   const dir = path.join(repoRoot, '.github', 'workflows')
   return readdirSync(dir)
-    .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
-    .map((name) => readFileSync(path.join(dir, name), 'utf8'))
+    .filter(name => name.endsWith('.yml') || name.endsWith('.yaml'))
+    .map(name => readFileSync(path.join(dir, name), 'utf8'))
 }
 
 /** Distinct `--project=<name>` arguments across every workflow. */
@@ -164,9 +164,9 @@ describe('E2E spec discovery', () => {
   })
 
   it('runs every spec file under tests/e2e, with no config entry per file', () => {
-    const discovered = new Set(tests.map((test) => test.file))
+    const discovered = new Set(tests.map(test => test.file))
     const missing = specFilesOnDisk()
-      .filter((file) => !discovered.has(file))
+      .filter(file => !discovered.has(file))
       .sort()
 
     expect(missing).toEqual([])
@@ -174,14 +174,14 @@ describe('E2E spec discovery', () => {
 
   it('has no project that resolves to zero tests', () => {
     const empty = listing.config.projects
-      .map((project) => project.name)
-      .filter((name) => !tests.some((test) => test.project === name))
+      .map(project => project.name)
+      .filter(name => !tests.some(test => test.project === name))
 
     expect(empty).toEqual([])
   })
 
   it('runs every configured project from a workflow, and names only real ones', () => {
-    const configured = listing.config.projects.map((project) => project.name).sort()
+    const configured = listing.config.projects.map(project => project.name).sort()
 
     expect(invokedProjects().sort()).toEqual(configured)
   })

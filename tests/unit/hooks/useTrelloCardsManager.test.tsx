@@ -7,7 +7,6 @@
  *  2. The breadcrumbs file was read before the new card finished persisting.
  */
 
-import { useTrelloCardsManager } from '@features/Trello/hooks/useTrelloCardsManager'
 import {
   generateBreadcrumbsBlock,
   updateTrelloCardWithBreadcrumbs
@@ -15,10 +14,10 @@ import {
 import { fetchTrelloCardById, readBreadcrumbsFile } from '@features/Trello/api'
 import { useBreadcrumbsTrelloCards } from '@features/Trello/hooks/useBreadcrumbsTrelloCards'
 import { useTrelloBoard } from '@features/Trello/hooks/useTrelloBoard'
+import { useTrelloCardsManager } from '@features/Trello/hooks/useTrelloCardsManager'
 import { useFuzzySearch } from '@shared/hooks'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import type { Mock } from 'vitest'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
 
 vi.mock('@features/Trello/api', () => ({
   readBreadcrumbsFile: vi.fn(),
@@ -148,7 +147,7 @@ describe('useTrelloCardsManager auto-sync', () => {
 
     // Every linked card in the file gets updated, not just 'ccc'
     expect(mockUpdateCard).toHaveBeenCalledTimes(3)
-    const syncedIds = mockUpdateCard.mock.calls.map((call) => call[0].id)
+    const syncedIds = mockUpdateCard.mock.calls.map(call => call[0].id)
     expect(syncedIds).toEqual(['aaa', 'bbb', 'ccc'])
 
     // Each card's live description is fetched + preserved, breadcrumbs replaced

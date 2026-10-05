@@ -8,14 +8,13 @@
  * listing in flight, folder unusable, and folder empty.
  */
 
+import { useApiKeys } from '@shared/hooks'
+import { useAppStore } from '@shared/store'
+import { logger } from '@shared/utils'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import { useAppStore } from '@shared/store'
-import { logger } from '@shared/utils'
-
 import * as api from '../api'
 import { useBackgroundFolder } from './useBackgroundFolder'
 
@@ -27,12 +26,10 @@ vi.mock('@shared/hooks', () => ({
   useApiKeys: vi.fn()
 }))
 
-vi.mock('@shared/utils', async (importOriginal) => {
+vi.mock('@shared/utils', async importOriginal => {
   const actual = await importOriginal<typeof import('@shared/utils')>()
   return { ...actual, logger: { ...actual.logger, error: vi.fn(), warn: vi.fn() } }
 })
-
-import { useApiKeys } from '@shared/hooks'
 
 const DEFAULT_FOLDER = '/backgrounds'
 const SESSION_FOLDER = '/Volumes/Media/bgs'

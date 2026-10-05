@@ -1,7 +1,6 @@
-import { AccordionContent, AccordionItem, AccordionTrigger } from '@shared/ui/accordion'
 import { type VideoInfoData } from '@features/BuildProject'
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@shared/ui/accordion'
 import React from 'react'
-
 import KeyValueRow from './KeyValueRow'
 import VideoThumbnail from './VideoThumbnail'
 

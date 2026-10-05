@@ -9,11 +9,9 @@
  * - Transition callbacks
  */
 
+import type { ScriptDocument } from '@shared/types'
 import { createNamespacedLogger } from '@shared/utils'
 import { useCallback, useState } from 'react'
-
-import type { ScriptDocument } from '@shared/types'
-
 import { useDocxParser } from './useDocxParser'
 
 const log = createNamespacedLogger('ScriptUpload')

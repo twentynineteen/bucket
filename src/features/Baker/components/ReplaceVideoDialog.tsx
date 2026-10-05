@@ -7,11 +7,11 @@
  * the warning and there is no second modal on top of it.
  */
 
-import { AlertCircle, AlertTriangle, FileVideo, Loader2, Replace } from 'lucide-react'
-
-import type { ReplaceUploadProgress, ReplaceUploadStatus } from '@features/Upload'
-import { formatTransferredBytes } from '@features/Upload'
-
+import {
+  formatTransferredBytes,
+  type ReplaceUploadProgress,
+  type ReplaceUploadStatus
+} from '@features/Upload'
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
 import { Checkbox } from '@shared/ui/checkbox'
@@ -25,6 +25,7 @@ import {
 } from '@shared/ui/dialog'
 import { Label } from '@shared/ui/label'
 import { Progress } from '@shared/ui/progress'
+import { AlertCircle, AlertTriangle, FileVideo, Loader2, Replace } from 'lucide-react'
 
 export type ReplacePosterMode = 'keep' | 'new'
 
@@ -83,7 +84,7 @@ export function ReplaceVideoDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => {
+      onOpenChange={next => {
         // Closing mid-transfer would leave Rust streaming with nothing watching it
         if (!next && transferring) return
         onOpenChange(next)
@@ -167,7 +168,7 @@ export function ReplaceVideoDialog({
                 <Checkbox
                   id="replace-trello-comment"
                   checked={trello.enabled}
-                  onCheckedChange={(checked) => trello.onEnabledChange(checked === true)}
+                  onCheckedChange={checked => trello.onEnabledChange(checked === true)}
                   disabled={transferring}
                 />
                 <Label htmlFor="replace-trello-comment" className="cursor-pointer">
@@ -178,7 +179,7 @@ export function ReplaceVideoDialog({
               {trello.enabled && (
                 <div className="space-y-3 pl-6">
                   <div className="space-y-2">
-                    {trello.cards.map((card) => {
+                    {trello.cards.map(card => {
                       const id = `replace-trello-card-${card.cardId}`
                       return (
                         <div key={card.cardId} className="flex items-start gap-2">
@@ -206,7 +207,7 @@ export function ReplaceVideoDialog({
                     <textarea
                       id="replace-trello-text"
                       value={trello.text}
-                      onChange={(event) => trello.onTextChange(event.target.value)}
+                      onChange={event => trello.onTextChange(event.target.value)}
                       rows={3}
                       maxLength={1000}
                       disabled={transferring}

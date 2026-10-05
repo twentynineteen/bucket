@@ -5,24 +5,12 @@
  */
 
 import {
-  fileNameToTitle,
-  formatDurationSuffix,
-  logger,
-  validateVideoLink
-} from '@shared/utils'
-import { useState } from 'react'
-
-import type { BreadcrumbsFile, VideoLink } from '@features/Baker'
-
-import { useSproutVideoApiKey, useTrelloApiKeys } from '@shared/hooks'
-import {
   generateBreadcrumbsBlock,
-  updateTrelloCardWithBreadcrumbs
+  updateTrelloCardWithBreadcrumbs,
+  useBreadcrumbsVideoLinks,
+  type BreadcrumbsFile,
+  type VideoLink
 } from '@features/Baker'
-import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
-import { useCardPosterFrame } from './useCardPosterFrame'
-import { useReplaceVideo } from './useReplaceVideo'
-import { useBreadcrumbsVideoLinks } from '@features/Baker'
 import {
   useFileUpload,
   usePosterFrameForUpload,
@@ -31,8 +19,18 @@ import {
   useSproutVideoProcessor,
   useUploadEvents
 } from '@features/Upload'
-
+import { useSproutVideoApiKey, useTrelloApiKeys } from '@shared/hooks'
+import {
+  fileNameToTitle,
+  formatDurationSuffix,
+  logger,
+  validateVideoLink
+} from '@shared/utils'
+import { useState } from 'react'
 import { bakerReadBreadcrumbs, fetchTrelloCardById, updateTrelloCard } from '../api'
+import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
+import { useCardPosterFrame } from './useCardPosterFrame'
+import { useReplaceVideo } from './useReplaceVideo'
 
 interface UseVideoLinksManagerProps {
   projectPath: string
@@ -152,10 +150,10 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     selectedFile,
     uploading,
     enabled: addMode === 'upload',
-    onVideoReady: (videoLink) => {
+    onVideoReady: videoLink => {
       void finishUpload(videoLink)
     },
-    onError: (error) => {
+    onError: error => {
       setValidationErrors([error])
     }
   })
@@ -255,7 +253,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
   const handleSelectUploadFile = async () => {
     const file = await selectFile()
     if (file) {
-      setFormData((prev) => ({ ...prev, title: fileNameToTitle(file) }))
+      setFormData(prev => ({ ...prev, title: fileNameToTitle(file) }))
     }
   }
 
@@ -294,7 +292,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
 
   // Only offer a rename when at least one linked card would actually change
   const renameProposal =
-    proposedCardName && trelloCards?.some((card) => card.title !== proposedCardName)
+    proposedCardName && trelloCards?.some(card => card.title !== proposedCardName)
       ? proposedCardName
       : null
 
@@ -346,7 +344,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
 
     const newCardName = options?.renameToVideoTitle ? await resolveRenameCardName() : null
 
-    const updatePromises = selectedCardIndexes.map(async (index) => {
+    const updatePromises = selectedCardIndexes.map(async index => {
       const card = trelloCards[index]
       const fullCard = await fetchTrelloCardById(card.cardId, trelloApiKey, trelloToken)
 
@@ -420,7 +418,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
   }
 
   const updateFormField = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormData(prev => ({ ...prev, [field]: value }))
     if (field === 'url') {
       setFetchError(null)
     }

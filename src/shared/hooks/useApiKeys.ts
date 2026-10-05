@@ -1,7 +1,7 @@
 import { CACHE } from '@shared/constants'
 import { queryKeys } from '@shared/lib'
-import { useQuery } from '@tanstack/react-query'
 import { ApiKeys, loadApiKeys } from '@shared/utils'
+import { useQuery } from '@tanstack/react-query'
 
 export const useApiKeys = () => {
   return useQuery<ApiKeys>({

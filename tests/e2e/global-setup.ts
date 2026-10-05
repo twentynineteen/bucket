@@ -73,7 +73,7 @@ async function waitForServer(baseURL: string, deadline: number): Promise<void> {
           'This is the dev server, not the application under test.'
       )
     }
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+    await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
   }
 }
 

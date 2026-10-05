@@ -12,10 +12,10 @@
  * Mocking strategy: mock the Baker api.ts module; no direct @tauri-apps imports.
  */
 
-import type { BatchUpdateResult } from '../../src/features/Baker/types'
-import { useBreadcrumbsManager } from '../../src/features/Baker/hooks/useBreadcrumbsManager'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useBreadcrumbsManager } from '../../src/features/Baker/hooks/useBreadcrumbsManager'
+import type { BatchUpdateResult } from '../../src/features/Baker/types'
 
 // Mock the Baker api.ts layer (single I/O boundary for all Baker external calls)
 vi.mock('../../src/features/Baker/api', () => ({
@@ -101,7 +101,7 @@ describe('US-04 — Baker: Batch Breadcrumbs Update (US-04c)', () => {
     expect(bakerUpdateBreadcrumbs).toHaveBeenCalledWith(
       projectPaths,
       true, // createMissing
-      true  // backupOriginals
+      true // backupOriginals
     )
     expect(updateResult?.successful).toHaveLength(2)
     expect(updateResult?.created).toHaveLength(1)
@@ -138,7 +138,7 @@ describe('US-04 — Baker: Batch Breadcrumbs Update (US-04c)', () => {
     const { bakerUpdateBreadcrumbs } = await import('../../src/features/Baker/api')
 
     let resolveUpdate: (() => void) | undefined
-    const slowUpdate = new Promise<BatchUpdateResult>((resolve) => {
+    const slowUpdate = new Promise<BatchUpdateResult>(resolve => {
       resolveUpdate = () =>
         resolve({ successful: [], failed: [], created: [], updated: [] })
     })

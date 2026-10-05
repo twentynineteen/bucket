@@ -161,7 +161,7 @@ export function generateVariableSizeFiles(
 
   // Create weighted array for random selection
   const weightedSizes: number[] = []
-  sizeBuckets.forEach((bucket) => {
+  sizeBuckets.forEach(bucket => {
     for (let i = 0; i < bucket.weight; i++) {
       weightedSizes.push(bucket.size)
     }
@@ -222,7 +222,10 @@ export function generateMultiVolumeFiles(
 /**
  * Generate a single large file for intra-file progress testing
  */
-export function generateSingleLargeFile(sizeBytes: number, basePath?: string): MockFile[] {
+export function generateSingleLargeFile(
+  sizeBytes: number,
+  basePath?: string
+): MockFile[] {
   const path = basePath || '/mock/volumes/Production'
   return [
     {
@@ -246,7 +249,9 @@ export function calculateSimulationDuration(
   // Base duration: progressIntervalMs * estimated events per file * fileCount
   const eventsPerFile = Math.ceil(scenario.averageFileSize / (8 * 1024)) // 8KB buffer
   const throttledEvents = Math.ceil(eventsPerFile / 10) // Throttled to ~10 events per file
-  return (scenario.progressIntervalMs * throttledEvents * scenario.fileCount) / speedMultiplier
+  return (
+    (scenario.progressIntervalMs * throttledEvents * scenario.fileCount) / speedMultiplier
+  )
 }
 
 /**

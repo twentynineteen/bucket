@@ -6,7 +6,6 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-
 import {
   bakerCancelScan,
   bakerGetScanStatus,
@@ -16,7 +15,6 @@ import {
   listenScanError,
   listenScanProgress
 } from '../api'
-
 import type { ScanOptions, ScanResult, UseBakerScanResult } from '../types'
 
 export function useBakerScan(): UseBakerScanResult {
@@ -64,10 +62,10 @@ export function useBakerScan(): UseBakerScanResult {
 
     // Progress event listener
     unlistenPromises.push(
-      listenScanProgress((event) => {
+      listenScanProgress(event => {
         const progressData = event.payload
         if (progressData.scanId === scanIdRef.current) {
-          setScanResult((prev) =>
+          setScanResult(prev =>
             prev
               ? {
                   ...prev,
@@ -82,7 +80,7 @@ export function useBakerScan(): UseBakerScanResult {
 
     // Completion event listener
     unlistenPromises.push(
-      listenScanComplete((event) => {
+      listenScanComplete(event => {
         const completeData = event.payload
         if (completeData.scanId === scanIdRef.current) {
           completeScan(completeData.result)
@@ -92,7 +90,7 @@ export function useBakerScan(): UseBakerScanResult {
 
     // Error event listener
     unlistenPromises.push(
-      listenScanError((event) => {
+      listenScanError(event => {
         const errorData = event.payload
         if (errorData.scanId === scanIdRef.current) {
           failScan(errorData.error.message)
@@ -103,8 +101,8 @@ export function useBakerScan(): UseBakerScanResult {
     // Clean up listeners on unmount only
     return () => {
       Promise.all(unlistenPromises)
-        .then((unlisteners) => {
-          unlisteners.forEach((unlisten) => {
+        .then(unlisteners => {
+          unlisteners.forEach(unlisten => {
             if (unlisten && typeof unlisten === 'function') {
               unlisten()
             }
@@ -193,11 +191,11 @@ export function useBakerScan(): UseBakerScanResult {
   // it into the current results without requiring a full rescan.
   const refreshProject = useCallback(async (projectPath: string) => {
     const updated = await bakerValidateFolder(projectPath)
-    setScanResult((prev) =>
+    setScanResult(prev =>
       prev
         ? {
             ...prev,
-            projects: prev.projects.map((p) => (p.path === projectPath ? updated : p))
+            projects: prev.projects.map(p => (p.path === projectPath ? updated : p))
           }
         : prev
     )

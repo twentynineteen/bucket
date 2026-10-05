@@ -5,27 +5,13 @@
  */
 
 import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
-  Image as ImageIcon,
-  Loader2,
-  Plus,
-  Upload as UploadIcon
-} from 'lucide-react'
-import type { RefObject } from 'react'
-
-import type {
-  PosterframeTemplateId,
-  SelectedSproutFolder,
-  UploadMessage
-} from '@features/Upload'
-import {
   formatTransferredBytes,
   SproutFolderPicker,
-  TitleNamingGuide
+  TitleNamingGuide,
+  type PosterframeTemplateId,
+  type SelectedSproutFolder,
+  type UploadMessage
 } from '@features/Upload'
-
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
 import { Checkbox } from '@shared/ui/checkbox'
@@ -48,6 +34,16 @@ import {
   SelectValue
 } from '@shared/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Image as ImageIcon,
+  Loader2,
+  Plus,
+  Upload as UploadIcon
+} from 'lucide-react'
+import type { RefObject } from 'react'
 
 // Type definitions for grouped parameters
 export interface DialogState {
@@ -299,7 +295,7 @@ function UrlEntryContent({
             id="video-url"
             placeholder="https://sproutvideo.com/videos/..."
             value={form.formData.url}
-            onChange={(e) => form.onFormFieldChange('url', e.target.value)}
+            onChange={e => form.onFormFieldChange('url', e.target.value)}
             className="flex-1"
           />
           <Button
@@ -335,12 +331,12 @@ function UrlEntryContent({
           id="video-title"
           placeholder="Video title"
           value={form.formData.title}
-          onChange={(e) => form.onFormFieldChange('title', e.target.value)}
+          onChange={e => form.onFormFieldChange('title', e.target.value)}
           maxLength={200}
         />
         <TitleNamingGuide
           title={form.formData.title}
-          onTitleChange={(next) => form.onFormFieldChange('title', next)}
+          onTitleChange={next => form.onFormFieldChange('title', next)}
         />
       </div>
 
@@ -350,7 +346,7 @@ function UrlEntryContent({
           id="sprout-id"
           placeholder="abc123xyz"
           value={form.formData.sproutVideoId}
-          onChange={(e) => form.onFormFieldChange('sproutVideoId', e.target.value)}
+          onChange={e => form.onFormFieldChange('sproutVideoId', e.target.value)}
         />
       </div>
 
@@ -360,7 +356,7 @@ function UrlEntryContent({
           id="thumbnail-url"
           placeholder="https://..."
           value={form.formData.thumbnailUrl}
-          onChange={(e) => form.onFormFieldChange('thumbnailUrl', e.target.value)}
+          onChange={e => form.onFormFieldChange('thumbnailUrl', e.target.value)}
         />
       </div>
 
@@ -407,7 +403,7 @@ function PosterFrameContent({
         <Checkbox
           id="create-poster-frame"
           checked={posterFrame.enabled}
-          onCheckedChange={(checked) => posterFrame.onEnabledChange(checked === true)}
+          onCheckedChange={checked => posterFrame.onEnabledChange(checked === true)}
           disabled={!posterFrame.available}
         />
         <div className="flex-1">
@@ -430,7 +426,7 @@ function PosterFrameContent({
             <Label htmlFor="poster-frame-template">Template</Label>
             <Select
               value={posterFrame.template}
-              onValueChange={(value) =>
+              onValueChange={value =>
                 posterFrame.onTemplateChange(value as PosterframeTemplateId)
               }
             >
@@ -456,7 +452,7 @@ function PosterFrameContent({
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="max-h-[240px]">
-                {posterFrame.backgrounds.map((file) => (
+                {posterFrame.backgrounds.map(file => (
                   <SelectItem key={file} value={file}>
                     {file.split('/').pop()}
                   </SelectItem>
@@ -470,7 +466,7 @@ function PosterFrameContent({
             <Input
               id="poster-frame-text"
               value={posterFrame.text}
-              onChange={(event) => posterFrame.onTextChange(event.target.value)}
+              onChange={event => posterFrame.onTextChange(event.target.value)}
               maxLength={200}
               disabled={posterFrame.status === 'working'}
             />
@@ -508,9 +504,7 @@ function PosterFrameContent({
             <Checkbox
               id="poster-frame-save-copy"
               checked={posterFrame.saveCopy}
-              onCheckedChange={(checked) =>
-                posterFrame.onSaveCopyChange(checked === true)
-              }
+              onCheckedChange={checked => posterFrame.onSaveCopyChange(checked === true)}
               disabled={posterFrame.status === 'working'}
             />
             <Label htmlFor="poster-frame-save-copy" className="cursor-pointer">
@@ -597,7 +591,7 @@ function UploadContent({
             id="upload-video-title"
             placeholder="Video title on Sprout Video"
             value={form.formData.title}
-            onChange={(e) => form.onFormFieldChange('title', e.target.value)}
+            onChange={e => form.onFormFieldChange('title', e.target.value)}
             maxLength={200}
             disabled={uploadMode.uploading || uploadMode.uploadSuccess}
           />
@@ -606,7 +600,7 @@ function UploadContent({
           </p>
           <TitleNamingGuide
             title={form.formData.title}
-            onTitleChange={(next) => form.onFormFieldChange('title', next)}
+            onTitleChange={next => form.onFormFieldChange('title', next)}
           />
         </div>
       )}

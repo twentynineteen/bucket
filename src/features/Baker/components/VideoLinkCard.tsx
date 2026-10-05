@@ -3,6 +3,8 @@
  * Feature: 004-embed-multiple-video
  */
 
+import { Button } from '@shared/ui/button'
+import { logger } from '@shared/utils'
 import {
   ChevronDown,
   ChevronUp,
@@ -13,11 +15,8 @@ import {
   Video
 } from 'lucide-react'
 import React from 'react'
-
-import { Button } from '@shared/ui/button'
 import { openExternalUrl } from '../api'
 import type { VideoLink } from '../types'
-import { logger } from '@shared/utils'
 
 interface VideoLinkCardProps {
   videoLink: VideoLink

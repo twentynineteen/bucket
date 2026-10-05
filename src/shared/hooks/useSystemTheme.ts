@@ -1,8 +1,7 @@
 // Target: @features/AppShell
-import { useEffect, useState } from 'react'
-import { getCurrentWindow } from '@tauri-apps/api/window'
-
 import { isTauriRuntime } from '@shared/utils'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { useEffect, useState } from 'react'
 
 export type SystemTheme = 'light' | 'dark' | null
 
@@ -48,7 +47,7 @@ export function useSystemTheme() {
 
     // Listen for theme changes
     const setupListener = async () => {
-      const unlisten = await window.onThemeChanged((event) => {
+      const unlisten = await window.onThemeChanged(event => {
         setTheme(event.payload as SystemTheme)
       })
 
@@ -57,7 +56,7 @@ export function useSystemTheme() {
 
     let unlistenFn: (() => void) | null = null
 
-    setupListener().then((fn) => {
+    setupListener().then(fn => {
       unlistenFn = fn
     })
 

@@ -16,11 +16,11 @@
 import { vi } from 'vitest'
 
 type UseFileUploadReturn = ReturnType<
-  typeof import('@features/Upload')['useFileUpload']
+  (typeof import('@features/Upload'))['useFileUpload']
 >
 
 type UseUploadEventsReturn = ReturnType<
-  typeof import('@features/Upload')['useUploadEvents']
+  (typeof import('@features/Upload'))['useUploadEvents']
 >
 
 export function createFileUploadMock(

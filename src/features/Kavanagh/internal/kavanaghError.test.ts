@@ -3,7 +3,6 @@
  */
 
 import { describe, expect, it } from 'vitest'
-
 import { asKavanaghError, isCancellation } from './kavanaghError'
 
 describe('asKavanaghError', () => {

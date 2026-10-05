@@ -1,6 +1,6 @@
 // Target: @features/AppShell
-import { useEffect } from 'react'
 import { Effect, EffectState, getCurrentWindow } from '@tauri-apps/api/window'
+import { useEffect } from 'react'
 import { useSystemTheme } from './useSystemTheme'
 
 /**
@@ -66,7 +66,7 @@ export function useMacOSEffects({
         }
 
         await window.setEffects({
-          effects: activeEffects.map((name) => Effect[name]),
+          effects: activeEffects.map(name => Effect[name]),
           state: EffectState.Active,
           radius: 0
         })

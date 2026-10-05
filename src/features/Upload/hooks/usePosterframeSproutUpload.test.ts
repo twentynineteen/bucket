@@ -5,10 +5,11 @@
  * Issue #142 (B1.2-B1.8, B2.2, B3.1-B3.3, B4.1-B4.6)
  */
 
+import { useSproutVideoApiKey } from '@shared/hooks'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import * as api from '../api'
+import { posterFrameDelay } from '../internal/posterFrame'
 import { usePosterframeSproutUpload } from './usePosterframeSproutUpload'
 
 vi.mock('../api', () => ({
@@ -17,12 +18,12 @@ vi.mock('../api', () => ({
 }))
 
 // The backoff is the one piece that must not really sleep in a test run.
-vi.mock('../internal/posterFrame', async (importOriginal) => {
+vi.mock('../internal/posterFrame', async importOriginal => {
   const actual = await importOriginal<typeof import('../internal/posterFrame')>()
   return { ...actual, posterFrameDelay: vi.fn().mockResolvedValue(undefined) }
 })
 
-vi.mock('@shared/hooks', async (importOriginal) => {
+vi.mock('@shared/hooks', async importOriginal => {
   const actual = await importOriginal<typeof import('@shared/hooks')>()
   return {
     ...actual,
@@ -37,10 +38,6 @@ vi.mock('@shared/hooks', async (importOriginal) => {
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() }
 }))
-
-import { useSproutVideoApiKey } from '@shared/hooks'
-
-import { posterFrameDelay } from '../internal/posterFrame'
 
 const API_KEY = 'sprout-key'
 const BYTES = new Uint8Array([1, 2, 3, 4])
@@ -276,7 +273,7 @@ describe('usePosterframeSproutUpload - outcome', () => {
     let release: (() => void) | undefined
     vi.mocked(api.setSproutPosterFrame).mockImplementation(
       () =>
-        new Promise<void>((resolve) => {
+        new Promise<void>(resolve => {
           release = () => resolve()
         })
     )

@@ -1,9 +1,9 @@
 // tests/unit/pages/BuildProject/ProjectFileList.test.tsx
 
+import ProjectFileList from '@features/BuildProject/components/ProjectFileList'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
-import ProjectFileList from '@features/BuildProject/components/ProjectFileList'
 
 describe('ProjectFileList', () => {
   const mockFiles = [
@@ -69,7 +69,7 @@ describe('ProjectFileList', () => {
       const select = screen.getAllByRole('combobox')[0]
       const options = Array.from(select.querySelectorAll('option'))
       expect(options).toHaveLength(5)
-      expect(options.map((o) => o.textContent)).toEqual([
+      expect(options.map(o => o.textContent)).toEqual([
         'Camera 1',
         'Camera 2',
         'Camera 3',
@@ -114,12 +114,8 @@ describe('ProjectFileList', () => {
     test('camera selector has accessible label', () => {
       render(<ProjectFileList {...defaultProps} />)
 
-      expect(
-        screen.getByLabelText('Select camera for video1.mp4')
-      ).toBeInTheDocument()
-      expect(
-        screen.getByLabelText('Select camera for video2.mp4')
-      ).toBeInTheDocument()
+      expect(screen.getByLabelText('Select camera for video1.mp4')).toBeInTheDocument()
+      expect(screen.getByLabelText('Select camera for video2.mp4')).toBeInTheDocument()
     })
   })
 
@@ -236,13 +232,7 @@ describe('ProjectFileList', () => {
 
   describe('Edge Cases', () => {
     test('handles single file', () => {
-      render(
-        <ProjectFileList
-          {...defaultProps}
-          files={[mockFiles[0]]}
-          numCameras={1}
-        />
-      )
+      render(<ProjectFileList {...defaultProps} files={[mockFiles[0]]} numCameras={1} />)
 
       expect(screen.getByText('video1.mp4')).toBeInTheDocument()
       expect(screen.getAllByRole('combobox')).toHaveLength(1)
@@ -271,7 +261,7 @@ describe('ProjectFileList', () => {
       const specialFiles = [
         {
           file: {
-            name: "video's & \"special\".mp4",
+            name: 'video\'s & "special".mp4',
             path: '/path/to/special.mp4'
           },
           camera: 1
@@ -280,7 +270,7 @@ describe('ProjectFileList', () => {
 
       render(<ProjectFileList {...defaultProps} files={specialFiles} />)
 
-      expect(screen.getByText("video's & \"special\".mp4")).toBeInTheDocument()
+      expect(screen.getByText('video\'s & "special".mp4')).toBeInTheDocument()
     })
 
     test('handles very long file names', () => {
@@ -318,7 +308,7 @@ describe('ProjectFileList', () => {
       expect(items).toHaveLength(3)
 
       // Verify animation styles are applied (check that animation property exists and contains timing)
-      items.forEach((item) => {
+      items.forEach(item => {
         const style = window.getComputedStyle(item)
         expect(style.animation).toContain('ms')
       })
@@ -409,7 +399,7 @@ describe('ProjectFileList', () => {
       // Should still have animation styles for lists under 50 items
       const items = container.querySelectorAll('.group')
       expect(items.length).toBeGreaterThan(0)
-      items.forEach((item) => {
+      items.forEach(item => {
         const style = window.getComputedStyle(item)
         expect(style.animation).toContain('ms')
       })

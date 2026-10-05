@@ -24,7 +24,6 @@ import { Checkbox } from '@shared/ui/checkbox'
 import { Label } from '@shared/ui/label'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import React from 'react'
-
 import type { UseKavanaghForUploadResult } from '../hooks/useKavanaghForUpload'
 
 /** The opt-in, and whatever the last run concluded. */
@@ -41,7 +40,7 @@ export const KavanaghGateControls: React.FC<{
       <Checkbox
         id="kavanagh-before-upload"
         checked={kavanagh.enabled}
-        onCheckedChange={(checked) => kavanagh.setEnabled(checked === true)}
+        onCheckedChange={checked => kavanagh.setEnabled(checked === true)}
         disabled={uploading || kavanagh.checking}
       />
       <div className="grid gap-0.5 leading-none">

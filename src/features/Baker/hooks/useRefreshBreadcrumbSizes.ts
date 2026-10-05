@@ -7,7 +7,6 @@
  */
 
 import { useCallback, useState } from 'react'
-
 import { bakerUpdateBreadcrumbsSizes } from '../api'
 import type { BatchUpdateResult } from '../types'
 

@@ -7,10 +7,18 @@
  * action bar that appears while projects are selected.
  */
 
+import {
+  useBakerTrelloIntegration,
+  useTrelloBoard,
+  useTrelloBoardId
+} from '@features/Trello'
+import { useBreadcrumb } from '@shared/hooks'
+import { Button } from '@shared/ui/button'
+import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { logger } from '@shared/utils'
 import { AlertTriangle, CheckCircle, FolderSearch, RefreshCw } from 'lucide-react'
-import { toast } from 'sonner'
 import React, { useCallback, useMemo, useState } from 'react'
-
+import { toast } from 'sonner'
 import { BakerPreferences } from './components/BakerPreferences'
 import { BatchActions } from './components/BatchActions'
 import { BatchUpdateConfirmationDialog } from './components/BatchUpdateConfirmationDialog'
@@ -27,16 +35,6 @@ import { useBreadcrumbsManager } from './hooks/useBreadcrumbsManager'
 import { useBreadcrumbsPreview } from './hooks/useBreadcrumbsPreview'
 import { useLiveBreadcrumbsReader } from './hooks/useLiveBreadcrumbsReader'
 import { useRepairBreadcrumbs } from './hooks/useRepairBreadcrumbs'
-import { Button } from '@shared/ui/button'
-import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
-
-import {
-  useBakerTrelloIntegration,
-  useTrelloBoard,
-  useTrelloBoardId
-} from '@features/Trello'
-import { useBreadcrumb } from '@shared/hooks'
-import { logger } from '@shared/utils'
 
 const BakerPageContent: React.FC = () => {
   // Set breadcrumbs for navigation
@@ -97,13 +95,12 @@ const BakerPageContent: React.FC = () => {
   const { updateTrelloCards } = useBakerTrelloIntegration({ apiKey, token })
 
   const selectedProjectData = useMemo(
-    () => scanResult?.projects.find((p) => p.path === selectedProject) ?? null,
+    () => scanResult?.projects.find(p => p.path === selectedProject) ?? null,
     [scanResult, selectedProject]
   )
 
   const invalidBreadcrumbsPaths = useMemo(
-    () =>
-      scanResult?.projects.filter((p) => p.invalidBreadcrumbs).map((p) => p.path) ?? [],
+    () => scanResult?.projects.filter(p => p.invalidBreadcrumbs).map(p => p.path) ?? [],
     [scanResult]
   )
 
@@ -137,11 +134,11 @@ const BakerPageContent: React.FC = () => {
 
   const handleProjectSelection = useCallback(
     (projectPath: string, isSelected: boolean) => {
-      setSelectedProjects((prev) => {
+      setSelectedProjects(prev => {
         if (isSelected) {
           return [...prev, projectPath]
         } else {
-          return prev.filter((path) => path !== projectPath)
+          return prev.filter(path => path !== projectPath)
         }
       })
     },
@@ -150,7 +147,7 @@ const BakerPageContent: React.FC = () => {
 
   const handleSelectAll = useCallback(() => {
     if (scanResult?.projects) {
-      setSelectedProjects(scanResult.projects.map((p) => p.path))
+      setSelectedProjects(scanResult.projects.map(p => p.path))
     }
   }, [scanResult])
 
@@ -167,7 +164,7 @@ const BakerPageContent: React.FC = () => {
     // Generate previews for selected projects before showing confirmation dialog.
     // Previews already generated from the detail panel are reused by the hook cache.
     if (scanResult?.projects) {
-      const selectedProjectData = scanResult.projects.filter((p) =>
+      const selectedProjectData = scanResult.projects.filter(p =>
         selectedProjects.includes(p.path)
       )
       await generateBatchPreviews(selectedProjectData)
@@ -348,7 +345,7 @@ const BakerPageContent: React.FC = () => {
                 { key: 'projects', label: 'Projects' },
                 { key: 'storage', label: 'Storage' }
               ] as const
-            ).map((mode) => (
+            ).map(mode => (
               <button
                 key={mode.key}
                 type="button"
@@ -431,7 +428,7 @@ const BakerPageContent: React.FC = () => {
         onConfirm={handleConfirmBatchUpdate}
         selectedProjects={selectedProjects}
         previews={selectedProjects
-          .map((path) => getPreview(path))
+          .map(path => getPreview(path))
           .filter((preview): preview is NonNullable<typeof preview> => preview !== null)}
         isLoading={isUpdating}
         invalidBreadcrumbsPaths={invalidBreadcrumbsPaths}
@@ -441,10 +438,10 @@ const BakerPageContent: React.FC = () => {
       <RepairBreadcrumbsDialog
         open={repairTarget !== null}
         projectName={
-          scanResult?.projects.find((p) => p.path === repairTarget)?.name ?? null
+          scanResult?.projects.find(p => p.path === repairTarget)?.name ?? null
         }
         isRepairing={isRepairing}
-        onOpenChange={(open) => {
+        onOpenChange={open => {
           if (!open) setRepairTarget(null)
         }}
         onConfirm={handleConfirmRepair}

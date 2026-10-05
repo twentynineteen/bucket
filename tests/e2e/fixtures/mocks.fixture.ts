@@ -1,6 +1,6 @@
 import type { BreadcrumbsFile, ProjectFolder, ScanResult } from '@features/Baker'
-import type { ExampleWithMetadata } from '@shared/types/exampleEmbeddings'
 import { Page } from '@playwright/test'
+import type { ExampleWithMetadata } from '@shared/types/exampleEmbeddings'
 
 /**
  * Mock data and helpers for Tauri API mocking
@@ -216,7 +216,7 @@ export async function setupTauriMocks(
     // Returning a string yields garbage after Uint8Array.from().
     const asBytes = (text: string) => Array.from(new TextEncoder().encode(text))
 
-    const projectAt = (path: string) => cfg.projects.find((entry) => entry.path === path)
+    const projectAt = (path: string) => cfg.projects.find(entry => entry.path === path)
 
     const invoke = async (cmd: string, args?: unknown): Promise<unknown> => {
       const payload = (args ?? {}) as Record<string, unknown>
@@ -333,13 +333,13 @@ export async function setupTauriMocks(
 
     win.__TAURI_INTERNALS__ = {
       invoke,
-      transformCallback: (callback) => {
+      transformCallback: callback => {
         const id = nextId++
         if (callback) win.__E2E_CALLBACKS__[id] = callback
         return id
       },
-      convertFileSrc: (filePath) => filePath,
-      unregisterCallback: (id) => {
+      convertFileSrc: filePath => filePath,
+      unregisterCallback: id => {
         delete win.__E2E_CALLBACKS__[id]
       },
       metadata: {
@@ -360,10 +360,10 @@ export async function setupTauriMocks(
  * 11434.
  */
 export async function mockOllamaEmbedding(page: Page): Promise<void> {
-  await page.route('**/api/tags', (route) =>
+  await page.route('**/api/tags', route =>
     route.fulfill({ json: { models: [{ name: `${OLLAMA_MODEL}:latest` }] } })
   )
-  await page.route('**/api/embeddings', (route) =>
+  await page.route('**/api/embeddings', route =>
     route.fulfill({ json: { embedding: Array.from({ length: 8 }, () => 0.1) } })
   )
 }

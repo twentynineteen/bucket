@@ -19,8 +19,12 @@
  * more than it saved the first time a real failure appeared.
  */
 
-import { useKavanaghAvailability, useKavanaghCheck } from '@features/Kavanagh'
-import type { KavanaghCheckReport, KavanaghError } from '@features/Kavanagh'
+import {
+  useKavanaghAvailability,
+  useKavanaghCheck,
+  type KavanaghCheckReport,
+  type KavanaghError
+} from '@features/Kavanagh'
 import { useApiKeys } from '@shared/hooks'
 import { logger } from '@shared/utils'
 import React from 'react'

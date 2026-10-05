@@ -3,9 +3,10 @@
  * the metadata extractor, asserting that list nesting levels are computed from
  * the actual document structure (not the previous hard-coded `level: 1` stub).
  */
-import { Document, LevelFormat, Packer, Paragraph, TextRun } from 'docx'
 import { renderHook } from '@testing-library/react'
+import { Document, LevelFormat, Packer, Paragraph, TextRun } from 'docx'
 import { describe, expect, it, vi } from 'vitest'
+import { useDocxParser } from './useDocxParser'
 
 // The Tauri renderer resolves `mammoth` to its browser build (via the package's
 // `browser` field), which unzips from an ArrayBuffer — exactly what parseFile
@@ -23,8 +24,6 @@ vi.mock('mammoth', async () => {
   const mod = browser.default ?? browser
   return { default: mod, ...mod }
 })
-
-import { useDocxParser } from './useDocxParser'
 
 /**
  * Build an in-memory .docx as the upload flow would hand it to parseFile.
@@ -78,7 +77,7 @@ describe('useDocxParser list nesting', () => {
     const file = await makeDocx(nestedBulletDoc)
 
     const doc = await result.current.parseFile(file)
-    const levels = doc.formattingMetadata.lists.map((l) => l.level)
+    const levels = doc.formattingMetadata.lists.map(l => l.level)
 
     // Sanity: mammoth emitted two <li> nodes for our two paragraphs.
     expect(doc.formattingMetadata.lists).toHaveLength(2)

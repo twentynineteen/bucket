@@ -3,8 +3,8 @@
  * Displays the workflow progress steps
  */
 
-import type { WorkflowStep } from '../../../types'
 import React from 'react'
+import type { WorkflowStep } from '../../../types'
 
 interface WorkflowIndicatorProps {
   currentStep: WorkflowStep

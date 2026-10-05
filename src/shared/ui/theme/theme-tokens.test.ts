@@ -10,7 +10,6 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-
 import { describe, expect, it } from 'vitest'
 
 const INDEX_CSS = path.resolve(__dirname, '../../../index.css')
@@ -54,7 +53,7 @@ const REQUIRED_HSL_VARIABLES = [
 const css = fs.readFileSync(INDEX_CSS, 'utf8')
 
 const countDeclarations = (variable: string): number =>
-  css.split('\n').filter((line) => line.trim().startsWith(`${variable}:`)).length
+  css.split('\n').filter(line => line.trim().startsWith(`${variable}:`)).length
 
 describe('TOAST-03: theme tokens are declared in every theme', () => {
   it('still has exactly 12 concrete theme blocks', () => {

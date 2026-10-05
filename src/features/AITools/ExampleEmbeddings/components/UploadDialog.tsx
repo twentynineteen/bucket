@@ -6,8 +6,6 @@
  * Supports both .txt and .docx files
  */
 
-import { Loader2 } from 'lucide-react'
-
 import { Button } from '@shared/ui/button'
 import {
   Dialog,
@@ -26,12 +24,12 @@ import {
   SelectTrigger,
   SelectValue
 } from '@shared/ui/select'
+import { Loader2 } from 'lucide-react'
 import { ExampleCategory } from '../../types'
-
+import { useUploadDialogForm, type UploadData } from '../hooks/useUploadDialogForm'
 import { FileInputField } from './FileInputField'
 import { ModelStatusIndicator } from './ModelStatusIndicator'
 import { UploadSuccessView } from './UploadSuccessView'
-import { useUploadDialogForm, type UploadData } from '../hooks/useUploadDialogForm'
 
 interface UploadDialogProps {
   open: boolean
@@ -132,7 +130,7 @@ export function UploadDialog({ open, onClose, onUpload }: UploadDialogProps) {
                   <Input
                     id="title"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={e => setTitle(e.target.value)}
                     placeholder="e.g., Tech Conference Keynote"
                     disabled={isLoading}
                   />
@@ -146,7 +144,7 @@ export function UploadDialog({ open, onClose, onUpload }: UploadDialogProps) {
                   <Label htmlFor="category">Category</Label>
                   <Select
                     value={category}
-                    onValueChange={(value) => setCategory(value as ExampleCategory)}
+                    onValueChange={value => setCategory(value as ExampleCategory)}
                     disabled={isLoading}
                   >
                     <SelectTrigger>
@@ -173,7 +171,7 @@ export function UploadDialog({ open, onClose, onUpload }: UploadDialogProps) {
                   <Input
                     id="tags"
                     value={tags.join(', ')}
-                    onChange={(e) => handleTagsChange(e.target.value)}
+                    onChange={e => handleTagsChange(e.target.value)}
                     placeholder="technical, formal, presentation"
                     disabled={isLoading}
                   />
@@ -191,7 +189,7 @@ export function UploadDialog({ open, onClose, onUpload }: UploadDialogProps) {
                     min={1}
                     max={5}
                     value={qualityScore}
-                    onChange={(e) => setQualityScore(Number(e.target.value))}
+                    onChange={e => setQualityScore(Number(e.target.value))}
                     disabled={isLoading}
                   />
                   <p className="text-muted-foreground mt-1 text-xs">

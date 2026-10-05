@@ -8,7 +8,6 @@
  */
 
 import { categorizeField, formatFieldName, formatFieldValue } from '@shared/utils'
-
 import type { BreadcrumbsPreview, FileInfo } from '../types'
 
 export type ChangeRowType = 'added' | 'modified' | 'removed'
@@ -40,8 +39,8 @@ export function diffFileLists(
   current: FileInfo[] | null | undefined,
   updated: FileInfo[]
 ): ChangeRow[] {
-  const currentByPath = new Map((current ?? []).map((file) => [file.path, file]))
-  const updatedPaths = new Set(updated.map((file) => file.path))
+  const currentByPath = new Map((current ?? []).map(file => [file.path, file]))
+  const updatedPaths = new Set(updated.map(file => file.path))
   const rows: ChangeRow[] = []
 
   for (const file of updated) {
@@ -117,16 +116,16 @@ export function buildProjectChangeRows(preview: BreadcrumbsPreview): ProjectChan
   // Maintenance fields come from the full diff — meaningfulDiff filters them out
   const maintenanceFields = preview.diff.changes
     .filter(
-      (change) =>
+      change =>
         change.type !== 'unchanged' &&
         categorizeField(change.field).category === 'maintenance'
     )
-    .map((change) => formatFieldName(change.field))
+    .map(change => formatFieldName(change.field))
 
   const counts = {
-    added: rows.filter((row) => row.type === 'added').length,
-    modified: rows.filter((row) => row.type === 'modified').length,
-    removed: rows.filter((row) => row.type === 'removed').length
+    added: rows.filter(row => row.type === 'added').length,
+    modified: rows.filter(row => row.type === 'modified').length,
+    removed: rows.filter(row => row.type === 'removed').length
   }
 
   return {
@@ -135,7 +134,7 @@ export function buildProjectChangeRows(preview: BreadcrumbsPreview): ProjectChan
     maintenanceFields,
     isNewBreadcrumbs: preview.current === null,
     hasChanges: rows.length > 0,
-    hasHighImpact: rows.some((row) => row.type === 'modified' && row.impact === 'high')
+    hasHighImpact: rows.some(row => row.type === 'modified' && row.impact === 'high')
   }
 }
 

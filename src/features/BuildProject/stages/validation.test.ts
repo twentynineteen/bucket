@@ -7,15 +7,14 @@
 
 import { exists } from '@tauri-apps/plugin-fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import {
   areValidCameraAssignments,
-  type FileWithCamera,
   getInvalidCameraAssignments,
   isValidProjectName,
   validateInputs,
-  type ValidationInput,
-  validationStageConfig
+  validationStageConfig,
+  type FileWithCamera,
+  type ValidationInput
 } from './validation'
 
 // Mock Tauri plugin-fs

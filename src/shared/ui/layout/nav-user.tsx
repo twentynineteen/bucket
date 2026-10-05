@@ -1,3 +1,6 @@
+import { CACHE } from '@shared/constants'
+import { createQueryError, createQueryOptions, queryKeys, shouldRetry } from '@shared/lib'
+import { appVersionQueryOptions } from '@shared/lib/app-version-query'
 import { Avatar, AvatarFallback, AvatarImage } from '@shared/ui/avatar'
 import {
   DropdownMenu,
@@ -14,9 +17,6 @@ import {
   SidebarMenuItem
 } from '@shared/ui/sidebar/SidebarMenu'
 import { useSidebar } from '@shared/ui/use-sidebar'
-import { CACHE } from '@shared/constants'
-import { appVersionQueryOptions } from '@shared/lib/app-version-query'
-import { queryKeys, createQueryError, createQueryOptions, shouldRetry } from '@shared/lib'
 import { useQuery } from '@tanstack/react-query'
 import { core } from '@tauri-apps/api'
 import { ChevronsUpDown } from 'lucide-react'

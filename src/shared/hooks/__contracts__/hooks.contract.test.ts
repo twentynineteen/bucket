@@ -8,7 +8,6 @@
 
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-
 import * as hooksBarrel from '../index'
 
 // Mock Tauri core for useUsername (it calls invoke)

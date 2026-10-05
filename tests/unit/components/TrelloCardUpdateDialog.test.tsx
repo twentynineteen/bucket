@@ -19,8 +19,7 @@ import { TrelloCardUpdateDialog } from '@features/Trello'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
-import type { Mock } from 'vitest'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock('framer-motion', () => ({
@@ -282,7 +281,7 @@ describe('TrelloCardUpdateDialog Component', () => {
       const user = userEvent.setup()
       let resolveUpdate: (value?: unknown) => void
       mockOnUpdate.mockReturnValue(
-        new Promise((resolve) => {
+        new Promise(resolve => {
           resolveUpdate = resolve
         })
       )

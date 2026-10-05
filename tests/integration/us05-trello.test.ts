@@ -13,11 +13,11 @@
  * restored in beforeEach.
  */
 
-import { useTrelloBoards } from '../../src/features/Trello/hooks/useTrelloBoards'
-import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useTrelloBoards } from '../../src/features/Trello/hooks/useTrelloBoards'
 
 function makeWrapper() {
   const client = new QueryClient({
@@ -47,7 +47,9 @@ vi.mock('@shared/hooks', () => ({
     isLoading: false,
     error: null
   }),
-  useSproutVideoApiKey: vi.fn().mockReturnValue({ apiKey: null, isLoading: false, error: null }),
+  useSproutVideoApiKey: vi
+    .fn()
+    .mockReturnValue({ apiKey: null, isLoading: false, error: null }),
   useTrelloApiKeys: vi.fn().mockReturnValue({
     apiKey: null,
     apiToken: null,
@@ -131,7 +133,7 @@ describe('US-05 — Trello: Board Management (useTrelloBoards)', () => {
     renderHook(() => useTrelloBoards(), { wrapper: makeWrapper() })
 
     // Wait a tick to ensure no fetch is triggered
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await new Promise(resolve => setTimeout(resolve, 50))
 
     expect(fetchTrelloBoards).not.toHaveBeenCalled()
   })
@@ -148,7 +150,7 @@ describe('US-05 — Trello: Board Management (useTrelloBoards)', () => {
 
     renderHook(() => useTrelloBoards(), { wrapper: makeWrapper() })
 
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await new Promise(resolve => setTimeout(resolve, 50))
 
     expect(fetchTrelloBoards).not.toHaveBeenCalled()
   })
@@ -184,7 +186,7 @@ describe('US-05 — Trello: Board Management (useTrelloBoards)', () => {
 
     let resolveBoards: ((boards: any) => void) | undefined
     vi.mocked(fetchTrelloBoards).mockReturnValue(
-      new Promise((resolve) => {
+      new Promise(resolve => {
         resolveBoards = resolve
       })
     )
@@ -209,7 +211,9 @@ describe('US-05 — Trello: Board Management (useTrelloBoards)', () => {
 
   it('US-05g — should expose error when fetchTrelloBoards fails', async () => {
     const { fetchTrelloBoards } = await import('../../src/features/Trello/api')
-    vi.mocked(fetchTrelloBoards).mockRejectedValue(new Error('Unauthorized: invalid token'))
+    vi.mocked(fetchTrelloBoards).mockRejectedValue(
+      new Error('Unauthorized: invalid token')
+    )
 
     const { result } = renderHook(() => useTrelloBoards(), {
       wrapper: makeWrapper()

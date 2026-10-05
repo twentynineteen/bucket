@@ -7,14 +7,6 @@
  * are discarded if the start itself fails.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-vi.mock('../api', () => ({
-  listenUploadComplete: vi.fn(),
-  listenUploadError: vi.fn(),
-  listenUploadProgress: vi.fn(),
-  listenUploadCancelled: vi.fn()
-}))
-
 import {
   listenUploadCancelled,
   listenUploadComplete,
@@ -23,6 +15,13 @@ import {
 } from '../api'
 import type { SproutUploadResponse } from '../types'
 import { awaitUploadOutcome } from './awaitUploadOutcome'
+
+vi.mock('../api', () => ({
+  listenUploadComplete: vi.fn(),
+  listenUploadError: vi.fn(),
+  listenUploadProgress: vi.fn(),
+  listenUploadCancelled: vi.fn()
+}))
 
 type Payload = { operationId: string; [key: string]: unknown }
 type Handler = (event: { event: string; id: number; payload: Payload }) => unknown
@@ -60,7 +59,7 @@ beforeEach(() => {
     ['error', listenUploadError],
     ['cancelled', listenUploadCancelled]
   ] as const) {
-    vi.mocked(listener).mockImplementation(async (cb) => {
+    vi.mocked(listener).mockImplementation(async cb => {
       handlers[channel] = cb as Handler
       return unlisten
     })
@@ -76,7 +75,7 @@ describe('awaitUploadOutcome - buffer mode', () => {
     const outcome = awaitUploadOutcome({
       start: () => registered.promise,
       beforeIdKnown: 'buffer',
-      onProgress: (event) => {
+      onProgress: event => {
         onProgress(event)
         order.push('progress')
       }

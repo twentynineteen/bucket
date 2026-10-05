@@ -8,7 +8,6 @@
 
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import {
   CacheInvalidationService,
   createCacheInvalidationService,

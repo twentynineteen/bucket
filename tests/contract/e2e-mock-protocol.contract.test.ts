@@ -18,7 +18,6 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-
 import { describe, expect, it } from 'vitest'
 
 const E2E_DIR = path.resolve(__dirname, '../e2e')
@@ -41,7 +40,7 @@ const CURRENT_EVENTS = ['file-transfer-progress', 'file-transfer-complete']
 /** Recursively collect .ts files under a directory */
 function collectTsFiles(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true })
-  return entries.flatMap((entry) => {
+  return entries.flatMap(entry => {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) return collectTsFiles(full)
     return entry.name.endsWith('.ts') ? [full] : []
@@ -51,7 +50,7 @@ function collectTsFiles(dir: string): string[] {
 describe('e2e mock protocol — B2.1 no legacy residue in the mock', () => {
   const mockSource = fs.readFileSync(MOCK_FILE, 'utf-8')
 
-  it.each(LEGACY_NAMES)('tauri-e2e-mocks.ts does not reference `%s`', (name) => {
+  it.each(LEGACY_NAMES)('tauri-e2e-mocks.ts does not reference `%s`', name => {
     expect(
       mockSource.includes(name),
       `tests/e2e/fixtures/tauri-e2e-mocks.ts still references legacy name "${name}" — ` +
@@ -64,7 +63,7 @@ describe('e2e mock protocol — B2.1 no legacy residue in the mock', () => {
 describe('e2e mock protocol — B2.2 mock speaks the current protocol', () => {
   const mockSource = fs.readFileSync(MOCK_FILE, 'utf-8')
 
-  it.each(CURRENT_COMMANDS)('tauri-e2e-mocks.ts handles the `%s` command', (cmd) => {
+  it.each(CURRENT_COMMANDS)('tauri-e2e-mocks.ts handles the `%s` command', cmd => {
     expect(
       mockSource.includes(cmd),
       `tests/e2e/fixtures/tauri-e2e-mocks.ts has no handler for "${cmd}" — ` +
@@ -72,7 +71,7 @@ describe('e2e mock protocol — B2.2 mock speaks the current protocol', () => {
     ).toBe(true)
   })
 
-  it.each(CURRENT_EVENTS)('tauri-e2e-mocks.ts emits the `%s` event', (eventName) => {
+  it.each(CURRENT_EVENTS)('tauri-e2e-mocks.ts emits the `%s` event', eventName => {
     expect(
       mockSource.includes(eventName),
       `tests/e2e/fixtures/tauri-e2e-mocks.ts never emits "${eventName}" — ` +
@@ -93,9 +92,7 @@ describe('e2e mock protocol — #167 every fixture joins paths for real', () => 
   type Invoke = (cmd: string, args?: unknown) => Promise<unknown>
 
   /** Runs a fixture's setup, capturing the invoke it installs on window. */
-  async function captureInvoke(
-    setup: (page: never) => Promise<void>
-  ): Promise<Invoke> {
+  async function captureInvoke(setup: (page: never) => Promise<void>): Promise<Invoke> {
     const win: Record<string, unknown> = {}
     const page = {
       addInitScript: async (fn: (arg?: unknown) => void, arg?: unknown) => {
@@ -178,22 +175,27 @@ describe('e2e mock protocol — #167 every fixture joins paths for real', () => 
     }
   )
 
-  it.each(FIXTURES)('%s resolves the app data directory without a trailing separator', async (file, load) => {
-    const invoke = await captureInvoke(await load())
+  it.each(FIXTURES)(
+    '%s resolves the app data directory without a trailing separator',
+    async (file, load) => {
+      const invoke = await captureInvoke(await load())
 
-    const dir = (await invoke('plugin:path|resolve_directory', { directory: 13 })) as string
+      const dir = (await invoke('plugin:path|resolve_directory', {
+        directory: 13
+      })) as string
 
-    expect(
-      typeof dir === 'string' && dir.length > 0,
-      `tests/e2e/fixtures/${file} returns no app data directory — appDataDir() ` +
-        'resolves through resolve_directory, not a per-directory command'
-    ).toBe(true)
-    expect(
-      dir.endsWith('/'),
-      `tests/e2e/fixtures/${file} returns a trailing separator, which the real ` +
-        'appDataDir never does — that fiction is what hid #167'
-    ).toBe(false)
-  })
+      expect(
+        typeof dir === 'string' && dir.length > 0,
+        `tests/e2e/fixtures/${file} returns no app data directory — appDataDir() ` +
+          'resolves through resolve_directory, not a per-directory command'
+      ).toBe(true)
+      expect(
+        dir.endsWith('/'),
+        `tests/e2e/fixtures/${file} returns a trailing separator, which the real ` +
+          'appDataDir never does — that fiction is what hid #167'
+      ).toBe(false)
+    }
+  )
 })
 
 describe('e2e mock protocol — B2.3 no legacy residue in the e2e specs', () => {

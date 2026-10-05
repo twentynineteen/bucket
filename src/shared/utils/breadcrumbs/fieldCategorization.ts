@@ -10,7 +10,6 @@ import type {
   FieldChange,
   ProjectChangeDetail
 } from '@shared/types'
-
 import { logger } from '../logger'
 import { formatFieldName, formatFieldValue } from './displayFormatting'
 
@@ -80,18 +79,18 @@ export function generateProjectChangeDetail(
   // Categorize changes (exclude unchanged fields by default)
   const changeCategories = {
     content: detailedChanges.filter(
-      (c) => c.category === 'content' && c.type !== 'unchanged'
+      c => c.category === 'content' && c.type !== 'unchanged'
     ),
     metadata: detailedChanges.filter(
-      (c) => c.category === 'metadata' && c.type !== 'unchanged'
+      c => c.category === 'metadata' && c.type !== 'unchanged'
     ),
     maintenance: detailedChanges.filter(
-      (c) => c.category === 'maintenance' && c.type !== 'unchanged'
+      c => c.category === 'maintenance' && c.type !== 'unchanged'
     )
   }
 
   // Calculate summary (only count actual changes, not unchanged fields)
-  const actualChanges = detailedChanges.filter((c) => c.type !== 'unchanged')
+  const actualChanges = detailedChanges.filter(c => c.type !== 'unchanged')
   const summary = {
     contentChanges: changeCategories.content.length,
     metadataChanges: changeCategories.metadata.length,

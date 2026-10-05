@@ -8,16 +8,16 @@
  *   overall_progress = (files_completed + file_progress) / total_files * 100
  */
 
-import { test, expect } from '@playwright/test'
-import { BuildProjectPage } from '../pages/BuildProjectPage'
-import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
-import {
-  SCENARIOS,
-  generateMockFiles,
-  generateVariableSizeFiles,
-  generateSingleLargeFile
-} from '../utils/large-file-simulator'
+import { expect, test } from '@playwright/test'
 import { TEST_PROJECTS } from '../fixtures/mock-file-data'
+import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
+import { BuildProjectPage } from '../pages/BuildProjectPage'
+import {
+  generateMockFiles,
+  generateSingleLargeFile,
+  generateVariableSizeFiles,
+  SCENARIOS
+} from '../utils/large-file-simulator'
 
 /**
  * The 250GB simulations need longer than the config's 5 minute default. This
@@ -57,11 +57,11 @@ test.describe('Realistic Progress - Intra-File Progress', { tag: '@slow' }, () =
     expect(events.length).toBeGreaterThan(5)
 
     // Verify events include fileProgress (intra-file)
-    const eventsWithFileProgress = events.filter((e) => e.fileProgress !== undefined)
+    const eventsWithFileProgress = events.filter(e => e.fileProgress !== undefined)
     expect(eventsWithFileProgress.length).toBeGreaterThan(0)
 
     // Verify we see progress within individual files
-    const fileZeroEvents = events.filter((e) => e.fileIndex === 0)
+    const fileZeroEvents = events.filter(e => e.fileIndex === 0)
     expect(fileZeroEvents.length).toBeGreaterThan(1) // Multiple events for first file
   })
 
@@ -93,7 +93,7 @@ test.describe('Realistic Progress - Intra-File Progress', { tag: '@slow' }, () =
     expect(events.length).toBeGreaterThanOrEqual(10)
 
     // All events should be for file index 0
-    events.slice(0, -1).forEach((event) => {
+    events.slice(0, -1).forEach(event => {
       expect(event.fileIndex).toBe(0)
     })
 
@@ -112,7 +112,9 @@ test.describe('Realistic Progress - Intra-File Progress', { tag: '@slow' }, () =
 })
 
 test.describe('Realistic Progress - Formula Verification', { tag: '@slow' }, () => {
-  test('progress formula matches: (files + fileProgress) / total * 100', async ({ page }) => {
+  test('progress formula matches: (files + fileProgress) / total * 100', async ({
+    page
+  }) => {
     const mock = createTauriMock(page)
     mock
       .setScenario(SCENARIOS.SMOKE_TEST)
@@ -138,7 +140,7 @@ test.describe('Realistic Progress - Formula Verification', { tag: '@slow' }, () 
     // Verify specific checkpoints based on formula
     // After first file complete (fileIndex=0, fileProgress=1.0): (0 + 1) / 10 * 100 = 10%
     const afterFirstFile = events.find(
-      (e) => e.fileIndex === 0 && e.fileProgress && e.fileProgress >= 0.99
+      e => e.fileIndex === 0 && e.fileProgress && e.fileProgress >= 0.99
     )
     if (afterFirstFile) {
       expect(afterFirstFile.percent).toBeCloseTo(10, 0)
@@ -146,7 +148,7 @@ test.describe('Realistic Progress - Formula Verification', { tag: '@slow' }, () 
 
     // After fifth file complete: (4 + 1) / 10 * 100 = 50%
     const afterFifthFile = events.find(
-      (e) => e.fileIndex === 4 && e.fileProgress && e.fileProgress >= 0.99
+      e => e.fileIndex === 4 && e.fileProgress && e.fileProgress >= 0.99
     )
     if (afterFifthFile) {
       expect(afterFifthFile.percent).toBeCloseTo(50, 0)
@@ -279,7 +281,7 @@ test.describe('Realistic Progress - Variable File Sizes', { tag: '@slow' }, () =
     const events = await mock.getDetailedEvents()
 
     // Count events for the large file (index 0)
-    const largeFileEvents = events.filter((e) => e.fileIndex === 0)
+    const largeFileEvents = events.filter(e => e.fileIndex === 0)
 
     // Large file should have events (it's the first file)
     expect(largeFileEvents.length).toBeGreaterThan(0)
@@ -357,7 +359,7 @@ test.describe('Realistic Progress - Rapid Events', { tag: '@slow' }, () => {
     const events = await mock.getDetailedEvents()
 
     // Should have captured multiple distinct progress values
-    const uniqueValues = [...new Set(events.map((e) => Math.floor(e.percent)))]
+    const uniqueValues = [...new Set(events.map(e => Math.floor(e.percent)))]
     expect(uniqueValues.length).toBeGreaterThan(3)
 
     // Progress values should be monotonically increasing

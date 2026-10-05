@@ -11,20 +11,19 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import { toast } from 'sonner'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import Posterframe from './Posterframe'
-import { useBackgroundFolder } from '../hooks/useBackgroundFolder'
-import { useFileSelection } from '../hooks/useFileSelection'
-import { usePosterframeTemplate } from '../hooks/usePosterframeTemplate'
-import { PosterFrameTooLargeError, exportCanvasJpegUnder } from '../internal/posterFrame'
 import {
   fetchSproutVideoDetails,
   openFolderDialog,
   saveFile,
   setSproutPosterFrame
 } from '../api'
-import { toast } from 'sonner'
+import { useBackgroundFolder } from '../hooks/useBackgroundFolder'
+import { useFileSelection } from '../hooks/useFileSelection'
+import { usePosterframeTemplate } from '../hooks/usePosterframeTemplate'
+import { exportCanvasJpegUnder, PosterFrameTooLargeError } from '../internal/posterFrame'
+import Posterframe from './Posterframe'
 
 vi.mock('../hooks/useBackgroundFolder', () => ({ useBackgroundFolder: vi.fn() }))
 vi.mock('../hooks/useFileSelection', () => ({ useFileSelection: vi.fn() }))
@@ -34,7 +33,7 @@ vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 // The JPEG pipeline touches canvas.toBlob, which jsdom does not implement;
 // the page's routing through the SHARED pipeline is what is under test (#189
 // B5.4), not the encoding itself.
-vi.mock('../internal/posterFrame', async (importOriginal) => {
+vi.mock('../internal/posterFrame', async importOriginal => {
   const actual = await importOriginal<typeof import('../internal/posterFrame')>()
   return { ...actual, exportCanvasJpegUnder: vi.fn() }
 })
@@ -63,7 +62,7 @@ vi.mock('../hooks/useZoomPan', () => ({
     setPan: vi.fn()
   })
 }))
-vi.mock('@shared/hooks', async (importOriginal) => {
+vi.mock('@shared/hooks', async importOriginal => {
   const actual = await importOriginal<typeof import('@shared/hooks')>()
   return {
     ...actual,

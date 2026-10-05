@@ -214,9 +214,8 @@ describe('breadcrumbs/debug', () => {
 
     test('should handle multiple changes', async () => {
       // Mock comparison with multiple changes
-      const { compareBreadcrumbs, compareBreadcrumbsMeaningful } = await import(
-        '@shared/utils/breadcrumbs/comparison'
-      )
+      const { compareBreadcrumbs, compareBreadcrumbsMeaningful } =
+        await import('@shared/utils/breadcrumbs/comparison')
       vi.mocked(compareBreadcrumbs).mockReturnValueOnce({
         hasChanges: true,
         changes: [

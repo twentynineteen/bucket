@@ -3,8 +3,12 @@
  * Handles card selection state, details fetching, and validation
  */
 
-import { useTrelloCardDetails, useTrelloCardSelection } from '@features/Trello'
-import type { SelectedCard, TrelloCard } from '@features/Trello'
+import {
+  useTrelloCardDetails,
+  useTrelloCardSelection,
+  type SelectedCard,
+  type TrelloCard
+} from '@features/Trello'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'

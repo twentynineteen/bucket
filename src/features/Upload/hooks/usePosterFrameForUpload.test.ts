@@ -4,14 +4,17 @@
  * Issue #140 (B1.2-B1.5, B2.1-B2.3, B3.5, B3.6, B5.1-B5.6, B6.1, B6.2, B7.2, B7.5, B7.6)
  */
 
+import { useAppStore } from '@shared/store'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-
-import { useAppStore } from '@shared/store'
-
 import * as api from '../api'
+import {
+  exportCanvasJpeg,
+  exportCanvasJpegUnder,
+  posterFrameDelay
+} from '../internal/posterFrame'
 import { usePosterFrameForUpload } from './usePosterFrameForUpload'
 
 // Issue #166: listDirectory returns a tagged result rather than a bare array,
@@ -36,7 +39,7 @@ vi.mock('../api', () => ({
 // useBackgroundFolder now reads the settings query's status so it can tell
 // "not configured" from "settings not loaded yet" from "settings unreadable"
 // (issue #166 B2.1-B2.3). Report settings as loaded unless a test says otherwise.
-vi.mock('@shared/hooks', async (importOriginal) => {
+vi.mock('@shared/hooks', async importOriginal => {
   const actual = await importOriginal<typeof import('@shared/hooks')>()
   return {
     ...actual,
@@ -46,7 +49,7 @@ vi.mock('@shared/hooks', async (importOriginal) => {
 
 // The canvas export and the retry sleeps are the two pieces that cannot run in
 // jsdom; everything else in the internals module stays real.
-vi.mock('../internal/posterFrame', async (importOriginal) => {
+vi.mock('../internal/posterFrame', async importOriginal => {
   const actual = await importOriginal<typeof import('../internal/posterFrame')>()
   return {
     ...actual,
@@ -55,12 +58,6 @@ vi.mock('../internal/posterFrame', async (importOriginal) => {
     posterFrameDelay: vi.fn().mockResolvedValue(undefined)
   }
 })
-
-import {
-  exportCanvasJpeg,
-  exportCanvasJpegUnder,
-  posterFrameDelay
-} from '../internal/posterFrame'
 
 const BACKGROUNDS = ['/backgrounds/wbs-blue.jpg', '/backgrounds/wbs-red.png']
 const PROJECT_PATH = '/projects/demo'
@@ -385,7 +382,7 @@ describe('usePosterFrameForUpload - Sprout upload', () => {
     let release: () => void = () => {}
     vi.mocked(api.setSproutPosterFrame).mockImplementation(
       () =>
-        new Promise<void>((resolve) => {
+        new Promise<void>(resolve => {
           release = resolve
         })
     )

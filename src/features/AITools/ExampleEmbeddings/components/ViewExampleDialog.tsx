@@ -5,8 +5,6 @@
  * Modal dialog for viewing full script example content
  */
 
-import { FileText } from 'lucide-react'
-
 import { Badge } from '@shared/ui/badge'
 import {
   Dialog,
@@ -16,6 +14,7 @@ import {
   DialogTitle
 } from '@shared/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
+import { FileText } from 'lucide-react'
 import type { ExampleWithMetadata } from '../../types'
 
 interface ViewExampleDialogProps {

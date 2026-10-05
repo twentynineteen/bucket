@@ -21,18 +21,19 @@
 //   prettierConfig
 // )
 
-import boundaries from 'eslint-plugin-boundaries'
 import js from '@eslint/js'
+import boundaries from 'eslint-plugin-boundaries'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
+import bucket from './eslint-rules/index.js'
 
 export default tseslint.config(
   { ignores: ['dist'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser
@@ -56,7 +57,7 @@ export default tseslint.config(
   },
   // Module boundary enforcement (eslint-plugin-boundaries)
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
     plugins: {
       boundaries
     },
@@ -132,6 +133,69 @@ export default tseslint.config(
       // All boundary rules at error severity -- violations fail lint
       'boundaries/no-unknown-files': ['error'],
       'boundaries/no-unknown': ['error']
+    }
+  },
+  // Module conventions (CLAUDE.md, "Module rules")
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.*', '**/__contracts__/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@features/*/**'],
+              message: 'Import other features through their barrel: @features/<Name>.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ['src/**/index.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ExportAllDeclaration',
+          message: 'Barrels use named re-exports, each with a JSDoc line, not export *.'
+        }
+      ]
+    }
+  },
+  {
+    files: ['src/shared/ui/**/index.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Program',
+          message:
+            'shared/ui has no barrel files. Import each component directly, e.g. @shared/ui/button.'
+        }
+      ]
+    }
+  },
+  // tests/ is linted only for the rules below, so its disable comments for the
+  // full rule set would all report as unused.
+  {
+    files: ['tests/**'],
+    linterOptions: { reportUnusedDisableDirectives: 'off' }
+  },
+  // Mechanical rules from the testing policy (CODING_STANDARDS.md, "Testing")
+  {
+    files: [
+      '**/*.test.{ts,tsx}',
+      '**/__contracts__/**/*.{ts,tsx}',
+      'tests/**/*.{ts,tsx}'
+    ],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { bucket, '@typescript-eslint': tseslint.plugin },
+    rules: {
+      'bucket/vi-mock-resolves': 'error',
+      'bucket/no-export-count': 'error'
     }
   }
 )

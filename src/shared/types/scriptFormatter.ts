@@ -112,11 +112,7 @@ export interface ProcessingRequest {
 }
 
 export type ProcessingStatus =
-  | 'pending'
-  | 'in_progress'
-  | 'streaming'
-  | 'completed'
-  | 'failed'
+  'pending' | 'in_progress' | 'streaming' | 'completed' | 'failed'
 
 // ============================================================================
 // Entity: ProcessedOutput (data-model.md section 4)
@@ -262,8 +258,4 @@ export interface ConnectionStatus {
 // ============================================================================
 
 export type WorkflowStep =
-  | 'upload'
-  | 'select-model'
-  | 'processing'
-  | 'review'
-  | 'download'
+  'upload' | 'select-model' | 'processing' | 'review' | 'download'

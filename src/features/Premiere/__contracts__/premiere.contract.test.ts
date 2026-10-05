@@ -8,8 +8,8 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-
 import { describe, expect, it, vi } from 'vitest'
+import * as premiereBarrel from '../index'
 
 // Mock the api layer (single mock point for all Premiere I/O)
 vi.mock('../api', () => ({
@@ -64,8 +64,6 @@ vi.mock('@tanstack/react-query', () => ({
   })
 }))
 
-import * as premiereBarrel from '../index'
-
 // --- Shape Tests ---
 
 describe('Premiere Barrel Exports - Shape', () => {
@@ -95,7 +93,7 @@ describe('Premiere Module - No Direct Plugin Imports', () => {
       if (entry.isDirectory()) {
         if (entry.name === '__contracts__' || entry.name === 'node_modules') continue
         files.push(...getFilesRecursive(fullPath, extensions))
-      } else if (extensions.some((ext) => entry.name.endsWith(ext))) {
+      } else if (extensions.some(ext => entry.name.endsWith(ext))) {
         files.push(fullPath)
       }
     }
@@ -104,11 +102,11 @@ describe('Premiere Module - No Direct Plugin Imports', () => {
 
   it('all non-api.ts files have zero direct @tauri-apps imports', () => {
     const allFiles = getFilesRecursive(modulePath, ['.ts', '.tsx'])
-    const nonApiFiles = allFiles.filter((f) => !f.endsWith('/api.ts'))
+    const nonApiFiles = allFiles.filter(f => !f.endsWith('/api.ts'))
     for (const file of nonApiFiles) {
       const content = fs.readFileSync(file, 'utf-8')
       const lines = content.split('\n')
-      const tauriImports = lines.filter((line) => line.includes("from '@tauri-apps"))
+      const tauriImports = lines.filter(line => line.includes("from '@tauri-apps"))
       expect(tauriImports).toEqual([])
     }
   })

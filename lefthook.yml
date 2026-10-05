@@ -1,0 +1,21 @@
+# Git hooks, installed by the `prepare` script on `bun install`.
+# CI runs the same checks over the whole tree; these catch problems before the push.
+glob_matcher: doublestar
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: prettier
+      run: bunx prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    - name: eslint
+      glob: 'src/**/*.{ts,tsx,js,jsx}'
+      run: bunx eslint --fix --no-warn-ignored {staged_files}
+      stage_fixed: true
+    - name: test-locations
+      run: scripts/check-test-locations.sh
+
+pre-push:
+  jobs:
+    - name: typecheck
+      run: bun run typecheck

@@ -52,7 +52,7 @@ export function walkFiles(dir: string, match: RegExp): string[] {
  */
 function sourceFiles(dir: string = SRC_DIR): string[] {
   return walkFiles(dir, /\.tsx?$/).filter(
-    (file) => !/\.test\.tsx?$|__contracts__|__mocks__/.test(file)
+    file => !/\.test\.tsx?$|__contracts__|__mocks__/.test(file)
   )
 }
 
@@ -78,10 +78,10 @@ export function registeredCommands(): string[] {
 
   return block[1]
     .split('\n')
-    .map((line) => line.replace(/\/\/.*$/, '')) // the list is heavily commented
-    .flatMap((line) => line.split(','))
-    .map((entry) => entry.trim())
-    .filter((entry) => /^[a-z_][a-z0-9_]*$/.test(entry))
+    .map(line => line.replace(/\/\/.*$/, '')) // the list is heavily commented
+    .flatMap(line => line.split(','))
+    .map(entry => entry.trim())
+    .filter(entry => /^[a-z_][a-z0-9_]*$/.test(entry))
 }
 
 /** How readable a call site's command name is. */

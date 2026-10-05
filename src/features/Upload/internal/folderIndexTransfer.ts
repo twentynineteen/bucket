@@ -20,9 +20,7 @@
  * account's real root folders (one request) settles it.
  */
 import type { SproutFolder } from '@shared/types'
-
-import type { FolderIndex } from './folderIndex'
-import { FOLDER_INDEX_VERSION, accountFingerprint } from './folderIndex'
+import { accountFingerprint, FOLDER_INDEX_VERSION, type FolderIndex } from './folderIndex'
 
 export interface ImportedIndex {
   folders: SproutFolder[]
@@ -86,15 +84,15 @@ export function assessImport(
   actualRootIds: string[]
 ): ImportVerdict {
   const importedRootIds = imported.folders
-    .filter((folder) => folder.parent_id === null)
-    .map((folder) => folder.id)
+    .filter(folder => folder.parent_id === null)
+    .map(folder => folder.id)
 
   if (importedRootIds.length === 0 || actualRootIds.length === 0) {
     return { ok: true, reason: 'unverifiable' }
   }
 
   const actual = new Set(actualRootIds)
-  const overlaps = importedRootIds.some((id) => actual.has(id))
+  const overlaps = importedRootIds.some(id => actual.has(id))
 
   // Folder ids are account-scoped, so no overlap at the root means a different
   // account. Importing it would offer folders this account cannot upload into.

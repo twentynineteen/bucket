@@ -1,8 +1,7 @@
-import { AlertTriangle } from 'lucide-react'
 import { FootageData } from '@shared/types'
-import React from 'react'
-
 import { cn } from '@shared/utils'
+import { AlertTriangle } from 'lucide-react'
+import React from 'react'
 
 interface Props {
   files: FootageData[]
@@ -20,7 +19,7 @@ const FileList: React.FC<Props> = ({ files, isPresent }) => (
       <span className="text-foreground font-medium">Files:</span> {files.length} file(s)
     </p>
     <ul className="ml-5 list-disc">
-      {files.map((file) => {
+      {files.map(file => {
         const notFound = isPresent?.(file.path) === false
         return (
           <li key={file.path}>

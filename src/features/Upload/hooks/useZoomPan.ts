@@ -1,5 +1,5 @@
 import { CACHE } from '@shared/constants'
-import { queryKeys, createQueryOptions } from '@shared/lib'
+import { createQueryOptions, queryKeys } from '@shared/lib'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 

@@ -9,11 +9,11 @@
  * part-way through must end in an error state, never a success message.
  */
 
-import { test, expect } from '@playwright/test'
-import { BuildProjectPage } from '../pages/BuildProjectPage'
+import { expect, test } from '@playwright/test'
+import { generateFilesWithFailures, TEST_PROJECTS } from '../fixtures/mock-file-data'
 import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
-import { SCENARIOS, generateMockFiles } from '../utils/large-file-simulator'
-import { TEST_PROJECTS, generateFilesWithFailures } from '../fixtures/mock-file-data'
+import { BuildProjectPage } from '../pages/BuildProjectPage'
+import { generateMockFiles, SCENARIOS } from '../utils/large-file-simulator'
 
 /** The constant description shown on every BuildProject error toast */
 const ERROR_TOAST_TEXT = 'Please try again or contact support if the issue persists.'
@@ -55,7 +55,7 @@ test.describe('Error Recovery - Mid-Transfer Failures', () => {
     // Progress was made before the failure, but never reached 100%
     const events = await mock.getEmittedEvents()
     expect(events.length).toBeGreaterThan(0)
-    const maxPercent = Math.max(...events.map((e) => e.percent))
+    const maxPercent = Math.max(...events.map(e => e.percent))
     expect(maxPercent).toBeLessThan(100)
   })
 
@@ -90,7 +90,7 @@ test.describe('Error Recovery - Mid-Transfer Failures', () => {
 
     // No events may come from files at or beyond the failure index
     const events = await mock.getDetailedEvents()
-    const beyondFailure = events.filter((e) => e.fileIndex >= failAt)
+    const beyondFailure = events.filter(e => e.fileIndex >= failAt)
     expect(beyondFailure).toEqual([])
 
     // The mock's operation flag must be cleared (transfer ended)
@@ -162,7 +162,7 @@ test.describe('Error Recovery - Complete Failure', () => {
     // Progress got close to, but never reached, 100%
     const events = await mock.getEmittedEvents()
     expect(events.length).toBeGreaterThan(0)
-    const maxPercent = Math.max(...events.map((e) => e.percent))
+    const maxPercent = Math.max(...events.map(e => e.percent))
     expect(maxPercent).toBeGreaterThan(50)
     expect(maxPercent).toBeLessThan(100)
   })

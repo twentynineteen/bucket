@@ -5,17 +5,17 @@
  * extended file transfer operations (simulating 30+ second operations).
  */
 
-import { test, expect } from '@playwright/test'
-import { BuildProjectPage } from '../pages/BuildProjectPage'
+import { expect, test } from '@playwright/test'
+import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 import { createTauriMock } from '../fixtures/tauri-e2e-mocks'
-import { SCENARIOS, generateMockFiles } from '../utils/large-file-simulator'
+import { BuildProjectPage } from '../pages/BuildProjectPage'
+import { generateMockFiles, SCENARIOS } from '../utils/large-file-simulator'
 import {
   collectGarbage,
   measureMemory,
   readLongestFrameGap,
   startFrameGapProbe
 } from '../utils/memory-monitor'
-import { TEST_PROJECTS } from '../fixtures/mock-file-data'
 
 test.describe('Long Operation - Progress Visibility', { tag: '@slow' }, () => {
   test('progress bar remains visible throughout extended operation', async ({ page }) => {
@@ -123,7 +123,7 @@ test.describe('Long Operation - Progress Visibility', { tag: '@slow' }, () => {
     expect(events[0].percent).toBeLessThan(100)
 
     // Only the last event(s) should be 100%
-    const eventsAt100 = events.filter((e) => e.percent >= 100)
+    const eventsAt100 = events.filter(e => e.percent >= 100)
     expect(eventsAt100.length).toBeLessThan(events.length / 2)
 
     await expect(buildPage.successMessage).toBeVisible()
@@ -131,7 +131,9 @@ test.describe('Long Operation - Progress Visibility', { tag: '@slow' }, () => {
 })
 
 test.describe('Long Operation - Button States', { tag: '@slow' }, () => {
-  test('create project button shows appropriate state during operation', async ({ page }) => {
+  test('create project button shows appropriate state during operation', async ({
+    page
+  }) => {
     const mock = createTauriMock(page)
     mock
       .setScenario(SCENARIOS.SMOKE_TEST)
@@ -284,7 +286,7 @@ test.describe('Long Operation - UI Responsiveness', { tag: '@slow' }, () => {
     console.log(`Operation ran for ${operationDuration}ms`)
     console.log(`Longest frame gap over the operation: ${longestFrameGap.toFixed(0)}ms`)
 
-    interactions.forEach((i) => {
+    interactions.forEach(i => {
       expect(i.success, `${i.action} during transfer`).toBe(true)
     })
 
@@ -386,10 +388,10 @@ test.describe('Long Operation - Extended Duration', { tag: '@slow' }, () => {
     expect(events.length).toBeGreaterThan(5)
 
     // Check that events covered all checkpoint ranges
-    const reached25 = events.some((e) => e.percent >= 25)
-    const reached50 = events.some((e) => e.percent >= 50)
-    const reached75 = events.some((e) => e.percent >= 75)
-    const reached100 = events.some((e) => e.percent >= 100)
+    const reached25 = events.some(e => e.percent >= 25)
+    const reached50 = events.some(e => e.percent >= 50)
+    const reached75 = events.some(e => e.percent >= 75)
+    const reached100 = events.some(e => e.percent >= 100)
 
     expect(reached25).toBe(true)
     expect(reached50).toBe(true)
@@ -400,87 +402,91 @@ test.describe('Long Operation - Extended Duration', { tag: '@slow' }, () => {
   })
 })
 
-test.describe('Long Operation - Memory During Extended Operation', { tag: '@slow' }, () => {
-  test('no excessive memory growth during long operation', async ({ page }) => {
-    const mock = createTauriMock(page)
-    mock
-      .setScenario(SCENARIOS.SMOKE_TEST)
-      .setMockFiles(generateMockFiles(20, 2, SCENARIOS.SMOKE_TEST))
-      .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
-      .setSpeedMultiplier(1000)
-      .setMaxEventsPerFile(3)
-    await mock.setup()
+test.describe(
+  'Long Operation - Memory During Extended Operation',
+  { tag: '@slow' },
+  () => {
+    test('no excessive memory growth during long operation', async ({ page }) => {
+      const mock = createTauriMock(page)
+      mock
+        .setScenario(SCENARIOS.SMOKE_TEST)
+        .setMockFiles(generateMockFiles(20, 2, SCENARIOS.SMOKE_TEST))
+        .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
+        .setSpeedMultiplier(1000)
+        .setMaxEventsPerFile(3)
+      await mock.setup()
 
-    const buildPage = new BuildProjectPage(page)
-    await buildPage.goto()
-    await mock.injectMocks()
+      const buildPage = new BuildProjectPage(page)
+      await buildPage.goto()
+      await mock.injectMocks()
 
-    await buildPage.fillProjectDetails('Memory Test', 4)
-    await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
+      await buildPage.fillProjectDetails('Memory Test', 4)
+      await buildPage.clickSelectDestination()
+      await buildPage.clickSelectFiles()
 
-    // Baseline with the page loaded and the file list rendered, after a GC.
-    //
-    // This test compared the heap immediately after navigation against the heap
-    // immediately after completion, with no collection in between, and called a
-    // 50MB difference excessive growth. It failed on every one of three runs
-    // against master at around 100MB, because that difference is mostly the app
-    // warming up plus garbage that had not been collected yet - neither of which
-    // is growth. Same defect, same fix as `no memory leak during 50 file
-    // operation` in memory-stability.spec.ts (issue #200).
-    await collectGarbage(page)
-    const baseline = await measureMemory(page)
+      // Baseline with the page loaded and the file list rendered, after a GC.
+      //
+      // This test compared the heap immediately after navigation against the heap
+      // immediately after completion, with no collection in between, and called a
+      // 50MB difference excessive growth. It failed on every one of three runs
+      // against master at around 100MB, because that difference is mostly the app
+      // warming up plus garbage that had not been collected yet - neither of which
+      // is growth. Same defect, same fix as `no memory leak during 50 file
+      // operation` in memory-stability.spec.ts (issue #200).
+      await collectGarbage(page)
+      const baseline = await measureMemory(page)
 
-    await buildPage.clickCreateProject()
-    await buildPage.waitForCompletion(60000)
+      await buildPage.clickCreateProject()
+      await buildPage.waitForCompletion(60000)
 
-    await collectGarbage(page)
-    const settled = await measureMemory(page)
+      await collectGarbage(page)
+      const settled = await measureMemory(page)
 
-    if (baseline.available && settled.available) {
-      const retainedMB =
-        (settled.usedJSHeapSize! - baseline.usedJSHeapSize!) / (1024 * 1024)
-      console.log(`Retained after GC: ${retainedMB.toFixed(2)} MB`)
-      expect(retainedMB).toBeLessThan(30)
-    }
+      if (baseline.available && settled.available) {
+        const retainedMB =
+          (settled.usedJSHeapSize! - baseline.usedJSHeapSize!) / (1024 * 1024)
+        console.log(`Retained after GC: ${retainedMB.toFixed(2)} MB`)
+        expect(retainedMB).toBeLessThan(30)
+      }
 
-    await expect(buildPage.successMessage).toBeVisible()
-  })
-
-  test('event buffer does not grow unbounded', async ({ page }) => {
-    const mock = createTauriMock(page)
-    mock
-      .setScenario(SCENARIOS.SMOKE_TEST)
-      .setMockFiles(generateMockFiles(20, 2, SCENARIOS.SMOKE_TEST))
-      .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
-      .setSpeedMultiplier(2000) // Faster for CI stability
-      .setMaxEventsPerFile(5)
-    await mock.setup()
-
-    const buildPage = new BuildProjectPage(page)
-    await buildPage.goto()
-    await mock.injectMocks()
-
-    await buildPage.fillProjectDetails('Event Buffer Test', 4)
-    await buildPage.clickSelectDestination()
-    await buildPage.clickSelectFiles()
-    await buildPage.clickCreateProject()
-
-    await buildPage.waitForCompletion(120000) // Increased timeout for CI
-
-    // Check event buffer size
-    const events = await mock.getDetailedEvents()
-
-    // Should have events but not an unreasonable number
-    // 50 files * 10 events = 500 max events
-    expect(events.length).toBeLessThan(1000)
-
-    // Events should be well-formed
-    events.forEach((event) => {
-      expect(event.percent).toBeGreaterThanOrEqual(0)
-      expect(event.percent).toBeLessThanOrEqual(100)
+      await expect(buildPage.successMessage).toBeVisible()
     })
 
-    await expect(buildPage.successMessage).toBeVisible()
-  })
-})
+    test('event buffer does not grow unbounded', async ({ page }) => {
+      const mock = createTauriMock(page)
+      mock
+        .setScenario(SCENARIOS.SMOKE_TEST)
+        .setMockFiles(generateMockFiles(20, 2, SCENARIOS.SMOKE_TEST))
+        .setSelectedFolder(TEST_PROJECTS.BASIC.folder)
+        .setSpeedMultiplier(2000) // Faster for CI stability
+        .setMaxEventsPerFile(5)
+      await mock.setup()
+
+      const buildPage = new BuildProjectPage(page)
+      await buildPage.goto()
+      await mock.injectMocks()
+
+      await buildPage.fillProjectDetails('Event Buffer Test', 4)
+      await buildPage.clickSelectDestination()
+      await buildPage.clickSelectFiles()
+      await buildPage.clickCreateProject()
+
+      await buildPage.waitForCompletion(120000) // Increased timeout for CI
+
+      // Check event buffer size
+      const events = await mock.getDetailedEvents()
+
+      // Should have events but not an unreasonable number
+      // 50 files * 10 events = 500 max events
+      expect(events.length).toBeLessThan(1000)
+
+      // Events should be well-formed
+      events.forEach(event => {
+        expect(event.percent).toBeGreaterThanOrEqual(0)
+        expect(event.percent).toBeLessThanOrEqual(100)
+      })
+
+      await expect(buildPage.successMessage).toBeVisible()
+    })
+  }
+)

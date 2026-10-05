@@ -21,7 +21,6 @@
 import { useApiKeys } from '@shared/hooks'
 import { useAppStore } from '@shared/store'
 import { useCallback, useState } from 'react'
-
 import type { DefaultFolderStatus } from '../internal/defaultFolder'
 import type { SelectedSproutFolder } from '../types'
 import { useDefaultSproutFolder } from './useDefaultSproutFolder'
@@ -53,8 +52,8 @@ export function useSproutFolderSelection(): UseSproutFolderSelectionReturn {
     isPending: settingsPending,
     isError: settingsError
   } = useApiKeys()
-  const recentFolders = useAppStore((state) => state.recentSproutFolders)
-  const rememberSproutFolder = useAppStore((state) => state.rememberSproutFolder)
+  const recentFolders = useAppStore(state => state.recentSproutFolders)
+  const rememberSproutFolder = useAppStore(state => state.rememberSproutFolder)
 
   // `undefined` means "not chosen this session yet", which is distinct from an
   // explicit null (the user deliberately picking Root). Collapsing the two

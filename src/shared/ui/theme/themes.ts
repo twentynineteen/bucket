@@ -255,7 +255,7 @@ export const getThemeById = (id: string): ThemeMetadata | undefined => {
  * Get themes by category
  */
 export const getThemesByCategory = (category: ThemeCategory): ThemeMetadata[] => {
-  return Object.values(THEMES).filter((theme) => theme.category === category)
+  return Object.values(THEMES).filter(theme => theme.category === category)
 }
 
 /**

@@ -5,10 +5,8 @@
  * index because a colleague's API key differs, or accepting another account's
  * index whose folder ids mean nothing here.
  */
-import { describe, expect, it } from 'vitest'
-
 import type { SproutFolder } from '@shared/types'
-
+import { describe, expect, it } from 'vitest'
 import { accountFingerprint, createFolderIndex } from './folderIndex'
 import {
   assessImport,
@@ -154,7 +152,7 @@ describe('importing when you already have some of these folders', () => {
       TODAY
     )
 
-    const p1 = merged.folders.filter((f) => f.id === 'p1')
+    const p1 = merged.folders.filter(f => f.id === 'p1')
     expect(p1).toHaveLength(1)
   })
 
@@ -168,7 +166,7 @@ describe('importing when you already have some of these folders', () => {
       TODAY
     )
 
-    expect(merged.folders.map((f) => f.id)).toContain('mine')
+    expect(merged.folders.map(f => f.id)).toContain('mine')
   })
 
   it('adds folders only the exporter had', () => {
@@ -180,7 +178,7 @@ describe('importing when you already have some of these folders', () => {
     )
 
     // p2 and m1 come from their index.
-    expect(merged.folders.map((f) => f.id).sort()).toEqual(
+    expect(merged.folders.map(f => f.id).sort()).toEqual(
       ['m1', 'mine', 'p1', 'p2'].sort()
     )
   })
@@ -198,7 +196,7 @@ describe('importing when you already have some of these folders', () => {
       TODAY
     )
 
-    expect(merged.folders.filter((f) => f.name === 'Postgraduate')).toHaveLength(2)
+    expect(merged.folders.filter(f => f.name === 'Postgraduate')).toHaveLength(2)
   })
 
   it('lets the newer side win a rename', () => {
@@ -213,7 +211,7 @@ describe('importing when you already have some of these folders', () => {
       TODAY
     )
 
-    expect(merged.folders.find((f) => f.id === 'p1')!.name).toBe('Postgraduate (2026)')
+    expect(merged.folders.find(f => f.id === 'p1')!.name).toBe('Postgraduate (2026)')
   })
 
   it('does not let a stale export revert a rename the importer already has', () => {
@@ -232,7 +230,7 @@ describe('importing when you already have some of these folders', () => {
       TODAY
     )
 
-    expect(merged.folders.find((f) => f.id === 'p1')!.name).toBe(
+    expect(merged.folders.find(f => f.id === 'p1')!.name).toBe(
       'Postgraduate (renamed locally)'
     )
   })
@@ -245,7 +243,7 @@ describe('importing when you already have some of these folders', () => {
 
     const merged = mergeImportedIndex(null, importable(dupes, TODAY), 'my-key', TODAY)
 
-    expect(merged.folders.filter((f) => f.id === 'dup')).toHaveLength(1)
+    expect(merged.folders.filter(f => f.id === 'dup')).toHaveLength(1)
   })
 
   it('imports cleanly when the importer has no index at all', () => {

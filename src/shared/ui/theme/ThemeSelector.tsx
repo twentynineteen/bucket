@@ -11,13 +11,13 @@
  * - Theme cards use inline styles to remain stable during preview
  */
 
-import { ThemeColorSwatch } from './ThemeColorSwatch'
 import { Label } from '@shared/ui/label'
-import { getGroupedThemes, type ThemeMetadata } from './themes'
-import { useThemePreview } from './useThemePreview'
 import { Check } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import React from 'react'
+import { ThemeColorSwatch } from './ThemeColorSwatch'
+import { getGroupedThemes, type ThemeMetadata } from './themes'
+import { useThemePreview } from './useThemePreview'
 
 /**
  * Get stable inline styles for a theme card based on the theme's own colors.
@@ -86,7 +86,7 @@ export function ThemeSelector({ label = 'Theme', className }: ThemeSelectorProps
       <div className={className}>
         {label && <Label className="mb-3 block">{label}</Label>}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3, 4].map(i => (
             <div key={i} className="bg-muted h-24 animate-pulse rounded-lg" />
           ))}
         </div>
@@ -105,14 +105,14 @@ export function ThemeSelector({ label = 'Theme', className }: ThemeSelectorProps
 
       {/* Render grouped themes */}
       <div className="space-y-6">
-        {groupedThemes.map((group) => (
+        {groupedThemes.map(group => (
           <div key={group.label}>
             <h3 className="text-muted-foreground mb-3 text-sm font-medium">
               {group.label}
             </h3>
 
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-              {group.themes.map((themeMetadata) => {
+              {group.themes.map(themeMetadata => {
                 const isSelected = theme === themeMetadata.id
                 const styles = getThemeCardStyles(themeMetadata, isSelected)
 

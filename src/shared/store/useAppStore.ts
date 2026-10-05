@@ -47,35 +47,34 @@ interface AppState {
 export const RECENT_SPROUT_FOLDER_LIMIT = 5
 
 // Create the Zustand store
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>(set => ({
   trelloApiKey: '',
-  setTrelloApiKey: (trelloKey) => set({ trelloApiKey: trelloKey }),
+  setTrelloApiKey: trelloKey => set({ trelloApiKey: trelloKey }),
   trelloApiToken: '',
-  setTrelloApiToken: (trelloToken) => set({ trelloApiToken: trelloToken }),
+  setTrelloApiToken: trelloToken => set({ trelloApiToken: trelloToken }),
   trelloBoardId: '',
-  setTrelloBoardId: (boardId) => set({ trelloBoardId: boardId }),
+  setTrelloBoardId: boardId => set({ trelloBoardId: boardId }),
   sproutVideoApiKey: '',
-  setSproutVideoApiKey: (sproutKey) => set({ sproutVideoApiKey: sproutKey }),
+  setSproutVideoApiKey: sproutKey => set({ sproutVideoApiKey: sproutKey }),
   breadcrumbs: {},
-  setBreadcrumbs: (breadcrumb) => set({ breadcrumbs: breadcrumb }),
+  setBreadcrumbs: breadcrumb => set({ breadcrumbs: breadcrumb }),
   defaultBackgroundFolder: null,
-  setDefaultBackgroundFolder: (path) => set({ defaultBackgroundFolder: path }),
+  setDefaultBackgroundFolder: path => set({ defaultBackgroundFolder: path }),
   rebrandBackgroundFolder: null,
-  setRebrandBackgroundFolder: (path) => set({ rebrandBackgroundFolder: path }),
+  setRebrandBackgroundFolder: path => set({ rebrandBackgroundFolder: path }),
   posterframeTemplateChoice: null,
-  setPosterframeTemplateChoice: (template) =>
-    set({ posterframeTemplateChoice: template }),
+  setPosterframeTemplateChoice: template => set({ posterframeTemplateChoice: template }),
   latestSproutUpload: null,
-  setLatestSproutUpload: (upload) => set({ latestSproutUpload: upload }),
+  setLatestSproutUpload: upload => set({ latestSproutUpload: upload }),
   ollamaUrl: 'http://localhost:11434',
-  setOllamaUrl: (url) => set({ ollamaUrl: url }),
+  setOllamaUrl: url => set({ ollamaUrl: url }),
   recentSproutFolders: [],
-  rememberSproutFolder: (folder) =>
-    set((state) => {
+  rememberSproutFolder: folder =>
+    set(state => {
       // Root is the default, not a destination worth remembering.
       if (!folder) return state
       const withoutDuplicate = state.recentSproutFolders.filter(
-        (existing) => existing.id !== folder.id
+        existing => existing.id !== folder.id
       )
       return {
         recentSproutFolders: [folder, ...withoutDuplicate].slice(

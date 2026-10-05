@@ -1,11 +1,10 @@
 'use client'
 
-import { cn } from '../../utils/cn'
 import { Button } from '@shared/ui/button'
 import { Sheet, SheetContent } from '@shared/ui/sheet'
 import { PanelLeft } from 'lucide-react'
 import * as React from 'react'
-
+import { cn } from '../../utils/cn'
 import { useSidebar } from '../use-sidebar'
 
 const SIDEBAR_WIDTH_MOBILE = '18rem'
@@ -126,7 +125,7 @@ export const SidebarTrigger = React.forwardRef<
       variant="ghost"
       size="icon"
       className={cn('h-7 w-7', className)}
-      onClick={(event) => {
+      onClick={event => {
         onClick?.(event)
         toggleSidebar()
       }}

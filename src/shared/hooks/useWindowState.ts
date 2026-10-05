@@ -1,13 +1,12 @@
 // Target: @features/AppShell
-import { useEffect } from 'react'
+import { isTauriRuntime } from '@shared/utils'
 import {
   currentMonitor,
   getCurrentWindow,
   PhysicalPosition,
   PhysicalSize
 } from '@tauri-apps/api/window'
-
-import { isTauriRuntime } from '@shared/utils'
+import { useEffect } from 'react'
 
 /**
  * Persisted window geometry, in **physical** pixels.
@@ -225,7 +224,7 @@ export function useWindowState() {
 
     let cleanup: (() => void) | null = null
 
-    setupListeners().then((fn) => {
+    setupListeners().then(fn => {
       cleanup = fn
     })
 

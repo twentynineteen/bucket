@@ -18,8 +18,7 @@ import { UpdateDialog } from '@shared/ui/layout/UpdateDialog'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
-import type { Mock } from 'vitest'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock('framer-motion', () => ({
