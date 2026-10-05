@@ -400,21 +400,6 @@ Sprout folders are deliberately **not** prefetched. Sprout allows 200 requests p
 minute per account, shared with uploads - speculative folder fetches spend budget an
 in-flight upload may need. See issue #155.
 
-### Memory Management
-
-```typescript
-// Automatic cleanup
-const optimizer = new QueryClientOptimizer(queryClient)
-optimizer.startAutoCleanup(5 * 60 * 1000) // 5 minutes
-
-// Manual cleanup
-optimizer.performCleanup()
-
-// Memory statistics
-const stats = optimizer.getMemoryStats()
-console.log(`Cache size: ${stats.estimatedSizeFormatted}`)
-```
-
 ### Performance Monitoring
 
 ```typescript

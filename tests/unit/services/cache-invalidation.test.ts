@@ -3,7 +3,7 @@
  * Purpose: Test React Query cache invalidation utilities
  */
 
-import { queryKeys } from '@shared/lib/query-keys'
+import { queryKeys } from '@shared/lib'
 import {
   CacheInvalidationService,
   createCacheInvalidationService

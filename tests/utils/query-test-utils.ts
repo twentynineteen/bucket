@@ -1,4 +1,4 @@
-import { type QueryKey } from '@shared/lib/query-utils'
+import { type QueryKey } from '@shared/lib'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, RenderOptions, RenderResult } from '@testing-library/react'
 import * as React from 'react'

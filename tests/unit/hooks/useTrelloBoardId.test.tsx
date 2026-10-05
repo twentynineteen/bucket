@@ -6,7 +6,7 @@
  */
 
 import { useTrelloBoardId } from '@features/Trello'
-import { queryKeys } from '@shared/lib/query-keys'
+import { queryKeys } from '@shared/lib'
 import { appStore } from '@shared/store'
 import * as storage from '@shared/utils/storage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'

@@ -1,6 +1,11 @@
 import { CACHE } from '@shared/constants'
-import { createQueryError, createQueryOptions, queryKeys, shouldRetry } from '@shared/lib'
-import { appVersionQueryOptions } from '@shared/lib/app-version-query'
+import {
+  appVersionQueryOptions,
+  createQueryError,
+  createQueryOptions,
+  queryKeys,
+  shouldRetry
+} from '@shared/lib'
 import { Avatar, AvatarFallback, AvatarImage } from '@shared/ui/avatar'
 import {
   DropdownMenu,
