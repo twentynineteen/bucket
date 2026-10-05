@@ -69,10 +69,14 @@ const App: React.FC = () => {
   // Persist window position and size across sessions
   useWindowState()
 
+  // next-themes renders an inline anti-flash script meant for server rendering. This app
+  // renders only on the client, where React never runs it, and React 19.3 logs an error for
+  // it. scriptProps marks it a data block, which keeps it inert and silent.
   return (
     <ThemeProvider
       attribute="class"
       defaultTheme="system"
+      scriptProps={{ type: 'application/json' }}
       themes={[
         'system',
         'light',
