@@ -135,6 +135,49 @@ export default tseslint.config(
       'boundaries/no-unknown': ['error']
     }
   },
+  // Module conventions (CLAUDE.md, "Module rules")
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.*', '**/__contracts__/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@features/*/**'],
+              message: 'Import other features through their barrel: @features/<Name>.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ['src/**/index.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ExportAllDeclaration',
+          message: 'Barrels use named re-exports, each with a JSDoc line, not export *.'
+        }
+      ]
+    }
+  },
+  {
+    files: ['src/shared/ui/**/index.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Program',
+          message:
+            'shared/ui has no barrel files. Import each component directly, e.g. @shared/ui/button.'
+        }
+      ]
+    }
+  },
   // tests/ is linted only for the rules below, so its disable comments for the
   // full rule set would all report as unused.
   {
