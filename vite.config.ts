@@ -68,7 +68,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup/vitest-setup.ts', './tests/setup/msw-server.ts'],
     mockReset: true,
-    exclude: ['**/node_modules/**', '**/dist/**', '**/tests/e2e/**'],
+    // .claude/ holds agent worktrees: whole copies of the repo whose tests are not ours.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/tests/e2e/**', '.claude/**'],
     // Increased from the default 5000ms to accommodate async dialog interactions
     // with Radix UI components which can be slow in the JSDOM environment.
     testTimeout: 10000
