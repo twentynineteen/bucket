@@ -84,9 +84,6 @@ export const CACHE = {
   /** Extended cache duration (1 hour) */
   EXTENDED: 1 * HOURS,
 
-  /** Persistent cache duration (24 hours) */
-  PERSISTENT: 24 * HOURS,
-
   /** GC time for brief cache (1 minute) */
   GC_BRIEF: 1 * MINUTES,
 

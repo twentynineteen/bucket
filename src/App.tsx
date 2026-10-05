@@ -1,13 +1,12 @@
-import { CACHE, getBackoffDelay, RETRY } from '@shared/constants'
 import { useWindowState } from '@shared/hooks/useWindowState'
 import {
+  createQueryClient,
   initializePerformanceMonitor,
-  initializePrefetchManager,
-  shouldRetryRequest
+  initializePrefetchManager
 } from '@shared/lib'
 import { initializeCacheService } from '@shared/services'
 import { logger } from '@shared/utils'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ThemeProvider } from 'next-themes'
 import React from 'react'
@@ -22,37 +21,7 @@ import { Toaster } from './shared/ui/sonner'
 // The top level component, Page, acts as the provider for the layout
 // subsequent components are loaded within the page window via the Outlet component.
 
-// Create a QueryClient instance with migration-optimized settings
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Default stale time - data is considered fresh for 30 seconds
-      staleTime: CACHE.SHORT,
-      // Default garbage collection time - keep unused data for 5 minutes
-      gcTime: CACHE.GC_STANDARD,
-      // Retry 5xx and transport failures up to 3 times with exponential backoff.
-      // Never retries a 4xx, and never a 429 into a rate-limit window that is
-      // still closed. Handles Tauri's bare-string rejections; see #156.
-      retry: (failureCount, error) =>
-        shouldRetryRequest(error, failureCount, RETRY.DEFAULT_ATTEMPTS),
-      // Retry delay with exponential backoff
-      retryDelay: attemptIndex => getBackoffDelay(attemptIndex, RETRY.MAX_DELAY_DEFAULT),
-      // Refetch on window focus for critical data
-      refetchOnWindowFocus: false, // Disabled by default, hooks can override this
-      // Background refetch interval for important data
-      refetchInterval: false, // Disabled by default, hooks can override this
-      // Network mode configuration for Tauri desktop app
-      networkMode: 'online'
-    },
-    mutations: {
-      // Fewer retries for mutations -- a retry can duplicate an operation.
-      retry: (failureCount, error) =>
-        shouldRetryRequest(error, failureCount, RETRY.MUTATION_ATTEMPTS),
-      // Retry delay for mutations
-      retryDelay: attemptIndex => getBackoffDelay(attemptIndex, RETRY.MAX_DELAY_MUTATION)
-    }
-  }
-})
+const queryClient = createQueryClient()
 
 // Initialize performance and cache management services
 initializeCacheService(queryClient)

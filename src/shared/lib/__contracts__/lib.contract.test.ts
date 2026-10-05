@@ -1,34 +1,31 @@
 /**
  * Contract tests for @shared/lib barrel
  *
- * Verifies export shape and behavioral contracts for query infrastructure.
- * Note: Imports from specific sub-modules to avoid Tauri runtime dependencies
- * in query-client-config and prefetch-strategies.
+ * Verifies export shape and behavioral contracts for query infrastructure,
+ * imported through the barrel exactly as other modules consume it.
  */
 
-// Import from sub-modules that don't require Tauri runtime
-import {
-  createPaginatedQueryKey,
-  createQueryKey,
-  createTimeRangeQueryKey,
-  createUserScopedQueryKey,
-  getInvalidationQueries,
-  invalidationRules,
-  isQueryKeyMatch,
-  queryKeys,
-  validateQueryKey
-} from '@shared/lib/query-keys'
 import {
   calculateProgress,
   createMutationOptions,
+  createPaginatedQueryKey,
+  createQueryClient,
   createQueryError,
+  createQueryKey,
   createQueryOptions,
+  createTimeRangeQueryKey,
+  createUserScopedQueryKey,
+  getInvalidationQueries,
   getRetryDelay,
   inferErrorType,
+  invalidationRules,
+  isQueryKeyMatch,
   QUERY_PROFILES,
+  queryKeys,
   retryStrategies,
-  shouldRetry
-} from '@shared/lib/query-utils'
+  shouldRetry,
+  validateQueryKey
+} from '@shared/lib'
 import { describe, expect, test } from 'vitest'
 
 describe('@shared/lib barrel contract', () => {
@@ -57,9 +54,9 @@ describe('@shared/lib barrel contract', () => {
       expect(calculateProgress).toBeTypeOf('function')
     })
 
-    // Note: barrel index.ts cannot be tested directly because it re-exports
-    // query-client-config.ts which depends on @tauri-apps/plugin-store (native runtime).
-    // Shape verification is done via sub-module imports above.
+    test('B2.1 exports createQueryClient', () => {
+      expect(createQueryClient).toBeTypeOf('function')
+    })
   })
 
   describe('behavior: query-keys factory', () => {

@@ -1,4 +1,4 @@
-import { fingerprint } from '@shared/lib/fingerprint'
+import { fingerprint } from '@shared/lib'
 import { describe, expect, it } from 'vitest'
 
 /**

@@ -97,7 +97,6 @@ describe('@shared/constants barrel contract', () => {
       expect(CACHE.STANDARD).toBeLessThan(CACHE.MEDIUM)
       expect(CACHE.MEDIUM).toBeLessThan(CACHE.LONG)
       expect(CACHE.LONG).toBeLessThan(CACHE.EXTENDED)
-      expect(CACHE.EXTENDED).toBeLessThan(CACHE.PERSISTENT)
     })
 
     test('LIMITS has expected validation bounds', () => {

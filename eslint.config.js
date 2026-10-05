@@ -29,6 +29,22 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 import bucket from './eslint-rules/index.js'
 
+const FEATURE_DEEP_IMPORT = {
+  group: ['@features/*/**'],
+  message: 'Import other features through their barrel: @features/<Name>.'
+}
+
+const LIB_SUBPATH_IMPORT = {
+  group: ['@shared/lib/*'],
+  message: 'Import shared/lib through its barrel: @shared/lib.'
+}
+
+const NEW_QUERY_CLIENT = {
+  selector: 'NewExpression[callee.name="QueryClient"]',
+  message:
+    'Use createQueryClient() from @shared/lib, so the app runs the client its tests cover (#300).'
+}
+
 export default tseslint.config(
   { ignores: ['dist'] },
   {
@@ -135,22 +151,43 @@ export default tseslint.config(
       'boundaries/no-unknown': ['error']
     }
   },
-  // Module conventions (CLAUDE.md, "Module rules")
+  // Module conventions (CLAUDE.md, "Module rules"). A later block replaces an
+  // earlier block's options for the same rule, so each file group below lists
+  // every pattern or selector that applies to it.
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['**/*.test.*', '**/__contracts__/**'],
     rules: {
       'no-restricted-imports': [
         'error',
-        {
-          patterns: [
-            {
-              group: ['@features/*/**'],
-              message: 'Import other features through their barrel: @features/<Name>.'
-            }
-          ]
-        }
-      ]
+        { patterns: [FEATURE_DEEP_IMPORT, LIB_SUBPATH_IMPORT] }
+      ],
+      'no-restricted-syntax': ['error', NEW_QUERY_CLIENT]
+    }
+  },
+  {
+    // shared/lib's own modules and tests may reach its sub-modules directly.
+    files: ['src/shared/lib/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [FEATURE_DEEP_IMPORT] }]
+    }
+  },
+  {
+    // The one place a QueryClient is constructed (#300).
+    files: ['src/shared/lib/query-client-config.ts'],
+    rules: { 'no-restricted-syntax': 'off' }
+  },
+  {
+    // Tests may deep-import features (e.g. internals under test), but consume
+    // shared/lib through its barrel like everyone else.
+    files: [
+      'tests/**/*.{ts,tsx}',
+      'src/**/*.test.{ts,tsx}',
+      'src/**/__contracts__/**/*.{ts,tsx}'
+    ],
+    ignores: ['src/shared/lib/**'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [LIB_SUBPATH_IMPORT] }]
     }
   },
   {
@@ -158,6 +195,7 @@ export default tseslint.config(
     rules: {
       'no-restricted-syntax': [
         'error',
+        NEW_QUERY_CLIENT,
         {
           selector: 'ExportAllDeclaration',
           message: 'Barrels use named re-exports, each with a JSDoc line, not export *.'

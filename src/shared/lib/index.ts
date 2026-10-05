@@ -35,20 +35,8 @@ export type { QueryKeyFactory } from './query-keys'
 export type { InvalidationRule } from './query-keys'
 
 // Query client configuration
-/** Default persistence settings for React Query cache -- storage key, TTL, filters */
-export { DEFAULT_PERSISTENCE_CONFIG } from './query-client-config'
-/** Create a React Query client with IndexedDB persistence configured */
-export { createPersistedQueryClient } from './query-client-config'
-/** Optimizer for tuning query client defaults based on device capabilities */
-export { QueryClientOptimizer } from './query-client-config'
-/** Preset query client configurations for different app profiles */
-export { QueryClientProfiles } from './query-client-config'
-/** Apply a named profile to a query client instance */
-export { applyQueryClientProfile } from './query-client-config'
-/** Initialize an optimized query client with persistence and monitoring */
-export { initializeOptimizedQueryClient } from './query-client-config'
-/** Configuration shape for cache persistence -- storage backend, TTL, filters */
-export type { CachePersistenceConfig } from './query-client-config'
+/** Create the app's QueryClient -- the retry policy and defaults App.tsx installs */
+export { createQueryClient } from './query-client-config'
 
 // Query utilities
 /** Preset query option profiles for common patterns -- frequent, rare, static */

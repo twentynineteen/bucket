@@ -199,14 +199,6 @@ vi.mock('@tauri-apps/plugin-updater', () => ({
   check: vi.fn()
 }))
 
-// The package is not installed; this mocks the broken persistence import (#300).
-// eslint-disable-next-line bucket/vi-mock-resolves
-vi.mock('@tauri-apps/plugin-store', () => ({
-  get: vi.fn(),
-  set: vi.fn(),
-  del: vi.fn()
-}))
-
 // None of the directory getters returns a trailing separator, matching the
 // real API. A file-level vi.mock replaces this factory wholesale, so any
 // test file declaring its own must supply `join` too (issue #167).
