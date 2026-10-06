@@ -268,10 +268,13 @@ fn b1_5_legacy_url_for_an_already_linked_card_adds_no_duplicate() {
         }),
     ));
 
-    let (file, _) = found(&fx);
+    let (file, fixes) = found(&fx);
 
     assert_eq!(file.trello_cards.len(), 1);
     assert!(!file.extra.contains_key("trelloCardUrl"));
+    // Old card commands mirrored the first card here on every write; nothing
+    // is lost by dropping it, so it is not a repair worth a backup.
+    assert!(fixes.is_empty(), "{fixes:?}");
 }
 
 #[test]
@@ -305,6 +308,77 @@ fn b1_7_parent_folder_naming_the_project_itself_is_fixed() {
 
     assert_eq!(file.parent_folder, "/Volumes/Other/Clients");
     assert!(fixes.contains(&Fix::ParentFolderWasProjectFolder));
+}
+
+#[test]
+fn b1_7_a_correct_parent_folder_sharing_the_project_name_is_left_alone() {
+    // A project at .../Proj/Proj: its correct parentFolder ends in "Proj" too.
+    let root = TempDir::new().unwrap();
+    let project = root.path().join("Proj").join("Proj");
+    fs::create_dir_all(&project).unwrap();
+    let fx = Fixture {
+        _root: root,
+        project,
+    };
+    fx.write_json(&well_formed(&fx, json!({})));
+
+    let (file, fixes) = found(&fx);
+
+    assert_eq!(file.parent_folder, fx.parent());
+    assert!(fixes.is_empty(), "{fixes:?}");
+}
+
+#[test]
+fn b1_4_card_ids_follow_the_old_rule_for_long_runs() {
+    let fx = Fixture::bare();
+    let long_id = "a".repeat(30);
+    fx.write_json(&well_formed(
+        &fx,
+        json!({ "trelloCardUrl": format!("https://trello.com/c/{long_id}/p") }),
+    ));
+
+    let (file, _) = found(&fx);
+
+    assert_eq!(file.trello_cards[0].card_id, "a".repeat(24));
+}
+
+#[test]
+fn b1_8_a_missing_project_folder_is_not_a_missing_file() {
+    let fx = Fixture::bare();
+    let gone = fx.project.join("unmounted");
+
+    assert_eq!(read(&gone), Read::ProjectNotFound);
+}
+
+#[cfg(unix)]
+#[test]
+fn b1_9_a_file_the_os_will_not_read_is_never_replaced() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let fx = linked_project();
+    let original = fx.bytes();
+    fs::set_permissions(fx.file(), fs::Permissions::from_mode(0o000)).unwrap();
+    if fs::read(fx.file()).is_ok() {
+        // Running as root: permissions cannot make the file unreadable.
+        fs::set_permissions(fx.file(), fs::Permissions::from_mode(0o644)).unwrap();
+        return;
+    }
+
+    let read_result = read(&fx.project);
+    let rescan = fx.apply_one(&Change::Rescan);
+    let add = fx.apply_one(&Change::AddVideoLink {
+        link: link("https://v/new"),
+    });
+
+    fs::set_permissions(fx.file(), fs::Permissions::from_mode(0o644)).unwrap();
+    assert!(
+        matches!(read_result, Read::Inaccessible { .. }),
+        "{read_result:?}"
+    );
+    assert!(matches!(rescan, Err(ChangeError::Io { .. })), "{rescan:?}");
+    assert!(matches!(add, Err(ChangeError::Io { .. })), "{add:?}");
+    assert_eq!(fx.bytes(), original);
+    assert!(!fx.backup().exists());
 }
 
 // ---------------------------------------------------------------------------
@@ -454,6 +528,39 @@ fn b2_7_concurrent_applies_to_one_project_all_land() {
     let disk = fx.on_disk();
     assert_eq!(disk["videoLinks"].as_array().unwrap().len(), 20);
     assert_eq!(disk["trelloCards"].as_array().unwrap().len(), 20);
+}
+
+#[cfg(unix)]
+#[test]
+fn b2_7_two_spellings_of_one_folder_share_the_lock() {
+    let fx = Fixture::bare();
+    fx.write_json(&well_formed(&fx, json!({})));
+    let alias = fx.project.parent().unwrap().join("Alias");
+    std::os::unix::fs::symlink(&fx.project, &alias).unwrap();
+    let barrier = Arc::new(Barrier::new(20));
+
+    let handles: Vec<_> = (0..20)
+        .map(|i| {
+            let spelling = if i % 2 == 0 {
+                fx.project.clone()
+            } else {
+                alias.clone()
+            };
+            let barrier = Arc::clone(&barrier);
+            thread::spawn(move || {
+                barrier.wait();
+                let change = Change::AddVideoLink {
+                    link: link(&format!("https://v/{i}")),
+                };
+                apply(&[spelling], &change).pop().unwrap()
+            })
+        })
+        .collect();
+    for handle in handles {
+        handle.join().unwrap().unwrap();
+    }
+
+    assert_eq!(fx.on_disk()["videoLinks"].as_array().unwrap().len(), 20);
 }
 
 #[cfg(unix)]
@@ -885,28 +992,50 @@ fn without_last_modified(mut file: Breadcrumbs) -> Breadcrumbs {
     file
 }
 
+/// Preview, then apply, then read back what landed on disk.
+fn assert_preview_matches_disk(name: &str, fx: &Fixture, change: &Change) {
+    let previewed = preview(&[&fx.project], change).pop().unwrap();
+    let applied = fx.apply_one(change);
+    let (on_disk, _) = found(fx);
+
+    match (previewed, applied) {
+        (Ok(p), Ok(_)) => assert_eq!(
+            without_last_modified(p.after),
+            without_last_modified(on_disk),
+            "preview disagrees with the file written for {name}"
+        ),
+        (p, a) => panic!("{name}: preview {p:?} vs apply {a:?}"),
+    }
+}
+
 #[test]
 fn b7_1_preview_after_equals_what_apply_writes_for_every_change() {
     for (name, change) in all_changes() {
-        let fx = linked_project();
         // A file that needs fixes, so preview must apply them too.
+        let fx = linked_project();
         let mut value = fx.on_disk();
         value["createdBy"] = json!({ "data": "Alice" });
         value["trelloCardUrl"] = json!("https://trello.com/c/legacy01/p");
         fx.write_json(&value);
+        assert_preview_matches_disk(name, &fx, &change);
 
-        let previewed = preview(&[&fx.project], &change).pop().unwrap();
-        let applied = fx.apply_one(&change);
-
-        match (previewed, applied) {
-            (Ok(p), Ok(a)) => assert_eq!(
-                without_last_modified(p.after),
-                without_last_modified(a),
-                "preview disagrees with apply for {name}"
-            ),
-            (p, a) => panic!("{name}: preview {p:?} vs apply {a:?}"),
-        }
+        // A clean file, where nothing but the change itself differs.
+        let clean = linked_project();
+        assert_preview_matches_disk(name, &clean, &change);
     }
+}
+
+#[test]
+fn b7_1_preview_of_a_no_op_equals_the_untouched_file() {
+    let fx = linked_project();
+    let change = Change::AddTrelloCard {
+        card: card("carda001"),
+    };
+
+    let previewed = preview(&[&fx.project], &change).pop().unwrap().unwrap();
+    let (on_disk, _) = found(&fx);
+
+    assert_eq!(previewed.after, on_disk);
 }
 
 #[test]

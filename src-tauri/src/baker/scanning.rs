@@ -446,6 +446,34 @@ mod tests {
         assert!(!found.has_breadcrumbs);
     }
 
+    #[test]
+    fn issue303_size_recorded_by_older_versions_is_not_stale() {
+        // Older versions counted breadcrumbs.json itself in folderSizeBytes.
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Show A");
+        make_video_project(&project);
+        fs::write(project.join("Footage/Camera 1/clip.mp4"), vec![0u8; 5000]).unwrap();
+        let clips: Vec<String> = (0..40)
+            .map(|i| format!(r#"{{ "camera": 1, "name": "c{i}.mp4", "path": "Footage/Camera 1/c{i}.mp4" }}"#))
+            .collect();
+        let body = |size: u64| {
+            format!(
+                r#"{{ "projectTitle": "Show A", "numberOfCameras": 1,
+                     "files": [{{ "camera": 1, "name": "clip.mp4", "path": "Footage/Camera 1/clip.mp4" }}],
+                     "parentFolder": "/x", "createdBy": "Alice",
+                     "creationDateTime": "2026-01-01T00:00:00Z", "folderSizeBytes": {size},
+                     "padding": [{}] }}"#,
+                clips.join(",")
+            )
+        };
+        // The recorded size includes the file's own (padded) length.
+        let own_len = body(0).len() as u64 + 4;
+        write_breadcrumbs(&project, &body(5000 + own_len));
+        assert!(fs::metadata(project.join("breadcrumbs.json")).unwrap().len() > 2048);
+
+        assert!(!check_breadcrumbs_stale(&project).unwrap());
+    }
+
     // --- B1: validity ---
 
     #[test]

@@ -411,6 +411,44 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn update_still_honours_backup_originals_until_the_toggle_goes() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Show");
+        make_valid_project(&project);
+        let healthy = r#"{ "projectTitle": "Show", "numberOfCameras": 1, "files": [],
+            "parentFolder": "/x", "createdBy": "Alice",
+            "creationDateTime": "2026-01-01T00:00:00Z" }"#;
+        fs::write(project.join("breadcrumbs.json"), healthy).unwrap();
+
+        baker_update_breadcrumbs(vec![path_string(&project)], false, true)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(project.join("breadcrumbs.json.bak")).unwrap(),
+            healthy
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn an_unreadable_by_the_os_file_keeps_the_locked_file_message() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let file = tmp.path().join("breadcrumbs.json");
+        fs::write(&file, "{}").unwrap();
+        fs::set_permissions(&file, fs::Permissions::from_mode(0o000)).unwrap();
+        if fs::read(&file).is_ok() {
+            return; // root
+        }
+
+        let error = baker_read_breadcrumbs(path_string(tmp.path())).await.unwrap_err();
+
+        fs::set_permissions(&file, fs::Permissions::from_mode(0o644)).unwrap();
+        assert!(error.to_lowercase().contains("failed to read breadcrumbs"), "{error}");
+    }
+
+    #[tokio::test]
     async fn size_update_without_a_file_fails_with_the_old_message() {
         let tmp = tempfile::tempdir().unwrap();
         let project = tmp.path().join("No Breadcrumbs");

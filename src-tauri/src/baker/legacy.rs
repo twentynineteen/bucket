@@ -30,6 +30,8 @@ pub fn read_legacy(project_path: &str) -> Result<Option<Breadcrumbs>, String> {
         Read::Missing => Ok(None),
         Read::Found { file, .. } => Ok(Some(file)),
         Read::Unreadable { reason } => Err(legacy_message(&ChangeError::Unreadable { reason })),
+        Read::ProjectNotFound => Err(legacy_message(&ChangeError::ProjectNotFound)),
+        Read::Inaccessible { reason } => Err(format!("Failed to read breadcrumbs file: {reason}")),
     }
 }
 

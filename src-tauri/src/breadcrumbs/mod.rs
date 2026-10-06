@@ -113,6 +113,12 @@ pub enum Read {
     /// Not valid JSON, or missing a required field. Only [`Change::Rescan`]
     /// can recover it.
     Unreadable { reason: String },
+    /// The project folder is not there (an unmounted drive, a moved project).
+    ProjectNotFound,
+    /// The file exists but the OS would not hand over its bytes (permissions,
+    /// a network error). Nothing is known about its contents, so no change,
+    /// rescan included, may replace it.
+    Inaccessible { reason: String },
 }
 
 /// A named edit to a breadcrumbs file. There is deliberately no generic patch.
