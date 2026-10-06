@@ -1,4 +1,5 @@
 pub mod ai_provider;
+pub mod breadcrumbs;
 pub mod docx;
 pub mod plugins;
 pub mod poster_frame;
@@ -9,6 +10,7 @@ pub mod system;
 pub mod video_meta;
 
 pub use ai_provider::*;
+pub use breadcrumbs::*;
 pub use docx::*;
 pub use plugins::*;
 pub use poster_frame::*;

@@ -3,8 +3,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use app_lib::media::{TrelloCard, VideoLink};
-
 // Performance optimization constants
 pub const PROGRESS_UPDATE_INTERVAL: Duration = Duration::from_millis(100);
 pub const SKIP_PATTERNS: &[&str] = &[
@@ -62,46 +60,8 @@ pub struct ProjectFolder {
     pub folder_size_bytes: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BreadcrumbsFile {
-    #[serde(rename = "projectTitle")]
-    pub project_title: String,
-    #[serde(rename = "numberOfCameras")]
-    pub number_of_cameras: i32,
-    pub files: Vec<FileInfo>,
-    #[serde(rename = "parentFolder")]
-    pub parent_folder: String,
-    #[serde(rename = "createdBy")]
-    pub created_by: String,
-    #[serde(rename = "creationDateTime")]
-    pub creation_date_time: String,
-    #[serde(rename = "folderSizeBytes")]
-    pub folder_size_bytes: Option<u64>,
-    #[serde(rename = "lastModified")]
-    pub last_modified: Option<String>,
-    #[serde(rename = "scannedBy")]
-    pub scanned_by: Option<String>,
-
-    // === DEPRECATED FIELD (keep for backward compatibility) ===
-    #[serde(rename = "trelloCardUrl")]
-    pub trello_card_url: Option<String>,
-
-    // === NEW FIELDS (Phase 004) ===
-    /// Array of video links associated with this project
-    #[serde(rename = "videoLinks", skip_serializing_if = "Option::is_none")]
-    pub video_links: Option<Vec<VideoLink>>,
-
-    /// Array of Trello cards associated with this project
-    #[serde(rename = "trelloCards", skip_serializing_if = "Option::is_none")]
-    pub trello_cards: Option<Vec<TrelloCard>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FileInfo {
-    pub camera: i32,
-    pub name: String,
-    pub path: String,
-}
+/// One footage file. Owned by the breadcrumbs module (#303).
+pub use app_lib::breadcrumbs::FileInfo;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanResult {
@@ -145,7 +105,7 @@ pub struct ScanOptions {
     pub backup_originals: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BatchUpdateResult {
     pub successful: Vec<String>,
     pub failed: Vec<FailedUpdate>,

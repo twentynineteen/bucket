@@ -30,21 +30,21 @@ import { describe, expect, it } from 'vitest'
 import {
   invokeSites,
   REPO_ROOT,
-  RUST_COMMANDS_DIR,
+  RUST_SRC_DIR,
   walkFiles
 } from './internal/tauri-command-surface'
 
 const SHARED_DIR = join(REPO_ROOT, 'src/shared')
 
 /** Rust modules whose commands shared code may call directly. */
-const SHARED_PERMITTED_MODULES = new Set(['system.rs'])
+const SHARED_PERMITTED_MODULES = new Set(['commands/system.rs'])
 
 /** Maps each `#[command]` fn to the Rust file that defines it. */
 function buildCommandOwnership(): Map<string, string> {
   const ownership = new Map<string, string>()
 
-  for (const file of walkFiles(RUST_COMMANDS_DIR, /\.rs$/)) {
-    const moduleName = relative(RUST_COMMANDS_DIR, file)
+  for (const file of walkFiles(RUST_SRC_DIR, /\.rs$/)) {
+    const moduleName = relative(RUST_SRC_DIR, file)
     const source = readFileSync(file, 'utf8')
 
     // `#[command]` or `#[tauri::command]`, then the fn on a following line
@@ -65,8 +65,15 @@ describe('shared code does not invoke feature-owned Tauri commands', () => {
   it('finds the Rust command surface (guards against a silently empty rule)', () => {
     // If the parse breaks, every assertion below would vacuously pass.
     expect(ownership.size).toBeGreaterThan(10)
-    expect(ownership.get('get_folders')).toBe('sprout_upload.rs')
-    expect(ownership.get('get_username')).toBe('system.rs')
+    expect(ownership.get('get_folders')).toBe('commands/sprout_upload.rs')
+    expect(ownership.get('get_username')).toBe('commands/system.rs')
+  })
+
+  it('B11.4 (#303): sees commands declared outside src-tauri/src/commands', () => {
+    // A feature-owned command in baker/ or kavanagh/ must not be callable from
+    // shared code just because the scan never looked there.
+    expect(ownership.has('baker_update_breadcrumbs')).toBe(true)
+    expect(ownership.has('kavanagh_run_check')).toBe(true)
   })
 
   it('no file under src/shared invokes a feature-owned command', () => {
@@ -85,7 +92,7 @@ describe('shared code does not invoke feature-owned Tauri commands', () => {
       if (SHARED_PERMITTED_MODULES.has(owner)) continue
 
       violations.push(
-        `${site.file}:${site.line} invokes '${site.command}' (owned by commands/${owner})`
+        `${site.file}:${site.line} invokes '${site.command}' (owned by ${owner})`
       )
     }
 
