@@ -561,6 +561,51 @@ mod tests {
         result.projects.iter().map(|p| p.name.as_str()).collect()
     }
 
+    // --- #303 B9: scan states come from the breadcrumbs module's read ---
+
+    fn write_breadcrumbs(project: &Path, content: &str) {
+        fs::write(project.join("breadcrumbs.json"), content).unwrap();
+    }
+
+    fn only_project(result: &ScanResult) -> &ProjectFolder {
+        assert_eq!(result.projects.len(), 1, "{:?}", project_names(result));
+        &result.projects[0]
+    }
+
+    #[test]
+    fn issue303_b9_1_file_needing_only_fixes_is_not_flagged() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Show A");
+        make_video_project(&project);
+        write_breadcrumbs(
+            &project,
+            r#"{ "projectTitle": "Show A", "numberOfCameras": 1, "files": [],
+                 "parentFolder": "/x", "createdBy": { "data": "Alice" },
+                 "creationDateTime": "2026-01-01T00:00:00Z",
+                 "trelloCardUrl": "https://trello.com/c/abcd1234/p" }"#,
+        );
+
+        let result = scan(tmp.path(), 3);
+        let found = only_project(&result);
+
+        assert!(found.has_breadcrumbs);
+        assert!(!found.invalid_breadcrumbs);
+    }
+
+    #[test]
+    fn issue303_b9_2_unreadable_file_is_flagged_for_repair() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("Show A");
+        make_video_project(&project);
+        write_breadcrumbs(&project, "{ broken");
+
+        let result = scan(tmp.path(), 3);
+        let found = only_project(&result);
+
+        assert!(found.invalid_breadcrumbs);
+        assert!(!found.has_breadcrumbs);
+    }
+
     // --- B1: validity ---
 
     #[test]
