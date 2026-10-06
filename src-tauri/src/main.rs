@@ -56,6 +56,10 @@ fn main() {
             open_folder,
             // Issue #168: batched existence probe for stored breadcrumbs paths
             paths_exist,
+            // Issue #303: the one owner of breadcrumbs.json
+            breadcrumbs_read,
+            breadcrumbs_apply,
+            breadcrumbs_preview,
             baker_start_scan,
             baker_get_scan_status,
             baker_cancel_scan,

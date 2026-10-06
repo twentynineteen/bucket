@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 /// Represents a video link (typically Sprout Video) associated with a project
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(optional_fields)]
 pub struct VideoLink {
     /// Full video URL (e.g., https://sproutvideo.com/videos/abc123)
     pub url: String,
@@ -27,7 +29,8 @@ pub struct VideoLink {
 }
 
 /// Represents a Trello card associated with a project
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(optional_fields)]
 pub struct TrelloCard {
     /// Full Trello card URL (e.g., https://trello.com/c/abc123/project-name)
     pub url: String,

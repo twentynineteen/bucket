@@ -28,7 +28,7 @@ import { relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   REPO_ROOT,
-  RUST_COMMANDS_DIR,
+  RUST_SRC_DIR,
   invokeSites as scanInvokeSites,
   walkFiles
 } from './internal/tauri-command-surface'
@@ -76,7 +76,7 @@ interface RustCommand {
 function parseRustCommands(): Map<string, RustCommand> {
   const commands = new Map<string, RustCommand>()
 
-  for (const file of walkFiles(RUST_COMMANDS_DIR, /\.rs$/)) {
+  for (const file of walkFiles(RUST_SRC_DIR, /\.rs$/)) {
     const source = readFileSync(file, 'utf8')
     const pattern =
       /#\[(?:tauri::)?command\][\s\S]{0,200}?\bfn\s+([a-z_][a-z0-9_]*)\s*\(([\s\S]*?)\)\s*(?:->|\{)/g
