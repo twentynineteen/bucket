@@ -241,6 +241,16 @@ describe('Tauri IPC argument contract', () => {
     expect(commands.get('upload_video')?.expectedKeys.has('appHandle')).toBe(false)
   })
 
+  it('B11.4 (#303): parses commands declared outside src-tauri/src/commands', () => {
+    // Commands live in baker/, build_project/ and kavanagh/ too. A scan of
+    // commands/ alone let a renamed argument there pass unnoticed.
+    expect(commands.get('baker_update_breadcrumbs')?.expectedKeys).toEqual(
+      new Set(['projectPaths', 'createMissing', 'backupOriginals'])
+    )
+    expect(commands.has('transfer_files_with_progress')).toBe(true)
+    expect(commands.has('kavanagh_run_check')).toBe(true)
+  })
+
   it('every invoked argument key matches a real command parameter', () => {
     const violations: string[] = []
 

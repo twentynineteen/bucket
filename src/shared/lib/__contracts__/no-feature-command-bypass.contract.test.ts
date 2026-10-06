@@ -69,6 +69,13 @@ describe('shared code does not invoke feature-owned Tauri commands', () => {
     expect(ownership.get('get_username')).toBe('system.rs')
   })
 
+  it('B11.4 (#303): sees commands declared outside src-tauri/src/commands', () => {
+    // A feature-owned command in baker/ or kavanagh/ must not be callable from
+    // shared code just because the scan never looked there.
+    expect(ownership.has('baker_update_breadcrumbs')).toBe(true)
+    expect(ownership.has('kavanagh_run_check')).toBe(true)
+  })
+
   it('no file under src/shared invokes a feature-owned command', () => {
     const violations: string[] = []
     const seen: string[] = []
