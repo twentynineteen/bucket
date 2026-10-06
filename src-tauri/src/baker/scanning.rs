@@ -44,7 +44,16 @@ pub fn check_breadcrumbs_stale(path: &Path) -> Result<bool, std::io::Error> {
     // If the current size cannot be determined, skip the comparison rather than
     // treating the folder as 0 bytes (which would falsely flag it as stale).
     if let (Ok(current), Some(recorded)) = (footage::folder_size(path), existing.folder_size_bytes) {
-        if current.abs_diff(recorded) >= STALE_SIZE_THRESHOLD_BYTES {
+        // Versions before #303 counted breadcrumbs.json (and its backup) in the
+        // size they recorded; the module leaves them out. Either reading is a
+        // match, so upgrading does not mark every project stale.
+        let own_files: u64 = ["breadcrumbs.json", "breadcrumbs.json.bak"]
+            .iter()
+            .filter_map(|name| fs::metadata(path.join(name)).ok())
+            .map(|meta| meta.len())
+            .sum();
+        let close = |measured: u64| measured.abs_diff(recorded) < STALE_SIZE_THRESHOLD_BYTES;
+        if !close(current) && !close(current + own_files) {
             return Ok(true);
         }
     }

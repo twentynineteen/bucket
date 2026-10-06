@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use app_lib::breadcrumbs::{self, footage, Breadcrumbs, Change, Read};
 
-use super::legacy::{apply_legacy, read_legacy};
+use super::legacy::{apply_legacy, off_thread, read_legacy};
 use super::scanning::*;
 use super::types::*;
 
@@ -170,35 +170,49 @@ pub async fn baker_validate_folder(folder_path: String) -> Result<ProjectFolder,
 
 #[tauri::command]
 pub async fn baker_read_breadcrumbs(project_path: String) -> Result<Option<Breadcrumbs>, String> {
-    read_legacy(&project_path)
+    off_thread(move || read_legacy(&project_path)).await
 }
 
 /// Rescans each project through the breadcrumbs module (#303). A project with
-/// no file is created only when `create_missing` is set. `backup_originals`
-/// is accepted for the old frontend and ignored: the module backs up exactly
-/// the files whose read needed repairs, which is when data could be lost.
+/// no file is created only when `create_missing` is set.
+///
+/// `backup_originals` is the old Baker preference. The module already backs up
+/// every file whose read needed repairs; this keeps the preference's promise
+/// for healthy files too until PR 2 of #303 removes the toggle.
 #[tauri::command]
 pub async fn baker_update_breadcrumbs(
     project_paths: Vec<String>,
     create_missing: bool,
     backup_originals: bool,
 ) -> Result<BatchUpdateResult, String> {
-    let _ = backup_originals;
     if project_paths.is_empty() {
         return Err("Project paths cannot be empty".to_string());
     }
 
-    let mut result = BatchUpdateResult::default();
-    for project_path in project_paths {
-        let path = Path::new(&project_path);
-        let existed = path.exists() && !matches!(breadcrumbs::read(path), Read::Missing);
-        if path.exists() && !existed && !create_missing {
-            continue;
+    off_thread(move || {
+        let mut result = BatchUpdateResult::default();
+        for project_path in project_paths {
+            let path = Path::new(&project_path);
+            let existed = path.exists() && !matches!(breadcrumbs::read(path), Read::Missing);
+            if path.exists() && !existed && !create_missing {
+                continue;
+            }
+            if backup_originals && existed {
+                let file = path.join("breadcrumbs.json");
+                if let Err(e) = fs::copy(&file, path.join("breadcrumbs.json.bak")) {
+                    result.failed.push(FailedUpdate {
+                        path: project_path,
+                        error: format!("Failed to create backup: {e}"),
+                    });
+                    continue;
+                }
+            }
+            let outcome = apply_legacy(&project_path, Change::Rescan);
+            result.record(project_path, existed, outcome);
         }
-        let outcome = apply_legacy(&project_path, Change::Rescan);
-        result.record(project_path, existed, outcome);
-    }
-    Ok(result)
+        Ok(result)
+    })
+    .await
 }
 
 /// Recalculates only `folderSizeBytes` (and `lastModified`) for each project.
@@ -210,12 +224,15 @@ pub async fn baker_update_breadcrumbs_sizes(
         return Err("Project paths cannot be empty".to_string());
     }
 
-    let mut result = BatchUpdateResult::default();
-    for project_path in project_paths {
-        let outcome = apply_legacy(&project_path, Change::RefreshSizes);
-        result.record(project_path, true, outcome);
-    }
-    Ok(result)
+    off_thread(move || {
+        let mut result = BatchUpdateResult::default();
+        for project_path in project_paths {
+            let outcome = apply_legacy(&project_path, Change::RefreshSizes);
+            result.record(project_path, true, outcome);
+        }
+        Ok(result)
+    })
+    .await
 }
 
 /// Repair is a rescan (#303): an unreadable file is regenerated from the
@@ -223,9 +240,12 @@ pub async fn baker_update_breadcrumbs_sizes(
 /// `breadcrumbs.json.bak`.
 #[tauri::command]
 pub async fn baker_repair_breadcrumbs(project_path: String) -> Result<Breadcrumbs, String> {
-    let repaired = apply_legacy(&project_path, Change::Rescan)?;
-    println!("[Baker] Repaired breadcrumbs for {}", project_path);
-    Ok(repaired)
+    off_thread(move || {
+        let repaired = apply_legacy(&project_path, Change::Rescan)?;
+        println!("[Baker] Repaired breadcrumbs for {}", project_path);
+        Ok(repaired)
+    })
+    .await
 }
 
 #[tauri::command]

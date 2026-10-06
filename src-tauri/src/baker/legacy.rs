@@ -6,6 +6,15 @@
 use std::path::Path;
 
 use app_lib::breadcrumbs::{self, Breadcrumbs, Change, ChangeError, Read};
+use tauri::async_runtime::spawn_blocking;
+
+/// Runs file work off the async runtime: it can wait on a per-file lock or a
+/// slow network volume.
+pub async fn off_thread<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    spawn_blocking(work).await.map_err(|e| e.to_string())?
+}
 
 /// The message an old command returned for each error.
 pub fn legacy_message(error: &ChangeError) -> String {

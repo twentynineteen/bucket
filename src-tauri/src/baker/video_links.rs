@@ -5,7 +5,7 @@
 use app_lib::breadcrumbs::{Breadcrumbs, Change};
 use app_lib::media::{TrelloBoard, TrelloCard, VideoLink};
 
-use super::legacy::{apply_legacy, read_legacy};
+use super::legacy::{apply_legacy, off_thread, read_legacy};
 
 /// Extract Trello card ID from URL
 fn extract_trello_card_id(url: &str) -> Option<String> {
@@ -15,9 +15,12 @@ fn extract_trello_card_id(url: &str) -> Option<String> {
 
 #[tauri::command]
 pub async fn baker_get_video_links(project_path: String) -> Result<Vec<VideoLink>, String> {
-    Ok(read_legacy(&project_path)?
-        .map(|b| b.video_links)
-        .unwrap_or_default())
+    off_thread(move || {
+        Ok(read_legacy(&project_path)?
+            .map(|b| b.video_links)
+            .unwrap_or_default())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -25,7 +28,7 @@ pub async fn baker_associate_video_link(
     project_path: String,
     video_link: VideoLink,
 ) -> Result<Breadcrumbs, String> {
-    apply_legacy(&project_path, Change::AddVideoLink { link: video_link })
+    off_thread(move || apply_legacy(&project_path, Change::AddVideoLink { link: video_link })).await
 }
 
 #[tauri::command]
@@ -33,10 +36,13 @@ pub async fn baker_remove_video_link(
     project_path: String,
     video_index: usize,
 ) -> Result<Breadcrumbs, String> {
-    apply_legacy(
-        &project_path,
-        Change::RemoveVideoLink { index: video_index },
-    )
+    off_thread(move || {
+        apply_legacy(
+            &project_path,
+            Change::RemoveVideoLink { index: video_index },
+        )
+    })
+    .await
 }
 
 /// The old command carries no last-seen URL, so it supplies the current one.
@@ -47,20 +53,23 @@ pub async fn baker_update_video_link(
     video_index: usize,
     updated_link: VideoLink,
 ) -> Result<Breadcrumbs, String> {
-    let current = read_legacy(&project_path)?.ok_or("No breadcrumbs file found")?;
-    let expected_url = current
-        .video_links
-        .get(video_index)
-        .map(|link| link.url.clone())
-        .ok_or("Video index out of bounds")?;
-    apply_legacy(
-        &project_path,
-        Change::UpdateVideoLink {
-            index: video_index,
-            expected_url,
-            link: updated_link,
-        },
-    )
+    off_thread(move || {
+        let current = read_legacy(&project_path)?.ok_or("No breadcrumbs file found")?;
+        let expected_url = current
+            .video_links
+            .get(video_index)
+            .map(|link| link.url.clone())
+            .ok_or("Video index out of bounds")?;
+        apply_legacy(
+            &project_path,
+            Change::UpdateVideoLink {
+                index: video_index,
+                expected_url,
+                link: updated_link,
+            },
+        )
+    })
+    .await
 }
 
 #[tauri::command]
@@ -69,20 +78,26 @@ pub async fn baker_reorder_video_links(
     from_index: usize,
     to_index: usize,
 ) -> Result<Breadcrumbs, String> {
-    apply_legacy(
-        &project_path,
-        Change::ReorderVideoLinks {
-            from: from_index,
-            to: to_index,
-        },
-    )
+    off_thread(move || {
+        apply_legacy(
+            &project_path,
+            Change::ReorderVideoLinks {
+                from: from_index,
+                to: to_index,
+            },
+        )
+    })
+    .await
 }
 
 #[tauri::command]
 pub async fn baker_get_trello_cards(project_path: String) -> Result<Vec<TrelloCard>, String> {
-    Ok(read_legacy(&project_path)?
-        .map(|b| b.trello_cards)
-        .unwrap_or_default())
+    off_thread(move || {
+        Ok(read_legacy(&project_path)?
+            .map(|b| b.trello_cards)
+            .unwrap_or_default())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -90,7 +105,8 @@ pub async fn baker_associate_trello_card(
     project_path: String,
     trello_card: TrelloCard,
 ) -> Result<Breadcrumbs, String> {
-    apply_legacy(&project_path, Change::AddTrelloCard { card: trello_card })
+    off_thread(move || apply_legacy(&project_path, Change::AddTrelloCard { card: trello_card }))
+        .await
 }
 
 #[tauri::command]
@@ -98,13 +114,16 @@ pub async fn baker_remove_trello_card(
     project_path: String,
     card_index: usize,
 ) -> Result<Breadcrumbs, String> {
-    let current = read_legacy(&project_path)?.ok_or("No breadcrumbs file found")?;
-    let card_id = current
-        .trello_cards
-        .get(card_index)
-        .map(|card| card.card_id.clone())
-        .ok_or("Card index out of bounds")?;
-    apply_legacy(&project_path, Change::RemoveTrelloCard { card_id })
+    off_thread(move || {
+        let current = read_legacy(&project_path)?.ok_or("No breadcrumbs file found")?;
+        let card_id = current
+            .trello_cards
+            .get(card_index)
+            .map(|card| card.card_id.clone())
+            .ok_or("Card index out of bounds")?;
+        apply_legacy(&project_path, Change::RemoveTrelloCard { card_id })
+    })
+    .await
 }
 
 #[tauri::command]

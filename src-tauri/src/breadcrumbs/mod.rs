@@ -320,10 +320,14 @@ pub fn preview_outcomes(projects: &[String], change: &Change) -> Vec<PreviewOutc
 
 /// Reads a project's breadcrumbs file, repairing drifted shapes in memory.
 pub fn read(project: &Path) -> Read {
+    if !project.is_dir() {
+        return Read::ProjectNotFound;
+    }
     match read_with_bytes(project) {
         OnDisk::Missing => Read::Missing,
         OnDisk::Found { file, fixes, .. } => Read::Found { file, fixes },
         OnDisk::Unreadable { reason, .. } => Read::Unreadable { reason },
+        OnDisk::Inaccessible { reason } => Read::Inaccessible { reason },
     }
 }
 
@@ -339,6 +343,10 @@ enum OnDisk {
         reason: String,
         bytes: Vec<u8>,
     },
+    /// The OS would not hand over the bytes; their contents are unknown.
+    Inaccessible {
+        reason: String,
+    },
 }
 
 fn read_with_bytes(project: &Path) -> OnDisk {
@@ -349,9 +357,8 @@ fn read_with_bytes(project: &Path) -> OnDisk {
     let bytes = match fs::read(&path) {
         Ok(bytes) => bytes,
         Err(e) => {
-            return OnDisk::Unreadable {
+            return OnDisk::Inaccessible {
                 reason: e.to_string(),
-                bytes: Vec::new(),
             }
         }
     };
@@ -384,10 +391,13 @@ fn repair(map: &mut Map<String, Value>, project: &Path) -> Vec<Fix> {
 
     // Older versions wrote `"trelloCardUrl": null` on every save; dropping a
     // null loses nothing, so only a real URL counts as a fix.
+    // Old card commands also mirrored the first linked card here on every
+    // write, so a URL whose card is already linked is dropped silently too.
     if let Some(legacy) = map.remove("trelloCardUrl") {
         if let Some(url) = legacy.as_str() {
-            migrate_trello_card_url(map, url);
-            fixes.push(Fix::MigratedTrelloCardUrl);
+            if migrate_trello_card_url(map, url) != Migration::AlreadyLinked {
+                fixes.push(Fix::MigratedTrelloCardUrl);
+            }
         }
     }
 
@@ -402,7 +412,9 @@ fn repair(map: &mut Map<String, Value>, project: &Path) -> Vec<Fix> {
         (map.get("parentFolder"), project.file_name())
     {
         let stored = Path::new(parent);
-        if stored.file_name() == Some(name) {
+        // A project at .../Proj/Proj has a correct parent ending in "Proj" too.
+        let already_correct = project.parent() == Some(stored);
+        if stored.file_name() == Some(name) && !already_correct {
             let container = stored
                 .parent()
                 .unwrap_or(stored)
@@ -416,20 +428,32 @@ fn repair(map: &mut Map<String, Value>, project: &Path) -> Vec<Fix> {
     fixes
 }
 
-fn migrate_trello_card_url(map: &mut Map<String, Value>, url: &str) {
+#[derive(Debug, PartialEq, Eq)]
+enum Migration {
+    Added,
+    AlreadyLinked,
+    /// No card ID could be read from the URL, so it is dropped; the backup
+    /// written before the next write keeps it.
+    Unrecognised,
+}
+
+fn migrate_trello_card_url(map: &mut Map<String, Value>, url: &str) -> Migration {
     let Some(card_id) = trello_card_id(url) else {
-        return;
+        return Migration::Unrecognised;
     };
     let cards = map
         .entry("trelloCards")
         .or_insert_with(|| Value::Array(Vec::new()));
     let Value::Array(cards) = cards else {
-        return;
+        return Migration::Unrecognised;
     };
     let already_linked = cards
         .iter()
         .any(|card| card.get("cardId").and_then(Value::as_str) == Some(card_id.as_str()));
-    if !already_linked {
+    if already_linked {
+        return Migration::AlreadyLinked;
+    }
+    {
         let card = TrelloCard {
             url: url.to_string(),
             card_id: card_id.clone(),
@@ -439,16 +463,19 @@ fn migrate_trello_card_url(map: &mut Map<String, Value>, url: &str) {
         };
         cards.push(serde_json::to_value(card).expect("a TrelloCard always serialises"));
     }
+    Migration::Added
 }
 
-/// The card ID in a `trello.com/c/<id>` URL.
+/// The card ID in a `trello.com/c/<id>` URL: the first 8 to 24 alphanumeric
+/// characters, as the old `trello\.com/c/([a-zA-Z0-9]{8,24})` rule read it.
 fn trello_card_id(url: &str) -> Option<String> {
     let rest = &url[url.find("trello.com/c/")? + "trello.com/c/".len()..];
-    let id: String = rest
+    let run: String = rest
         .chars()
         .take_while(char::is_ascii_alphanumeric)
+        .take(24)
         .collect();
-    (8..=24).contains(&id.len()).then_some(id)
+    (run.len() >= 8).then_some(run)
 }
 
 // ---------------------------------------------------------------------------
@@ -531,6 +558,10 @@ fn plan(project: &Path, change: &Change) -> Result<Plan, ChangeError> {
             Plan::new(None, new_file(project, change)?, None)
         }
         (Change::Create { .. }, _) => return Err(ChangeError::AlreadyExists),
+
+        // Nothing is known about a file the OS will not read, so nothing,
+        // rescan included, may replace it.
+        (_, OnDisk::Inaccessible { reason }) => return Err(ChangeError::Io { message: reason }),
 
         (Change::Rescan, OnDisk::Missing) => Plan::new(None, new_file(project, change)?, None),
         (Change::Rescan, OnDisk::Unreadable { bytes, .. }) => {

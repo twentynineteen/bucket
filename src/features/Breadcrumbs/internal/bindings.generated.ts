@@ -72,7 +72,7 @@ export type Change = { "kind": "create", title: string, createdBy: string, } | {
 
 export type ChangeError = { "kind": "projectNotFound" } | { "kind": "noBreadcrumbs" } | { "kind": "alreadyExists" } | { "kind": "unreadable", reason: string, } | { "kind": "nothingToDescribe" } | { "kind": "limitReached", limit: number, } | { "kind": "indexOutOfRange", index: number, } | { "kind": "linkChanged", expectedUrl: string, actualUrl: string, } | { "kind": "cardNotLinked", cardId: string, } | { "kind": "io", message: string, };
 
-export type Read = { "kind": "missing" } | { "kind": "found", file: Breadcrumbs, fixes: Array<Fix>, } | { "kind": "unreadable", reason: string, };
+export type Read = { "kind": "missing" } | { "kind": "found", file: Breadcrumbs, fixes: Array<Fix>, } | { "kind": "unreadable", reason: string, } | { "kind": "projectNotFound" } | { "kind": "inaccessible", reason: string, };
 
 export type Preview = { 
 /**
