@@ -4,6 +4,7 @@ use std::time::Instant;
 use tauri::{AppHandle, Emitter};
 
 use super::types::*;
+use app_lib::breadcrumbs::{self, footage, Read};
 
 pub fn get_current_timestamp() -> String {
     chrono::Utc::now().to_rfc3339()
@@ -20,123 +21,30 @@ pub fn should_skip_directory(path: &Path) -> bool {
     }
 }
 
-pub fn calculate_folder_size(path: &Path) -> Result<u64, std::io::Error> {
-    let mut total_size = 0u64;
-
-    fn visit_dir(dir: &Path, total: &mut u64) -> Result<(), std::io::Error> {
-        if dir.is_dir() {
-            for entry in fs::read_dir(dir)? {
-                let entry = entry?;
-                let path = entry.path();
-
-                if path.is_dir() {
-                    visit_dir(&path, total)?;
-                } else if let Ok(metadata) = entry.metadata() {
-                    *total += metadata.len();
-                }
-            }
-        }
-        Ok(())
-    }
-
-    visit_dir(path, &mut total_size)?;
-    Ok(total_size)
-}
-
-/// Scan camera folders under Footage/ and return sorted FileInfo entries.
-/// This is the shared logic used by stale detection, breadcrumbs update, and file scanning.
-pub fn scan_camera_files(path: &Path) -> Vec<FileInfo> {
-    let mut files = Vec::new();
-    let footage_path = path.join("Footage");
-
-    if let Ok(entries) = fs::read_dir(&footage_path) {
-        for entry in entries.flatten() {
-            let folder_name = entry.file_name();
-            let name_str = folder_name.to_string_lossy().to_string();
-
-            if name_str.starts_with("Camera ") && entry.path().is_dir() {
-                if let Some(camera_num_str) = name_str.strip_prefix("Camera ") {
-                    if let Ok(camera_num) = camera_num_str.parse::<i32>() {
-                        if let Ok(camera_files) = fs::read_dir(entry.path()) {
-                            for file in camera_files.flatten() {
-                                let file_name =
-                                    file.file_name().to_string_lossy().to_string();
-
-                                // Skip hidden files (starting with .) like .DS_Store
-                                if file_name.starts_with('.') {
-                                    continue;
-                                }
-
-                                if file.path().is_file() {
-                                    files.push(FileInfo {
-                                        camera: camera_num,
-                                        name: file_name.clone(),
-                                        path: format!(
-                                            "Footage/{}/{}",
-                                            name_str, file_name
-                                        ),
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    files.sort_by(|a, b| a.camera.cmp(&b.camera).then_with(|| a.name.cmp(&b.name)));
-    files
-}
-
+/// Whether a readable breadcrumbs file no longer matches its folder: a file
+/// added, removed or moved between cameras, or the size drifting by 1KB+.
 pub fn check_breadcrumbs_stale(path: &Path) -> Result<bool, std::io::Error> {
-    let breadcrumbs_path = path.join("breadcrumbs.json");
-
-    if !breadcrumbs_path.exists() {
+    let Read::Found { file: existing, .. } = breadcrumbs::read(path) else {
         return Ok(false);
-    }
-
-    let content = fs::read_to_string(&breadcrumbs_path)?;
-    let existing_breadcrumbs: BreadcrumbsFile = match serde_json::from_str(&content) {
-        Ok(breadcrumbs) => breadcrumbs,
-        Err(parse_err) => {
-            println!(
-                "[Baker] Breadcrumbs parsing failed for {}: {}",
-                path.display(),
-                parse_err
-            );
-            return Ok(false);
-        }
     };
 
-    let actual_files = scan_camera_files(path);
+    let actual_files = footage::camera_files(path);
+    let mut existing_files = existing.files.clone();
+    existing_files.sort_by(|a, b| a.camera.cmp(&b.camera).then_with(|| a.name.cmp(&b.name)));
 
-    // Compare files: check if counts or content differ
-    if existing_breadcrumbs.files.len() != actual_files.len() {
+    let same_files = existing_files.len() == actual_files.len()
+        && existing_files
+            .iter()
+            .zip(&actual_files)
+            .all(|(e, a)| e.name == a.name && e.camera == a.camera);
+    if !same_files {
         return Ok(true);
     }
 
-    // Sort existing for comparison
-    let mut existing_files = existing_breadcrumbs.files.clone();
-    existing_files.sort_by(|a, b| a.camera.cmp(&b.camera).then_with(|| a.name.cmp(&b.name)));
-
-    // Compare file names and camera assignments
-    for (existing, actual) in existing_files.iter().zip(actual_files.iter()) {
-        if existing.name != actual.name || existing.camera != actual.camera {
-            return Ok(true);
-        }
-    }
-
-    // Compare folder size to detect file content changes (with 1KB threshold).
     // If the current size cannot be determined, skip the comparison rather than
     // treating the folder as 0 bytes (which would falsely flag it as stale).
-    if let (Ok(current_folder_size), Some(existing_size)) = (
-        calculate_folder_size(path),
-        existing_breadcrumbs.folder_size_bytes,
-    ) {
-        let size_diff = current_folder_size.abs_diff(existing_size);
-
-        if size_diff >= STALE_SIZE_THRESHOLD_BYTES {
+    if let (Ok(current), Some(recorded)) = (footage::folder_size(path), existing.folder_size_bytes) {
+        if current.abs_diff(recorded) >= STALE_SIZE_THRESHOLD_BYTES {
             return Ok(true);
         }
     }
@@ -144,32 +52,10 @@ pub fn check_breadcrumbs_stale(path: &Path) -> Result<bool, std::io::Error> {
     Ok(false)
 }
 
+/// A breadcrumbs file the module cannot read, which only a rescan (Repair)
+/// can recover. A file it can repair in memory is not invalid (#303 B9).
 pub fn has_invalid_breadcrumbs_file(path: &Path) -> bool {
-    let breadcrumbs_path = path.join("breadcrumbs.json");
-
-    if !breadcrumbs_path.exists() {
-        return false;
-    }
-
-    match fs::read_to_string(&breadcrumbs_path) {
-        Ok(content) => match serde_json::from_str::<BreadcrumbsFile>(&content) {
-            Ok(_) => false,
-            Err(_) => {
-                println!(
-                    "[Baker] Invalid breadcrumbs file detected: {}",
-                    path.display()
-                );
-                true
-            }
-        },
-        Err(_) => {
-            println!(
-                "[Baker] Unreadable breadcrumbs file detected: {}",
-                path.display()
-            );
-            true
-        }
-    }
+    matches!(breadcrumbs::read(path), Read::Unreadable { .. })
 }
 
 /// True if `dir` contains at least one non-hidden file, searching recursively.
@@ -203,7 +89,6 @@ fn has_content_in_standard_folders(path: &Path) -> bool {
 
 pub fn validate_project_folder(path: &Path) -> (bool, Vec<String>, i32) {
     let mut errors = Vec::new();
-    let mut camera_count = 0;
 
     if !path.exists() {
         errors.push("Folder does not exist".to_string());
@@ -217,18 +102,8 @@ pub fn validate_project_folder(path: &Path) -> (bool, Vec<String>, i32) {
         }
     }
 
-    let footage_path = path.join("Footage");
-    if footage_path.exists() {
-        if let Ok(entries) = fs::read_dir(&footage_path) {
-            for entry in entries.flatten() {
-                let file_name = entry.file_name();
-                let name_str = file_name.to_string_lossy();
-                if name_str.starts_with("Camera ") && entry.path().is_dir() {
-                    camera_count += 1;
-                }
-            }
-        }
-    }
+    // The same count a rescan records (#303).
+    let camera_count = footage::camera_folder_count(path);
 
     // Zero camera folders is a legitimate project (podcast/audio-only) as
     // long as there is some real content; an empty scaffold is not one yet.
@@ -243,44 +118,9 @@ pub fn validate_project_folder(path: &Path) -> (bool, Vec<String>, i32) {
     (errors.is_empty(), errors, camera_count)
 }
 
+/// A breadcrumbs file the module can read, repairs included.
 pub fn has_breadcrumbs_file(path: &Path) -> bool {
-    let breadcrumbs_path = path.join("breadcrumbs.json");
-
-    if !breadcrumbs_path.exists() {
-        println!(
-            "[Baker] Breadcrumbs check: {} -> MISSING (file not found)",
-            path.display()
-        );
-        return false;
-    }
-
-    match fs::read_to_string(&breadcrumbs_path) {
-        Ok(content) => match serde_json::from_str::<BreadcrumbsFile>(&content) {
-            Ok(_) => {
-                println!(
-                    "[Baker] Breadcrumbs check: {} -> FOUND (valid)",
-                    path.display()
-                );
-                true
-            }
-            Err(e) => {
-                println!(
-                    "[Baker] Breadcrumbs check: {} -> INVALID (parse error: {})",
-                    path.display(),
-                    e
-                );
-                false
-            }
-        },
-        Err(e) => {
-            println!(
-                "[Baker] Breadcrumbs check: {} -> INVALID (read error: {})",
-                path.display(),
-                e
-            );
-            false
-        }
-    }
+    matches!(breadcrumbs::read(path), Read::Found { .. })
 }
 
 pub fn scan_directory_recursive(
@@ -337,7 +177,7 @@ fn classify_and_record(
         false
     };
 
-    let folder_size = match calculate_folder_size(path) {
+    let folder_size = match footage::folder_size(path) {
         Ok(size) => {
             result.total_folder_size += size;
             Some(size)

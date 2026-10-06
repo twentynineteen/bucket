@@ -1,10 +1,11 @@
-use std::fs;
-use std::path::Path;
+//! Video link and Trello card commands. Each is a thin adapter over the
+//! breadcrumbs module (#303), where the rules live. PR 2 of #303 moves the
+//! frontend to `breadcrumbs_apply` and deletes these.
 
+use app_lib::breadcrumbs::{Breadcrumbs, Change};
 use app_lib::media::{TrelloBoard, TrelloCard, VideoLink};
 
-use super::breadcrumbs::baker_read_breadcrumbs;
-use super::types::BreadcrumbsFile;
+use super::legacy::{apply_legacy, read_legacy};
 
 /// Extract Trello card ID from URL
 fn extract_trello_card_id(url: &str) -> Option<String> {
@@ -12,135 +13,54 @@ fn extract_trello_card_id(url: &str) -> Option<String> {
     re.captures(url)?.get(1).map(|m| m.as_str().to_string())
 }
 
-/// Migrate legacy trelloCardUrl to trelloCards array
-fn migrate_trello_card_url(breadcrumbs: &BreadcrumbsFile) -> Vec<TrelloCard> {
-    if let Some(cards) = &breadcrumbs.trello_cards {
-        if !cards.is_empty() {
-            return cards.clone();
-        }
-    }
-
-    if let Some(url) = &breadcrumbs.trello_card_url {
-        if let Some(card_id) = extract_trello_card_id(url) {
-            return vec![TrelloCard {
-                url: url.clone(),
-                card_id: card_id.clone(),
-                title: format!("Card {}", card_id),
-                board_name: None,
-                last_fetched: None,
-            }];
-        }
-    }
-
-    Vec::new()
-}
-
-/// Ensure backward compatible write (updates trelloCardUrl field)
-fn ensure_backward_compatible_write(breadcrumbs: &mut BreadcrumbsFile) {
-    if let Some(cards) = &breadcrumbs.trello_cards {
-        if !cards.is_empty() {
-            breadcrumbs.trello_card_url = Some(cards[0].url.clone());
-        } else {
-            breadcrumbs.trello_card_url = None;
-        }
-    } else {
-        breadcrumbs.trello_card_url = None;
-    }
-}
-
-/// Write breadcrumbs file to disk
-fn write_breadcrumbs_file(project_path: &str, breadcrumbs: &BreadcrumbsFile) -> Result<(), String> {
-    let path = Path::new(project_path);
-    let breadcrumbs_path = path.join("breadcrumbs.json");
-
-    let json = serde_json::to_string_pretty(breadcrumbs)
-        .map_err(|e| format!("Failed to serialize breadcrumbs: {}", e))?;
-
-    fs::write(&breadcrumbs_path, json)
-        .map_err(|e| format!("Failed to write breadcrumbs file: {}", e))?;
-
-    Ok(())
-}
-
 #[tauri::command]
 pub async fn baker_get_video_links(project_path: String) -> Result<Vec<VideoLink>, String> {
-    let breadcrumbs = baker_read_breadcrumbs(project_path).await?;
-
-    match breadcrumbs {
-        Some(b) => Ok(b.video_links.unwrap_or_default()),
-        None => Ok(Vec::new()),
-    }
+    Ok(read_legacy(&project_path)?
+        .map(|b| b.video_links)
+        .unwrap_or_default())
 }
 
 #[tauri::command]
 pub async fn baker_associate_video_link(
     project_path: String,
     video_link: VideoLink,
-) -> Result<BreadcrumbsFile, String> {
-    let mut breadcrumbs = baker_read_breadcrumbs(project_path.clone())
-        .await?
-        .ok_or("No breadcrumbs file found")?;
-
-    if breadcrumbs.video_links.is_none() {
-        breadcrumbs.video_links = Some(Vec::new());
-    }
-
-    let videos = breadcrumbs.video_links.as_mut().unwrap();
-
-    if videos.len() >= 20 {
-        return Err("Maximum of 20 videos per project reached".to_string());
-    }
-
-    videos.push(video_link);
-    breadcrumbs.last_modified = Some(chrono::Utc::now().to_rfc3339());
-    write_breadcrumbs_file(&project_path, &breadcrumbs)?;
-
-    Ok(breadcrumbs)
+) -> Result<Breadcrumbs, String> {
+    apply_legacy(&project_path, Change::AddVideoLink { link: video_link })
 }
 
 #[tauri::command]
 pub async fn baker_remove_video_link(
     project_path: String,
     video_index: usize,
-) -> Result<BreadcrumbsFile, String> {
-    let mut breadcrumbs = baker_read_breadcrumbs(project_path.clone())
-        .await?
-        .ok_or("No breadcrumbs file found")?;
-
-    let videos = breadcrumbs.video_links.as_mut().ok_or("No videos found")?;
-
-    if video_index >= videos.len() {
-        return Err("Video index out of bounds".to_string());
-    }
-
-    videos.remove(video_index);
-    breadcrumbs.last_modified = Some(chrono::Utc::now().to_rfc3339());
-    write_breadcrumbs_file(&project_path, &breadcrumbs)?;
-
-    Ok(breadcrumbs)
+) -> Result<Breadcrumbs, String> {
+    apply_legacy(
+        &project_path,
+        Change::RemoveVideoLink { index: video_index },
+    )
 }
 
+/// The old command carries no last-seen URL, so it supplies the current one.
+/// The race guard takes effect once callers move to `breadcrumbs_apply`.
 #[tauri::command]
 pub async fn baker_update_video_link(
     project_path: String,
     video_index: usize,
     updated_link: VideoLink,
-) -> Result<BreadcrumbsFile, String> {
-    let mut breadcrumbs = baker_read_breadcrumbs(project_path.clone())
-        .await?
-        .ok_or("No breadcrumbs file found")?;
-
-    let videos = breadcrumbs.video_links.as_mut().ok_or("No videos found")?;
-
-    if video_index >= videos.len() {
-        return Err("Video index out of bounds".to_string());
-    }
-
-    videos[video_index] = updated_link;
-    breadcrumbs.last_modified = Some(chrono::Utc::now().to_rfc3339());
-    write_breadcrumbs_file(&project_path, &breadcrumbs)?;
-
-    Ok(breadcrumbs)
+) -> Result<Breadcrumbs, String> {
+    let current = read_legacy(&project_path)?.ok_or("No breadcrumbs file found")?;
+    let expected_url = current
+        .video_links
+        .get(video_index)
+        .map(|link| link.url.clone())
+        .ok_or("Video index out of bounds")?;
+    apply_legacy(
+        &project_path,
+        Change::UpdateVideoLink {
+            index: video_index,
+            expected_url,
+            link: updated_link,
+        },
+    )
 }
 
 #[tauri::command]
@@ -148,87 +68,43 @@ pub async fn baker_reorder_video_links(
     project_path: String,
     from_index: usize,
     to_index: usize,
-) -> Result<BreadcrumbsFile, String> {
-    let mut breadcrumbs = baker_read_breadcrumbs(project_path.clone())
-        .await?
-        .ok_or("No breadcrumbs file found")?;
-
-    let videos = breadcrumbs.video_links.as_mut().ok_or("No videos found")?;
-
-    if from_index >= videos.len() || to_index >= videos.len() {
-        return Err("Index out of bounds".to_string());
-    }
-
-    let video = videos.remove(from_index);
-    videos.insert(to_index, video);
-    breadcrumbs.last_modified = Some(chrono::Utc::now().to_rfc3339());
-    write_breadcrumbs_file(&project_path, &breadcrumbs)?;
-
-    Ok(breadcrumbs)
+) -> Result<Breadcrumbs, String> {
+    apply_legacy(
+        &project_path,
+        Change::ReorderVideoLinks {
+            from: from_index,
+            to: to_index,
+        },
+    )
 }
 
 #[tauri::command]
 pub async fn baker_get_trello_cards(project_path: String) -> Result<Vec<TrelloCard>, String> {
-    let breadcrumbs = baker_read_breadcrumbs(project_path).await?;
-
-    match breadcrumbs {
-        Some(b) => Ok(migrate_trello_card_url(&b)),
-        None => Ok(Vec::new()),
-    }
+    Ok(read_legacy(&project_path)?
+        .map(|b| b.trello_cards)
+        .unwrap_or_default())
 }
 
 #[tauri::command]
 pub async fn baker_associate_trello_card(
     project_path: String,
     trello_card: TrelloCard,
-) -> Result<BreadcrumbsFile, String> {
-    let mut breadcrumbs = baker_read_breadcrumbs(project_path.clone())
-        .await?
-        .ok_or("No breadcrumbs file found")?;
-
-    if breadcrumbs.trello_cards.is_none() {
-        breadcrumbs.trello_cards = Some(Vec::new());
-    }
-
-    let cards = breadcrumbs.trello_cards.as_mut().unwrap();
-
-    if cards.len() >= 50 {
-        return Err("Maximum of 50 Trello cards per project reached".to_string());
-    }
-
-    if cards.iter().any(|c| c.card_id == trello_card.card_id) {
-        return Err("This Trello card is already associated with the project".to_string());
-    }
-
-    cards.push(trello_card);
-    ensure_backward_compatible_write(&mut breadcrumbs);
-    breadcrumbs.last_modified = Some(chrono::Utc::now().to_rfc3339());
-    write_breadcrumbs_file(&project_path, &breadcrumbs)?;
-
-    Ok(breadcrumbs)
+) -> Result<Breadcrumbs, String> {
+    apply_legacy(&project_path, Change::AddTrelloCard { card: trello_card })
 }
 
 #[tauri::command]
 pub async fn baker_remove_trello_card(
     project_path: String,
     card_index: usize,
-) -> Result<BreadcrumbsFile, String> {
-    let mut breadcrumbs = baker_read_breadcrumbs(project_path.clone())
-        .await?
-        .ok_or("No breadcrumbs file found")?;
-
-    let cards = breadcrumbs.trello_cards.as_mut().ok_or("No cards found")?;
-
-    if card_index >= cards.len() {
-        return Err("Card index out of bounds".to_string());
-    }
-
-    cards.remove(card_index);
-    ensure_backward_compatible_write(&mut breadcrumbs);
-    breadcrumbs.last_modified = Some(chrono::Utc::now().to_rfc3339());
-    write_breadcrumbs_file(&project_path, &breadcrumbs)?;
-
-    Ok(breadcrumbs)
+) -> Result<Breadcrumbs, String> {
+    let current = read_legacy(&project_path)?.ok_or("No breadcrumbs file found")?;
+    let card_id = current
+        .trello_cards
+        .get(card_index)
+        .map(|card| card.card_id.clone())
+        .ok_or("Card index out of bounds")?;
+    apply_legacy(&project_path, Change::RemoveTrelloCard { card_id })
 }
 
 #[tauri::command]
