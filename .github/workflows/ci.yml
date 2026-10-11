@@ -182,22 +182,13 @@ jobs:
           # Clean up certificate file
           rm -f $CERTIFICATE_PATH
 
-      - name: Build (unsigned)
-        if: github.event_name == 'pull_request'
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: bun run build:tauri -- --target aarch64-apple-darwin
-
-      - name: Build (signed, no notarization)
+      # A verification build: it ships nothing, so it skips the updater
+      # archives and never sees the updater key (see publish.yml).
+      - name: Build (Apple-signed, no updater archives, no notarization)
         if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release')
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # Skip notarization in CI (only notarize in publish workflow for releases)
-          # Notarization takes 5-15+ minutes and isn't needed for CI verification
-        run: bun run build:tauri -- --target aarch64-apple-darwin
+        run: bun run build:tauri -- --target aarch64-apple-darwin --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Clean up keychain
         if: always() && github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release')

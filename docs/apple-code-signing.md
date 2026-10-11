@@ -80,9 +80,10 @@ Add these secrets to your GitHub repository at **Settings** → **Secrets and va
 | `APPLE_CERTIFICATE`          | Base64-encoded .p12 certificate | See Step 5 below                    |
 | `APPLE_CERTIFICATE_PASSWORD` | Password for the .p12 file      | The password you set when exporting |
 | `APPLE_SIGNING_IDENTITY`     | Full certificate name           | From Step 4 in Part 1               |
-| `APPLE_ID`                   | Apple Developer email           | Your Apple ID email address         |
-| `APPLE_PASSWORD`             | App-specific password           | From Part 2                         |
-| `APPLE_TEAM_ID`              | Apple Developer Team ID         | From Part 3                         |
+
+`APPLE_ID`, `APPLE_PASSWORD` and `APPLE_TEAM_ID` (Parts 2 and 3) are only used for notarisation,
+which runs locally (see [Releasing](#releasing)), so they do not belong in GitHub. Neither does the
+updater signing key.
 
 ### Step 5: Encode Certificate to Base64
 
@@ -143,7 +144,7 @@ xcrun notarytool history --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --pas
    - ✅ "Import Apple Code Signing Certificate" step succeeds
    - ✅ "Build (signed)" step completes
    - ✅ Tauri bundler logs show: "Code signing enabled"
-   - ✅ Notarization upload succeeds
+   - Notarisation is not part of CI; see [Releasing](#releasing)
 
 ## Troubleshooting
 
@@ -197,21 +198,43 @@ xcrun notarytool info SUBMISSION_ID --apple-id "$APPLE_ID" --team-id "$APPLE_TEA
 
 ### CI Workflow (`ci.yml`)
 
-The CI workflow includes a `build-macos` job that:
-
-- **On Pull Requests**: Builds unsigned DMGs for testing
-- **On master/release branches**: Builds signed and notarized DMGs
-
-This ensures PRs can build quickly without requiring secrets, while production builds are fully signed.
+On pushes to `release`, the `build-macos` job builds an Apple-signed arm64 app to check the
+release builds. It skips the updater archives and is not notarised; nothing it builds ships.
 
 ### Publish Workflow (`publish.yml`)
 
-The publish workflow runs on every push to `release` branch and:
+Each push to `release`:
 
-1. Builds signed DMGs for both Apple Silicon (arm64) and Intel (x86_64)
-2. Notarizes the DMGs with Apple
-3. Creates a GitHub release with signed artifacts
-4. Publishes the updater manifest for auto-updates
+1. Stops if `app-v<version>` is already tagged, i.e. that version was published. Bump the version
+   to release again.
+2. Builds Apple-signed DMGs and updater archives for Apple Silicon (arm64) and Intel (x86_64).
+3. Uploads them to a **draft** release for that version, pinned to the commit that was built.
+
+CI never holds the updater signing key. The build runs every dependency's build-time code, so a
+compromised dependency could otherwise sign a malicious update for every installed copy. Tauri
+will not bundle updater archives without a key, so CI uses a throwaway one and discards its
+signatures.
+
+A draft is invisible to the updater, which reads `latest.json` from the latest _published_
+release. Re-running the workflow while the release is a draft just replaces the draft's files.
+
+## Releasing
+
+1. Bump the version and merge it to `release`. Wait for the publish workflow's draft.
+2. On your Mac, with the Apple notarisation variables set and the updater key to hand:
+
+   ```bash
+   export TAURI_SIGNING_PRIVATE_KEY_PATH=/path/to/updater.key
+   ./scripts/release-local.sh 0.20.0
+   ```
+
+   The script notarises and staples the DMGs, signs the updater archives (asking for the key
+   password), checks the signatures match the `pubkey` in `tauri.conf.json`, writes
+   `latest.json`, and asks before uploading and publishing. Publishing creates the tag, and
+   installed apps start updating.
+
+Keep the updater key and the Apple credentials out of your shell profile and out of any folder an
+agent or other tool can read: export them only for the release, e.g. from a password manager.
 
 ## Certificate Renewal
 
@@ -246,18 +269,14 @@ Work through the Parts above for the detail; use this to track where you are.
 - [ ] `APPLE_CERTIFICATE`
 - [ ] `APPLE_CERTIFICATE_PASSWORD`
 - [ ] `APPLE_SIGNING_IDENTITY`
-- [ ] `APPLE_ID`
-- [ ] `APPLE_PASSWORD`
-- [ ] `APPLE_TEAM_ID`
-- [ ] `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` still present. These
-      drive the updater and are separate from Apple signing, so it is worth confirming a
-      secrets change did not disturb them.
+- [ ] No `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` or `TAURI_SIGNING_PRIVATE_KEY*` secrets.
+      These stay on your Mac (see [Releasing](#releasing)).
 
 **Verify** (Part 5)
 
 - [ ] Local signed build completes and `codesign -dv` reports a valid signature
 - [ ] On `master` or `release`, the CI `build-macos` job imports the certificate and builds signed
-- [ ] On `release`, the publish workflow builds both arm64 and x86_64, notarizes, and attaches DMGs
+- [ ] On `release`, the publish workflow builds both arm64 and x86_64 and uploads a draft release
 - [ ] A downloaded DMG installs on a machine that never held the certificate
 
 **Renewal** (every 5 years)
@@ -277,5 +296,5 @@ Work through the Parts above for the detail; use this to track where you are.
 
 - The app uses `macOSPrivateApi: true` for transparency effects, which makes it **incompatible with Mac App Store distribution**
 - This configuration is for **Developer ID distribution only** (direct downloads, not App Store)
-- Notarization is automatic when all environment variables are set
-- The updater uses Tauri's built-in signing (`TAURI_SIGNING_PRIVATE_KEY`) which is separate from Apple code signing
+- Notarisation runs in `scripts/release-local.sh`, not in CI
+- The updater uses Tauri's own signing, separate from Apple code signing; its key is only used by `scripts/release-local.sh`
