@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base",
+    "config:recommended",
     ":disableDependencyDashboard",
     "helpers:pinGitHubActionDigests"
   ],
@@ -15,6 +15,11 @@
     },
     {
       "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "prCreation": "immediate"
+    },
+    {
+      "matchManagers": ["github-actions"],
       "automerge": false,
       "prCreation": "immediate"
     }
