@@ -4,4 +4,6 @@ src-tauri/gen
 
 # Generated files
 CHANGELOG.md
+# Rust-generated bindings: a Rust test fails if they differ from the generator's output
+*.generated.ts
 .planning

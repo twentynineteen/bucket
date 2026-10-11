@@ -28,7 +28,7 @@ import { relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   REPO_ROOT,
-  RUST_COMMANDS_DIR,
+  RUST_SRC_DIR,
   invokeSites as scanInvokeSites,
   walkFiles
 } from './internal/tauri-command-surface'
@@ -76,7 +76,7 @@ interface RustCommand {
 function parseRustCommands(): Map<string, RustCommand> {
   const commands = new Map<string, RustCommand>()
 
-  for (const file of walkFiles(RUST_COMMANDS_DIR, /\.rs$/)) {
+  for (const file of walkFiles(RUST_SRC_DIR, /\.rs$/)) {
     const source = readFileSync(file, 'utf8')
     const pattern =
       /#\[(?:tauri::)?command\][\s\S]{0,200}?\bfn\s+([a-z_][a-z0-9_]*)\s*\(([\s\S]*?)\)\s*(?:->|\{)/g
@@ -239,6 +239,16 @@ describe('Tauri IPC argument contract', () => {
     expect(getFolders?.expectedKeys).toEqual(new Set(['apiKey', 'parentId']))
     // app_handle is injected by Tauri and must never appear in the payload.
     expect(commands.get('upload_video')?.expectedKeys.has('appHandle')).toBe(false)
+  })
+
+  it('B11.4 (#303): parses commands declared outside src-tauri/src/commands', () => {
+    // Commands live in baker/, build_project/ and kavanagh/ too. A scan of
+    // commands/ alone let a renamed argument there pass unnoticed.
+    expect(commands.get('baker_update_breadcrumbs')?.expectedKeys).toEqual(
+      new Set(['projectPaths', 'createMissing', 'backupOriginals'])
+    )
+    expect(commands.has('transfer_files_with_progress')).toBe(true)
+    expect(commands.has('kavanagh_run_check')).toBe(true)
   })
 
   it('every invoked argument key matches a real command parameter', () => {

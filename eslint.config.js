@@ -46,7 +46,8 @@ const NEW_QUERY_CLIENT = {
 }
 
 export default tseslint.config(
-  { ignores: ['dist'] },
+  // Generated bindings are checked for freshness by a Rust test, not styled.
+  { ignores: ['dist', '**/*.generated.ts'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['src/**/*.{ts,tsx}'],

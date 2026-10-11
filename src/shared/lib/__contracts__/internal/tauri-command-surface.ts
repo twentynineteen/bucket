@@ -26,8 +26,12 @@ export const REPO_ROOT = resolve(__dirname, '../../../../..')
 /** Everything the frontend ships. */
 const SRC_DIR = join(REPO_ROOT, 'src')
 
-/** Where `#[command]` functions live. */
-export const RUST_COMMANDS_DIR = join(REPO_ROOT, 'src-tauri/src/commands')
+/**
+ * Where `#[command]` functions live: anywhere in the crate. Commands sit in
+ * `baker/`, `build_project/`, `kavanagh/` and `breadcrumbs/` as well as
+ * `commands/`, and a scan of `commands/` alone missed them all (#303).
+ */
+export const RUST_SRC_DIR = join(REPO_ROOT, 'src-tauri/src')
 
 /** The only file holding `generate_handler![...]`. */
 const MAIN_RS = join(REPO_ROOT, 'src-tauri/src/main.rs')

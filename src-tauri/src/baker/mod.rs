@@ -1,4 +1,5 @@
 mod breadcrumbs;
+mod legacy;
 mod scanning;
 mod types;
 mod video_links;
