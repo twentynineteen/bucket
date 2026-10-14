@@ -771,4 +771,39 @@ describe('useReplaceVideo - follow-up reporting', () => {
     expect(message).toContain('Card One')
     expect(message).toContain('Card Two')
   })
+
+  it('reports_an_unknown_poster_outcome_when_the_read_throws', async () => {
+    mockFetchDetails.mockRejectedValue(new Error('network error'))
+    const { result } = renderHook(() => useReplaceVideo(options()))
+
+    await replaceFirstLink(result)
+
+    // The poster frame read failed, so the outcome must not claim "kept".
+    // The warning must specifically mention verifying the poster frame (the
+    // unknown-outcome note), not just list it as a generic "could not" failure.
+    expect(toast.warning).toHaveBeenCalledTimes(1)
+    const [message] = vi.mocked(toast.warning).mock.calls[0]
+    expect(message).toMatch(/Video replaced/i)
+    expect(message).toMatch(/verify the poster frame/i)
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('appends_unknown_poster_note_when_other_follow_ups_also_fail', async () => {
+    // All three follow-ups fail: poster read, breadcrumbs write, Trello comment.
+    mockFetchDetails.mockRejectedValue(new Error('network'))
+    updateVideoLinkAsync.mockRejectedValue(new Error('disk full'))
+    vi.mocked(addCardComment).mockRejectedValue(new Error('HTTP 401'))
+    const { result } = renderHook(() => useReplaceVideo(options()))
+
+    await replaceFirstLink(result)
+
+    expect(toast.warning).toHaveBeenCalledTimes(1)
+    const [message] = vi.mocked(toast.warning).mock.calls[0]
+    // The breadcrumbs and comment failures appear in the main list; the
+    // unknown poster outcome is appended as a note, not mixed in.
+    expect(message).toMatch(/breadcrumbs/i)
+    expect(message).toContain('Card One')
+    expect(message).toContain('Card Two')
+    expect(message).toMatch(/verify the poster frame/i)
+  })
 })

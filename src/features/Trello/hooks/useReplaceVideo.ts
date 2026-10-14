@@ -79,14 +79,34 @@ const basename = (path: string) => path.split('/').pop() ?? path
 
 const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
-type PosterOutcome = 'kept' | 'regenerated' | 'processing'
+type PosterOutcome = 'kept' | 'regenerated' | 'processing' | 'unknown'
 
 const POSTER_NOTES: Record<PosterOutcome, string> = {
   kept: '',
   regenerated:
     ' Sprout regenerated the poster frame; use Set poster frame to restore it.',
   processing:
-    ' Sprout is still processing; the thumbnail will refresh next time you open this project.'
+    ' Sprout is still processing; the thumbnail will refresh next time you open this project.',
+  unknown: ' Could not verify the poster frame; check it manually.'
+}
+
+// -------------------------------------------------------------------
+// Typed follow-up failures (replaces grammar-shaped strings, #310)
+// -------------------------------------------------------------------
+
+type FollowUpFailure = { kind: 'breadcrumbs' } | { kind: 'comment'; cards: string[] }
+
+function formatFailures(failures: FollowUpFailure[]): string {
+  return failures
+    .map(f => {
+      switch (f.kind) {
+        case 'breadcrumbs':
+          return 'update the breadcrumbs file'
+        case 'comment':
+          return `comment on ${f.cards.join(', ')}`
+      }
+    })
+    .join('; could not ')
 }
 
 /**
@@ -94,10 +114,14 @@ const POSTER_NOTES: Record<PosterOutcome, string> = {
  * whatever the poster frame check found is appended to that warning rather
  * than shown as a second toast.
  */
-function reportOutcome(failures: string[], posterOutcome: PosterOutcome, title: string) {
+function reportOutcome(
+  failures: FollowUpFailure[],
+  posterOutcome: PosterOutcome,
+  title: string
+) {
   if (failures.length > 0) {
     toast.warning(
-      `Video replaced. Could not ${failures.join('; could not ')}.${POSTER_NOTES[posterOutcome]}`
+      `Video replaced. Could not ${formatFailures(failures)}.${POSTER_NOTES[posterOutcome]}`
     )
     return
   }
@@ -105,6 +129,10 @@ function reportOutcome(failures: string[], posterOutcome: PosterOutcome, title: 
     toast.warning(
       `Sprout regenerated the poster frame for '${title}'. Use Set poster frame to restore it.`
     )
+    return
+  }
+  if (posterOutcome === 'unknown') {
+    toast.warning(`Video replaced.${POSTER_NOTES.unknown}`)
     return
   }
   if (posterOutcome === 'processing') {
@@ -234,17 +262,14 @@ export function useReplaceVideo({
   ): Promise<{
     thumbnailUrl: string | undefined
     outcome: PosterOutcome
-    failed: boolean
   }> => {
     const { frame, failed } = await readPosterFrame(videoId, apiKey)
-    if (failed) return { thumbnailUrl: link.thumbnailUrl, outcome: 'kept', failed: true }
-    if (frame === null)
-      return { thumbnailUrl: link.thumbnailUrl, outcome: 'processing', failed: false }
+    if (failed) return { thumbnailUrl: link.thumbnailUrl, outcome: 'unknown' }
+    if (frame === null) return { thumbnailUrl: link.thumbnailUrl, outcome: 'processing' }
     const regenerated = !!link.thumbnailUrl && frame !== link.thumbnailUrl
     return {
       thumbnailUrl: frame,
-      outcome: regenerated ? 'regenerated' : 'kept',
-      failed: false
+      outcome: regenerated ? 'regenerated' : 'kept'
     }
   }
 
@@ -293,9 +318,8 @@ export function useReplaceVideo({
     comment: string,
     auth: TrelloCredentials | null
   ) => {
-    const failures: string[] = []
+    const failures: FollowUpFailure[] = []
     const poster = mode === 'keep' ? await settlePosterFrame(link, videoId, apiKey) : null
-    if (poster?.failed) failures.push('check the poster frame')
 
     // `link` and `index` are from before the transfer. In-app edits are
     // blocked by the modal for that stretch; an external edit to
@@ -315,8 +339,8 @@ export function useReplaceVideo({
 
     bumpThumbnailCacheKey(link.url)
 
-    if (!wrote) failures.unshift('update breadcrumbs')
-    if (missedCards.length > 0) failures.push(`comment on: ${missedCards.join(', ')}`)
+    if (!wrote) failures.push({ kind: 'breadcrumbs' })
+    if (missedCards.length > 0) failures.push({ kind: 'comment', cards: missedCards })
 
     reportOutcome(failures, poster?.outcome ?? 'kept', displayTitle(link))
 
