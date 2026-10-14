@@ -16,6 +16,22 @@ export { useBreadcrumbsReader } from './hooks/useBreadcrumbsReader'
 /** Hook for extracting video link arrays from project breadcrumbs data */
 export { useBreadcrumbsVideoLinks } from './hooks/useBreadcrumbsVideoLinks'
 
+// Video-link orchestration hooks (moved from Trello in #308)
+/** Hook for managing video links on a project -- add, upload, remove, reorder, poster frame, replace */
+export { useVideoLinksManager } from './hooks/useVideoLinksManager'
+/** Hook for setting a branded poster frame on an already-linked video */
+export { useCardPosterFrame } from './hooks/useCardPosterFrame'
+/** Hook for the replace-video flow -- Sprout transfer, poster frame, breadcrumbs, Trello comment */
+export { useReplaceVideo } from './hooks/useReplaceVideo'
+/** Poster frame choice for a replace: keep the current frame or set a new one */
+export type { PosterMode } from './hooks/useReplaceVideo'
+/** Props for the ReplaceVideoDialog, returned directly by useReplaceVideo */
+export type { ReplaceVideoDialogProps } from './hooks/useReplaceVideo'
+/** Upload state sub-props for ReplaceVideoDialog */
+export type { ReplaceVideoUploadState } from './hooks/useReplaceVideo'
+/** Trello comment state sub-props for ReplaceVideoDialog */
+export type { ReplaceVideoTrelloState } from './hooks/useReplaceVideo'
+
 // Types (consumed externally)
 /** Parsed breadcrumbs.json file with all project metadata fields */
 export type { BreadcrumbsFile } from './types'

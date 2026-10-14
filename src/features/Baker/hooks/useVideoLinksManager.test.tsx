@@ -9,6 +9,7 @@
 
 import '@testing-library/jest-dom'
 import * as bakerModule from '@features/Baker'
+import * as trelloModule from '@features/Trello'
 import * as uploadModule from '@features/Upload'
 import * as apiKeysModule from '@shared/hooks'
 import { queryKeys } from '@shared/lib'
@@ -16,18 +17,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import React, { type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as trelloCardsModule from './useBreadcrumbsTrelloCards'
 import * as cardPosterFrameModule from './useCardPosterFrame'
 import * as replaceVideoModule from './useReplaceVideo'
 import { useVideoLinksManager } from './useVideoLinksManager'
 
-vi.mock('../api', () => ({
+vi.mock('@features/Trello', async importOriginal => ({
+  ...(await importOriginal<typeof import('@features/Trello')>()),
   bakerReadBreadcrumbs: vi.fn().mockResolvedValue({}),
   fetchTrelloCardById: vi.fn().mockResolvedValue({}),
-  updateTrelloCard: vi.fn().mockResolvedValue({})
+  updateTrelloCard: vi.fn().mockResolvedValue({}),
+  useBreadcrumbsTrelloCards: vi.fn()
 }))
-
-vi.mock('./useBreadcrumbsTrelloCards')
 vi.mock('./useCardPosterFrame')
 vi.mock('./useReplaceVideo')
 
@@ -88,7 +88,7 @@ const setupMocks = () => {
     reorderError: null
   } as unknown as ReturnType<typeof bakerModule.useBreadcrumbsVideoLinks>)
 
-  vi.mocked(trelloCardsModule.useBreadcrumbsTrelloCards).mockReturnValue({
+  vi.mocked(trelloModule.useBreadcrumbsTrelloCards).mockReturnValue({
     trelloCards: [],
     isLoading: false,
     error: null,
@@ -104,7 +104,7 @@ const setupMocks = () => {
     removeError: null,
     fetchError: null,
     fetchedCardData: undefined
-  } as unknown as ReturnType<typeof trelloCardsModule.useBreadcrumbsTrelloCards>)
+  } as unknown as ReturnType<typeof trelloModule.useBreadcrumbsTrelloCards>)
 
   vi.mocked(cardPosterFrameModule.useCardPosterFrame).mockReturnValue({
     activeIndex: null,

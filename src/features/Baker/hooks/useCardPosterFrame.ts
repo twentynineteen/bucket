@@ -12,25 +12,16 @@
  * link's title, which is why it can't share the upload flow's instance.
  */
 
-import type { VideoLink } from '@features/Baker'
-import { usePosterFrameForUpload } from '@features/Upload'
-import { logger, sproutVideoIdFromUrl } from '@shared/utils'
+import {
+  NO_API_KEY_REASON,
+  NO_SPROUT_ID_REASON,
+  resolveSproutVideoId,
+  usePosterFrameForUpload
+} from '@features/Upload'
+import { logger } from '@shared/utils'
 import { useState } from 'react'
 import { toast } from 'sonner'
-
-export const NO_SPROUT_ID_REASON =
-  'No Sprout video ID could be determined from this link.'
-export const NO_API_KEY_REASON =
-  'Sprout Video API key not configured. Go to Settings to add it.'
-
-/**
- * The Sprout id a poster frame can be set against: the stored one, or one
- * derived from the link's own URL for links added before the id was captured
- * (B2.1-B2.2). Shared with the replace action (#282), which has the same need.
- */
-export function resolveSproutVideoId(videoLink: VideoLink): string | null {
-  return videoLink.sproutVideoId?.trim() || sproutVideoIdFromUrl(videoLink.url)
-}
+import type { VideoLink } from '../types'
 
 interface UseCardPosterFrameOptions {
   /** Project the links belong to — destination for the optional Graphics copy */

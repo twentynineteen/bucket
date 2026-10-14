@@ -22,9 +22,9 @@ import {
   posterFrameFileStem,
   sendPosterFrameWithRetry
 } from '../internal/posterFrame'
+import { NO_API_KEY_REASON } from '../sproutVideoHelpers'
 import type { PosterFrameStatus } from '../types'
 
-const NO_API_KEY_REASON = 'Sprout Video API key not configured. Go to Settings to add it.'
 const NOT_A_REFERENCE_REASON = 'That is not a Sprout video URL or ID.'
 const NO_VIDEO_REASON = 'Fetch a Sprout video first to confirm which one to update.'
 const NO_TEXT_REASON = 'Enter the title text that goes on the poster frame.'

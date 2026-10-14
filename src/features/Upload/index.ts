@@ -82,6 +82,14 @@ export type { ReplaceUploadProgress } from './types'
 /** How a replace transfer ended: complete, cancelled or error (#282) */
 export type { ReplaceUploadResult } from './types'
 
+// Sprout Video helpers (consolidated from Trello/useCardPosterFrame, #308)
+/** Resolves the Sprout video ID from a VideoLink's stored id or URL */
+export { resolveSproutVideoId } from './sproutVideoHelpers'
+/** Unavailability reason when a link has no Sprout video ID */
+export { NO_SPROUT_ID_REASON } from './sproutVideoHelpers'
+/** Unavailability reason when the Sprout Video API key is not configured */
+export { NO_API_KEY_REASON } from './sproutVideoHelpers'
+
 // Formatting
 /** Renders a transfer byte count in the decimal units the backend messages use */
 export { formatTransferredBytes } from './internal/formatTransferredBytes'

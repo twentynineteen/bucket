@@ -5,12 +5,11 @@
  */
 
 import {
-  generateBreadcrumbsBlock,
-  updateTrelloCardWithBreadcrumbs,
-  useBreadcrumbsVideoLinks,
-  type BreadcrumbsFile,
-  type VideoLink
-} from '@features/Baker'
+  bakerReadBreadcrumbs,
+  fetchTrelloCardById,
+  updateTrelloCard,
+  useBreadcrumbsTrelloCards
+} from '@features/Trello'
 import {
   useFileUpload,
   usePosterFrameForUpload,
@@ -27,8 +26,12 @@ import {
   validateVideoLink
 } from '@shared/utils'
 import { useState } from 'react'
-import { bakerReadBreadcrumbs, fetchTrelloCardById, updateTrelloCard } from '../api'
-import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
+import type { BreadcrumbsFile, VideoLink } from '../types'
+import {
+  generateBreadcrumbsBlock,
+  updateTrelloCardWithBreadcrumbs
+} from './useAppendBreadcrumbs'
+import { useBreadcrumbsVideoLinks } from './useBreadcrumbsVideoLinks'
 import { useCardPosterFrame } from './useCardPosterFrame'
 import { useReplaceVideo } from './useReplaceVideo'
 

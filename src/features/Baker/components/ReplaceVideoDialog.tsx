@@ -10,7 +10,6 @@
  * directly and VideoLinksManager can spread them without re-mapping.
  */
 
-import type { ReplaceVideoDialogProps } from '@features/Trello'
 import { formatTransferredBytes } from '@features/Upload'
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
@@ -26,6 +25,7 @@ import {
 import { Label } from '@shared/ui/label'
 import { Progress } from '@shared/ui/progress'
 import { AlertCircle, AlertTriangle, FileVideo, Loader2, Replace } from 'lucide-react'
+import type { ReplaceVideoDialogProps } from '../hooks/useReplaceVideo'
 
 export type { ReplaceVideoDialogProps }
 

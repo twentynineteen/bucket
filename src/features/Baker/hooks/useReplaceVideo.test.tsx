@@ -8,15 +8,15 @@
  * reported as a warning against a replace that did happen, the same policy
  * useCardPosterFrame set for poster frames.
  */
-import type { TrelloCard, VideoLink } from '@features/Baker'
+import { addCardComment } from '@features/Trello'
 import * as uploadModule from '@features/Upload'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addCardComment } from '../api'
+import type { TrelloCard, VideoLink } from '../types'
 import { useReplaceVideo } from './useReplaceVideo'
 
-vi.mock('../api', () => ({
+vi.mock('@features/Trello', () => ({
   addCardComment: vi.fn()
 }))
 vi.mock('sonner', () => ({

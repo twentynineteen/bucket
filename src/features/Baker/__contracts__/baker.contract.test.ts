@@ -157,7 +157,11 @@ describe('Baker Barrel Exports - Shape', () => {
     'updateTrelloCardWithBreadcrumbs',
     'useProjectBreadcrumbs',
     'useBreadcrumbsReader',
-    'useBreadcrumbsVideoLinks'
+    'useBreadcrumbsVideoLinks',
+    // Video-link orchestration hooks (moved from Trello in #308)
+    'useVideoLinksManager',
+    'useCardPosterFrame',
+    'useReplaceVideo'
   ].sort()
 
   // Presence, not exhaustiveness: a caller breaks when a name it imports
