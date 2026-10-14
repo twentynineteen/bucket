@@ -16,7 +16,12 @@
  * re-derived from whichever link is targeted.
  */
 import type { TrelloCard, VideoLink } from '@features/Baker'
-import { useReplaceUpload, useSproutVideoApi } from '@features/Upload'
+import {
+  useReplaceUpload,
+  useSproutVideoApi,
+  type ReplaceUploadProgress,
+  type ReplaceUploadStatus
+} from '@features/Upload'
 import { logger } from '@shared/utils'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -37,6 +42,46 @@ const PROCESSING_RETRY_DELAY_MS = 3_000
 const FINISHING_REASON = 'Finishing the previous replace. Try again in a moment.'
 
 export type PosterMode = 'keep' | 'new'
+
+// -------------------------------------------------------------------
+// Dialog prop types: owned here so the hook can build them directly.
+// The dialog imports them and accepts the hook's return shape as-is.
+// -------------------------------------------------------------------
+
+export interface ReplaceVideoUploadState {
+  selectedFile: string | null
+  onSelectFile: () => void
+  status: ReplaceUploadStatus
+  progress: ReplaceUploadProgress
+  error: string | null
+  onCancel: () => void
+}
+
+export interface ReplaceVideoTrelloState {
+  /** False when the project has no cards or Trello is not configured */
+  available: boolean
+  enabled: boolean
+  onEnabledChange: (enabled: boolean) => void
+  cards: Array<{ cardId: string; title: string; boardName?: string }>
+  selectedCardIds: string[]
+  onToggleCard: (cardId: string) => void
+  text: string
+  onTextChange: (text: string) => void
+  validationMessage: string | null
+}
+
+export interface ReplaceVideoDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** Title of the video whose file is being replaced */
+  videoTitle: string
+  upload: ReplaceVideoUploadState
+  posterMode: PosterMode
+  onPosterModeChange: (mode: PosterMode) => void
+  trello: ReplaceVideoTrelloState
+  canSubmit: boolean
+  onConfirm: () => void
+}
 
 export interface UseReplaceVideoOptions {
   videoLinks: VideoLink[]
@@ -400,35 +445,41 @@ export function useReplaceVideo({
     return null
   }
 
-  return {
-    target,
-    targetIndex,
-    targetTitle: target ? displayTitle(target) : '',
-    request,
-    handleOpenChange,
+  // Built once, spread directly onto <ReplaceVideoDialog {...dialog} />.
+  // TypeScript's void-return compatibility lets us pass async handlers
+  // (confirm, selectFile, cancel) to a () => void prop without wrapping.
+  const dialog: ReplaceVideoDialogProps = {
+    open: targetIndex !== null,
+    onOpenChange: handleOpenChange,
+    videoTitle: target ? displayTitle(target) : '',
     upload: {
       selectedFile: upload.selectedFile,
-      selectFile: upload.selectFile,
+      onSelectFile: upload.selectFile,
       status: upload.status,
       progress: upload.progress,
       error: upload.error,
-      cancel: upload.cancel
+      onCancel: upload.cancel
     },
     posterMode,
-    setPosterMode,
+    onPosterModeChange: setPosterMode,
     trello: {
       available: trelloAvailable,
       enabled: trelloEnabled,
-      setEnabled: setTrelloEnabled,
+      onEnabledChange: setTrelloEnabled,
       cards,
       selectedCardIds,
-      toggleCard,
+      onToggleCard: toggleCard,
       text: commentText,
-      setText: setCommentText,
+      onTextChange: setCommentText,
       validationMessage
     },
     canSubmit,
-    confirm,
+    onConfirm: confirm
+  }
+
+  return {
+    dialog,
+    request,
     disabledReason
   }
 }
