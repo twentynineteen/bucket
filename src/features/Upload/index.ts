@@ -85,3 +85,7 @@ export type { ReplaceUploadResult } from './types'
 // Formatting
 /** Renders a transfer byte count in the decimal units the backend messages use */
 export { formatTransferredBytes } from './internal/formatTransferredBytes'
+
+// Validation
+/** Whether a title contains a colon - the sole hard block on Sprout titles */
+export { hasColon } from './internal/namingConventions'

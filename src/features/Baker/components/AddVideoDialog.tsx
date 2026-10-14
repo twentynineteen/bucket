@@ -6,6 +6,7 @@
 
 import {
   formatTransferredBytes,
+  hasColon,
   SproutFolderPicker,
   TitleNamingGuide,
   type PosterframeTemplateId,
@@ -167,6 +168,10 @@ export function AddVideoDialog({
   posterFrame,
   posterFrameCanvasRef
 }: AddVideoDialogProps) {
+  // A colon breaks the Sprout embed code, so a title carrying one blocks
+  // submission on both tabs (#305). The same rule the standalone Upload page
+  // enforces via UploadSprout's titleHasColon.
+  const titleHasColon = hasColon(form.formData.title)
   // The poster frame step must finish before the dialog can be closed, so the
   // work can't be torn down halfway through (B5.2).
   const posterFrameWorking = posterFrame.enabled && posterFrame.status === 'working'
@@ -221,7 +226,9 @@ export function AddVideoDialog({
               <Button variant="outline" onClick={() => dialog.onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={urlMode.onAddVideo}>Add Video</Button>
+              <Button onClick={urlMode.onAddVideo} disabled={titleHasColon}>
+                Add Video
+              </Button>
             </>
           ) : uploadMode.uploadSuccess ? (
             posterFrameSettled ? (
@@ -256,7 +263,8 @@ export function AddVideoDialog({
                   !uploadMode.selectedFile ||
                   !urlMode.hasApiKey ||
                   uploadMode.uploading ||
-                  posterFrameTextMissing
+                  posterFrameTextMissing ||
+                  titleHasColon
                 }
               >
                 {uploadMode.uploading ? (

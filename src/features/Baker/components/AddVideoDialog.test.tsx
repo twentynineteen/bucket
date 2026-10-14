@@ -646,3 +646,98 @@ describe('AddVideoDialog - title naming guide (#274)', () => {
     expect(screen.getByText(/expected format/i)).toBeInTheDocument()
   })
 })
+
+// ==========================================================================
+// Issue #305 - Baker Add Video dialog must block colon titles on both tabs,
+// mirroring the hard block the standalone Upload page already enforces.
+// ==========================================================================
+
+describe('AddVideoDialog - colon title blocks submission (#305)', () => {
+  it('disables the Upload and Add button when the title contains a colon', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          form: {
+            formData: {
+              url: '',
+              title: 'Session 1: Intro',
+              thumbnailUrl: '',
+              sproutVideoId: ''
+            },
+            onFormFieldChange: vi.fn()
+          }
+        })}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /upload and add/i })).toBeDisabled()
+  })
+
+  it('enables the Upload and Add button when the title has no colon', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          form: {
+            formData: {
+              url: '',
+              title: 'AB123X - D Okafor - Core principles explained',
+              thumbnailUrl: '',
+              sproutVideoId: ''
+            },
+            onFormFieldChange: vi.fn()
+          }
+        })}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /upload and add/i })).toBeEnabled()
+  })
+
+  it('disables the Add Video button on the URL tab when the title contains a colon', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          mode: { addMode: 'url', onTabChange: vi.fn() },
+          form: {
+            formData: {
+              url: 'https://sproutvideo.com/videos/abc123',
+              title: 'Module: Overview',
+              thumbnailUrl: '',
+              sproutVideoId: ''
+            },
+            onFormFieldChange: vi.fn()
+          }
+        })}
+      />
+    )
+
+    // The footer's "Add Video" button (not the trigger) should be disabled
+    const buttons = screen.getAllByRole('button', { name: /add video/i })
+    // The last "Add Video" button in the footer is the submit action
+    const addButton = buttons[buttons.length - 1]
+    expect(addButton).toBeDisabled()
+  })
+
+  it('enables the Add Video button on the URL tab when the title has no colon', () => {
+    render(
+      <AddVideoDialog
+        {...baseProps({
+          mode: { addMode: 'url', onTabChange: vi.fn() },
+          form: {
+            formData: {
+              url: 'https://sproutvideo.com/videos/abc123',
+              title: 'AB123X - D Okafor - Module overview',
+              thumbnailUrl: '',
+              sproutVideoId: ''
+            },
+            onFormFieldChange: vi.fn()
+          }
+        })}
+      />
+    )
+
+    const buttons = screen.getAllByRole('button', { name: /add video/i })
+    const addButton = buttons[buttons.length - 1]
+    expect(addButton).toBeEnabled()
+  })
+})
