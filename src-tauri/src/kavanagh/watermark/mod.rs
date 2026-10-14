@@ -671,7 +671,7 @@ pub fn file_name_of(path: &str) -> String {
 }
 
 /// Turns a process failure into the error the frontend renders.
-pub fn run_error(error: RunError) -> KavanaghError {
+pub(crate) fn run_error(error: RunError) -> KavanaghError {
     match error {
         RunError::Cancelled => KavanaghError::Cancelled {
             message: "The quality control run was cancelled.".to_string(),

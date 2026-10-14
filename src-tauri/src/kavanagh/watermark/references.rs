@@ -4,13 +4,13 @@
 use tokio::sync::watch;
 
 use super::super::error::KavanaghError;
-use super::super::ffmpeg::{run_capture, RunError};
+use super::super::ffmpeg::run_capture;
 use super::super::geometry::{
     corner_of, is_wide_mark, place_region, scale_bbox, scoring_subwindow, union, Corner, CropRegion,
 };
 use super::super::matching::{dedupe_by_alpha, sobel_magnitude, WatermarkTemplate};
 use super::super::parsing::{parse_alpha_bbox, parse_showinfo_size, VideoProbe};
-use super::{file_name_of, AnalysisRequest};
+use super::{file_name_of, run_error, AnalysisRequest};
 
 /// A reference pool prepared for one video: templates plus the regions to crop.
 #[derive(Debug, Clone)]
@@ -292,15 +292,4 @@ fn build_template(
         // primitive so a future mask - glyph strokes only, say - is a one-line change.
         weights: vec![1.0; width * height],
     }))
-}
-
-/// Turns a process failure into the error the frontend renders.
-fn run_error(error: RunError) -> KavanaghError {
-    match error {
-        RunError::Cancelled => KavanaghError::Cancelled {
-            message: "The quality control run was cancelled.".to_string(),
-        },
-        RunError::Spawn(message) => KavanaghError::Unavailable { message },
-        RunError::Io(message) => KavanaghError::Io { message },
-    }
 }
