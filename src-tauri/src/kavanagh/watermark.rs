@@ -607,12 +607,18 @@ fn prepare_references(
             continue;
         };
 
+        let window_in_crop = CropRegion {
+            x: subwindow.x - crop.x,
+            y: subwindow.y - crop.y,
+            width: subwindow.width,
+            height: subwindow.height,
+        };
+
         if let Some(template) = build_template(
             request,
             reference.path.clone(),
             subwindow,
-            (subwindow.x - crop.x) as usize,
-            (subwindow.y - crop.y) as usize,
+            window_in_crop,
             reference.corner,
             probe,
             cancel,
@@ -687,13 +693,11 @@ pub fn pool_notes(wide: &[String], skipped: &[String]) -> Vec<String> {
 /// `format=rgba` is forced before `alphaextract` because format negotiation
 /// propagates upstream: without it the chain settles on a format with no alpha plane
 /// and `alphaextract` fails with "Requested planes not available".
-#[allow(clippy::too_many_arguments)]
 fn build_template(
     request: &AnalysisRequest,
     path: String,
     region: CropRegion,
-    offset_x: usize,
-    offset_y: usize,
+    window: CropRegion,
     corner: Corner,
     probe: &VideoProbe,
     cancel: &watch::Receiver<bool>,
@@ -730,8 +734,7 @@ fn build_template(
     Ok(Some(WatermarkTemplate {
         name: file_name_of(&path),
         corner,
-        offset_x,
-        offset_y,
+        window,
         alpha: stdout[..width * height].to_vec(),
         gradient: sobel_magnitude(&stdout[..width * height], width, height),
         // Uniform: the alpha map already *is* the mark's shape, so there is nothing
@@ -739,8 +742,6 @@ fn build_template(
         // rather than a region with footage around it. `weighted_ncc` stays the
         // primitive so a future mask - glyph strokes only, say - is a one-line change.
         weights: vec![1.0; width * height],
-        width,
-        height,
     }))
 }
 
