@@ -61,6 +61,19 @@ interface TrelloCredentials {
   token: string
 }
 
+/** Snapshot of everything needed to run the follow-ups after Sprout accepts the file. */
+interface ReplaceJob {
+  index: number
+  link: VideoLink
+  videoId: string
+  apiKey: string
+  file: string
+  mode: PosterMode
+  commentCards: TrelloCard[]
+  comment: string
+  auth: TrelloCredentials | null
+}
+
 /** The name a link is shown under when its title is blank (older breadcrumbs) */
 function displayTitle(link: VideoLink): string {
   return (
@@ -307,17 +320,8 @@ export function useReplaceVideo({
    * breadcrumbs write, comments, cache bump, one toast, and the hand-off to
    * the poster frame dialog when a new frame was asked for.
    */
-  const finish = async (
-    index: number,
-    link: VideoLink,
-    videoId: string,
-    apiKey: string,
-    file: string,
-    mode: PosterMode,
-    commentCards: TrelloCard[],
-    comment: string,
-    auth: TrelloCredentials | null
-  ) => {
+  const finish = async (job: ReplaceJob) => {
+    const { index, link, videoId, apiKey, file, mode, commentCards, comment, auth } = job
     const failures: FollowUpFailure[] = []
     const poster = mode === 'keep' ? await settlePosterFrame(link, videoId, apiKey) : null
 
@@ -361,12 +365,19 @@ export function useReplaceVideo({
     if (!videoId || !apiKey || !file) return
 
     // Captured now: the form is reset when the dialog closes below.
-    const comment = commentText.trim()
-    const commentCards = commentActive
-      ? cards.filter(card => selectedCardIds.includes(card.cardId))
-      : []
-    const mode = posterMode
-    const auth = credentials
+    const job: ReplaceJob = {
+      index,
+      link,
+      videoId,
+      apiKey,
+      file,
+      mode: posterMode,
+      commentCards: commentActive
+        ? cards.filter(card => selectedCardIds.includes(card.cardId))
+        : [],
+      comment: commentText.trim(),
+      auth: credentials
+    }
 
     const result = await upload.start(videoId, apiKey)
     // Cancelled or failed: the dialog stays open showing why, nothing is written.
@@ -375,7 +386,7 @@ export function useReplaceVideo({
     setTargetIndex(null)
     setFinishing(true)
     try {
-      await finish(index, link, videoId, apiKey, file, mode, commentCards, comment, auth)
+      await finish(job)
     } finally {
       setFinishing(false)
     }
