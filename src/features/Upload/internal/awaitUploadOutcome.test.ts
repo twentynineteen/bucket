@@ -1,10 +1,11 @@
 /**
- * awaitUploadOutcome (issue #282)
+ * awaitUploadOutcome (issues #282, #307)
  *
- * The buffer path is only reachable through hooks, so the two orderings the
- * hook tests cannot pin directly are pinned here: events that arrive before
- * the backend has named the operation are replayed in order once it has, and
- * are discarded if the start itself fails.
+ * Events arriving before start() resolves the operation id are always
+ * buffered and replayed once the id is known -- there is no permissive window
+ * (the 'accept' mode was deleted by #307). The orderings the hook tests
+ * cannot pin directly are pinned here: replay in order, discard on start
+ * failure, and foreign-event rejection.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -66,7 +67,7 @@ beforeEach(() => {
   }
 })
 
-describe('awaitUploadOutcome - buffer mode', () => {
+describe('awaitUploadOutcome - buffering', () => {
   it('replays buffered progress then completion in order once the id is known', async () => {
     const registered = deferred<string>()
     const onProgress = vi.fn()
@@ -74,7 +75,6 @@ describe('awaitUploadOutcome - buffer mode', () => {
 
     const outcome = awaitUploadOutcome({
       start: () => registered.promise,
-      beforeIdKnown: 'buffer',
       onProgress: event => {
         onProgress(event)
         order.push('progress')
@@ -101,8 +101,7 @@ describe('awaitUploadOutcome - buffer mode', () => {
   it('discards a buffered terminal event when the start itself fails', async () => {
     const registered = deferred<string>()
     const outcome = awaitUploadOutcome({
-      start: () => registered.promise,
-      beforeIdKnown: 'buffer'
+      start: () => registered.promise
     })
 
     await emit('complete', { operationId: 'op-1', video })
@@ -118,7 +117,6 @@ describe('awaitUploadOutcome - buffer mode', () => {
     const onProgress = vi.fn()
     const outcome = awaitUploadOutcome({
       start: () => registered.promise,
-      beforeIdKnown: 'buffer',
       onProgress
     })
 
