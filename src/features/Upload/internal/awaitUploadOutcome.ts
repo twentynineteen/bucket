@@ -42,8 +42,7 @@ import type {
 export const BACKEND_SILENCE_TIMEOUT_MS = 150_000
 
 export type UploadOutcome =
-  | { kind: 'complete'; video: SproutUploadResponse }
-  | { kind: 'cancelled' }
+  { kind: 'complete'; video: SproutUploadResponse } | { kind: 'cancelled' }
 
 export interface AwaitUploadOutcomeOptions {
   /** Invokes the backend command and resolves with the operation id it registered. */
