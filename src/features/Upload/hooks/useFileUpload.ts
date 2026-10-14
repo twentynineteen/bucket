@@ -127,10 +127,9 @@ export const useFileUpload = (): UseFileUploadReturn => {
     try {
       // Waits for a terminal event -- complete, error or cancelled -- backed by a
       // liveness deadline that follows the transfer's progress rather than the
-      // wall clock (see awaitUploadOutcome). Events are accepted permissively
-      // until the backend names the operation, as this hook always has: it only
-      // ever starts one upload, and any earlier one has already emitted its
-      // single terminal event and been deregistered (#150 UP-11).
+      // wall clock (see awaitUploadOutcome). Events arriving before the backend
+      // names the operation are buffered and replayed once the id is known, so a
+      // zombie operation's terminal event cannot be mistaken for this one's (#307).
       const outcome = await awaitUploadOutcome({
         start: () =>
           uploadVideo(
@@ -139,7 +138,6 @@ export const useFileUpload = (): UseFileUploadReturn => {
             destination?.id ?? null,
             title?.trim() || null
           ),
-        beforeIdKnown: 'accept',
         onOperationId: registeredOperationId => {
           operationIdRef.current = registeredOperationId
         }

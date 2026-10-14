@@ -10,7 +10,7 @@
  *
  * This hook keeps its own file and progress state, reports outcomes as values
  * for the dialog to render, and honours only events that carry its own
- * operation id -- there is no permissive window (see awaitUploadOutcome).
+ * operation id (see awaitUploadOutcome).
  */
 import { logger } from '@shared/utils'
 import { useRef, useState } from 'react'
@@ -128,7 +128,6 @@ export const useReplaceUpload = (): UseReplaceUploadReturn => {
     try {
       const outcome = await awaitUploadOutcome({
         start: () => replaceVideo(file, apiKey, videoId),
-        beforeIdKnown: 'buffer',
         onOperationId: id => {
           operationIdRef.current = id
           if (pendingCancelRef.current) {

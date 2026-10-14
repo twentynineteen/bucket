@@ -3,9 +3,11 @@
  *
  * Extracted from useFileUpload (issue #282) so the replace transfer can share
  * the listener wiring, the liveness deadline and the operation-id matching
- * instead of copying 110 lines of them. The behaviour useFileUpload had is
- * preserved exactly under `beforeIdKnown: 'accept'`; the replace hook uses
- * `'buffer'`, which closes the permissive window described below.
+ * instead of copying 110 lines of them.
+ *
+ * Events that arrive before `start` resolves the operation id are buffered and
+ * replayed once the id is known, so nothing foreign is honoured and nothing of
+ * ours is dropped (issue #307).
  */
 import { logger } from '@shared/utils'
 import {
@@ -40,23 +42,12 @@ import type {
 export const BACKEND_SILENCE_TIMEOUT_MS = 150_000
 
 export type UploadOutcome =
-  { kind: 'complete'; video: SproutUploadResponse } | { kind: 'cancelled' }
+  | { kind: 'complete'; video: SproutUploadResponse }
+  | { kind: 'cancelled' }
 
 export interface AwaitUploadOutcomeOptions {
   /** Invokes the backend command and resolves with the operation id it registered. */
   start: () => Promise<string>
-  /**
-   * What to do with events that arrive before `start` has resolved the id.
-   *
-   * `accept` is useFileUpload's historical behaviour: any id is taken as ours,
-   * because that hook only ever runs one transfer and an earlier one has already
-   * emitted its single terminal event. It leaves a window of a few milliseconds
-   * in which a zombie operation's completion would be mistaken for this one's.
-   *
-   * `buffer` holds early events and replays only those whose id turns out to
-   * match, so nothing foreign is honoured and nothing of ours is dropped.
-   */
-  beforeIdKnown: 'accept' | 'buffer'
   /** Called as soon as the backend has told us the operation id. */
   onOperationId?: (operationId: string) => void
   /** Called for every progress event that belongs to this transfer. */
@@ -79,7 +70,6 @@ export function awaitUploadOutcome(
 ): Promise<UploadOutcome> {
   const {
     start,
-    beforeIdKnown,
     onOperationId,
     onProgress,
     silenceTimeoutMs = BACKEND_SILENCE_TIMEOUT_MS
@@ -156,17 +146,13 @@ export function awaitUploadOutcome(
     }
 
     /**
-     * Routes an event: dropped when it is not ours, held when we cannot yet tell
-     * (buffer mode), otherwise handled. Strict once the id is known, which is
-     * what stops a zombie operation's events settling a retry (#150 UP-11).
+     * Routes an event: dropped when it is not ours, buffered when we cannot
+     * yet tell, otherwise handled. Strict once the id is known, which is what
+     * stops a zombie operation's events settling a retry (#150 UP-11, #307).
      */
     const route = async (event: Buffered) => {
       if (operationId !== null) {
         if (event.payload.operationId === operationId) await handle(event)
-        return
-      }
-      if (beforeIdKnown === 'accept') {
-        await handle(event)
         return
       }
       buffered.push(event)
