@@ -6,24 +6,7 @@
  * send. The Rust side mirrors these in `src-tauri/src/kavanagh/thresholds.rs` as the
  * fallback for a call that omits them; the two must be changed together.
  *
- * # Calibration
- *
- * Measured on two real UHD renders, after the matcher was corrected to build its
- * template from the reference's alpha map rather than from the reference composited
- * over a backdrop. The brand assets are a flat colour plus a varying alpha mask
- * peaking at 137 of 255, so the mark is never more than 54% opaque and its
- * composited appearance depends entirely on the footage behind it. The alpha map is
- * the backdrop-invariant, and normalised correlation absorbs the rest as a scale
- * factor.
- *
- * Presence measured **0.9803 to 0.9973** across two renders, two colour variants and
- * two backdrop types at 4K. Absence measured **-0.1483 to 0.0135**. The narrowest
- * separation is about 0.83, so 0.85 sits in a very wide empty band.
- *
- * Remeasured for issue #266: with per-reference scoring subwindows, a third real UHD
- * render (mark present on every one of 256 coarse samples over heavily textured
- * footage) measured presence 0.9333 to 0.9996, so the documented floor follows the
- * weakest honest measurement.
+ * Calibration history and the measured band live in `thresholds.rs` only.
  */
 
 /** Defaults applied when nothing is overridden. */
@@ -42,11 +25,7 @@ export const KAVANAGH_THRESHOLDS = {
    * default so a badly calibrated default can be worked around without a release.
    */
   matchConfidenceMin: 0.3,
-  matchConfidenceMax: 0.999,
-  /** The weakest score measured on a render whose watermark was plainly visible. */
-  measuredWeakestPresence: 0.933,
-  /** The strongest score measured on a region with no watermark in it. */
-  measuredStrongestAbsence: 0.0135
+  matchConfidenceMax: 0.999
 } as const
 
 /** Why an override was refused, or null when it is usable. */

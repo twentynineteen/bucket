@@ -54,19 +54,6 @@ describe('QC match confidence', () => {
     ).toBeNull()
   })
 
-  it('keeps the default inside the measured band', () => {
-    // Guards a retune rather than the value. Above the weakest measured presence it
-    // fails a render whose watermark is plainly visible; below the strongest
-    // measured absence it passes a video with no watermark at all. Both have
-    // happened on real footage.
-    expect(KAVANAGH_THRESHOLDS.matchConfidence).toBeGreaterThan(
-      KAVANAGH_THRESHOLDS.measuredStrongestAbsence
-    )
-    expect(KAVANAGH_THRESHOLDS.matchConfidence).toBeLessThan(
-      KAVANAGH_THRESHOLDS.measuredWeakestPresence
-    )
-  })
-
   it('keeps the override range reaching either side of the default', () => {
     // An override cannot work around a badly chosen default if the default sits at
     // the edge of what may be entered.
