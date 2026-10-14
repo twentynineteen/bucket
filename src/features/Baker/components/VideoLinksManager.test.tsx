@@ -29,10 +29,12 @@ import { VideoLinksManager } from './VideoLinksManager'
 
 // Mock hooks
 vi.mock('../hooks/useBreadcrumbsVideoLinks')
-// Partial mock: stub the I/O boundary (API functions, the Trello-cards hook)
-// but keep real React components so the rendering tree works. importOriginal
-// is avoided because loading Trello's barrel executes useBreadcrumbsTrelloCards'
-// React Query subscription, which cannot return undefined data.
+// Explicit mock of only what VideoLinksManager's tree takes from Trello: the
+// three API calls, the breadcrumbs Trello-cards hook and the card update dialog
+// (stubbed, as no test here asserts on it). A spread of importOriginal was
+// tried for #308 and fails 51 of these tests: the real
+// useBreadcrumbsTrelloCards query still runs and rejects with "Query data
+// cannot be undefined". The cause was not pinned down.
 vi.mock('@features/Trello', () => ({
   TrelloCardUpdateDialog: () => null,
   addCardComment: vi.fn(),
