@@ -118,33 +118,35 @@ const setupMocks = () => {
   } as unknown as ReturnType<typeof cardPosterFrameModule.useCardPosterFrame>)
 
   vi.mocked(replaceVideoModule.useReplaceVideo).mockReturnValue({
-    target: undefined,
-    targetIndex: null,
+    dialog: {
+      open: false,
+      onOpenChange: vi.fn(),
+      videoTitle: '',
+      upload: {
+        selectedFile: null,
+        onSelectFile: vi.fn(),
+        status: 'idle',
+        progress: { percentage: 0, bytesSent: 0, totalBytes: 0 },
+        error: null,
+        onCancel: vi.fn()
+      },
+      posterMode: 'keep',
+      onPosterModeChange: vi.fn(),
+      trello: {
+        available: false,
+        enabled: true,
+        onEnabledChange: vi.fn(),
+        cards: [],
+        selectedCardIds: [],
+        onToggleCard: vi.fn(),
+        text: '',
+        onTextChange: vi.fn(),
+        validationMessage: null
+      },
+      canSubmit: false,
+      onConfirm: vi.fn()
+    },
     request: vi.fn(),
-    handleOpenChange: vi.fn(),
-    upload: {
-      selectedFile: null,
-      selectFile: vi.fn(),
-      status: 'idle',
-      progress: { percentage: 0, bytesSent: 0, totalBytes: 0 },
-      error: null,
-      cancel: vi.fn()
-    },
-    posterMode: 'keep',
-    setPosterMode: vi.fn(),
-    trello: {
-      available: false,
-      enabled: true,
-      setEnabled: vi.fn(),
-      cards: [],
-      selectedCardIds: [],
-      toggleCard: vi.fn(),
-      text: '',
-      setText: vi.fn(),
-      validationMessage: null
-    },
-    canSubmit: false,
-    confirm: vi.fn(),
     disabledReason: vi.fn(() => null)
   } as unknown as ReturnType<typeof replaceVideoModule.useReplaceVideo>)
 

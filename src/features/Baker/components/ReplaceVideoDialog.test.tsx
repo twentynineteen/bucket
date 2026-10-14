@@ -246,7 +246,10 @@ describe('ReplaceVideoDialog - transfer lifecycle', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('b5_3_does_not_ask_to_close_on_escape_while_uploading', () => {
+  it('b5_3_forwards_escape_to_onOpenChange_while_uploading', () => {
+    // The close guard moved to the hook (handleOpenChange). The dialog
+    // forwards the request and the hook blocks it. See the matching
+    // test in useReplaceVideo.test.tsx.
     const onOpenChange = vi.fn()
     render(
       <ReplaceVideoDialog
@@ -259,10 +262,10 @@ describe('ReplaceVideoDialog - transfer lifecycle', () => {
 
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
 
-    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('b5_3_does_not_ask_to_close_on_escape_while_cancelling', () => {
+  it('b5_3_forwards_escape_to_onOpenChange_while_cancelling', () => {
     const onOpenChange = vi.fn()
     render(
       <ReplaceVideoDialog
@@ -275,7 +278,7 @@ describe('ReplaceVideoDialog - transfer lifecycle', () => {
 
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
 
-    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it('asks to close on escape when idle', () => {

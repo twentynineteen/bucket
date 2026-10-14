@@ -5,13 +5,13 @@
  * Purely presentational: every value here is owned by useReplaceVideo. The
  * dialog is itself the confirmation for an irreversible replace, so it carries
  * the warning and there is no second modal on top of it.
+ *
+ * The prop types are defined in useReplaceVideo so the hook can return them
+ * directly and VideoLinksManager can spread them without re-mapping.
  */
 
-import {
-  formatTransferredBytes,
-  type ReplaceUploadProgress,
-  type ReplaceUploadStatus
-} from '@features/Upload'
+import type { ReplaceVideoDialogProps } from '@features/Trello'
+import { formatTransferredBytes } from '@features/Upload'
 import { Alert, AlertDescription } from '@shared/ui/alert'
 import { Button } from '@shared/ui/button'
 import { Checkbox } from '@shared/ui/checkbox'
@@ -27,42 +27,7 @@ import { Label } from '@shared/ui/label'
 import { Progress } from '@shared/ui/progress'
 import { AlertCircle, AlertTriangle, FileVideo, Loader2, Replace } from 'lucide-react'
 
-export type ReplacePosterMode = 'keep' | 'new'
-
-export interface ReplaceVideoUploadState {
-  selectedFile: string | null
-  onSelectFile: () => void
-  status: ReplaceUploadStatus
-  progress: ReplaceUploadProgress
-  error: string | null
-  onCancel: () => void
-}
-
-export interface ReplaceVideoTrelloState {
-  /** False when the project has no cards or Trello is not configured */
-  available: boolean
-  enabled: boolean
-  onEnabledChange: (enabled: boolean) => void
-  cards: Array<{ cardId: string; title: string; boardName?: string }>
-  selectedCardIds: string[]
-  onToggleCard: (cardId: string) => void
-  text: string
-  onTextChange: (text: string) => void
-  validationMessage: string | null
-}
-
-export interface ReplaceVideoDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  /** Title of the video whose file is being replaced */
-  videoTitle: string
-  upload: ReplaceVideoUploadState
-  posterMode: ReplacePosterMode
-  onPosterModeChange: (mode: ReplacePosterMode) => void
-  trello: ReplaceVideoTrelloState
-  canSubmit: boolean
-  onConfirm: () => void
-}
+export type { ReplaceVideoDialogProps }
 
 export function ReplaceVideoDialog({
   open,
@@ -82,14 +47,9 @@ export function ReplaceVideoDialog({
   const percent = Math.round(upload.progress.percentage)
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={next => {
-        // Closing mid-transfer would leave Rust streaming with nothing watching it
-        if (!next && transferring) return
-        onOpenChange(next)
-      }}
-    >
+    // The close guard (block close during transfer) lives in the hook's
+    // handleOpenChange, so the dialog passes onOpenChange straight through.
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent hideClose={transferring}>
         <DialogHeader>
           <DialogTitle>Replace video</DialogTitle>

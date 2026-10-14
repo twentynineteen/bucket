@@ -145,7 +145,7 @@ async function replaceFirstLink(result: { current: ReturnType<typeof useReplaceV
     result.current.request(0)
   })
   await act(async () => {
-    await result.current.confirm()
+    await result.current.dialog.onConfirm()
   })
 }
 
@@ -173,9 +173,9 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
       result.current.request(0)
     })
 
-    expect(result.current.targetIndex).toBe(0)
-    expect(result.current.target).toEqual(LINK)
-    expect(result.current.posterMode).toBe('keep')
+    expect(result.current.dialog.open).toBe(true)
+    expect(result.current.dialog.videoTitle).toBe(LINK.title)
+    expect(result.current.dialog.posterMode).toBe('keep')
   })
 
   it('b4_1_cannot_submit_without_a_selected_file', () => {
@@ -188,7 +188,7 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
       result.current.request(0)
     })
 
-    expect(result.current.canSubmit).toBe(false)
+    expect(result.current.dialog.canSubmit).toBe(false)
   })
 
   it('b4_3_hides_trello_when_the_project_has_no_cards', () => {
@@ -198,7 +198,7 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
       result.current.request(0)
     })
 
-    expect(result.current.trello.available).toBe(false)
+    expect(result.current.dialog.trello.available).toBe(false)
   })
 
   it('b4_3_hides_trello_when_credentials_are_missing', () => {
@@ -208,7 +208,7 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
       result.current.request(0)
     })
 
-    expect(result.current.trello.available).toBe(false)
+    expect(result.current.dialog.trello.available).toBe(false)
   })
 
   it('b4_4_starts_with_every_card_checked_and_the_default_comment', () => {
@@ -218,13 +218,13 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
       result.current.request(0)
     })
 
-    expect(result.current.trello.available).toBe(true)
-    expect(result.current.trello.enabled).toBe(true)
-    expect(result.current.trello.selectedCardIds).toEqual(['c1', 'c2'])
-    expect(result.current.trello.text).toBe(
+    expect(result.current.dialog.trello.available).toBe(true)
+    expect(result.current.dialog.trello.enabled).toBe(true)
+    expect(result.current.dialog.trello.selectedCardIds).toEqual(['c1', 'c2'])
+    expect(result.current.dialog.trello.text).toBe(
       'Replaced the video "WBS - MSc - Managing Change" on Sprout Video. The link is unchanged.'
     )
-    expect(result.current.canSubmit).toBe(true)
+    expect(result.current.dialog.canSubmit).toBe(true)
   })
 
   it('b4_4_falls_back_to_the_source_file_when_the_title_is_blank', () => {
@@ -237,7 +237,7 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
       result.current.request(0)
     })
 
-    expect(result.current.trello.text).toContain('"WBS_managing_change_v1.mp4"')
+    expect(result.current.dialog.trello.text).toContain('"WBS_managing_change_v1.mp4"')
   })
 
   it('b4_5_blocks_submission_when_the_comment_is_on_but_no_card_is_checked', () => {
@@ -247,18 +247,18 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.trello.toggleCard('c1')
-      result.current.trello.toggleCard('c2')
+      result.current.dialog.trello.onToggleCard('c1')
+      result.current.dialog.trello.onToggleCard('c2')
     })
 
-    expect(result.current.canSubmit).toBe(false)
-    expect(result.current.trello.validationMessage).toMatch(/card/i)
+    expect(result.current.dialog.canSubmit).toBe(false)
+    expect(result.current.dialog.trello.validationMessage).toMatch(/card/i)
 
     act(() => {
-      result.current.trello.setEnabled(false)
+      result.current.dialog.trello.onEnabledChange(false)
     })
-    expect(result.current.canSubmit).toBe(true)
-    expect(result.current.trello.validationMessage).toBeNull()
+    expect(result.current.dialog.canSubmit).toBe(true)
+    expect(result.current.dialog.trello.validationMessage).toBeNull()
   })
 
   it('b4_5_blocks_submission_when_the_comment_text_is_blank', () => {
@@ -268,11 +268,11 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.trello.setText('   ')
+      result.current.dialog.trello.onTextChange('   ')
     })
 
-    expect(result.current.canSubmit).toBe(false)
-    expect(result.current.trello.validationMessage).toMatch(/comment/i)
+    expect(result.current.dialog.canSubmit).toBe(false)
+    expect(result.current.dialog.trello.validationMessage).toMatch(/comment/i)
   })
 
   it('re-derives the form for each newly targeted link', () => {
@@ -290,17 +290,17 @@ describe('useReplaceVideo - dialog form defaults and validation', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.trello.setText('custom')
-      result.current.setPosterMode('new')
-      result.current.trello.toggleCard('c2')
+      result.current.dialog.trello.onTextChange('custom')
+      result.current.dialog.onPosterModeChange('new')
+      result.current.dialog.trello.onToggleCard('c2')
     })
     act(() => {
       result.current.request(1)
     })
 
-    expect(result.current.trello.text).toContain('"Second"')
-    expect(result.current.posterMode).toBe('keep')
-    expect(result.current.trello.selectedCardIds).toEqual(['c1', 'c2'])
+    expect(result.current.dialog.trello.text).toContain('"Second"')
+    expect(result.current.dialog.posterMode).toBe('keep')
+    expect(result.current.dialog.trello.selectedCardIds).toEqual(['c1', 'c2'])
     // The previous link's file must not be pre-selected for this one: the
     // action is irreversible and B4.1 says submit is blocked until a file is
     // chosen, on every open.
@@ -336,7 +336,7 @@ describe('useReplaceVideo - transfer lifecycle', () => {
 
     expect(updateVideoLinkAsync).not.toHaveBeenCalled()
     expect(addCardComment).not.toHaveBeenCalled()
-    expect(result.current.targetIndex).toBe(0)
+    expect(result.current.dialog.open).toBe(true)
   })
 
   it('b5_4_b8_3_a_failed_transfer_writes_nothing_and_keeps_the_dialog_open', async () => {
@@ -348,7 +348,7 @@ describe('useReplaceVideo - transfer lifecycle', () => {
     expect(updateVideoLinkAsync).not.toHaveBeenCalled()
     expect(addCardComment).not.toHaveBeenCalled()
     expect(bumpThumbnailCacheKey).not.toHaveBeenCalled()
-    expect(result.current.targetIndex).toBe(0)
+    expect(result.current.dialog.open).toBe(true)
   })
 
   it('b5_3_refuses_to_close_while_the_transfer_is_running', () => {
@@ -361,10 +361,10 @@ describe('useReplaceVideo - transfer lifecycle', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.handleOpenChange(false)
+      result.current.dialog.onOpenChange(false)
     })
 
-    expect(result.current.targetIndex).toBe(0)
+    expect(result.current.dialog.open).toBe(true)
   })
 
   it('b5_3_refuses_to_close_while_cancelling', () => {
@@ -377,10 +377,10 @@ describe('useReplaceVideo - transfer lifecycle', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.handleOpenChange(false)
+      result.current.dialog.onOpenChange(false)
     })
 
-    expect(result.current.targetIndex).toBe(0)
+    expect(result.current.dialog.open).toBe(true)
   })
 
   it('closes when idle', () => {
@@ -390,10 +390,10 @@ describe('useReplaceVideo - transfer lifecycle', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.handleOpenChange(false)
+      result.current.dialog.onOpenChange(false)
     })
 
-    expect(result.current.targetIndex).toBeNull()
+    expect(result.current.dialog.open).toBe(false)
   })
 })
 
@@ -420,15 +420,15 @@ describe('useReplaceVideo - follow-ups still running', () => {
     })
     // Not wrapped in act: the assertions below need React to flush the state
     // set mid-flight, which an enclosing async act would hold back.
-    const run = result.current.confirm()
+    const run = result.current.dialog.onConfirm()
     await waitFor(() => expect(updateVideoLinkAsync).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(result.current.targetIndex).toBeNull())
+    await waitFor(() => expect(result.current.dialog.open).toBe(false))
 
     expect(result.current.disabledReason(second)).toMatch(/finishing/i)
     act(() => {
       result.current.request(1)
     })
-    expect(result.current.targetIndex).toBeNull()
+    expect(result.current.dialog.open).toBe(false)
 
     write.resolve()
     await act(async () => {
@@ -439,7 +439,7 @@ describe('useReplaceVideo - follow-ups still running', () => {
     act(() => {
       result.current.request(1)
     })
-    expect(result.current.targetIndex).toBe(1)
+    expect(result.current.dialog.open).toBe(true)
   })
 })
 
@@ -464,7 +464,7 @@ describe('useReplaceVideo - success with the current poster frame kept', () => {
     })
     expect(toast.success).toHaveBeenCalledTimes(1)
     expect(toast.warning).not.toHaveBeenCalled()
-    expect(result.current.targetIndex).toBeNull()
+    expect(result.current.dialog.open).toBe(false)
   })
 
   it('b6_1_backfills_a_derived_sprout_id', async () => {
@@ -527,7 +527,7 @@ describe('useReplaceVideo - success with the current poster frame kept', () => {
       result.current.request(0)
     })
     const run = act(async () => {
-      await result.current.confirm()
+      await result.current.dialog.onConfirm()
     })
     await waitFor(() => expect(mockFetchDetails).toHaveBeenCalledTimes(1))
     await act(async () => {
@@ -553,7 +553,7 @@ describe('useReplaceVideo - success with the current poster frame kept', () => {
       result.current.request(0)
     })
     const run = act(async () => {
-      await result.current.confirm()
+      await result.current.dialog.onConfirm()
     })
     await waitFor(() => expect(mockFetchDetails).toHaveBeenCalledTimes(1))
     await act(async () => {
@@ -591,10 +591,10 @@ describe('useReplaceVideo - success with a new poster frame', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.setPosterMode('new')
+      result.current.dialog.onPosterModeChange('new')
     })
     const run = act(async () => {
-      await result.current.confirm()
+      await result.current.dialog.onConfirm()
     })
     await waitFor(() => expect(updateVideoLinkAsync).toHaveBeenCalledTimes(1))
 
@@ -624,10 +624,10 @@ describe('useReplaceVideo - success with a new poster frame', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.setPosterMode('new')
+      result.current.dialog.onPosterModeChange('new')
     })
     await act(async () => {
-      await result.current.confirm()
+      await result.current.dialog.onConfirm()
     })
 
     expect(bumpThumbnailCacheKey).toHaveBeenCalledWith(LINK.url)
@@ -642,10 +642,10 @@ describe('useReplaceVideo - Trello comment', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.trello.setText('New cut is live.')
+      result.current.dialog.trello.onTextChange('New cut is live.')
     })
     await act(async () => {
-      await result.current.confirm()
+      await result.current.dialog.onConfirm()
     })
 
     expect(addCardComment).toHaveBeenCalledTimes(2)
@@ -670,10 +670,10 @@ describe('useReplaceVideo - Trello comment', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.trello.toggleCard('c2')
+      result.current.dialog.trello.onToggleCard('c2')
     })
     await act(async () => {
-      await result.current.confirm()
+      await result.current.dialog.onConfirm()
     })
 
     expect(addCardComment).toHaveBeenCalledTimes(1)
@@ -692,10 +692,10 @@ describe('useReplaceVideo - Trello comment', () => {
       result.current.request(0)
     })
     act(() => {
-      result.current.trello.setEnabled(false)
+      result.current.dialog.trello.onEnabledChange(false)
     })
     await act(async () => {
-      await result.current.confirm()
+      await result.current.dialog.onConfirm()
     })
 
     expect(addCardComment).not.toHaveBeenCalled()
@@ -715,7 +715,7 @@ describe('useReplaceVideo - follow-up reporting', () => {
     expect(message).toMatch(/Video replaced/)
     expect(message).toMatch(/breadcrumbs/i)
     expect(toast.success).not.toHaveBeenCalled()
-    expect(result.current.targetIndex).toBeNull()
+    expect(result.current.dialog.open).toBe(false)
   })
 
   it('b9_2_names_exactly_the_cards_that_did_not_get_the_comment', async () => {
@@ -743,7 +743,7 @@ describe('useReplaceVideo - follow-up reporting', () => {
       result.current.request(0)
     })
     const run = act(async () => {
-      await result.current.confirm()
+      await result.current.dialog.onConfirm()
     })
     await waitFor(() => expect(mockFetchDetails).toHaveBeenCalledTimes(1))
     await act(async () => {

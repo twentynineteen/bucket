@@ -262,34 +262,7 @@ export function VideoLinksManager({ projectPath }: VideoLinksManagerProps) {
       )}
 
       {/* Replace the file behind an already-linked video (Issue #282) */}
-      <ReplaceVideoDialog
-        open={replaceVideo.targetIndex !== null}
-        onOpenChange={replaceVideo.handleOpenChange}
-        videoTitle={replaceVideo.targetTitle}
-        upload={{
-          selectedFile: replaceVideo.upload.selectedFile,
-          onSelectFile: () => void replaceVideo.upload.selectFile(),
-          status: replaceVideo.upload.status,
-          progress: replaceVideo.upload.progress,
-          error: replaceVideo.upload.error,
-          onCancel: () => void replaceVideo.upload.cancel()
-        }}
-        posterMode={replaceVideo.posterMode}
-        onPosterModeChange={replaceVideo.setPosterMode}
-        trello={{
-          available: replaceVideo.trello.available,
-          enabled: replaceVideo.trello.enabled,
-          onEnabledChange: replaceVideo.trello.setEnabled,
-          cards: replaceVideo.trello.cards,
-          selectedCardIds: replaceVideo.trello.selectedCardIds,
-          onToggleCard: replaceVideo.trello.toggleCard,
-          text: replaceVideo.trello.text,
-          onTextChange: replaceVideo.trello.setText,
-          validationMessage: replaceVideo.trello.validationMessage
-        }}
-        canSubmit={replaceVideo.canSubmit}
-        onConfirm={() => void replaceVideo.confirm()}
-      />
+      <ReplaceVideoDialog {...replaceVideo.dialog} />
 
       {/* Loading indicator */}
       {isUpdating && (

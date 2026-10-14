@@ -49,6 +49,16 @@ export { useVideoLinksManager } from './hooks/useVideoLinksManager'
 export { useBreadcrumbsTrelloCards } from './hooks/useBreadcrumbsTrelloCards'
 /** Hook for self-assigning the current Trello user to linked cards via a toggle */
 export { useTrelloSelfAssignment } from './hooks/useTrelloSelfAssignment'
+/** Hook for the replace-video flow -- Sprout transfer, poster frame, breadcrumbs, Trello comment */
+export { useReplaceVideo } from './hooks/useReplaceVideo'
+/** Poster frame choice for a replace: keep the current frame or set a new one */
+export type { PosterMode } from './hooks/useReplaceVideo'
+/** Props for the ReplaceVideoDialog, returned directly by useReplaceVideo */
+export type { ReplaceVideoDialogProps } from './hooks/useReplaceVideo'
+/** Upload state sub-props for ReplaceVideoDialog */
+export type { ReplaceVideoUploadState } from './hooks/useReplaceVideo'
+/** Trello comment state sub-props for ReplaceVideoDialog */
+export type { ReplaceVideoTrelloState } from './hooks/useReplaceVideo'
 
 // Types (re-export for consumers)
 /** Trello card data with id, name, labels, and board membership */
