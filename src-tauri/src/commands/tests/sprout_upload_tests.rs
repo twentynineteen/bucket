@@ -426,7 +426,7 @@ fn no_wall_clock_upload_deadline_survives_anywhere() {
     // UP-14. The frontend timer is only half of it: reqwest's total-request
     // `.timeout(45 * 60)` would kill a healthy slow upload from the Rust side
     // even with the frontend fixed. The stall watchdog replaces both.
-    let source = include_str!("../sprout_upload.rs");
+    let source = include_str!("../sprout_upload/transfer.rs");
     assert!(
         !source.contains("45 * 60"),
         "a 45-minute total-request deadline cannot tell a slow upload from a dead \
@@ -638,7 +638,7 @@ fn the_stall_watchdog_runs_outside_the_upload_task() {
     // cancellation into the same task, for the same reason the watchdog is not a
     // `select!` inside the upload task, and renamed it to match what it now does.
     // The guarantee this test pins is unchanged.
-    let source = include_str!("../sprout_upload.rs");
+    let source = include_str!("../sprout_upload/supervisor.rs");
 
     assert!(
         source.contains("async fn supervise_upload"),
@@ -658,7 +658,7 @@ fn the_size_check_runs_before_any_streaming_or_network_work() {
     // reporting reader - and therefore any `upload_progress` event - existing for
     // an unchecked file. What the compiler cannot stop is new work being added
     // above the gate, so pin the order of the statements in `upload_video_task`.
-    let source = include_str!("../sprout_upload.rs");
+    let source = include_str!("../sprout_upload/transfer.rs");
 
     let gate = source
         .find("check_upload_size(file_size)")
@@ -791,7 +791,7 @@ fn the_soft_threshold_is_derived_from_the_terminal_window() {
         "the warning must land inside the window it warns about"
     );
 
-    let source = include_str!("../sprout_upload.rs");
+    let source = include_str!("../sprout_upload/supervisor.rs");
     let declaration = source
         .split("pub const STALL_WARNING_AFTER")
         .nth(1)
@@ -960,7 +960,7 @@ fn cancellation_is_a_terminal_outcome_and_goes_through_the_gate() {
     // UP-20 / UP-33. #204's discipline: exactly one terminal event per operation.
     // A cancel racing a completion is the same race as a stall racing one, so it
     // must claim through the same one-shot rather than emitting unconditionally.
-    let source = include_str!("../sprout_upload.rs");
+    let source = include_str!("../sprout_upload/transfer.rs");
 
     let cancel_emitter = source
         .split("fn cancel(&self")
@@ -986,7 +986,7 @@ fn a_cancelled_upload_is_torn_down_and_deregistered_exactly_once() {
     // UP-20 / UP-22. Reporting a cancellation without aborting the task would leave
     // a dead upload holding the socket - the orphaning this issue exists to remove
     // - and leaving the id in the registry leaks an entry per upload.
-    let source = include_str!("../sprout_upload.rs");
+    let source = include_str!("../sprout_upload/supervisor.rs");
 
     let supervisor = source
         .split("async fn supervise_upload")
@@ -1009,7 +1009,9 @@ fn a_cancelled_upload_is_torn_down_and_deregistered_exactly_once() {
          defect with a nicer message, got: {cancel_arm}"
     );
     assert_eq!(
-        supervisor.matches("registry.complete(&operation_id)").count(),
+        supervisor
+            .matches("registry.complete(&operation_id)")
+            .count(),
         1,
         "deregistration must be unconditional and in one place, or some terminal \
          path leaks the operation"
@@ -1023,13 +1025,14 @@ fn detection_did_not_migrate_into_the_task_it_watches() {
     // above; what this adds is that the upload task itself still knows nothing
     // about the thresholds, so no future edit can quietly move the decision inside
     // the task that a wedged syscall would freeze.
-    let source = include_str!("../sprout_upload.rs");
+    let commands = include_str!("../sprout_upload/mod.rs");
 
     assert!(
-        source.contains("spawn(supervise_upload"),
+        commands.contains("spawn(supervise_upload"),
         "the supervisor must be spawned rather than awaited inline"
     );
-    let upload_task = source
+    let task_source = include_str!("../sprout_upload/transfer.rs");
+    let upload_task = task_source
         .split("async fn upload_video_task")
         .nth(1)
         .expect("the upload task must still exist");
@@ -1128,23 +1131,24 @@ fn b1_3_replace_video_is_registered_and_shares_the_upload_task() {
         "replace_video must be listed in generate_handler! or the frontend cannot invoke it"
     );
 
-    let source = include_str!("../sprout_upload.rs");
-    let upload_command = source
+    let commands = include_str!("../sprout_upload/mod.rs");
+    let upload_command = commands
         .split("pub async fn upload_video(")
         .nth(1)
         .and_then(|rest| rest.split("pub async fn replace_video").next())
-        .expect("upload_video must precede replace_video in sprout_upload.rs");
-    let replace_command = source
+        .expect("upload_video must precede replace_video in the commands module");
+    let replace_command = commands
         .split("pub async fn replace_video")
         .nth(1)
         .and_then(|rest| rest.split("async fn start_transfer").next())
-        .expect("a replace_video command must exist in sprout_upload.rs");
+        .expect("a replace_video command must exist in the commands module");
     assert!(
         upload_command.contains("start_transfer(") && replace_command.contains("start_transfer("),
         "both commands must go through the one start_transfer helper"
     );
+    let task_source = include_str!("../sprout_upload/transfer.rs");
     assert!(
-        source.matches("async fn upload_video_task").count() == 1,
+        task_source.matches("async fn upload_video_task").count() == 1,
         "there must be exactly one upload task"
     );
 }

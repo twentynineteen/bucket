@@ -65,7 +65,7 @@ describe('shared code does not invoke feature-owned Tauri commands', () => {
   it('finds the Rust command surface (guards against a silently empty rule)', () => {
     // If the parse breaks, every assertion below would vacuously pass.
     expect(ownership.size).toBeGreaterThan(10)
-    expect(ownership.get('get_folders')).toBe('commands/sprout_upload.rs')
+    expect(ownership.get('get_folders')).toBe('commands/sprout_upload/mod.rs')
     expect(ownership.get('get_username')).toBe('commands/system.rs')
   })
 
