@@ -4,7 +4,7 @@
  * Refactored: 2025-11-18 - Extracted state to useVideoLinksManager, dialog to AddVideoDialog
  */
 
-import { TrelloCardUpdateDialog, useVideoLinksManager } from '@features/Trello'
+import { TrelloCardUpdateDialog } from '@features/Trello'
 import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert'
 import {
   AlertDialog,
@@ -18,6 +18,7 @@ import {
 } from '@shared/ui/alert-dialog'
 import { Button } from '@shared/ui/button'
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
+import { useVideoLinksManager } from '../hooks/useVideoLinksManager'
 import { describeVideoLinksError } from '../internal/videoLinksError'
 import { AddVideoDialog } from './AddVideoDialog'
 import { ReplaceVideoDialog } from './ReplaceVideoDialog'

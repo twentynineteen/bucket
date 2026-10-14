@@ -31,7 +31,6 @@ vi.mock('../api', () => ({
   bakerAssociateTrelloCard: vi.fn().mockResolvedValue({}),
   bakerRemoveTrelloCard: vi.fn().mockResolvedValue({}),
   bakerFetchTrelloCardDetails: vi.fn().mockResolvedValue({}),
-  bakerReadBreadcrumbs: vi.fn().mockResolvedValue({}),
   askDialog: vi.fn().mockResolvedValue(true),
   confirmDialog: vi.fn().mockResolvedValue(true),
   openFileDialog: vi.fn().mockResolvedValue(null),
@@ -273,9 +272,12 @@ describe('Trello Barrel Exports - Shape', () => {
     'useTrelloVideoInfo',
     'useParsedTrelloDescription',
     'useBakerTrelloIntegration',
-    'useVideoLinksManager',
     'useBreadcrumbsTrelloCards',
-    'useTrelloSelfAssignment'
+    'useTrelloSelfAssignment',
+    // API functions (consumed by Baker's moved orchestration hooks, #308)
+    'addCardComment',
+    'fetchTrelloCardById',
+    'updateTrelloCard'
   ].sort()
 
   // Presence, not exhaustiveness: a caller breaks when a name it imports
@@ -318,7 +320,6 @@ describe('Trello Barrel Exports - Shape', () => {
     'useTrelloVideoInfo',
     'useParsedTrelloDescription',
     'useBakerTrelloIntegration',
-    'useVideoLinksManager',
     'useBreadcrumbsTrelloCards',
     'useTrelloSelfAssignment'
   ] as const
@@ -385,35 +386,7 @@ describe('useTrelloBoardId - Behavior', () => {
   })
 })
 
-describe('useVideoLinksManager - Behavior', () => {
-  it('returns expected interface shape', () => {
-    const { result } = renderHook(() =>
-      trelloBarrel.useVideoLinksManager({ projectPath: '/test/path' })
-    )
-
-    // Data
-    expect(result.current).toHaveProperty('videoLinks')
-    expect(result.current).toHaveProperty('isLoading')
-    expect(result.current).toHaveProperty('error')
-
-    // Form state
-    expect(result.current).toHaveProperty('formData')
-    expect(result.current).toHaveProperty('updateFormField')
-    expect(result.current).toHaveProperty('validationErrors')
-
-    // Handlers
-    expect(result.current).toHaveProperty('handleAddVideo')
-    expect(result.current).toHaveProperty('requestRemoveVideo')
-    expect(result.current).toHaveProperty('handleMoveUp')
-    expect(result.current).toHaveProperty('handleMoveDown')
-    expect(result.current).toHaveProperty('handleUploadAndAdd')
-    expect(result.current).toHaveProperty('handleTrelloCardUpdate')
-
-    // Computed
-    expect(result.current).toHaveProperty('hasApiKey')
-    expect(result.current).toHaveProperty('canAddVideo')
-  })
-})
+// useVideoLinksManager moved to Baker in #308; its shape test is there now.
 
 // --- No-Bypass Tests ---
 

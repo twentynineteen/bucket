@@ -15,8 +15,11 @@
  * One instance per VideoLinksManager, like useCardPosterFrame: the form is
  * re-derived from whichever link is targeted.
  */
-import type { TrelloCard, VideoLink } from '@features/Baker'
+import { addCardComment } from '@features/Trello'
 import {
+  NO_API_KEY_REASON,
+  NO_SPROUT_ID_REASON,
+  resolveSproutVideoId,
   useReplaceUpload,
   useSproutVideoApi,
   type ReplaceUploadProgress,
@@ -25,12 +28,7 @@ import {
 import { logger } from '@shared/utils'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { addCardComment } from '../api'
-import {
-  NO_API_KEY_REASON,
-  NO_SPROUT_ID_REASON,
-  resolveSproutVideoId
-} from './useCardPosterFrame'
+import type { TrelloCard, VideoLink } from '../types'
 
 /**
  * How long to give Sprout before re-reading a video whose poster frames were

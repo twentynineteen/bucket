@@ -16,7 +16,7 @@ export { AddCardDialog } from './components/AddCardDialog'
 /** Page for uploading video links to Trello card descriptions */
 export { default as UploadTrello } from './components/UploadTrello'
 
-// Hooks
+// Hooks (Trello-only; orchestration hooks moved to Baker in #308)
 /** Hook for fetching all available Trello boards for the authenticated user */
 export { useTrelloBoards } from './hooks/useTrelloBoards'
 /** Hook for fetching cards and lists from a specific Trello board */
@@ -43,22 +43,18 @@ export { useTrelloVideoInfo } from './hooks/useTrelloVideoInfo'
 export { useParsedTrelloDescription } from './hooks/useParsedTrelloDescription'
 /** Hook for Baker-to-Trello integration -- syncing breadcrumbs with Trello cards */
 export { useBakerTrelloIntegration } from './hooks/useBakerTrelloIntegration'
-/** Hook for managing the video links array on a Trello card */
-export { useVideoLinksManager } from './hooks/useVideoLinksManager'
 /** Hook for reading Trello card references from project breadcrumbs files */
 export { useBreadcrumbsTrelloCards } from './hooks/useBreadcrumbsTrelloCards'
 /** Hook for self-assigning the current Trello user to linked cards via a toggle */
 export { useTrelloSelfAssignment } from './hooks/useTrelloSelfAssignment'
-/** Hook for the replace-video flow -- Sprout transfer, poster frame, breadcrumbs, Trello comment */
-export { useReplaceVideo } from './hooks/useReplaceVideo'
-/** Poster frame choice for a replace: keep the current frame or set a new one */
-export type { PosterMode } from './hooks/useReplaceVideo'
-/** Props for the ReplaceVideoDialog, returned directly by useReplaceVideo */
-export type { ReplaceVideoDialogProps } from './hooks/useReplaceVideo'
-/** Upload state sub-props for ReplaceVideoDialog */
-export type { ReplaceVideoUploadState } from './hooks/useReplaceVideo'
-/** Trello comment state sub-props for ReplaceVideoDialog */
-export type { ReplaceVideoTrelloState } from './hooks/useReplaceVideo'
+
+// API functions (consumed by Baker's moved orchestration hooks, #308)
+/** Post a comment on a Trello card */
+export { addCardComment } from './api'
+/** Fetch a Trello card by its ID */
+export { fetchTrelloCardById } from './api'
+/** Update fields on a Trello card */
+export { updateTrelloCard } from './api'
 
 // Types (re-export for consumers)
 /** Trello card data with id, name, labels, and board membership */

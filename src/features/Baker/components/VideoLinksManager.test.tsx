@@ -23,25 +23,38 @@ import {
 } from '@tests/factories/fileUploadMock'
 import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as useBreadcrumbsTrelloCardsHookModule from '../../Trello/hooks/useBreadcrumbsTrelloCards'
 import * as useBreadcrumbsVideoLinksModule from '../hooks/useBreadcrumbsVideoLinks'
 import type { VideoLink } from '../types'
 import { VideoLinksManager } from './VideoLinksManager'
 
 // Mock hooks
 vi.mock('../hooks/useBreadcrumbsVideoLinks')
-vi.mock('@features/Trello', async importOriginal => {
-  const actual = await importOriginal<typeof import('@features/Trello')>()
+// Explicit mock of only what VideoLinksManager's tree takes from Trello: the
+// three API calls, the breadcrumbs Trello-cards hook and the card update dialog
+// (stubbed, as no test here asserts on it). A spread of importOriginal was
+// tried for #308 and fails 51 of these tests: the real
+// useBreadcrumbsTrelloCards query still runs and rejects with "Query data
+// cannot be undefined". The cause was not pinned down.
+vi.mock('@features/Trello', () => ({
+  TrelloCardUpdateDialog: () => null,
+  addCardComment: vi.fn(),
+  fetchTrelloCardById: vi.fn().mockResolvedValue({}),
+  updateTrelloCard: vi.fn().mockResolvedValue({}),
+  useBreadcrumbsTrelloCards: vi.fn()
+}))
+vi.mock('@features/Upload', async importOriginal => {
+  const actual = await importOriginal<typeof import('@features/Upload')>()
   return {
     ...actual,
-    useBreadcrumbsTrelloCards: vi.fn()
+    useFileUpload: vi.fn(),
+    useReplaceUpload: vi.fn(),
+    useSproutVideoApi: vi.fn(),
+    useSproutVideoProcessor: vi.fn(),
+    useSproutFolderSelection: vi.fn(),
+    usePosterFrameForUpload: vi.fn(),
+    useUploadEvents: vi.fn()
   }
 })
-// Mock useBreadcrumbsTrelloCards at its actual file path so useVideoLinksManager's
-// relative import also gets the mock
-vi.mock('../../Trello/hooks/useBreadcrumbsTrelloCards')
-vi.mock('../../Trello/api')
-vi.mock('@features/Upload')
 vi.mock('@shared/hooks/useApiKeys')
 vi.mock('sonner', () => ({
   toast: {
@@ -226,9 +239,9 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
       trelloCardsMockReturn
     )
     // Also mock at the direct file level (used by useVideoLinksManager's relative import)
-    vi.mocked(
-      useBreadcrumbsTrelloCardsHookModule.useBreadcrumbsTrelloCards
-    ).mockReturnValue(trelloCardsMockReturn)
+    vi.mocked(useBreadcrumbsTrelloCardsModule.useBreadcrumbsTrelloCards).mockReturnValue(
+      trelloCardsMockReturn
+    )
 
     // Mock useSproutVideoApiKey
     vi.mocked(useApiKeysModule.useSproutVideoApiKey).mockReturnValue({
@@ -1934,7 +1947,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         { cardId: 'card-1', title: 'Managing Change', url: 'https://trello.com/c/card-1' }
       ]
       vi.mocked(
-        useBreadcrumbsTrelloCardsHookModule.useBreadcrumbsTrelloCards
+        useBreadcrumbsTrelloCardsModule.useBreadcrumbsTrelloCards
       ).mockReturnValue({
         trelloCards,
         isLoading: false,
@@ -1952,7 +1965,7 @@ describe('VideoLinksManager - Upload Toggle Enhancement', () => {
         fetchError: null,
         fetchedCardData: undefined
       } as unknown as ReturnType<
-        typeof useBreadcrumbsTrelloCardsHookModule.useBreadcrumbsTrelloCards
+        typeof useBreadcrumbsTrelloCardsModule.useBreadcrumbsTrelloCards
       >)
       withVideoLinks([linkWithId])
       mockPosterFrameRun.mockResolvedValue({

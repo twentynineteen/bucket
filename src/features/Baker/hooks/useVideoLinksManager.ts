@@ -5,12 +5,10 @@
  */
 
 import {
-  generateBreadcrumbsBlock,
-  updateTrelloCardWithBreadcrumbs,
-  useBreadcrumbsVideoLinks,
-  type BreadcrumbsFile,
-  type VideoLink
-} from '@features/Baker'
+  fetchTrelloCardById,
+  updateTrelloCard,
+  useBreadcrumbsTrelloCards
+} from '@features/Trello'
 import {
   useFileUpload,
   usePosterFrameForUpload,
@@ -27,8 +25,13 @@ import {
   validateVideoLink
 } from '@shared/utils'
 import { useState } from 'react'
-import { bakerReadBreadcrumbs, fetchTrelloCardById, updateTrelloCard } from '../api'
-import { useBreadcrumbsTrelloCards } from './useBreadcrumbsTrelloCards'
+import { bakerReadBreadcrumbs } from '../api'
+import type { VideoLink } from '../types'
+import {
+  generateBreadcrumbsBlock,
+  updateTrelloCardWithBreadcrumbs
+} from './useAppendBreadcrumbs'
+import { useBreadcrumbsVideoLinks } from './useBreadcrumbsVideoLinks'
 import { useCardPosterFrame } from './useCardPosterFrame'
 import { useReplaceVideo } from './useReplaceVideo'
 
@@ -338,7 +341,8 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
       throw new Error('Trello API credentials not configured')
     }
 
-    const breadcrumbsData = (await bakerReadBreadcrumbs(projectPath)) as BreadcrumbsFile
+    const breadcrumbsData = await bakerReadBreadcrumbs(projectPath)
+    if (!breadcrumbsData) throw new Error('Could not read breadcrumbs for this project')
 
     const breadcrumbsBlock = generateBreadcrumbsBlock(breadcrumbsData)
 

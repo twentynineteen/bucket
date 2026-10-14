@@ -251,10 +251,6 @@ export async function bakerFetchTrelloCardDetails(
   })
 }
 
-export async function bakerReadBreadcrumbs(projectPath: string): Promise<unknown> {
-  return invoke('baker_read_breadcrumbs', { projectPath })
-}
-
 // --- Dialog Wrappers ---
 
 export async function askDialog(
