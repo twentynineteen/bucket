@@ -59,13 +59,8 @@ pub const MATCH_CONFIDENCE_MAX: f32 = 0.999;
 /// The measured band the default has to sit inside, as a guard on retuning.
 ///
 /// Presence was measured no lower than this, so a default above it would fail a
-/// render whose watermark is plainly visible.
-///
-/// Remeasured for issue #266: with per-reference scoring subwindows, a third
-/// real UHD render (mark present and pristine on every one of 256 coarse
-/// samples over heavily textured footage) measured presence 0.9333 to 0.9996,
-/// dipping below the 0.9803 the first two renders established. The floor
-/// follows the weakest honest measurement.
+/// render whose watermark is plainly visible. See the module-level calibration
+/// history for the full measurement record.
 pub const MEASURED_WEAKEST_PRESENCE: f32 = 0.933;
 
 /// Absence was measured no higher than this, so a default below it would pass a
