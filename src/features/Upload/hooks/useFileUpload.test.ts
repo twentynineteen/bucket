@@ -28,7 +28,6 @@ import {
   listenUploadComplete,
   listenUploadError,
   listenUploadProgress,
-  listenUploadStallWarning,
   openFileDialog,
   uploadVideo
 } from '../api'
@@ -48,8 +47,7 @@ vi.mock('../api', () => ({
   listenUploadComplete: vi.fn().mockResolvedValue(() => undefined),
   listenUploadError: vi.fn().mockResolvedValue(() => undefined),
   listenUploadProgress: vi.fn().mockResolvedValue(() => undefined),
-  listenUploadCancelled: vi.fn().mockResolvedValue(() => undefined),
-  listenUploadStallWarning: vi.fn().mockResolvedValue(() => undefined)
+  listenUploadCancelled: vi.fn().mockResolvedValue(() => undefined)
 }))
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() }
@@ -77,7 +75,6 @@ beforeEach(() => {
   vi.mocked(listenUploadError).mockResolvedValue(() => undefined)
   vi.mocked(listenUploadProgress).mockResolvedValue(() => undefined)
   vi.mocked(listenUploadCancelled).mockResolvedValue(() => undefined)
-  vi.mocked(listenUploadStallWarning).mockResolvedValue(() => undefined)
 })
 
 /** Selects a file so uploadFile gets past its guard clause. */
@@ -458,6 +455,85 @@ describe('useFileUpload cancellation', () => {
     })
 
     expect(result.current.uploading).toBe(true)
+  })
+})
+
+// --- Zombie rejection before the id is known (issue #307) ---
+
+describe('useFileUpload zombie rejection before id is known', () => {
+  /** Captured `upload_complete` handlers, in registration order. */
+  let completeHandlers: Array<
+    (event: { payload: { operationId: string; video: unknown } }) => void
+  >
+
+  beforeEach(() => {
+    completeHandlers = []
+    vi.mocked(listenUploadComplete).mockImplementation(callback => {
+      completeHandlers.push(callback as (typeof completeHandlers)[number])
+      return Promise.resolve(() => undefined)
+    })
+  })
+
+  it('does not settle the add on a foreign complete event before uploadVideo resolves', async () => {
+    // Issue #307. Before #307, awaitUploadOutcome's 'accept' mode honoured
+    // any terminal event that arrived before the id was known. A zombie
+    // operation completing in the few milliseconds before uploadVideo
+    // resolves would be mistaken for the add's own completion. With 'accept'
+    // deleted, the zombie's event is buffered, found to belong to someone
+    // else on replay, and discarded.
+    let resolveUpload!: (id: string) => void
+    vi.mocked(uploadVideo).mockImplementation(
+      () =>
+        new Promise<string>(res => {
+          resolveUpload = res
+        })
+    )
+
+    const { result } = renderHook(() => useFileUpload())
+    await withFile(result)
+
+    await act(async () => {
+      startUpload(() => result.current.uploadFile('key-123'))
+    })
+
+    // A zombie operation's completion arrives before uploadVideo resolves.
+    await act(async () => {
+      for (const handler of completeHandlers) {
+        handler({
+          payload: {
+            operationId: 'op-zombie',
+            video: { id: 'vid-zombie', state: 'deployed' }
+          }
+        })
+      }
+    })
+
+    // The add must still be in flight - the zombie must not have settled it.
+    expect(result.current.uploading).toBe(true)
+    expect(result.current.response).toBeNull()
+
+    // Now the backend names our real operation.
+    await act(async () => {
+      resolveUpload('op-real')
+    })
+
+    // Still in flight: our own terminal event has not arrived yet.
+    expect(result.current.uploading).toBe(true)
+
+    // Our own completion settles the add.
+    await act(async () => {
+      for (const handler of completeHandlers) {
+        handler({
+          payload: {
+            operationId: 'op-real',
+            video: { id: 'vid-real', state: 'deployed' }
+          }
+        })
+      }
+    })
+
+    expect(result.current.uploading).toBe(false)
+    expect(result.current.response).toEqual(expect.objectContaining({ id: 'vid-real' }))
   })
 })
 

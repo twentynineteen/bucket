@@ -5,7 +5,7 @@
  * buffered and replayed once the id is known -- there is no permissive window
  * (the 'accept' mode was deleted by #307). The orderings the hook tests
  * cannot pin directly are pinned here: replay in order, discard on start
- * failure, and zombie rejection before the id is known.
+ * failure, and foreign-event rejection.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -65,69 +65,6 @@ beforeEach(() => {
       return unlisten
     })
   }
-})
-
-describe('awaitUploadOutcome - zombie rejection before id is known', () => {
-  it('does not resolve the add when a foreign terminal event arrives before the id', async () => {
-    // Issue #307: under the old 'accept' mode, a zombie operation's terminal
-    // event arriving in the few milliseconds before start() resolved would be
-    // mistaken for this upload's completion. With the accept path deleted,
-    // the zombie event is buffered, found to belong to someone else on replay,
-    // and discarded. The add must stay unresolved until its own event arrives.
-    const registered = deferred<string>()
-    const outcome = awaitUploadOutcome({
-      start: () => registered.promise,
-      onProgress: vi.fn()
-    })
-
-    // Zombie completes before start() tells us our id.
-    await emit('complete', { operationId: 'op-zombie', video })
-    // The promise must NOT have settled yet.
-    const raceResult = await Promise.race([
-      outcome.then(() => 'settled'),
-      Promise.resolve('pending')
-    ])
-    expect(raceResult).toBe('pending')
-
-    // Now the backend tells us our real id.
-    registered.resolve('op-real')
-    // The zombie's completion was discarded; our own event arrives and settles.
-    await emit('complete', { operationId: 'op-real', video })
-    await expect(outcome).resolves.toEqual({ kind: 'complete', video })
-  })
-
-  it('replays our own buffered progress once the id arrives, so progress starts promptly', async () => {
-    // Issue #307: the add flow now buffers progress events that arrive before
-    // the id is known. Once the id resolves, our events replay in order and
-    // the progress callback fires immediately rather than being lost.
-    const registered = deferred<string>()
-    const onProgress = vi.fn()
-    const outcome = awaitUploadOutcome({
-      start: () => registered.promise,
-      onProgress
-    })
-
-    // Progress arrives before the id.
-    await emit('progress', {
-      operationId: 'op-mine',
-      bytesSent: 50,
-      totalBytes: 100,
-      percentage: 50
-    })
-    expect(onProgress).not.toHaveBeenCalled()
-
-    // Id resolves - our buffered progress replays.
-    registered.resolve('op-mine')
-    await Promise.resolve()
-    expect(onProgress).toHaveBeenCalledTimes(1)
-    expect(onProgress).toHaveBeenCalledWith(
-      expect.objectContaining({ operationId: 'op-mine', percentage: 50 })
-    )
-
-    // Complete normally.
-    await emit('complete', { operationId: 'op-mine', video })
-    await expect(outcome).resolves.toEqual({ kind: 'complete', video })
-  })
 })
 
 describe('awaitUploadOutcome - buffering', () => {
