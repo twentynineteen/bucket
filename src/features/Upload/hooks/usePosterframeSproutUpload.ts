@@ -22,7 +22,7 @@ import {
   posterFrameFileStem,
   sendPosterFrameWithRetry
 } from '../internal/posterFrame'
-import { NO_API_KEY_REASON } from '../sproutVideoHelpers'
+import { NO_API_KEY_REASON } from '../internal/sproutVideoHelpers'
 import type { PosterFrameStatus } from '../types'
 
 const NOT_A_REFERENCE_REASON = 'That is not a Sprout video URL or ID.'

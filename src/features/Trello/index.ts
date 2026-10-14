@@ -51,8 +51,6 @@ export { useTrelloSelfAssignment } from './hooks/useTrelloSelfAssignment'
 // API functions (consumed by Baker's moved orchestration hooks, #308)
 /** Post a comment on a Trello card */
 export { addCardComment } from './api'
-/** Read a breadcrumbs.json file via the Baker Tauri command */
-export { bakerReadBreadcrumbs } from './api'
 /** Fetch a Trello card by its ID */
 export { fetchTrelloCardById } from './api'
 /** Update fields on a Trello card */

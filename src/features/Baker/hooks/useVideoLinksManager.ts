@@ -5,7 +5,6 @@
  */
 
 import {
-  bakerReadBreadcrumbs,
   fetchTrelloCardById,
   updateTrelloCard,
   useBreadcrumbsTrelloCards
@@ -26,7 +25,8 @@ import {
   validateVideoLink
 } from '@shared/utils'
 import { useState } from 'react'
-import type { BreadcrumbsFile, VideoLink } from '../types'
+import { bakerReadBreadcrumbs } from '../api'
+import type { VideoLink } from '../types'
 import {
   generateBreadcrumbsBlock,
   updateTrelloCardWithBreadcrumbs
@@ -341,7 +341,8 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
       throw new Error('Trello API credentials not configured')
     }
 
-    const breadcrumbsData = (await bakerReadBreadcrumbs(projectPath)) as BreadcrumbsFile
+    const breadcrumbsData = await bakerReadBreadcrumbs(projectPath)
+    if (!breadcrumbsData) throw new Error('Could not read breadcrumbs for this project')
 
     const breadcrumbsBlock = generateBreadcrumbsBlock(breadcrumbsData)
 

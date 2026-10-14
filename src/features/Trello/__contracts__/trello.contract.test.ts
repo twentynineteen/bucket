@@ -31,7 +31,6 @@ vi.mock('../api', () => ({
   bakerAssociateTrelloCard: vi.fn().mockResolvedValue({}),
   bakerRemoveTrelloCard: vi.fn().mockResolvedValue({}),
   bakerFetchTrelloCardDetails: vi.fn().mockResolvedValue({}),
-  bakerReadBreadcrumbs: vi.fn().mockResolvedValue({}),
   askDialog: vi.fn().mockResolvedValue(true),
   confirmDialog: vi.fn().mockResolvedValue(true),
   openFileDialog: vi.fn().mockResolvedValue(null),
@@ -277,7 +276,6 @@ describe('Trello Barrel Exports - Shape', () => {
     'useTrelloSelfAssignment',
     // API functions (consumed by Baker's moved orchestration hooks, #308)
     'addCardComment',
-    'bakerReadBreadcrumbs',
     'fetchTrelloCardById',
     'updateTrelloCard'
   ].sort()

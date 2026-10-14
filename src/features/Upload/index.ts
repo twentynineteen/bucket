@@ -84,11 +84,11 @@ export type { ReplaceUploadResult } from './types'
 
 // Sprout Video helpers (consolidated from Trello/useCardPosterFrame, #308)
 /** Resolves the Sprout video ID from a VideoLink's stored id or URL */
-export { resolveSproutVideoId } from './sproutVideoHelpers'
+export { resolveSproutVideoId } from './internal/sproutVideoHelpers'
 /** Unavailability reason when a link has no Sprout video ID */
-export { NO_SPROUT_ID_REASON } from './sproutVideoHelpers'
+export { NO_SPROUT_ID_REASON } from './internal/sproutVideoHelpers'
 /** Unavailability reason when the Sprout Video API key is not configured */
-export { NO_API_KEY_REASON } from './sproutVideoHelpers'
+export { NO_API_KEY_REASON } from './internal/sproutVideoHelpers'
 
 // Formatting
 /** Renders a transfer byte count in the decimal units the backend messages use */

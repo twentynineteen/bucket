@@ -29,7 +29,17 @@ import { VideoLinksManager } from './VideoLinksManager'
 
 // Mock hooks
 vi.mock('../hooks/useBreadcrumbsVideoLinks')
-vi.mock('@features/Trello')
+// Partial mock: stub the I/O boundary (API functions, the Trello-cards hook)
+// but keep real React components so the rendering tree works. importOriginal
+// is avoided because loading Trello's barrel executes useBreadcrumbsTrelloCards'
+// React Query subscription, which cannot return undefined data.
+vi.mock('@features/Trello', () => ({
+  TrelloCardUpdateDialog: () => null,
+  addCardComment: vi.fn(),
+  fetchTrelloCardById: vi.fn().mockResolvedValue({}),
+  updateTrelloCard: vi.fn().mockResolvedValue({}),
+  useBreadcrumbsTrelloCards: vi.fn()
+}))
 vi.mock('@features/Upload', async importOriginal => {
   const actual = await importOriginal<typeof import('@features/Upload')>()
   return {
