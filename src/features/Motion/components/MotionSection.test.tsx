@@ -7,7 +7,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -57,8 +57,10 @@ describe('L5.1 MotionSection structure', () => {
     })
 
     expect(screen.getByRole('heading', { name: /motion/i })).toBeInTheDocument()
-    expect(screen.getByText(/library folder/i)).toBeInTheDocument()
-    expect(screen.getByText(/default format/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /choose library folder/i })
+    ).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /default format/i })).toBeInTheDocument()
   })
 })
 
@@ -71,27 +73,30 @@ describe('L5.2 MotionSection choose library folder', () => {
     mockedWrite.mockResolvedValue(undefined)
     mockedPick.mockResolvedValue('/Users/e/motion')
 
-    const user = userEvent.setup()
     renderSection()
 
+    // Wait for the query to settle (button becomes enabled)
     await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: /choose library folder/i })
-      ).toBeInTheDocument()
+      const btn = screen.getByRole('button', { name: /choose library folder/i })
+      expect(btn).toBeEnabled()
     })
 
-    await user.click(screen.getByRole('button', { name: /choose library folder/i }))
+    fireEvent.click(screen.getByRole('button', { name: /choose library folder/i }))
+
+    // The click triggers pickFolder -> updatePrefs -> write.
+    await waitFor(
+      () => {
+        expect(mockedWrite).toHaveBeenCalled()
+      },
+      { timeout: 3000 }
+    )
+
+    const written = JSON.parse(mockedWrite.mock.calls[0][0])
+    expect(written.libraryFolder).toBe('/Users/e/motion')
 
     await waitFor(() => {
       expect(screen.getByText('/Users/e/motion')).toBeInTheDocument()
     })
-
-    // Verify the pref was saved
-    await waitFor(() => {
-      expect(mockedWrite).toHaveBeenCalled()
-    })
-    const written = JSON.parse(mockedWrite.mock.calls[0][0])
-    expect(written.libraryFolder).toBe('/Users/e/motion')
   })
 })
 
