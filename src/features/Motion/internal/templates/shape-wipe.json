@@ -3,7 +3,7 @@
   "id": "shape-wipe",
   "version": "1.0.0",
   "name": "Shape wipe",
-  "description": "Diagonal accent-coloured wipe across the frame. A rect scales and translates to cover and reveal.",
+  "description": "Diagonal rect travels across the full frame as a transition wipe.",
   "category": "transition",
   "status": "stable",
   "tags": ["transition", "wipe", "diagonal"],
@@ -11,28 +11,49 @@
   "duration": 0.96,
   "inEnd": 0.6,
   "outStart": 0.6,
-  "params": {
-    "accent": {
-      "kind": "colour",
-      "label": "Accent",
-      "default": "#C8E64A",
-      "binds": ["layers[0]"]
-    }
-  },
+  "params": {},
   "layers": [
     {
       "kind": "rect",
       "id": "wipe-rect",
-      "anchor": { "x": 2500, "y": 1400 },
+      "anchor": {
+        "x": 2400,
+        "y": 2400
+      },
       "position": [
-        { "t": 0, "value": { "x": -2000, "y": 3200 }, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 0.6, "value": { "x": 1920, "y": 1080 }, "ease": [0.7, 0, 1, 0.5] },
-        { "t": 0.96, "value": { "x": 5800, "y": -1200 } }
+        {
+          "t": 0,
+          "value": {
+            "x": -1200,
+            "y": 1080
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.6,
+          "value": {
+            "x": 1920,
+            "y": 1080
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 0.96,
+          "value": {
+            "x": 5040,
+            "y": 1080
+          }
+        }
       ],
-      "rotation": [{ "t": 0, "value": -15 }],
-      "width": 5000,
-      "height": 2800,
-      "fill": "#C8E64A",
+      "rotation": [
+        {
+          "t": 0,
+          "value": 15
+        }
+      ],
+      "width": 4800,
+      "height": 4800,
+      "fill": "#1a1a1a",
       "radius": 0
     }
   ]

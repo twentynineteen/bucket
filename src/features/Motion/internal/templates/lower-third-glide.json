@@ -3,7 +3,7 @@
   "id": "lower-third-glide",
   "version": "1.0.0",
   "name": "Lower third \"Glide\"",
-  "description": "Sleek lower third with accent bar that glides in from the left, followed by name and title text with character stagger.",
+  "description": "Accent bar wipes out from its left edge, name glides in from the left with character-stagger fade, title follows with overlapping action.",
   "category": "lower-third",
   "status": "stable",
   "tags": ["lower-third", "name", "title", "editorial"],
@@ -58,32 +58,8 @@
         {
           "t": 0,
           "value": {
-            "x": 192,
-            "y": 1680
-          },
-          "ease": [0.16, 1, 0.3, 1]
-        },
-        {
-          "t": 0.7,
-          "value": {
-            "x": 192,
-            "y": 1680
-          },
-          "ease": [0.7, 0, 1, 0.5]
-        },
-        {
-          "t": 3.7,
-          "value": {
-            "x": 192,
-            "y": 1680
-          },
-          "ease": [0.7, 0, 1, 0.5]
-        },
-        {
-          "t": 4.12,
-          "value": {
-            "x": 192,
-            "y": 1680
+            "x": 230,
+            "y": 1740
           }
         }
       ],
@@ -94,7 +70,7 @@
           "ease": [0.16, 1, 0.3, 1]
         },
         {
-          "t": 0.25,
+          "t": 0.15,
           "value": 1,
           "ease": [0.16, 1, 0.3, 1]
         },
@@ -116,12 +92,12 @@
         },
         {
           "t": 0.5,
-          "value": 1200,
+          "value": 1100,
           "ease": [0.16, 1, 0.3, 1]
         },
         {
           "t": 3.7,
-          "value": 1200,
+          "value": 1100,
           "ease": [0.7, 0, 1, 0.5]
         },
         {
@@ -129,10 +105,10 @@
           "value": 0
         }
       ],
-      "width": 1200,
-      "height": 6,
+      "width": 1100,
+      "height": 5,
       "fill": "#C8E64A",
-      "radius": 3
+      "radius": 2
     },
     {
       "kind": "text",
@@ -146,18 +122,42 @@
           "t": 0,
           "value": {
             "x": 192,
-            "y": 1710
+            "y": 1770
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.65,
+          "value": {
+            "x": 230,
+            "y": 1770
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.7,
+          "value": {
+            "x": 230,
+            "y": 1770
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 4.12,
+          "value": {
+            "x": 192,
+            "y": 1770
           }
         }
       ],
       "opacity": [
         {
-          "t": 0.1,
+          "t": 0.08,
           "value": 0,
           "ease": [0.16, 1, 0.3, 1]
         },
         {
-          "t": 0.7,
+          "t": 0.5,
           "value": 1,
           "ease": [0.16, 1, 0.3, 1]
         },
@@ -176,16 +176,16 @@
       "font": {
         "family": "Cabrito Semi",
         "style": "Norm Bold",
-        "size": 60
+        "size": 84
       },
       "align": "left",
       "lineHeight": 1.2,
       "multiline": false,
       "fill": "#ffffff",
       "stagger": {
-        "delay": 0.008
+        "delay": 0.025
       },
-      "width": 1200
+      "width": 1600
     },
     {
       "kind": "text",
@@ -196,21 +196,45 @@
       },
       "position": [
         {
-          "t": 0,
+          "t": 0.08,
           "value": {
             "x": 192,
-            "y": 1790
+            "y": 1860
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.68,
+          "value": {
+            "x": 230,
+            "y": 1860
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.7,
+          "value": {
+            "x": 230,
+            "y": 1860
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 4.06,
+          "value": {
+            "x": 196,
+            "y": 1860
           }
         }
       ],
       "opacity": [
         {
-          "t": 0.15,
+          "t": 0.12,
           "value": 0,
           "ease": [0.16, 1, 0.3, 1]
         },
         {
-          "t": 0.7,
+          "t": 0.55,
           "value": 1,
           "ease": [0.16, 1, 0.3, 1]
         },
@@ -220,7 +244,7 @@
           "ease": [0.7, 0, 1, 0.5]
         },
         {
-          "t": 3.95,
+          "t": 3.98,
           "value": 0
         }
       ],
@@ -229,16 +253,16 @@
       "font": {
         "family": "Cabrito Semi",
         "style": "Norm Bold",
-        "size": 42
+        "size": 54
       },
       "align": "left",
       "lineHeight": 1.2,
       "multiline": false,
       "fill": "#999999",
       "stagger": {
-        "delay": 0.005
+        "delay": 0.02
       },
-      "width": 1500
+      "width": 1800
     }
   ]
 }

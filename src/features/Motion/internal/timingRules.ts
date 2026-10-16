@@ -177,53 +177,6 @@ function collectKeyframeTimes(layers: PrimitiveLayer[]): number[] {
   return [...times].sort((a, b) => a - b)
 }
 
-/** Compute the bounding box of a layer state, using its matrix and size. */
-function layerBounds(
-  state: LayerState
-): { left: number; right: number; top: number; bottom: number } | null {
-  const m = state.matrix
-  const tx = m[4]
-  const ty = m[5]
-
-  if (state.kind === 'text') {
-    // Text layers are checked at their anchor position
-    return { left: tx, right: tx, top: ty, bottom: ty }
-  }
-
-  if (state.kind === 'rect' && state.size) {
-    // Transform the four corners through the matrix
-    const w = state.size.w
-    const h = state.size.h
-    const corners = [
-      [0, 0],
-      [w, 0],
-      [w, h],
-      [0, h]
-    ]
-    let minX = Infinity
-    let maxX = -Infinity
-    let minY = Infinity
-    let maxY = -Infinity
-    for (const [cx, cy] of corners) {
-      const px = m[0] * cx + m[2] * cy + m[4]
-      const py = m[1] * cx + m[3] * cy + m[5]
-      minX = Math.min(minX, px)
-      maxX = Math.max(maxX, px)
-      minY = Math.min(minY, py)
-      maxY = Math.max(maxY, py)
-    }
-    return { left: minX, right: maxX, top: minY, bottom: maxY }
-  }
-
-  if (state.kind === 'arc' || state.kind === 'ellipse') {
-    // Arc/ellipse bounds depend on their anchor-relative drawing.
-    // Checked separately via checkArcEllipseSafe on the original template.
-    return null
-  }
-
-  return null
-}
-
 /** Check a single particles state for action-safe at hold. */
 function checkParticlesActionSafe(
   state: LayerState & { kind: 'particles' },
@@ -247,77 +200,65 @@ function checkParticlesActionSafe(
   return null
 }
 
-/** Check a non-particles state against 90% title-safe. */
-function checkLayerTitleSafe(
-  state: LayerState,
-  templateId: string,
-  time: number
-): TimingViolation | null {
-  const bounds = layerBounds(state)
-  if (!bounds) return null
-  if (
-    bounds.left < TITLE_SAFE.left ||
-    bounds.right > TITLE_SAFE.right ||
-    bounds.top < TITLE_SAFE.top ||
-    bounds.bottom > TITLE_SAFE.bottom
-  ) {
-    return {
-      templateId,
-      rule: 'S3.4',
-      message: `layer "${state.id}" bounds [${bounds.left.toFixed(0)}, ${bounds.top.toFixed(0)}, ${bounds.right.toFixed(0)}, ${bounds.bottom.toFixed(0)}] outside 90% title-safe at t=${time}`
-    }
-  }
-  return null
-}
-
 /**
- * Check arc and ellipse layers directly from template data.
- * Their position keyframe values give the visual centre; we check
- * that centre +/- radius stays in the safe area at hold times.
+ * Check all layer positions directly from template data.
+ * Avoids the matrix anchor/position conflation in LayerState.
+ *
+ * Text layers: checked at all keyframe times.
+ * Shape layers (rect, arc, ellipse): checked at hold-phase times.
+ * Arc/ellipse: position +/- outerRadius or max(radiusX, radiusY).
+ * Particles: checked separately via the evaluator.
  */
-function checkArcEllipseSafe(
+function checkLayerPositionsSafe(
   layers: Layer[],
   inEnd: number,
   outStart: number,
   templateId: string
 ): TimingViolation[] {
   const violations: TimingViolation[] = []
-  for (const layer of layers) {
-    if (layer.kind === 'group') {
-      violations.push(...checkArcEllipseSafe(layer.children, inEnd, outStart, templateId))
-      continue
-    }
-    if (layer.kind !== 'arc' && layer.kind !== 'ellipse') continue
 
-    const radius =
-      layer.kind === 'arc' ? layer.outerRadius : Math.max(layer.radiusX, layer.radiusY)
+  function walk(ls: Layer[]) {
+    for (const layer of ls) {
+      if (layer.kind === 'group') {
+        walk(layer.children)
+        continue
+      }
+      if (layer.kind === 'particles' || layer.kind === 'series') continue
+      if (!layer.position) continue
 
-    // Check at hold-phase position keyframe times
-    if (!layer.position) continue
-    for (const kf of layer.position) {
-      if (kf.t < inEnd - 1e-9 || kf.t > outStart + 1e-9) continue
-      const cx = kf.value.x
-      const cy = kf.value.y
-      if (
-        cx - radius < TITLE_SAFE.left ||
-        cx + radius > TITLE_SAFE.right ||
-        cy - radius < TITLE_SAFE.top ||
-        cy + radius > TITLE_SAFE.bottom
-      ) {
-        violations.push({
-          templateId,
-          rule: 'S3.4',
-          message: `layer "${layer.id}" arc/ellipse bounds outside 90% title-safe at t=${kf.t}`
-        })
+      const isText = layer.kind === 'text'
+      let radius = 0
+      if (layer.kind === 'arc') radius = layer.outerRadius
+      if (layer.kind === 'ellipse') radius = Math.max(layer.radiusX, layer.radiusY)
+
+      for (const kf of layer.position) {
+        if (!isText && (kf.t < inEnd - 1e-9 || kf.t > outStart + 1e-9)) continue
+        const px = kf.value.x
+        const py = kf.value.y
+        if (
+          px - radius < TITLE_SAFE.left ||
+          px + radius > TITLE_SAFE.right ||
+          py - radius < TITLE_SAFE.top ||
+          py + radius > TITLE_SAFE.bottom
+        ) {
+          violations.push({
+            templateId,
+            rule: 'S3.4',
+            message: `layer "${layer.id}" position (${px.toFixed(0)}, ${py.toFixed(0)}) outside 90% title-safe at t=${kf.t}`
+          })
+        }
       }
     }
   }
+
+  walk(layers)
   return violations
 }
 
 export function checkTitleSafe(t: MotionTemplate): TimingViolation[] {
   if (t.category === 'transition') return []
 
+  // Check particles via the evaluator (need computed point positions)
   const format: MotionFormat = { width: 3840, height: 2160, fps: 25 }
   const resolved = resolveTemplate(t, {}, format)
   const kfTimes = collectKeyframeTimes(resolved.layers)
@@ -326,22 +267,17 @@ export function checkTitleSafe(t: MotionTemplate): TimingViolation[] {
   for (const time of kfTimes) {
     const states = evaluate(resolved, time)
     const isHold = time >= resolved.inEnd && time <= resolved.outStart
+    if (!isHold) continue
 
     for (const state of states) {
-      if (state.kind === 'particles') {
-        if (!isHold) continue
-        const v = checkParticlesActionSafe(state, t.id, time)
-        if (v) return [v]
-        continue
-      }
-      if (state.kind !== 'text' && !isHold) continue
-      const v = checkLayerTitleSafe(state, t.id, time)
-      if (v) violations.push(v)
+      if (state.kind !== 'particles') continue
+      const v = checkParticlesActionSafe(state, t.id, time)
+      if (v) return [v]
     }
   }
 
-  // Check arc/ellipse layers from template data (not LayerState)
-  violations.push(...checkArcEllipseSafe(t.layers, t.inEnd, t.outStart, t.id))
+  // Check all other layers from template position data
+  violations.push(...checkLayerPositionsSafe(t.layers, t.inEnd, t.outStart, t.id))
 
   return violations
 }

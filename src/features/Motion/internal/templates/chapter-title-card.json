@@ -3,16 +3,20 @@
   "id": "chapter-title-card",
   "version": "1.0.0",
   "name": "Chapter title card",
-  "description": "Large chapter number with a title below, centred on screen. The number scales up while the title slides in from below.",
+  "description": "Chapter number scales up from the centre, title slides up from below, decorative accent line wipes in between them.",
   "category": "title-card",
   "status": "stable",
-  "tags": ["title", "chapter", "editorial", "cinematic"],
+  "tags": ["title-card", "chapter", "heading"],
   "fonts": ["CabritoSemi-NorBol"],
   "primaryTextParam": "title",
-  "duration": 3.36,
+  "duration": 3.76,
   "inEnd": 0.8,
-  "outStart": 2.8,
-  "hold": { "min": 1, "max": 8, "default": 2 },
+  "outStart": 3.2,
+  "hold": {
+    "min": 1,
+    "max": 8,
+    "default": 2
+  },
   "params": {
     "chapter": {
       "kind": "text",
@@ -32,7 +36,7 @@
       "kind": "colour",
       "label": "Accent",
       "default": "#C8E64A",
-      "binds": ["layers[2]"]
+      "binds": ["layers[1]"]
     },
     "hold": {
       "kind": "hold",
@@ -46,73 +50,225 @@
     {
       "kind": "text",
       "id": "chapter-number",
-      "anchor": { "x": 0, "y": 0 },
-      "position": [{ "t": 0, "value": { "x": 1920, "y": 900 } }],
+      "anchor": {
+        "x": 1920,
+        "y": 940
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1920,
+            "y": 940
+          }
+        }
+      ],
       "scale": [
-        { "t": 0, "value": { "x": 0.6, "y": 0.6 }, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 0.8, "value": { "x": 1, "y": 1 }, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 2.8, "value": { "x": 1, "y": 1 }, "ease": [0.7, 0, 1, 0.5] },
-        { "t": 3.36, "value": { "x": 0.8, "y": 0.8 } }
+        {
+          "t": 0,
+          "value": {
+            "x": 0.6,
+            "y": 0.6
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.7,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.2,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.76,
+          "value": {
+            "x": 0.85,
+            "y": 0.85
+          }
+        }
       ],
       "opacity": [
-        { "t": 0, "value": 0, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 0.6, "value": 1, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 2.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
-        { "t": 3.36, "value": 0 }
+        {
+          "t": 0,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.5,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.2,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.76,
+          "value": 0
+        }
       ],
       "text": "01",
       "param": "chapter",
-      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 120 },
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 140
+      },
       "align": "center",
       "lineHeight": 1,
       "multiline": false,
-      "fill": "#666666",
-      "width": 1000
+      "fill": "#ffffff",
+      "width": 1200
+    },
+    {
+      "kind": "rect",
+      "id": "accent-line",
+      "anchor": {
+        "x": 0,
+        "y": 0
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1620,
+            "y": 1010
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0.2,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.5,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.2,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.6,
+          "value": 0
+        }
+      ],
+      "widthAnimation": [
+        {
+          "t": 0.2,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.6,
+          "value": 600,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.2,
+          "value": 600,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.6,
+          "value": 0
+        }
+      ],
+      "width": 600,
+      "height": 4,
+      "fill": "#C8E64A",
+      "radius": 2
     },
     {
       "kind": "text",
       "id": "title-text",
-      "anchor": { "x": 0, "y": 0 },
+      "anchor": {
+        "x": 0,
+        "y": 0
+      },
       "position": [
-        { "t": 0, "value": { "x": 1920, "y": 1120 }, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 0.8, "value": { "x": 1920, "y": 1080 }, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 2.8, "value": { "x": 1920, "y": 1080 }, "ease": [0.7, 0, 1, 0.5] },
-        { "t": 3.36, "value": { "x": 1920, "y": 1040 } }
+        {
+          "t": 0.15,
+          "value": {
+            "x": 1920,
+            "y": 1120
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.75,
+          "value": {
+            "x": 1920,
+            "y": 1050
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.2,
+          "value": {
+            "x": 1920,
+            "y": 1050
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.7,
+          "value": {
+            "x": 1920,
+            "y": 1080
+          }
+        }
       ],
       "opacity": [
-        { "t": 0.1, "value": 0, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 0.8, "value": 1, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 2.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
-        { "t": 3.36, "value": 0 }
+        {
+          "t": 0.15,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.6,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.2,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.65,
+          "value": 0
+        }
       ],
       "text": "Introduction",
       "param": "title",
-      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 60 },
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 60
+      },
       "align": "center",
       "lineHeight": 1.2,
       "multiline": false,
-      "fill": "#ffffff",
-      "width": 1600
-    },
-    {
-      "kind": "rect",
-      "id": "accent-underline",
-      "anchor": { "x": 60, "y": 0 },
-      "position": [{ "t": 0, "value": { "x": 1920, "y": 1160 } }],
-      "opacity": [
-        { "t": 0.2, "value": 0, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 0.8, "value": 1, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 2.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
-        { "t": 3.36, "value": 0 }
-      ],
-      "widthAnimation": [
-        { "t": 0.2, "value": 0, "ease": [0.16, 1, 0.3, 1] },
-        { "t": 0.8, "value": 120 }
-      ],
-      "width": 120,
-      "height": 4,
-      "fill": "#C8E64A",
-      "radius": 2
+      "fill": "#cccccc",
+      "stagger": {
+        "delay": 0.02
+      },
+      "width": 1800
     }
   ]
 }
