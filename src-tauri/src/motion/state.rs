@@ -27,60 +27,66 @@ impl RenderRegistry {
     /// Returns true if a render is currently active.
     #[allow(dead_code)]
     pub fn is_busy(&self) -> bool {
-        // #334: stub
-        false
+        !self.active.lock().unwrap().is_empty()
     }
 
     /// Insert a render. Returns Err(busy) if one is already running.
     pub fn insert(
         &self,
-        _id: String,
-        _render: Box<dyn ActiveRenderDyn + Send>,
+        id: String,
+        render: Box<dyn ActiveRenderDyn + Send>,
     ) -> Result<(), MotionError> {
-        // #334: stub - always succeeds, never checks busy
+        let mut map = self.active.lock().unwrap();
+        if !map.is_empty() {
+            return Err(MotionError {
+                kind: "busy".to_string(),
+                message: "a render is already in progress".to_string(),
+            });
+        }
+        map.insert(id, render);
         Ok(())
     }
 
     /// Remove and return the render with the given ID.
-    pub fn remove(&self, _id: &str) -> Result<Box<dyn ActiveRenderDyn + Send>, MotionError> {
-        // #334: stub - always fails
-        Err(MotionError {
-            kind: "notImplemented".to_string(),
-            message: "remove not yet implemented (#334)".to_string(),
-        })
+    pub fn remove(&self, id: &str) -> Result<Box<dyn ActiveRenderDyn + Send>, MotionError> {
+        self.active
+            .lock()
+            .unwrap()
+            .remove(id)
+            .ok_or_else(|| MotionError {
+                kind: "unknownRender".to_string(),
+                message: format!("no active render with id: {}", id),
+            })
     }
 
     /// Access a render mutably by ID.
-    pub fn with_render_mut<F, R>(&self, _id: &str, _f: F) -> Result<R, MotionError>
+    pub fn with_render_mut<F, R>(&self, id: &str, f: F) -> Result<R, MotionError>
     where
         F: FnOnce(&mut (dyn ActiveRenderDyn + Send)) -> Result<R, MotionError>,
     {
-        // #334: stub
-        Err(MotionError {
-            kind: "notImplemented".to_string(),
-            message: "with_render_mut not yet implemented (#334)".to_string(),
-        })
+        let mut map = self.active.lock().unwrap();
+        let render = map.get_mut(id).ok_or_else(|| MotionError {
+            kind: "unknownRender".to_string(),
+            message: format!("no active render with id: {}", id),
+        })?;
+        f(render.as_mut())
     }
 
     /// Check whether the given ID is known.
     #[allow(dead_code)]
-    pub fn contains(&self, _id: &str) -> bool {
-        // #334: stub
-        false
+    pub fn contains(&self, id: &str) -> bool {
+        self.active.lock().unwrap().contains_key(id)
     }
 }
 
 /// Type-erased trait for an active render, so the state doesn't carry generics.
+#[allow(dead_code)] // Some methods used only by sibling issues (#335)
 pub trait ActiveRenderDyn {
     fn write_frame(&mut self, png_data: &[u8]) -> Result<(), MotionError>;
-    #[allow(dead_code)]
     fn finish(self: Box<Self>) -> Result<String, MotionError>;
     fn cancel(self: Box<Self>) -> Result<(), MotionError>;
-    #[allow(dead_code)]
     fn frames_written(&self) -> u32;
-    #[allow(dead_code)]
     fn total_frames(&self) -> u32;
-    #[allow(dead_code)]
     fn output_path(&self) -> String;
 }
 

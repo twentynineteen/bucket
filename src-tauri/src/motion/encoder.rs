@@ -27,11 +27,60 @@ pub fn build_args(
     fps: u32,
     output_path: &Path,
 ) -> Result<FfmpegArgs, MotionError> {
-    // #334: stub - to be replaced by the real implementation
-    let _ = (ffmpeg_directory, width, height, fps, output_path);
-    Err(MotionError {
-        kind: "notImplemented".to_string(),
-        message: "build_args not yet implemented (#334)".to_string(),
+    let ffmpeg_path = match resolve_ffmpeg_tools(ffmpeg_directory, probe_binary_path) {
+        FfmpegAvailability::Ready { ffmpeg, .. } => ffmpeg,
+        FfmpegAvailability::NotFound { missing, searched } => {
+            return Err(MotionError {
+                kind: "ffmpegMissing".to_string(),
+                message: format!(
+                    "ffmpeg not found (missing: {}; searched: {})",
+                    missing.join(", "),
+                    searched.join(", ")
+                ),
+            });
+        }
+        FfmpegAvailability::NotExecutable { path } => {
+            return Err(MotionError {
+                kind: "ffmpegMissing".to_string(),
+                message: format!("ffmpeg not executable: {}", path),
+            });
+        }
+    };
+
+    if output_path.exists() {
+        return Err(MotionError {
+            kind: "spawnFailed".to_string(),
+            message: format!(
+                "output file already exists: {}",
+                output_path.display()
+            ),
+        });
+    }
+
+    let size = format!("{}x{}", width, height);
+    let args = vec![
+        "-f".to_string(),
+        "image2pipe".to_string(),
+        "-framerate".to_string(),
+        fps.to_string(),
+        "-i".to_string(),
+        "-".to_string(),
+        "-c:v".to_string(),
+        "prores_ks".to_string(),
+        "-profile:v".to_string(),
+        "4444".to_string(),
+        "-pix_fmt".to_string(),
+        "yuva444p10le".to_string(),
+        "-s".to_string(),
+        size,
+        "-n".to_string(),
+        output_path.to_string_lossy().to_string(),
+    ];
+
+    Ok(FfmpegArgs {
+        ffmpeg_path,
+        args,
+        output_path: output_path.to_path_buf(),
     })
 }
 
@@ -99,7 +148,9 @@ impl ChildProcess for RealChild {
     }
 
     fn finish(mut self) -> Result<(i32, String), std::io::Error> {
+        // Drop stdin to signal EOF to ffmpeg
         drop(self.child.stdin.take());
+
         let output = self.child.wait_with_output()?;
         let stderr = String::from_utf8_lossy(&output.stderr)
             .lines()
@@ -115,6 +166,7 @@ impl ChildProcess for RealChild {
     }
 
     fn kill(&mut self) -> Result<(), std::io::Error> {
+        // Drop stdin first to avoid broken pipe on the ffmpeg side
         drop(self.child.stdin.take());
         self.child.kill()?;
         let _ = self.child.wait();
@@ -139,30 +191,70 @@ pub struct ActiveRender<P: ChildProcess> {
 
 impl<P: ChildProcess> ActiveRender<P> {
     /// Write one PNG frame to ffmpeg's stdin.
-    pub fn write_frame(&mut self, _png_data: &[u8]) -> Result<(), MotionError> {
-        // #334: stub
-        Err(MotionError {
-            kind: "notImplemented".to_string(),
-            message: "write_frame not yet implemented (#334)".to_string(),
-        })
+    pub fn write_frame(&mut self, png_data: &[u8]) -> Result<(), MotionError> {
+        // Check if the process has died before writing
+        match self.process.try_wait() {
+            Ok(Some(code)) => {
+                let _ = std::fs::remove_file(&self.output_path);
+                return Err(MotionError {
+                    kind: "encodeFailed".to_string(),
+                    message: format!(
+                        "ffmpeg exited with code {} while writing frames",
+                        code
+                    ),
+                });
+            }
+            Ok(None) => {} // Still running - good
+            Err(e) => {
+                let _ = std::fs::remove_file(&self.output_path);
+                return Err(MotionError {
+                    kind: "encodeFailed".to_string(),
+                    message: format!("failed to check ffmpeg status: {}", e),
+                });
+            }
+        }
+
+        self.process.write_stdin(png_data).map_err(|e| {
+            let _ = std::fs::remove_file(&self.output_path);
+            MotionError {
+                kind: "encodeFailed".to_string(),
+                message: format!("failed to write frame to ffmpeg: {}", e),
+            }
+        })?;
+        self.frames_written += 1;
+        Ok(())
     }
 
     /// Close stdin, wait for ffmpeg to finish, return the output path.
     pub fn finish(self) -> Result<String, MotionError> {
-        // #334: stub
-        Err(MotionError {
-            kind: "notImplemented".to_string(),
-            message: "finish not yet implemented (#334)".to_string(),
-        })
+        let output_path = self.output_path.clone();
+        match self.process.finish() {
+            Ok((0, _)) => Ok(output_path.to_string_lossy().to_string()),
+            Ok((code, stderr)) => {
+                let _ = std::fs::remove_file(&output_path);
+                Err(MotionError {
+                    kind: "encodeFailed".to_string(),
+                    message: format!(
+                        "ffmpeg exited with code {}:\n{}",
+                        code, stderr
+                    ),
+                })
+            }
+            Err(e) => {
+                let _ = std::fs::remove_file(&output_path);
+                Err(MotionError {
+                    kind: "encodeFailed".to_string(),
+                    message: format!("failed waiting for ffmpeg: {}", e),
+                })
+            }
+        }
     }
 
     /// Kill ffmpeg and remove the partial file.
-    pub fn cancel(self) -> Result<(), MotionError> {
-        // #334: stub
-        Err(MotionError {
-            kind: "notImplemented".to_string(),
-            message: "cancel not yet implemented (#334)".to_string(),
-        })
+    pub fn cancel(mut self) -> Result<(), MotionError> {
+        let _ = self.process.kill();
+        let _ = std::fs::remove_file(&self.output_path);
+        Ok(())
     }
 }
 
