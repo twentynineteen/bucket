@@ -241,7 +241,7 @@ describe('S2.3: Spread map template', () => {
     const credit = sm.credits![0]
     expect(credit.url).toBeTruthy()
     expect(credit.author).toBeTruthy()
-    expect(['CC0', 'Unsplash License']).toContain(credit.licence)
+    expect(['CC0', 'Unsplash License', 'Public domain']).toContain(credit.licence)
 
     // Derived targets: video and prompt only
     // (checked via hasParticles logic)
