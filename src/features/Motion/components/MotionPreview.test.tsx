@@ -141,7 +141,8 @@ describe('MotionPreview', () => {
         id: 'dot',
         matrix: IDENTITY_MATRIX,
         opacity: 1,
-        fill: '#00ff00'
+        fill: '#00ff00',
+        radii: { rx: 50, ry: 30 }
       },
       {
         kind: 'path',
@@ -190,6 +191,8 @@ describe('MotionPreview', () => {
     // ellipse
     const ellipse = svg.querySelector('ellipse')
     expect(ellipse).not.toBeNull()
+    expect(ellipse!.getAttribute('rx')).toBe('50')
+    expect(ellipse!.getAttribute('ry')).toBe('30')
 
     // path ending in Z
     const path = svg.querySelector('path')

@@ -412,3 +412,57 @@ describe('Resolve (internal/resolve.ts)', () => {
     })
   })
 })
+
+describe('particle region tints resolve to colours', () => {
+  it('a region tint naming a colour param takes that param value; unknown names fall back to the base fill', () => {
+    const template = {
+      schemaVersion: 1 as const,
+      id: 'region-tints',
+      version: '1.0.0',
+      name: 'Region tints',
+      description: '',
+      category: 'data' as const,
+      status: 'experimental' as const,
+      tags: [],
+      fonts: [],
+      duration: 1,
+      inEnd: 0.5,
+      outStart: 0.5,
+      params: {
+        bodyTint: {
+          kind: 'colour' as const,
+          label: 'Body',
+          default: '#C8E64A',
+          binds: []
+        }
+      },
+      layers: [
+        {
+          kind: 'particles' as const,
+          id: 'runner',
+          anchor: { x: 0, y: 0 },
+          points: [{ x: 10, y: 10, region: 'hips' }],
+          seed: 1,
+          assembleStart: 0,
+          assembleEnd: 0.5,
+          baseFill: '#E6E6E6',
+          regionFills: { hips: 'bodyTint', feet: '#123456', head: 'noSuchParam' },
+          pointRadius: 4
+        }
+      ]
+    }
+    const format = { width: 3840, height: 2160, fps: 25 } as const
+    const layerOf = (values: Record<string, string>) => {
+      const r = resolveTemplate(template, values, format)
+      const l = r.layers[0]
+      if (l.kind !== 'particles') throw new Error('expected particles')
+      return l
+    }
+    expect(layerOf({}).regionFills).toEqual({
+      hips: '#C8E64A',
+      feet: '#123456',
+      head: '#E6E6E6'
+    })
+    expect(layerOf({ bodyTint: '#FF0000' }).regionFills.hips).toBe('#FF0000')
+  })
+})

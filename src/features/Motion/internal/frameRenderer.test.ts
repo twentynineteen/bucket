@@ -11,6 +11,22 @@ import { buildFrameList, buildSvgString, type FontData } from './frameRenderer'
 const IDENTITY: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0]
 
 describe('buildSvgString', () => {
+  it('draws an ellipse at its own radii, not a 1px dot', () => {
+    const states: LayerState[] = [
+      {
+        kind: 'ellipse',
+        id: 'dot',
+        matrix: [1, 0, 0, 1, 100, 100],
+        opacity: 1,
+        fill: '#00ff00',
+        radii: { rx: 50, ry: 30 }
+      }
+    ]
+    const svg = buildSvgString(states, 1920, 1080, [])
+    expect(svg).toContain('rx="50"')
+    expect(svg).toContain('ry="30"')
+  })
+
   // P5.1: font embedding as data URI
   it('p5_1_embeds_font_as_data_uri', () => {
     const fontBytes = new Uint8Array([0x4f, 0x54, 0x54, 0x4f]) // "OTTO" header
