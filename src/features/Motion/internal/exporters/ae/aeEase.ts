@@ -27,6 +27,29 @@ export interface AEEasePair {
  * Scale needs 3 (x, y, z). Everything else is unseparated = 1.
  */
 export const EASE_DIMENSIONS: Record<string, number> = {
+  // ADBE matchNames (ae-scripting.docsforadobe.dev/property/property/):
+  // "2 for TwoD, 3 for ThreeD, 1 for all others"
+  'ADBE Scale': 3, // ThreeD
+  'ADBE Position': 1, // TwoD_SPATIAL -> "all others" = 1
+  'ADBE Opacity': 1,
+  'ADBE Rotate Z': 1,
+  'ADBE Anchor Point': 1, // TwoD_SPATIAL -> 1
+  // Shape properties (shapelayer matchnames page)
+  'ADBE Vector Fill Color': 1, // COLOR -> 1
+  'ADBE Vector Rect Size': 2, // TwoD
+  'ADBE Vector Rect Roundness': 1,
+  'ADBE Vector Ellipse Size': 2, // TwoD
+  'ADBE Vector Stroke Width': 1,
+  'ADBE Vector Stroke Color': 1,
+  'ADBE Vector Trim Start': 1,
+  'ADBE Vector Trim End': 1,
+  'ADBE Vector Trim Offset': 1,
+  // Text properties (textlayer matchnames page)
+  'ADBE Text Tracking Amount': 1,
+  'ADBE Text Selector Max Amount': 1,
+  // Effect properties (effects matchnames page)
+  'ADBE Slider Control-0001': 1,
+  // Friendly aliases (kept for the aeEase.test.ts unit tests)
   Scale: 3,
   Position: 1,
   Opacity: 1,

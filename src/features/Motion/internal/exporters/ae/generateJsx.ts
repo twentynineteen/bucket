@@ -1,12 +1,25 @@
 /**
  * After Effects .jsx exporter (issue #329)
  *
- * Pure function: takes an ExportInput (template, resolved values, format,
- * already scaled and frame-snapped by resolve.ts) and returns an ExportResult
- * containing the .jsx text file and optional notes. Never writes files.
+ * Pure function over ExportInput. Returns ES3 ASCII-only ExtendScript
+ * that uses only documented AE scripting API calls.
  *
- * The generated script is ES3-only ExtendScript, ASCII-only, wrapped in
- * beginUndoGroup/endUndoGroup, with no JSON object references.
+ * API references (ae-scripting.docsforadobe.dev):
+ * - ItemCollection.addComp: /item/itemcollection/
+ * - LayerCollection.addText, addShape, addBoxText, add: /layer/layercollection/
+ * - Property.setValueAtTime, setTemporalEaseAtKey, setSpatialTangentsAtKey,
+ *   expression: /property/property/
+ * - PropertyGroup.addProperty, property: /property/propertygroup/
+ * - TextDocument: /text/textdocument/
+ * - KeyframeEase: /other/keyframeease/
+ * - Shape: /other/shape/
+ * - CompItem.openInEssentialGraphics, exportAsMotionGraphicsTemplate: /item/compitem/
+ * - Property.addToMotionGraphicsTemplateAs: /property/property/
+ * - app.fonts.getFontsByPostScriptName: /text/fontsobject/ (AE 24.0+)
+ * - Shape matchNames: /matchnames/layer/shapelayer/
+ * - Text matchNames: /matchnames/layer/textlayer/
+ * - AV matchNames: /matchnames/layer/avlayer/
+ * - Effects matchNames: /matchnames/effects/firstparty/
  */
 
 import type {
@@ -24,7 +37,7 @@ import { EASE_DIMENSIONS, mapEase } from './aeEase'
 import { jsStringLiteral } from './jsString'
 
 // ---------------------------------------------------------------------------
-// Context carried through the generation
+// Context
 // ---------------------------------------------------------------------------
 
 interface GenContext {
@@ -32,8 +45,9 @@ interface GenContext {
   height: number
   duration: number
   fps: number
-  missingFontVar: string
+  mfVar: string
   mogrt: boolean
+  compVar: string
   paramLabels: Record<string, { kind: string; label: string }>
   lines: string[]
 }
@@ -42,84 +56,76 @@ interface GenContext {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function hexToAEColour(hex: string): string {
+function hexToAE4(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16) / 255
   const g = parseInt(hex.slice(3, 5), 16) / 255
   const b = parseInt(hex.slice(5, 7), 16) / 255
   return '[' + r + ', ' + g + ', ' + b + ', 1]'
 }
 
-function layerVar(id: string, suffix?: string): string {
-  const safe = id.replace(/[^a-zA-Z0-9_]/g, '_')
-  return suffix ? safe + '_' + suffix : safe
+function hexToAE3(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16) / 255
+  const g = parseInt(hex.slice(3, 5), 16) / 255
+  const b = parseInt(hex.slice(5, 7), 16) / 255
+  return '[' + r + ', ' + g + ', ' + b + ']'
 }
 
-function compVar(id: string): string {
-  return 'comp_' + id.replace(/[^a-zA-Z0-9_]/g, '_')
+function emitVerts(arr: number[][]): string {
+  return '[' + arr.map(p => '[' + p.join(', ') + ']').join(', ') + ']'
+}
+
+function lv(id: string, s?: string): string {
+  const safe = id.replace(/[^a-zA-Z0-9_]/g, '_')
+  return s ? safe + '_' + s : safe
+}
+
+let _u = 0
+function uid(): string {
+  return 'v' + _u++
 }
 
 // ---------------------------------------------------------------------------
-// Ease code generation
+// Ease
 // ---------------------------------------------------------------------------
 
 function emitEase(
-  propExpr: string,
-  keyframes: Array<{
+  pe: string,
+  kfs: Array<{
     t: number
     value: unknown
     ease?: [number, number, number, number]
   }>,
-  aePropName: string,
-  delta: (i: number) => number
-): string[] {
-  const lines: string[] = []
-  const dims = EASE_DIMENSIONS[aePropName] ?? 1
-
-  for (let i = 0; i < keyframes.length - 1; i++) {
-    const ease = keyframes[i].ease
-    if (!ease) continue
-
+  mn: string,
+  delta: (i: number) => number,
+  lines: string[]
+): void {
+  const dims = EASE_DIMENSIONS[mn] ?? 1
+  for (let i = 0; i < kfs.length - 1; i++) {
+    const e = kfs[i].ease
+    if (!e) continue
     const d = delta(i)
-    const pair = mapEase(ease, Math.abs(d), dims)
-
-    const outArr = pair.outgoing
-      .map(e => 'new KeyframeEase(' + e.speed + ', ' + e.influence + ')')
+    const pair = mapEase(e, Math.abs(d), dims)
+    const out = pair.outgoing
+      .map(x => 'new KeyframeEase(' + x.speed + ', ' + x.influence + ')')
       .join(', ')
-    const inArr = pair.incoming
-      .map(e => 'new KeyframeEase(' + e.speed + ', ' + e.influence + ')')
+    const inc = pair.incoming
+      .map(x => 'new KeyframeEase(' + x.speed + ', ' + x.influence + ')')
       .join(', ')
-
     lines.push(
-      propExpr +
-        '.setTemporalEaseAtKey(' +
-        (i + 1) +
-        ', [' +
-        outArr +
-        '], [' +
-        outArr +
-        ']);'
+      pe + '.setTemporalEaseAtKey(' + (i + 1) + ', [' + out + '], [' + out + ']);'
     )
     lines.push(
-      propExpr +
-        '.setTemporalEaseAtKey(' +
-        (i + 2) +
-        ', [' +
-        inArr +
-        '], [' +
-        inArr +
-        ']);'
+      pe + '.setTemporalEaseAtKey(' + (i + 2) + ', [' + inc + '], [' + inc + ']);'
     )
   }
-  return lines
 }
 
-function numericDelta(kfs: Array<{ t: number; value: number }>, i: number): number {
+function numD(kfs: Array<{ t: number; value: number }>, i: number): number {
   const dt = kfs[i + 1].t - kfs[i].t
-  if (dt === 0) return 0
-  return (kfs[i + 1].value - kfs[i].value) / dt
+  return dt === 0 ? 0 : (kfs[i + 1].value - kfs[i].value) / dt
 }
 
-function positionDelta(
+function posD(
   kfs: Array<{ t: number; value: { x: number; y: number } }>,
   i: number
 ): number {
@@ -130,22 +136,22 @@ function positionDelta(
   return Math.sqrt(dx * dx + dy * dy) / dt
 }
 
-function colourDelta(kfs: Array<{ t: number; value: string }>, i: number): number {
+function colD(kfs: Array<{ t: number; value: string }>, i: number): number {
   const dt = kfs[i + 1].t - kfs[i].t
   if (dt === 0) return 0
-  function parse(hex: string): [number, number, number] {
+  function p(h: string): [number, number, number] {
     return [
-      parseInt(hex.slice(1, 3), 16) / 255,
-      parseInt(hex.slice(3, 5), 16) / 255,
-      parseInt(hex.slice(5, 7), 16) / 255
+      parseInt(h.slice(1, 3), 16) / 255,
+      parseInt(h.slice(3, 5), 16) / 255,
+      parseInt(h.slice(5, 7), 16) / 255
     ]
   }
-  const a = parse(kfs[i].value)
-  const b = parse(kfs[i + 1].value)
+  const a = p(kfs[i].value)
+  const b = p(kfs[i + 1].value)
   return Math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2) / dt
 }
 
-function scaleDelta(
+function scaleD(
   kfs: Array<{ t: number; value: { x: number; y: number } }>,
   i: number
 ): number {
@@ -156,141 +162,91 @@ function scaleDelta(
   return Math.sqrt(dx * dx + dy * dy) / dt
 }
 
-function rectSizeDelta(
-  kfs: Array<{ t: number; value: number }>,
-  i: number,
-  otherKfs?: Array<{ t: number; value: number }>
-): number {
-  const dt = kfs[i + 1].t - kfs[i].t
-  if (dt === 0) return 0
-  const dw = kfs[i + 1].value - kfs[i].value
-  let dh = 0
-  if (otherKfs && otherKfs[i] && otherKfs[i + 1]) {
-    dh = otherKfs[i + 1].value - otherKfs[i].value
-  }
-  return Math.sqrt(dw * dw + dh * dh) / dt
-}
-
 // ---------------------------------------------------------------------------
-// Transform properties
+// Transform (avlayer matchnames: ADBE Position, ADBE Scale, ADBE Rotate Z, ADBE Opacity)
 // ---------------------------------------------------------------------------
 
-function emitPositionKeyframes(
-  kfs: Keyframe<{ x: number; y: number }>[],
-  vName: string,
-  lines: string[]
-): void {
-  const propExpr = vName + '.transform.position'
-  for (let i = 0; i < kfs.length; i++) {
-    lines.push(
-      propExpr +
-        '.setValueAtTime(' +
-        kfs[i].t +
-        ', [' +
-        kfs[i].value.x +
-        ', ' +
-        kfs[i].value.y +
-        ']);'
-    )
-  }
-  for (let j = 1; j <= kfs.length; j++) {
-    lines.push(propExpr + '.setSpatialTangentsAtKey(' + j + ', [0, 0], [0, 0]);')
-  }
-  lines.push(
-    ...emitEase(
-      propExpr,
-      kfs as Array<{
-        t: number
-        value: unknown
-        ease?: [number, number, number, number]
-      }>,
-      'Position',
-      i => positionDelta(kfs, i)
-    )
-  )
-}
+function emitTransform(layer: PrimitiveLayer, le: string, lines: string[]): void {
+  const tg = le + '.property("ADBE Transform Group")'
 
-function emitScaleKeyframes(
-  kfs: Keyframe<{ x: number; y: number }>[],
-  vName: string,
-  lines: string[]
-): void {
-  const propExpr = vName + '.transform.scale'
-  for (let i = 0; i < kfs.length; i++) {
-    lines.push(
-      propExpr +
-        '.setValueAtTime(' +
-        kfs[i].t +
-        ', [' +
-        kfs[i].value.x * 100 +
-        ', ' +
-        kfs[i].value.y * 100 +
-        ', 100]);'
-    )
-  }
-  lines.push(
-    ...emitEase(
-      propExpr,
-      kfs as Array<{
-        t: number
-        value: unknown
-        ease?: [number, number, number, number]
-      }>,
-      'Scale',
-      i => scaleDelta(kfs, i)
-    )
-  )
-}
-
-function emitNumericKeyframes(
-  kfs: Array<{
-    t: number
-    value: number
-    ease?: [number, number, number, number]
-  }>,
-  propExpr: string,
-  aePropName: string,
-  lines: string[],
-  deltaFn: (i: number) => number
-): void {
-  for (let i = 0; i < kfs.length; i++) {
-    lines.push(propExpr + '.setValueAtTime(' + kfs[i].t + ', ' + kfs[i].value + ');')
-  }
-  lines.push(...emitEase(propExpr, kfs, aePropName, deltaFn))
-}
-
-function emitTransformProperties(
-  layer: PrimitiveLayer,
-  vName: string,
-  lines: string[]
-): void {
   if (layer.position && layer.position.length > 0) {
-    emitPositionKeyframes(layer.position, vName, lines)
-  }
-  if (layer.scale && layer.scale.length > 0) {
-    emitScaleKeyframes(layer.scale, vName, lines)
-  }
-  if (layer.rotation && layer.rotation.length > 0) {
-    emitNumericKeyframes(
-      layer.rotation,
-      vName + '.transform.rotation',
-      'Rotation',
-      lines,
-      idx => numericDelta(layer.rotation as Keyframe<number>[], idx)
+    const pp = tg + '.property("ADBE Position")'
+    for (const kf of layer.position) {
+      lines.push(
+        pp + '.setValueAtTime(' + kf.t + ', [' + kf.value.x + ', ' + kf.value.y + ']);'
+      )
+    }
+    for (let j = 1; j <= layer.position.length; j++) {
+      lines.push(pp + '.setSpatialTangentsAtKey(' + j + ', [0, 0], [0, 0]);')
+    }
+    emitEase(
+      pp,
+      layer.position as Array<{
+        t: number
+        value: unknown
+        ease?: [number, number, number, number]
+      }>,
+      'ADBE Position',
+      i => posD(layer.position!, i),
+      lines
     )
   }
+
+  if (layer.scale && layer.scale.length > 0) {
+    const sp = tg + '.property("ADBE Scale")'
+    for (const kf of layer.scale) {
+      lines.push(
+        sp +
+          '.setValueAtTime(' +
+          kf.t +
+          ', [' +
+          kf.value.x * 100 +
+          ', ' +
+          kf.value.y * 100 +
+          ', 100]);'
+      )
+    }
+    emitEase(
+      sp,
+      layer.scale as Array<{
+        t: number
+        value: unknown
+        ease?: [number, number, number, number]
+      }>,
+      'ADBE Scale',
+      i => scaleD(layer.scale!, i),
+      lines
+    )
+  }
+
+  if (layer.rotation && layer.rotation.length > 0) {
+    const rp = tg + '.property("ADBE Rotate Z")'
+    for (const kf of layer.rotation) {
+      lines.push(rp + '.setValueAtTime(' + kf.t + ', ' + kf.value + ');')
+    }
+    emitEase(
+      rp,
+      layer.rotation as Array<{
+        t: number
+        value: unknown
+        ease?: [number, number, number, number]
+      }>,
+      'ADBE Rotate Z',
+      i => numD(layer.rotation!, i),
+      lines
+    )
+  }
+
   if (layer.opacity && layer.opacity.length > 0) {
-    const opacityKfs = layer.opacity.map(kf => ({
+    const op = tg + '.property("ADBE Opacity")'
+    const oKfs = layer.opacity.map(kf => ({
       ...kf,
       value: kf.value * 100
     }))
-    emitNumericKeyframes(
-      opacityKfs,
-      vName + '.transform.opacity',
-      'Opacity',
-      lines,
-      idx => numericDelta(opacityKfs, idx)
-    )
+    for (const kf of oKfs) {
+      lines.push(op + '.setValueAtTime(' + kf.t + ', ' + kf.value + ');')
+    }
+    emitEase(op, oKfs, 'ADBE Opacity', i => numD(oKfs, i), lines)
   }
 }
 
@@ -298,94 +254,99 @@ function emitTransformProperties(
 // Font
 // ---------------------------------------------------------------------------
 
-function fontToPostScript(font: { family: string; style: string }): string {
-  const family = font.family.replace(/\s/g, '')
-  const style = font.style.replace(/\s/g, '')
-  if (family === 'CabritoSemi' && style === 'NormBold') {
-    return 'CabritoSemi-NorBol'
-  }
-  return family + '-' + style
+function fontToPS(font: { family: string; style: string }): string {
+  const fam = font.family.replace(/\s/g, '')
+  const sty = font.style.replace(/\s/g, '')
+  if (fam === 'CabritoSemi' && sty === 'NormBold') return 'CabritoSemi-NorBol'
+  return fam + '-' + sty
 }
 
 // ---------------------------------------------------------------------------
 // Text layer
+// layercollection/ - addText([sourceText]) or addBoxText([w, h])
+// textdocument/ - TextDocument attributes
 // ---------------------------------------------------------------------------
 
-function emitTextLayer(
-  layer: TextLayer,
-  compExpr: string,
-  missingFontVar: string,
-  mogrt: boolean,
-  paramLabels: Record<string, { kind: string; label: string }>,
-  lines: string[]
-): string {
-  const v = layerVar(layer.id, 'layer')
-  lines.push('var ' + v + ' = ' + compExpr + '.addTextLayer();')
-  lines.push(v + '.name = ' + jsStringLiteral(layer.id) + ';')
-
-  const psName = fontToPostScript(layer.font)
-  const fontExpr =
+function emitText(layer: TextLayer, compExpr: string, ctx: GenContext): string {
+  const v = lv(layer.id, 'l')
+  const L = ctx.lines
+  const ps = fontToPS(layer.font)
+  const fontE =
     '(' +
-    missingFontVar +
+    ctx.mfVar +
     '.indexOf(' +
-    jsStringLiteral(psName) +
+    jsStringLiteral(ps) +
     ') >= 0 ? "ArialMT" : ' +
-    jsStringLiteral(psName) +
+    jsStringLiteral(ps) +
     ')'
 
-  const textForAE = layer.text.replace(/\n/g, '\r')
-  lines.push(v + '.sourceText.setValue(' + jsStringLiteral(textForAE) + ');')
+  if (layer.multiline && layer.width) {
+    const ld = layer.lineHeight * layer.font.size
+    L.push(
+      'var ' +
+        v +
+        ' = ' +
+        compExpr +
+        '.layers.addBoxText([' +
+        layer.width +
+        ', ' +
+        ld * 10 +
+        ']);'
+    )
+  } else {
+    L.push('var ' + v + ' = ' + compExpr + '.layers.addText();')
+  }
+  L.push(v + '.name = ' + jsStringLiteral(layer.id) + ';')
 
-  const docVar = layerVar(layer.id, 'doc')
-  lines.push('var ' + docVar + ' = ' + v + '.sourceText.value;')
-  lines.push(docVar + '.font = ' + fontExpr + ';')
-  lines.push(docVar + '.fontSize = ' + layer.font.size + ';')
-  lines.push(docVar + '.fillColor = ' + hexToAEColour(layer.fill) + ';')
+  const txt = layer.text.replace(/\n/g, '\r')
+  const td = lv(layer.id, 'td')
+  L.push(
+    'var ' +
+      td +
+      ' = ' +
+      v +
+      '.property("ADBE Text Properties").property("ADBE Text Document").value;'
+  )
+  L.push(td + '.text = ' + jsStringLiteral(txt) + ';')
+  L.push(td + '.font = ' + fontE + ';')
+  L.push(td + '.fontSize = ' + layer.font.size + ';')
+  L.push(td + '.fillColor = ' + hexToAE3(layer.fill) + ';')
+  L.push(td + '.applyFill = true;')
 
   const justMap: Record<string, string> = {
     left: 'ParagraphJustification.LEFT_JUSTIFY',
     center: 'ParagraphJustification.CENTER_JUSTIFY',
     right: 'ParagraphJustification.RIGHT_JUSTIFY'
   }
-  lines.push(docVar + '.justification = ' + justMap[layer.align] + ';')
+  L.push(td + '.justification = ' + justMap[layer.align] + ';')
+  const ld = layer.lineHeight * layer.font.size
+  L.push(td + '.leading = ' + ld + ';')
 
-  const leading = layer.lineHeight * layer.font.size
-  lines.push(docVar + '.leading = ' + leading + ';')
-
-  if (layer.multiline && layer.width) {
-    lines.push(docVar + '.boxText = true;')
-    lines.push(docVar + '.boxTextSize = [' + layer.width + ', ' + leading * 10 + '];')
-  }
-
-  lines.push(v + '.sourceText.setValue(' + docVar + ');')
-
-  lines.push(v + '.__meta = {};')
-  lines.push(v + '.__meta.font = ' + fontExpr + ';')
-  lines.push(v + '.__meta.justification = ' + jsStringLiteral(layer.align) + ';')
-  lines.push(v + '.__meta.leading = ' + leading + ';')
-  lines.push(
+  L.push(
     v +
-      '.__meta.textKind = ' +
-      jsStringLiteral(layer.multiline && layer.width ? 'box' : 'point') +
-      ';'
+      '.property("ADBE Text Properties").property("ADBE Text Document").setValue(' +
+      td +
+      ');'
   )
 
-  emitTransformProperties(layer, v, lines)
+  emitTransform(layer, v, L)
 
   if (layer.tracking && layer.tracking.length > 0) {
-    emitTrackingAnimator(layer, v, lines)
+    emitTracking(layer, v, L)
   }
 
   if (layer.counter) {
-    emitCounter(layer, v, lines)
+    emitCounter(layer, v, ctx)
   }
 
-  if (mogrt && layer.param && paramLabels[layer.param]) {
-    lines.push(
+  if (ctx.mogrt && layer.param && ctx.paramLabels[layer.param]) {
+    L.push(
       v +
-        '.__meta.essentialProp = ' +
-        jsStringLiteral(paramLabels[layer.param].label) +
-        ';'
+        '.property("ADBE Text Properties").property("ADBE Text Document").addToMotionGraphicsTemplateAs(' +
+        ctx.compVar +
+        ', ' +
+        jsStringLiteral(ctx.paramLabels[layer.param].label) +
+        ');'
     )
   }
 
@@ -393,323 +354,370 @@ function emitTextLayer(
 }
 
 // ---------------------------------------------------------------------------
-// Tracking animator and stagger
+// Tracking + stagger
+// textlayer matchnames: ADBE Text Animators, ADBE Text Animator,
+//   ADBE Text Animator Properties, ADBE Text Tracking Amount,
+//   ADBE Text Selectors, ADBE Text Expressible Selector (flagged for #339),
+//   ADBE Text Selector Max Amount
 // ---------------------------------------------------------------------------
 
-function emitTrackingAnimator(layer: TextLayer, vName: string, lines: string[]): void {
+function emitTracking(layer: TextLayer, le: string, lines: string[]): void {
   const tracking = layer.tracking!
-  const animVar = layerVar(layer.id, 'anim')
-  lines.push('var ' + animVar + ' = ' + vName + '.addAnimator("ADBE Text Animator");')
-
-  const trackVar = layerVar(layer.id, 'track')
-  lines.push('var ' + trackVar + ' = ' + animVar + '.addProperty("Tracking Amount");')
-
-  for (let i = 0; i < tracking.length; i++) {
-    lines.push(
-      trackVar + '.setValueAtTime(' + tracking[i].t + ', ' + tracking[i].value + ');'
-    )
-  }
-
+  const an = lv(layer.id, 'an')
   lines.push(
-    ...emitEase(
-      trackVar,
-      tracking as Array<{
-        t: number
-        value: unknown
-        ease?: [number, number, number, number]
-      }>,
-      'Tracking Amount',
-      idx => numericDelta(tracking, idx)
-    )
+    'var ' +
+      an +
+      ' = ' +
+      le +
+      '.property("ADBE Text Properties").property("ADBE Text Animators").addProperty("ADBE Text Animator");'
+  )
+
+  const tk = lv(layer.id, 'tk')
+  lines.push(
+    'var ' +
+      tk +
+      ' = ' +
+      an +
+      '.property("ADBE Text Animator Properties").addProperty("ADBE Text Tracking Amount");'
+  )
+
+  for (const kf of tracking) {
+    lines.push(tk + '.setValueAtTime(' + kf.t + ', ' + kf.value + ');')
+  }
+  emitEase(
+    tk,
+    tracking as Array<{
+      t: number
+      value: unknown
+      ease?: [number, number, number, number]
+    }>,
+    'ADBE Text Tracking Amount',
+    i => numD(tracking, i),
+    lines
   )
 
   if (layer.stagger) {
-    const delay = layer.stagger.delay
-    const selVar = layerVar(layer.id, 'sel')
+    const dl = layer.stagger.delay
+    const es = lv(layer.id, 'es')
     lines.push(
-      'var ' + selVar + ' = ' + animVar + '.addSelector("ADBE Text Expressn Selector");'
+      'var ' +
+        es +
+        ' = ' +
+        an +
+        '.property("ADBE Text Selectors").addProperty("ADBE Text Expressible Selector");'
     )
-
-    const exprStr =
+    const expr =
       'var d = (textIndex - 1) * ' +
-      delay +
-      '; ' +
-      'var t = time - d; ' +
-      'if (t < 0) { 0; } else { 100; }'
-
-    lines.push(selVar + '.expression = ' + jsStringLiteral(exprStr) + ';')
+      dl +
+      '; var t = time - d; if (t < 0) { 0; } else { 100; }'
+    lines.push(
+      es +
+        '.property("ADBE Text Selector Max Amount").expression = ' +
+        jsStringLiteral(expr) +
+        ';'
+    )
   }
 }
 
 // ---------------------------------------------------------------------------
 // Counter
+// effects matchnames: ADBE Slider Control, ADBE Slider Control-0001
 // ---------------------------------------------------------------------------
 
-function emitCounter(layer: TextLayer, vName: string, lines: string[]): void {
+function emitCounter(layer: TextLayer, le: string, ctx: GenContext): void {
   const counter = layer.counter!
+  const L = ctx.lines
 
-  const sliderVar = layerVar(layer.id, 'slider')
-  lines.push('var ' + sliderVar + ' = ' + vName + '.addEffect("ADBE Slider Control");')
-  lines.push(sliderVar + '.name = "Progress";')
+  const sl = lv(layer.id, 'sl')
+  L.push(
+    'var ' +
+      sl +
+      ' = ' +
+      le +
+      '.property("ADBE Effect Parade").addProperty("ADBE Slider Control");'
+  )
+  L.push(sl + '.name = "Progress";')
 
-  const spVar = layerVar(layer.id, 'sp')
-  lines.push('var ' + spVar + ' = ' + sliderVar + '.slider;')
+  const sp = lv(layer.id, 'sp')
+  L.push('var ' + sp + ' = ' + sl + '.property("ADBE Slider Control-0001");')
 
-  for (let i = 0; i < counter.progress.length; i++) {
-    lines.push(
-      spVar +
-        '.setValueAtTime(' +
-        counter.progress[i].t +
-        ', ' +
-        counter.progress[i].value * 100 +
-        ');'
-    )
+  for (const kf of counter.progress) {
+    L.push(sp + '.setValueAtTime(' + kf.t + ', ' + kf.value * 100 + ');')
   }
-
-  const progressKfs = counter.progress.map(kf => ({
+  const pKfs = counter.progress.map(kf => ({
     ...kf,
     value: kf.value * 100
   }))
-  lines.push(
-    ...emitEase(spVar, progressKfs, 'Slider', idx => numericDelta(progressKfs, idx))
+  emitEase(sp, pKfs, 'ADBE Slider Control-0001', i => numD(pKfs, i), L)
+
+  // Second slider holds the baked max value (no placeholder in expression)
+  const mv = lv(layer.id, 'mv')
+  L.push(
+    'var ' +
+      mv +
+      ' = ' +
+      le +
+      '.property("ADBE Effect Parade").addProperty("ADBE Slider Control");'
   )
+  L.push(mv + '.name = "MaxVal";')
 
   const prefix = counter.prefix
   const suffix = counter.suffix
   const decimals = counter.decimals
 
-  const sourceExpr =
-    'var progress = effect("Progress")("Slider").value / 100; ' +
-    'var maxVal = VALUE_PLACEHOLDER; ' +
-    'var current = progress * maxVal; ' +
-    (prefix ? jsStringLiteral(prefix) + ' + ' : '""+ ') +
-    'current.toFixed(' +
-    decimals +
-    ')' +
-    (suffix ? ' + ' + jsStringLiteral(suffix) : '')
+  const parts = [
+    'var progress = effect("Progress")("ADBE Slider Control-0001").value / 100',
+    'var maxVal = effect("MaxVal")("ADBE Slider Control-0001").value',
+    'var current = progress * maxVal'
+  ]
+  let res = ''
+  if (prefix) res += jsStringLiteral(prefix) + ' + '
+  res += 'current.toFixed(' + decimals + ')'
+  if (suffix) res += ' + ' + jsStringLiteral(suffix)
+  parts.push(res)
 
-  lines.push(vName + '.sourceText.expression = ' + jsStringLiteral(sourceExpr) + ';')
+  const fullExpr = parts.join('; ') + ';'
+
+  L.push(
+    le +
+      '.property("ADBE Text Properties").property("ADBE Text Document").expression = ' +
+      jsStringLiteral(fullExpr) +
+      ';'
+  )
 }
 
 // ---------------------------------------------------------------------------
 // Shape layers
+// shapelayer matchnames: ADBE Root Vectors Group, ADBE Vector Group,
+//   ADBE Vectors Group, ADBE Vector Shape - Rect, etc.
 // ---------------------------------------------------------------------------
 
-function emitShapeLayer(
+function emitShape(
   layer: RectLayer | EllipseLayer | PathLayer | ArcLayer,
   compExpr: string,
   lines: string[]
 ): string {
-  const v = layerVar(layer.id, 'layer')
-  lines.push('var ' + v + ' = ' + compExpr + '.addShapeLayer();')
+  const v = lv(layer.id, 'l')
+  lines.push('var ' + v + ' = ' + compExpr + '.layers.addShape();')
   lines.push(v + '.name = ' + jsStringLiteral(layer.id) + ';')
+
+  const rv = lv(layer.id, 'rv')
+  lines.push('var ' + rv + ' = ' + v + '.property("ADBE Root Vectors Group");')
+
+  const g = lv(layer.id, 'g')
+  lines.push('var ' + g + ' = ' + rv + '.addProperty("ADBE Vector Group");')
+  const cnt = g + '.property("ADBE Vectors Group")'
 
   switch (layer.kind) {
     case 'rect':
-      emitRect(layer, v, lines)
+      emitRect(layer, cnt, lines)
       break
     case 'ellipse':
-      emitEllipse(layer, v, lines)
+      emitEllipseS(layer, cnt, lines)
       break
     case 'path':
-      emitPath(layer, v, lines)
+      emitPathS(layer, cnt, lines)
       break
     case 'arc':
-      emitArc(layer, v, lines)
+      emitArcS(layer, cnt, lines)
       break
   }
 
-  emitTransformProperties(layer, v, lines)
-
+  emitTransform(layer, v, lines)
   if (layer.fillAnimation && layer.fillAnimation.length > 0) {
-    emitShapeFillAnimation(layer.fillAnimation, v, lines)
+    emitFillAnim(layer.fillAnimation, cnt, lines)
   }
-
   return v
 }
 
-function emitRect(layer: RectLayer, v: string, lines: string[]): void {
-  lines.push(v + '.addShape("ADBE Vector Shape - Rect");')
-
+function emitRect(layer: RectLayer, cnt: string, lines: string[]): void {
+  const r = uid()
+  lines.push('var ' + r + ' = ' + cnt + '.addProperty("ADBE Vector Shape - Rect");')
   if (layer.widthAnimation || layer.heightAnimation) {
-    emitRectSizeAnimation(layer, v, lines)
+    emitRectSizeAnim(layer, r, lines)
   } else {
     lines.push(
-      v +
-        '.setShapeProperty("Rectangle Size", [' +
+      r +
+        '.property("ADBE Vector Rect Size").setValue([' +
         layer.width +
         ', ' +
         layer.height +
         ']);'
     )
   }
-
-  lines.push(v + '.setShapeProperty("Rectangle Roundness", ' + layer.radius + ');')
-  lines.push(v + '.addFill(' + hexToAEColour(layer.fill) + ');')
+  lines.push(
+    r + '.property("ADBE Vector Rect Roundness").setValue(' + layer.radius + ');'
+  )
+  const f = uid()
+  lines.push('var ' + f + ' = ' + cnt + '.addProperty("ADBE Vector Graphic - Fill");')
+  lines.push(
+    f + '.property("ADBE Vector Fill Color").setValue(' + hexToAE4(layer.fill) + ');'
+  )
 }
 
-function emitRectSizeAnimation(layer: RectLayer, v: string, lines: string[]): void {
-  const widthKfs = layer.widthAnimation || [{ t: 0, value: layer.width }]
-  const heightKfs = layer.heightAnimation || [{ t: 0, value: layer.height }]
-
+function emitRectSizeAnim(layer: RectLayer, re: string, lines: string[]): void {
+  const wKfs = layer.widthAnimation || [{ t: 0, value: layer.width }]
+  const hKfs = layer.heightAnimation || [{ t: 0, value: layer.height }]
   const times = new Set<number>()
-  for (const wk of widthKfs) times.add(wk.t)
-  for (const hk of heightKfs) times.add(hk.t)
+  for (const w of wKfs) times.add(w.t)
+  for (const h of hKfs) times.add(h.t)
   const sorted = Array.from(times).sort((a, b) => a - b)
 
-  function getVal(kfs: Array<{ t: number; value: number }>, t: number): number {
+  function gv(kfs: Array<{ t: number; value: number }>, t: number): number {
     for (let k = kfs.length - 1; k >= 0; k--) {
       if (kfs[k].t <= t) return kfs[k].value
     }
     return kfs[0].value
   }
 
-  const propExpr = v + '.shapeProp("Rectangle Size")'
+  const pe = re + '.property("ADBE Vector Rect Size")'
   for (const t of sorted) {
     lines.push(
-      propExpr +
-        '.setValueAtTime(' +
-        t +
-        ', [' +
-        getVal(widthKfs, t) +
-        ', ' +
-        getVal(heightKfs, t) +
-        ']);'
+      pe + '.setValueAtTime(' + t + ', [' + gv(wKfs, t) + ', ' + gv(hKfs, t) + ']);'
     )
   }
 
   if (layer.widthAnimation && layer.widthAnimation.length > 1) {
-    lines.push(
-      ...emitEase(
-        propExpr,
-        layer.widthAnimation as Array<{
-          t: number
-          value: unknown
-          ease?: [number, number, number, number]
-        }>,
-        'Rectangle Size',
-        idx => rectSizeDelta(layer.widthAnimation!, idx, layer.heightAnimation)
-      )
+    emitEase(
+      pe,
+      layer.widthAnimation as Array<{
+        t: number
+        value: unknown
+        ease?: [number, number, number, number]
+      }>,
+      'ADBE Vector Rect Size',
+      i => {
+        const dt = layer.widthAnimation![i + 1].t - layer.widthAnimation![i].t
+        if (dt === 0) return 0
+        const dw = layer.widthAnimation![i + 1].value - layer.widthAnimation![i].value
+        let dh = 0
+        if (
+          layer.heightAnimation &&
+          layer.heightAnimation[i] &&
+          layer.heightAnimation[i + 1]
+        ) {
+          dh = layer.heightAnimation[i + 1].value - layer.heightAnimation[i].value
+        }
+        return Math.sqrt(dw * dw + dh * dh) / dt
+      },
+      lines
     )
   }
 }
 
-function emitEllipse(layer: EllipseLayer, v: string, lines: string[]): void {
-  lines.push(v + '.addShape("ADBE Vector Shape - Ellipse");')
+function emitEllipseS(layer: EllipseLayer, cnt: string, lines: string[]): void {
+  const e = uid()
+  lines.push('var ' + e + ' = ' + cnt + '.addProperty("ADBE Vector Shape - Ellipse");')
   lines.push(
-    v +
-      '.setShapeProperty("Ellipse Size", [' +
+    e +
+      '.property("ADBE Vector Ellipse Size").setValue([' +
       layer.radiusX * 2 +
       ', ' +
       layer.radiusY * 2 +
       ']);'
   )
-  lines.push(v + '.addFill(' + hexToAEColour(layer.fill) + ');')
-}
-
-function emitPath(layer: PathLayer, v: string, lines: string[]): void {
-  const parsed = parsePathD(layer.d)
-  lines.push(v + '.addShape("ADBE Vector Shape - Group");')
+  const f = uid()
+  lines.push('var ' + f + ' = ' + cnt + '.addProperty("ADBE Vector Graphic - Fill");')
   lines.push(
-    v +
-      '.setPath(' +
-      JSON.stringify(parsed.vertices) +
-      ', ' +
-      JSON.stringify(parsed.inTangents) +
-      ', ' +
-      JSON.stringify(parsed.outTangents) +
-      ', ' +
-      parsed.closed +
-      ');'
+    f + '.property("ADBE Vector Fill Color").setValue(' + hexToAE4(layer.fill) + ');'
   )
-  lines.push(v + '.addFill(' + hexToAEColour(layer.fill) + ');')
 }
 
-function emitArc(layer: ArcLayer, v: string, lines: string[]): void {
-  const avgRadius = (layer.innerRadius + layer.outerRadius) / 2
-  const strokeWidth = layer.outerRadius - layer.innerRadius
-
-  lines.push(v + '.addShape("ADBE Vector Shape - Ellipse");')
+function emitPathS(layer: PathLayer, cnt: string, lines: string[]): void {
+  const pg = uid()
+  lines.push('var ' + pg + ' = ' + cnt + '.addProperty("ADBE Vector Shape - Group");')
+  const parsed = parsePathD(layer.d)
+  const sv = uid()
+  lines.push('var ' + sv + ' = new Shape();')
+  lines.push(sv + '.vertices = ' + emitVerts(parsed.vertices) + ';')
+  lines.push(sv + '.inTangents = ' + emitVerts(parsed.inTangents) + ';')
+  lines.push(sv + '.outTangents = ' + emitVerts(parsed.outTangents) + ';')
+  lines.push(sv + '.closed = ' + parsed.closed + ';')
+  lines.push(pg + '.property("ADBE Vector Shape").setValue(' + sv + ');')
+  const f = uid()
+  lines.push('var ' + f + ' = ' + cnt + '.addProperty("ADBE Vector Graphic - Fill");')
   lines.push(
-    v +
-      '.setShapeProperty("Ellipse Size", [' +
-      avgRadius * 2 +
+    f + '.property("ADBE Vector Fill Color").setValue(' + hexToAE4(layer.fill) + ');'
+  )
+}
+
+function emitArcS(layer: ArcLayer, cnt: string, lines: string[]): void {
+  const avgR = (layer.innerRadius + layer.outerRadius) / 2
+  const sw = layer.outerRadius - layer.innerRadius
+  const e = uid()
+  lines.push('var ' + e + ' = ' + cnt + '.addProperty("ADBE Vector Shape - Ellipse");')
+  lines.push(
+    e +
+      '.property("ADBE Vector Ellipse Size").setValue([' +
+      avgR * 2 +
       ', ' +
-      avgRadius * 2 +
+      avgR * 2 +
       ']);'
   )
-  lines.push(v + '.addStroke(' + hexToAEColour(layer.fill) + ', ' + strokeWidth + ');')
-  lines.push(v + '.addTrimPaths();')
-
-  const endExpr = v + '.trimEnd'
-  const sweepKfs = layer.sweep.map(kf => ({ ...kf, value: kf.value * 100 }))
-  for (let i = 0; i < sweepKfs.length; i++) {
-    lines.push(
-      endExpr + '.setValueAtTime(' + sweepKfs[i].t + ', ' + sweepKfs[i].value + ');'
-    )
-  }
+  const s = uid()
+  lines.push('var ' + s + ' = ' + cnt + '.addProperty("ADBE Vector Graphic - Stroke");')
   lines.push(
-    ...emitEase(
-      endExpr,
-      sweepKfs as Array<{
-        t: number
-        value: unknown
-        ease?: [number, number, number, number]
-      }>,
-      'Trim Paths End',
-      idx => numericDelta(sweepKfs, idx)
-    )
+    s + '.property("ADBE Vector Stroke Color").setValue(' + hexToAE4(layer.fill) + ');'
+  )
+  lines.push(s + '.property("ADBE Vector Stroke Width").setValue(' + sw + ');')
+  const t = uid()
+  lines.push('var ' + t + ' = ' + cnt + '.addProperty("ADBE Vector Filter - Trim");')
+
+  const te = t + '.property("ADBE Vector Trim End")'
+  const sKfs = layer.sweep.map(kf => ({
+    ...kf,
+    value: kf.value * 100
+  }))
+  for (const kf of sKfs) {
+    lines.push(te + '.setValueAtTime(' + kf.t + ', ' + kf.value + ');')
+  }
+  emitEase(
+    te,
+    sKfs as Array<{
+      t: number
+      value: unknown
+      ease?: [number, number, number, number]
+    }>,
+    'ADBE Vector Trim End',
+    i => numD(sKfs, i),
+    lines
   )
 
   if (layer.startAngle && layer.startAngle.length > 0) {
-    const offExpr = v + '.trimOffset'
-    for (let j = 0; j < layer.startAngle.length; j++) {
-      lines.push(
-        offExpr +
-          '.setValueAtTime(' +
-          layer.startAngle[j].t +
-          ', ' +
-          layer.startAngle[j].value +
-          ');'
-      )
+    const to = t + '.property("ADBE Vector Trim Offset")'
+    for (const kf of layer.startAngle) {
+      lines.push(to + '.setValueAtTime(' + kf.t + ', ' + kf.value + ');')
     }
-    lines.push(
-      ...emitEase(
-        offExpr,
-        layer.startAngle as Array<{
-          t: number
-          value: unknown
-          ease?: [number, number, number, number]
-        }>,
-        'Trim Paths Offset',
-        idx => numericDelta(layer.startAngle, idx)
-      )
-    )
-  }
-}
-
-function emitShapeFillAnimation(
-  kfs: Keyframe<string>[],
-  v: string,
-  lines: string[]
-): void {
-  const propExpr = v + '.fillColor'
-  for (let i = 0; i < kfs.length; i++) {
-    lines.push(
-      propExpr + '.setValueAtTime(' + kfs[i].t + ', ' + hexToAEColour(kfs[i].value) + ');'
-    )
-  }
-  lines.push(
-    ...emitEase(
-      propExpr,
-      kfs as Array<{
+    emitEase(
+      to,
+      layer.startAngle as Array<{
         t: number
         value: unknown
         ease?: [number, number, number, number]
       }>,
-      'Fill Color',
-      idx => colourDelta(kfs, idx)
+      'ADBE Vector Trim Offset',
+      i => numD(layer.startAngle!, i),
+      lines
     )
+  }
+}
+
+function emitFillAnim(kfs: Keyframe<string>[], cnt: string, lines: string[]): void {
+  const fc =
+    cnt + '.property("ADBE Vector Graphic - Fill").property("ADBE Vector Fill Color")'
+  for (const kf of kfs) {
+    lines.push(fc + '.setValueAtTime(' + kf.t + ', ' + hexToAE4(kf.value) + ');')
+  }
+  emitEase(
+    fc,
+    kfs as Array<{
+      t: number
+      value: unknown
+      ease?: [number, number, number, number]
+    }>,
+    'ADBE Vector Fill Color',
+    i => colD(kfs, i),
+    lines
   )
 }
 
@@ -723,11 +731,9 @@ function parsePathD(d: string): {
   const inTangents: number[][] = []
   const outTangents: number[][] = []
   let closed = false
-
   const commands = d.match(/[MLZmlz][^MLZmlz]*/g) || []
   for (const cmd of commands) {
-    const letter = cmd[0]
-    if (letter === 'Z' || letter === 'z') {
+    if (cmd[0] === 'Z' || cmd[0] === 'z') {
       closed = true
       continue
     }
@@ -742,12 +748,13 @@ function parsePathD(d: string): {
       outTangents.push([0, 0])
     }
   }
-
   return { vertices, inTangents, outTangents, closed }
 }
 
 // ---------------------------------------------------------------------------
 // Group -> precomp
+// itemcollection/ - addComp
+// layercollection/ - add(item)
 // ---------------------------------------------------------------------------
 
 function emitGroup(
@@ -755,11 +762,11 @@ function emitGroup(
   compExpr: string,
   ctx: GenContext
 ): string {
-  const cv = compVar(layer.id)
+  const pc = 'c_' + layer.id.replace(/[^a-zA-Z0-9_]/g, '_')
   ctx.lines.push(
     'var ' +
-      cv +
-      ' = new CompItem(' +
+      pc +
+      ' = app.project.items.addComp(' +
       jsStringLiteral(layer.id) +
       ', ' +
       ctx.width +
@@ -773,19 +780,19 @@ function emitGroup(
   )
 
   for (const child of layer.children) {
-    emitLayerDispatch(child as PrimitiveLayer, cv, ctx)
+    emitLayerDispatch(child as PrimitiveLayer, pc, ctx)
   }
 
-  const lv = layerVar(layer.id, 'precomp')
-  ctx.lines.push('var ' + lv + ' = ' + compExpr + '.layers.add(' + cv + ');')
-  ctx.lines.push(lv + '.name = ' + jsStringLiteral(layer.id) + ';')
+  const lyr = lv(layer.id, 'pc')
+  ctx.lines.push('var ' + lyr + ' = ' + compExpr + '.layers.add(' + pc + ');')
+  ctx.lines.push(lyr + '.name = ' + jsStringLiteral(layer.id) + ';')
 
-  emitTransformProperties(layer, lv, ctx.lines)
-  return lv
+  emitTransform(layer, lyr, ctx.lines)
+  return lyr
 }
 
 // ---------------------------------------------------------------------------
-// Layer dispatch
+// Dispatch
 // ---------------------------------------------------------------------------
 
 function emitLayerDispatch(
@@ -795,20 +802,13 @@ function emitLayerDispatch(
 ): void {
   switch (layer.kind) {
     case 'text':
-      emitTextLayer(
-        layer,
-        compExpr,
-        ctx.missingFontVar,
-        ctx.mogrt,
-        ctx.paramLabels,
-        ctx.lines
-      )
+      emitText(layer, compExpr, ctx)
       break
     case 'rect':
     case 'ellipse':
     case 'path':
     case 'arc':
-      emitShapeLayer(layer, compExpr, ctx.lines)
+      emitShape(layer, compExpr, ctx.lines)
       break
     case 'group':
       emitGroup(layer, compExpr, ctx)
@@ -820,16 +820,13 @@ function emitLayerDispatch(
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * Generate an After Effects .jsx script from the resolved export input.
- */
 export function generateJsx(input: ExportInput): ExportResult {
   const resolved = input.resolved
   const template = input.template
   const format = input.format
   const mogrt = input.mogrt
+  _u = 0
 
-  // Refuse particle templates
   for (const layer of resolved.layers) {
     if (layer.kind === 'particles') {
       throw new Error(
@@ -846,34 +843,37 @@ export function generateJsx(input: ExportInput): ExportResult {
 
   lines.push('app.beginUndoGroup(' + jsStringLiteral('Motion: ' + template.name) + ');')
 
-  const mfv = '__mf'
-  lines.push('var ' + mfv + ' = [];')
+  // Font check: app.fonts (AE 24.0+), graceful fallback for older
+  const mf = '__mf'
+  lines.push('var ' + mf + ' = [];')
+  lines.push('if (typeof app.fonts !== "undefined") {')
   for (const font of resolved.fonts) {
     lines.push(
-      'if (!app.fonts.getFontByPostScriptName(' +
+      '  if (app.fonts.getFontsByPostScriptName(' +
         jsStringLiteral(font) +
-        ')) { ' +
-        mfv +
+        ').length === 0) { ' +
+        mf +
         '.push(' +
         jsStringLiteral(font) +
         '); }'
     )
   }
+  lines.push('}')
   lines.push(
     'if (' +
-      mfv +
+      mf +
       '.length > 0) { alert(' +
       jsStringLiteral('Missing fonts: ') +
       ' + ' +
-      mfv +
+      mf +
       '.join(", ")); }'
   )
 
-  const mainComp = 'mc'
+  const mc = 'mc'
   lines.push(
     'var ' +
-      mainComp +
-      ' = new CompItem(' +
+      mc +
+      ' = app.project.items.addComp(' +
       jsStringLiteral(template.name) +
       ', ' +
       format.width +
@@ -896,17 +896,19 @@ export function generateJsx(input: ExportInput): ExportResult {
     height: format.height,
     duration: resolved.duration,
     fps: format.fps,
-    missingFontVar: mfv,
+    mfVar: mf,
     mogrt,
+    compVar: mc,
     paramLabels,
     lines
   }
 
   for (const rl of resolved.layers) {
-    emitLayerDispatch(rl, mainComp, ctx)
+    emitLayerDispatch(rl, mc, ctx)
   }
 
   if (mogrt) {
+    lines.push(mc + '.openInEssentialGraphics();')
     lines.push('var scriptFile = new File($.fileName);')
     lines.push(
       'var mogrtPath = scriptFile.path + "/" + ' +
@@ -914,15 +916,19 @@ export function generateJsx(input: ExportInput): ExportResult {
         ';'
     )
     lines.push('var mogrtFile = new File(mogrtPath);')
-    lines.push(mainComp + '.exportAsMotionGraphicsTemplate(false, mogrtFile);')
+    lines.push(mc + '.exportAsMotionGraphicsTemplate(false, mogrtFile);')
   }
 
   lines.push('app.endUndoGroup();')
 
-  const src = lines.join('\n')
-
   return {
-    files: [{ name: template.id + '.jsx', kind: 'text', contents: src }],
+    files: [
+      {
+        name: template.id + '.jsx',
+        kind: 'text',
+        contents: lines.join('\n')
+      }
+    ],
     notes
   }
 }

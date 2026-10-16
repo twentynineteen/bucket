@@ -78,11 +78,11 @@ export interface AEStubKeyframe {
 const EASE_DIMS: Record<string, number> = {
   // ae-scripting.docsforadobe.dev/property/property/ - setTemporalEaseAtKey:
   // "2 for TwoD, 3 for ThreeD, 1 for all others"
-  'ADBE Position': 2, // TwoD_SPATIAL in 2D comp
+  'ADBE Position': 1, // TwoD_SPATIAL -> "1 for all others"
   'ADBE Scale': 3, // ThreeD
   'ADBE Rotate Z': 1,
   'ADBE Opacity': 1,
-  'ADBE Anchor Point': 2,
+  'ADBE Anchor Point': 1, // TwoD_SPATIAL -> 1
   // Shape layer properties - all OneD
   'ADBE Vector Fill Color': 1, // COLOR type but ease dim = 1
   'ADBE Vector Rect Size': 2, // TwoD
@@ -132,6 +132,15 @@ const ADDABLE_MATCH_NAMES = new Set([
   'ADBE Text Animator',
   'ADBE Text Selector', // Range Selector
   'ADBE Text Expressible Selector', // Expression Selector (not in docs page; verified by common usage, flagged for #339)
+  // Text animator properties (textlayer matchnames page)
+  'ADBE Text Tracking Amount',
+  'ADBE Text Anchor Point 3D',
+  'ADBE Text Position 3D',
+  'ADBE Text Scale 3D',
+  'ADBE Text Rotation',
+  'ADBE Text Opacity',
+  'ADBE Text Fill Color',
+  'ADBE Text Stroke Color',
   // Effects (effects/firstparty matchnames page)
   'ADBE Slider Control',
   'ADBE Color Control',
@@ -530,7 +539,9 @@ function __makeLayer(kind) {
   var textProps = null;
   if (kind === "text") {
     textProps = __makeGroup("ADBE Text Properties");
-    textProps.__children["ADBE Text Document"] = __makeProp("ADBE Text Document", "TEXT_DOCUMENT");
+    var tdProp = __makeProp("ADBE Text Document", "TEXT_DOCUMENT");
+    tdProp.value = new TextDocument("");
+    textProps.__children["ADBE Text Document"] = tdProp;
     textProps.__children["ADBE Text Animators"] = __makeGroup("ADBE Text Animators");
   }
 
@@ -675,6 +686,11 @@ function __makeCompItem(name, width, height, pixelAspect, duration, frameRate) {
       // layercollection/ - addBoxText([width, height])
       addBoxText: function(size) {
         var layer = __makeLayer("text");
+        // Box text: initialise the TextDocument with boxText = true
+        var td = layer.property("ADBE Text Properties").property("ADBE Text Document").value;
+        td.boxText = true;
+        td.pointText = false;
+        if (size) td.boxTextSize = size;
         layerList.push(layer);
         layer.index = layerList.length;
         comp.numLayers = layerList.length;
@@ -808,8 +824,8 @@ function buildExtractScript(): string {
     if (!group || !group.__children) return;
     for (var key in group.__children) {
       var child = group.__children[key];
-      if (child && child.__kfs) {
-        if (child.__kfs.length > 0 || child.value !== undefined) {
+      if (child && child.__kfs !== undefined) {
+        if (child.__kfs.length > 0 || child.value !== undefined || child.__expression) {
           props[key] = xProp(child);
         }
       } else if (child && child.__children) {
@@ -819,8 +835,8 @@ function buildExtractScript(): string {
     if (group.__indexedChildren) {
       for (var j = 0; j < group.__indexedChildren.length; j++) {
         var ic = group.__indexedChildren[j];
-        if (ic && ic.__kfs) {
-          if (ic.__kfs.length > 0 || ic.value !== undefined) {
+        if (ic && ic.__kfs !== undefined) {
+          if (ic.__kfs.length > 0 || ic.value !== undefined || ic.__expression) {
             props[ic.__matchName] = xProp(ic);
           }
         } else if (ic && ic.__children) {
