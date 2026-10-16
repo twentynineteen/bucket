@@ -76,8 +76,8 @@ test.describe('motion frame renderer', () => {
       const ctx = canvas.getContext('2d')!
       ctx.drawImage(bitmap, 0, 0)
 
-      // Pixel inside the rect (scaled from 3840 space to 1920 space: 100->50, 200->100)
-      const insidePixel = ctx.getImageData(75, 150, 1, 1).data
+      // Pixel at the centre of the rect (3840 space 100..300 scales to 1920 space 50..150)
+      const insidePixel = ctx.getImageData(100, 100, 1, 1).data
       // Corner pixel (0, 0) should be transparent
       const cornerPixel = ctx.getImageData(0, 0, 1, 1).data
 
