@@ -6,7 +6,7 @@
  */
 import * as espree from 'espree'
 import { describe, expect, it } from 'vitest'
-import type { ExportInput, MotionFormat, MotionTemplate } from '../../../types'
+import type { ExportInput, MotionFormat, MotionTemplate, TextLayer } from '../../../types'
 import { loadBuiltins } from '../../builtins'
 import { resolveTemplate } from '../../resolve'
 import {
@@ -47,6 +47,9 @@ function makeInput(
     mogrt: overrides?.mogrt ?? false
   }
 }
+
+/** The text layer from textFixture, typed correctly. */
+const textLayerBase = textFixture.layers[0] as TextLayer
 
 /** Non-particle fixtures for validity tests. */
 const nonParticleFixtures = layerKindFixtures.filter(
@@ -280,23 +283,25 @@ describe('AE3.4 - linear spatial interpolation', () => {
 
 describe('AE3.5 - snapped keyframe times preserved', () => {
   it('sets keyframes at exactly the snapped times from resolve.ts', () => {
-    const input = makeInput(textFixture, {
-      format: { width: 1920, height: 1080, fps: 25 }
-    })
+    const format: MotionFormat = { width: 1920, height: 1080, fps: 25 }
+    const input = makeInput(textFixture, { format })
     const result = generateJsx(input)
     const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
     const src = jsx.kind === 'text' ? jsx.contents : ''
     const stub = runInAEStub(src)
 
     const mainComp = stub.comps[0]
-    // The text layer's opacity has keyframes at t=0 and t=0.5
     const textLayer = mainComp.layers.find(l => l.kind === 'text')
     expect(textLayer).toBeDefined()
+    // The opacity keyframes come from resolve.ts already snapped to 25fps.
+    // t=0 stays 0, t=0.5 snaps to round(0.5*25)/25 = 13/25 = 0.52
     const opacityProp = textLayer!.properties['Opacity']
-    if (opacityProp && opacityProp.keyframes.length > 0) {
-      expect(opacityProp.keyframes[0].time).toBe(0)
-      expect(opacityProp.keyframes[1].time).toBe(0.5)
-    }
+    expect(opacityProp).toBeDefined()
+    expect(opacityProp.keyframes.length).toBe(2)
+    expect(opacityProp.keyframes[0].time).toBe(0)
+    // Verify the exporter passes through the snapped time exactly (no further rounding)
+    const snapped = Math.round(0.5 * format.fps) / format.fps
+    expect(opacityProp.keyframes[1].time).toBe(snapped)
   })
 })
 
@@ -311,8 +316,7 @@ describe('AE4.1 - animated tracking', () => {
       id: 'fixture-tracking',
       layers: [
         {
-          ...textFixture.layers[0],
-          kind: 'text' as const,
+          ...textLayerBase,
           tracking: [
             {
               t: 0,
@@ -349,8 +353,7 @@ describe('AE4.2 - character stagger', () => {
       id: 'fixture-stagger',
       layers: [
         {
-          ...textFixture.layers[0],
-          kind: 'text' as const,
+          ...textLayerBase,
           stagger: { delay: 0.04 },
           tracking: [
             {
@@ -399,8 +402,7 @@ describe('AE4.3 - text alignment and line height', () => {
       id: 'fixture-align',
       layers: [
         {
-          ...textFixture.layers[0],
-          kind: 'text' as const,
+          ...textLayerBase,
           align: 'center' as const,
           lineHeight: 1.2
         }
@@ -434,8 +436,7 @@ describe('AE4.4 - multiline vs point text', () => {
       id: 'fixture-point-text',
       layers: [
         {
-          ...textFixture.layers[0],
-          kind: 'text' as const,
+          ...textLayerBase,
           multiline: false,
           text: 'Line 1\nLine 2'
         }
@@ -460,8 +461,7 @@ describe('AE4.4 - multiline vs point text', () => {
       id: 'fixture-box-text',
       layers: [
         {
-          ...textFixture.layers[0],
-          kind: 'text' as const,
+          ...textLayerBase,
           multiline: true,
           width: 800
         }
