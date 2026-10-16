@@ -49,12 +49,50 @@ impl std::fmt::Display for MotionError {
 impl std::error::Error for MotionError {}
 
 /// Progress event payload emitted after each frame is accepted.
-#[derive(Debug, Clone, Serialize)]
+///
+/// Serialises with camelCase keys to match the TS `MotionRenderProgress`
+/// interface: `{ renderId, framesWritten, totalFrames }`.
+#[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct RenderProgress {
-    render_id: String,
-    frames_written: u32,
-    total_frames: u32,
+pub struct RenderProgress {
+    pub render_id: String,
+    pub frames_written: u32,
+    pub total_frames: u32,
+}
+
+/// Abstraction over the event channel so the progress path is testable
+/// without a running Tauri app. The production implementation calls
+/// `AppHandle::emit`; tests inject a collecting sink.
+pub trait ProgressSink: Send {
+    fn emit(&self, progress: &RenderProgress);
+}
+
+/// Writes one frame and emits a progress event through the given sink.
+///
+/// This is the function the Tauri command delegates to; the only line it
+/// does not cover is the `AppHandle::emit` adapter.
+pub fn write_frame_with_progress(
+    _registry: &super::state::RenderRegistry,
+    _render_id: &str,
+    _png_data: &[u8],
+    _sink: &dyn ProgressSink,
+) -> Result<(), MotionError> {
+    // #334: stub - to be replaced by the real implementation
+    Err(MotionError {
+        kind: "notImplemented".to_string(),
+        message: "write_frame_with_progress not yet implemented".to_string(),
+    })
+}
+
+/// Adapter that emits progress events through a Tauri `AppHandle`.
+struct TauriProgressSink {
+    app: AppHandle,
+}
+
+impl ProgressSink for TauriProgressSink {
+    fn emit(&self, progress: &RenderProgress) {
+        let _ = self.app.emit("motion-render-progress", progress);
+    }
 }
 
 /// Managed state holding active render sessions.
@@ -141,29 +179,8 @@ pub async fn motion_render_frame(
         }
     };
 
-    // Write the frame and collect progress info
-    let progress = state.registry.with_render_mut(&render_id, |render| {
-        render.write_frame(&png_data)?;
-        Ok(RenderProgress {
-            render_id: render_id.clone(),
-            frames_written: render.frames_written(),
-            total_frames: render.total_frames(),
-        })
-    });
-
-    match progress {
-        Ok(progress) => {
-            let _ = app.emit("motion-render-progress", &progress);
-            Ok(())
-        }
-        Err(e) => {
-            // If the render errored, clean it up from the registry
-            if e.kind == "encodeFailed" {
-                let _ = state.registry.remove(&render_id);
-            }
-            Err(e)
-        }
-    }
+    let sink = TauriProgressSink { app };
+    write_frame_with_progress(&state.registry, &render_id, &png_data, &sink)
 }
 
 #[tauri::command]
@@ -182,4 +199,97 @@ pub async fn motion_render_cancel(
 ) -> Result<(), MotionError> {
     let render = state.registry.remove(&render_id)?;
     render.cancel()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::motion::encoder::tests::FakeChild;
+    use crate::motion::encoder::ActiveRender;
+    use std::sync::Mutex;
+
+    /// A collecting progress sink for tests.
+    struct CollectingSink {
+        events: Mutex<Vec<RenderProgress>>,
+    }
+
+    impl CollectingSink {
+        fn new() -> Self {
+            Self {
+                events: Mutex::new(Vec::new()),
+            }
+        }
+
+        fn into_events(self) -> Vec<RenderProgress> {
+            self.events.into_inner().unwrap()
+        }
+    }
+
+    impl ProgressSink for CollectingSink {
+        fn emit(&self, progress: &RenderProgress) {
+            self.events.lock().unwrap().push(progress.clone());
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // R3.2 - three frames produce three progress events with correct
+    //        renderId, framesWritten 1..3 and totalFrames, and the
+    //        JSON keys are camelCase matching TS MotionRenderProgress.
+    // ---------------------------------------------------------------
+    #[test]
+    fn r3_2_progress_events_emitted() {
+        let registry = super::super::state::RenderRegistry::new();
+        let fake = FakeChild::new();
+        let render = ActiveRender {
+            process: fake,
+            output_path: std::path::PathBuf::from("/tmp/progress-test.mov"),
+            total_frames: 3,
+            frames_written: 0,
+        };
+        registry
+            .insert("test-render".to_string(), Box::new(render))
+            .unwrap();
+
+        let sink = CollectingSink::new();
+
+        // Send three frames
+        for _ in 0..3 {
+            write_frame_with_progress(
+                &registry,
+                "test-render",
+                &[0x89, 0x50],
+                &sink,
+            )
+            .unwrap();
+        }
+
+        let events = sink.into_events();
+        assert_eq!(events.len(), 3, "expected 3 progress events");
+
+        // Verify each event's content
+        for (i, event) in events.iter().enumerate() {
+            let n = (i + 1) as u32;
+            assert_eq!(event.render_id, "test-render");
+            assert_eq!(event.frames_written, n);
+            assert_eq!(event.total_frames, 3);
+        }
+
+        // Verify camelCase JSON serialisation matches TS MotionRenderProgress
+        let json = serde_json::to_value(&events[2]).unwrap();
+        let obj = json.as_object().unwrap();
+        assert!(
+            obj.contains_key("renderId"),
+            "expected camelCase key 'renderId', got: {:?}",
+            obj.keys().collect::<Vec<_>>()
+        );
+        assert!(
+            obj.contains_key("framesWritten"),
+            "expected camelCase key 'framesWritten'"
+        );
+        assert!(
+            obj.contains_key("totalFrames"),
+            "expected camelCase key 'totalFrames'"
+        );
+        assert_eq!(obj.len(), 3, "expected exactly 3 keys");
+    }
 }

@@ -24,12 +24,6 @@ impl RenderRegistry {
         }
     }
 
-    /// Returns true if a render is currently active.
-    #[allow(dead_code)]
-    pub fn is_busy(&self) -> bool {
-        !self.active.lock().unwrap().is_empty()
-    }
-
     /// Insert a render. Returns Err(busy) if one is already running.
     pub fn insert(
         &self,
@@ -72,22 +66,15 @@ impl RenderRegistry {
         f(render.as_mut())
     }
 
-    /// Check whether the given ID is known.
-    #[allow(dead_code)]
-    pub fn contains(&self, id: &str) -> bool {
-        self.active.lock().unwrap().contains_key(id)
-    }
 }
 
 /// Type-erased trait for an active render, so the state doesn't carry generics.
-#[allow(dead_code)] // Some methods used only by sibling issues (#335)
 pub trait ActiveRenderDyn {
     fn write_frame(&mut self, png_data: &[u8]) -> Result<(), MotionError>;
     fn finish(self: Box<Self>) -> Result<String, MotionError>;
     fn cancel(self: Box<Self>) -> Result<(), MotionError>;
     fn frames_written(&self) -> u32;
     fn total_frames(&self) -> u32;
-    fn output_path(&self) -> String;
 }
 
 impl<P: ChildProcess> ActiveRenderDyn for ActiveRender<P> {
@@ -109,10 +96,6 @@ impl<P: ChildProcess> ActiveRenderDyn for ActiveRender<P> {
 
     fn total_frames(&self) -> u32 {
         self.total_frames
-    }
-
-    fn output_path(&self) -> String {
-        self.output_path.to_string_lossy().to_string()
     }
 }
 
@@ -166,8 +149,8 @@ mod tests {
             .unwrap_err();
         assert_eq!(err.kind, "busy");
 
-        // Original render should still be there
-        assert!(registry.contains("render-1"));
+        // Original render should still be there (remove succeeds)
+        assert!(registry.remove("render-1").is_ok());
     }
 
     // ---------------------------------------------------------------

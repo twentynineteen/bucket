@@ -292,22 +292,17 @@ pub mod tests {
             FakeChildHandle {
                 written: Arc::clone(&self.written),
                 stdin_closed: Arc::clone(&self.stdin_closed),
-                exit_code: Arc::clone(&self.exit_code),
-                stderr: Arc::clone(&self.stderr),
                 killed: Arc::clone(&self.killed),
                 dead: Arc::clone(&self.dead),
             }
         }
     }
 
-    /// A cloneable handle to inspect a FakeChild's state.
+    /// A cloneable handle to inspect a FakeChild's state from test code.
     #[derive(Clone)]
-    #[allow(dead_code)]
     pub struct FakeChildHandle {
         pub written: Arc<Mutex<Vec<Vec<u8>>>>,
         pub stdin_closed: Arc<Mutex<bool>>,
-        pub exit_code: Arc<Mutex<i32>>,
-        pub stderr: Arc<Mutex<String>>,
         pub killed: Arc<Mutex<bool>>,
         pub dead: Arc<Mutex<Option<i32>>>,
     }
@@ -338,47 +333,6 @@ pub mod tests {
 
         fn try_wait(&mut self) -> Result<Option<i32>, std::io::Error> {
             Ok(*self.dead.lock().unwrap())
-        }
-    }
-
-    /// A fake spawner that returns pre-configured FakeChild instances.
-    #[allow(dead_code)]
-    pub struct FakeSpawner {
-        pub child: Mutex<Option<FakeChild>>,
-        pub spawned_program: Mutex<Option<String>>,
-        pub spawned_args: Mutex<Option<Vec<String>>>,
-    }
-
-    #[allow(dead_code)]
-    impl FakeSpawner {
-        pub fn new(child: FakeChild) -> Self {
-            Self {
-                child: Mutex::new(Some(child)),
-                spawned_program: Mutex::new(None),
-                spawned_args: Mutex::new(None),
-            }
-        }
-    }
-
-    impl Spawner for FakeSpawner {
-        type Process = FakeChild;
-        fn spawn(
-            &self,
-            program: &str,
-            args: &[String],
-        ) -> Result<Self::Process, std::io::Error> {
-            *self.spawned_program.lock().unwrap() = Some(program.to_string());
-            *self.spawned_args.lock().unwrap() = Some(args.to_vec());
-            self.child
-                .lock()
-                .unwrap()
-                .take()
-                .ok_or_else(|| {
-                    std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        "FakeSpawner: no child configured",
-                    )
-                })
         }
     }
 
