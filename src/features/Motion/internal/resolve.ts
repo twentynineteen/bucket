@@ -38,6 +38,51 @@ export interface ParamError {
   message: string
 }
 
+/** Validate a single text param. */
+function validateTextParam(
+  id: string,
+  def: Extract<ParamDef, { kind: 'text' }>,
+  val: unknown
+): ParamError[] {
+  const errors: ParamError[] = []
+  const text = typeof val === 'string' ? val : def.default
+  if (def.required && text === '') {
+    errors.push({ paramId: id, message: `${id}: required text is empty` })
+  }
+  if (text.length > def.maxLength) {
+    errors.push({
+      paramId: id,
+      message: `${id}: text exceeds maxLength ${def.maxLength}`
+    })
+  }
+  return errors
+}
+
+/** Validate a single numberList param. */
+function validateNumberListParam(
+  id: string,
+  def: Extract<ParamDef, { kind: 'numberList' }>,
+  val: unknown
+): ParamError[] {
+  const errors: ParamError[] = []
+  const list: NumberListItem[] = Array.isArray(val) ? val : def.default
+  if (list.length > 8) {
+    errors.push({
+      paramId: id,
+      message: `${id}: numberList has more than 8 items`
+    })
+  }
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].value < def.valueMin || list[i].value > def.valueMax) {
+      errors.push({
+        paramId: id,
+        message: `${id}[${i}]: value outside range [${def.valueMin}, ${def.valueMax}]`
+      })
+    }
+  }
+  return errors
+}
+
 /**
  * Validate param values against the template's param definitions.
  * Returns an empty array when all values are valid.
@@ -52,19 +97,9 @@ export function validateParams(
     const val = values[id]
 
     switch (def.kind) {
-      case 'text': {
-        const text = typeof val === 'string' ? val : def.default
-        if (def.required && text === '') {
-          errors.push({ paramId: id, message: `${id}: required text is empty` })
-        }
-        if (text.length > def.maxLength) {
-          errors.push({
-            paramId: id,
-            message: `${id}: text exceeds maxLength ${def.maxLength}`
-          })
-        }
+      case 'text':
+        errors.push(...validateTextParam(id, def, val))
         break
-      }
       case 'colour': {
         const colour = typeof val === 'string' ? val : def.default
         if (!/^#[0-9a-fA-F]{6}$/.test(colour)) {
@@ -82,24 +117,9 @@ export function validateParams(
         }
         break
       }
-      case 'numberList': {
-        const list: NumberListItem[] = Array.isArray(val) ? val : def.default
-        if (list.length > 8) {
-          errors.push({
-            paramId: id,
-            message: `${id}: numberList has more than 8 items`
-          })
-        }
-        for (let i = 0; i < list.length; i++) {
-          if (list[i].value < def.valueMin || list[i].value > def.valueMax) {
-            errors.push({
-              paramId: id,
-              message: `${id}[${i}]: value outside range [${def.valueMin}, ${def.valueMax}]`
-            })
-          }
-        }
+      case 'numberList':
+        errors.push(...validateNumberListParam(id, def, val))
         break
-      }
       case 'number': {
         const n = typeof val === 'number' ? val : def.default
         if (n < def.min || n > def.max) {
@@ -529,32 +549,43 @@ function checkCollapsingKeyframes(layers: Layer[], fps: number): string | null {
   const ptEq = (a: { x: number; y: number }, b: { x: number; y: number }) =>
     a.x === b.x && a.y === b.y
 
+  /** Check kind-specific animated tracks for a single layer. */
+  function checkKindTracks(layer: Layer): boolean {
+    switch (layer.kind) {
+      case 'text':
+        return (
+          checkTrack(layer.fillAnimation, strEq) &&
+          checkTrack(layer.tracking, numEq) &&
+          (!layer.counter || checkTrack(layer.counter.progress, numEq))
+        )
+      case 'rect':
+        return (
+          checkTrack(layer.fillAnimation, strEq) &&
+          checkTrack(layer.widthAnimation, numEq) &&
+          checkTrack(layer.heightAnimation, numEq)
+        )
+      case 'ellipse':
+      case 'path':
+        return checkTrack((layer as EllipseLayer).fillAnimation, strEq)
+      case 'arc':
+        return (
+          checkTrack(layer.sweep, numEq) &&
+          checkTrack(layer.startAngle, numEq) &&
+          checkTrack(layer.fillAnimation, strEq)
+        )
+      case 'group':
+        return layer.children.every(checkLayer)
+      default:
+        return true
+    }
+  }
+
   function checkLayer(layer: Layer): boolean {
     if (!checkTrack(layer.position, ptEq)) return false
     if (!checkTrack(layer.scale, ptEq)) return false
     if (!checkTrack(layer.rotation, numEq)) return false
     if (!checkTrack(layer.opacity, numEq)) return false
-
-    if (layer.kind === 'text') {
-      if (!checkTrack(layer.fillAnimation, strEq)) return false
-      if (!checkTrack(layer.tracking, numEq)) return false
-      if (layer.counter && !checkTrack(layer.counter.progress, numEq)) return false
-    } else if (layer.kind === 'rect') {
-      if (!checkTrack(layer.fillAnimation, strEq)) return false
-      if (!checkTrack(layer.widthAnimation, numEq)) return false
-      if (!checkTrack(layer.heightAnimation, numEq)) return false
-    } else if (layer.kind === 'ellipse' || layer.kind === 'path') {
-      if (!checkTrack((layer as EllipseLayer).fillAnimation, strEq)) return false
-    } else if (layer.kind === 'arc') {
-      if (!checkTrack(layer.sweep, numEq)) return false
-      if (!checkTrack(layer.startAngle, numEq)) return false
-      if (!checkTrack(layer.fillAnimation, strEq)) return false
-    } else if (layer.kind === 'group') {
-      for (const child of layer.children) {
-        if (!checkLayer(child)) return false
-      }
-    }
-    return true
+    return checkKindTracks(layer)
   }
 
   for (const layer of layers) {

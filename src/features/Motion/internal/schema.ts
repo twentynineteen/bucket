@@ -412,6 +412,164 @@ function collectKeyframeTracks(
 }
 
 // ---------------------------------------------------------------------------
+// parseTemplate: early checks
+// ---------------------------------------------------------------------------
+
+/** Reject unsupported schemaVersion before the full Zod parse. */
+function checkSchemaVersion(json: unknown): string | null {
+  if (
+    typeof json === 'object' &&
+    json !== null &&
+    'schemaVersion' in json &&
+    (json as Record<string, unknown>).schemaVersion !== 1
+  ) {
+    return `unsupported schemaVersion: ${(json as Record<string, unknown>).schemaVersion}`
+  }
+  return null
+}
+
+/** Run the Zod base schema and return a formatted error or the parsed data. */
+function parseBaseSchema(json: unknown): { data: MotionTemplate } | { error: string } {
+  const baseResult = templateBaseSchema.safeParse(json)
+  if (baseResult.success) {
+    return { data: baseResult.data as unknown as MotionTemplate }
+  }
+  const issues = JSON.parse(baseResult.error.message) as {
+    path: (string | number)[]
+    message: string
+  }[]
+  const first = issues[0]
+  const fieldPath = first?.path?.join('.') || ''
+  const msg = first?.message || 'Invalid template'
+  return { error: fieldPath ? `${fieldPath}: ${msg}` : msg }
+}
+
+// ---------------------------------------------------------------------------
+// parseTemplate: cross-field validators
+// ---------------------------------------------------------------------------
+
+/** Validate timing markers. */
+function validateTiming(data: MotionTemplate): string[] {
+  if (data.inEnd > data.outStart) {
+    return ['inEnd must be <= outStart']
+  }
+  return []
+}
+
+/** Validate primaryTextParam references a text param. */
+function validatePrimaryTextParam(data: MotionTemplate): string[] {
+  if (!data.primaryTextParam) return []
+  const p = data.params[data.primaryTextParam]
+  if (!p) {
+    return [`primaryTextParam: param "${data.primaryTextParam}" does not exist`]
+  }
+  if (p.kind !== 'text') {
+    return [`primaryTextParam: param "${data.primaryTextParam}" is not a text param`]
+  }
+  return []
+}
+
+/** Validate colour params are not bound to animated fills. */
+function validateColourBindings(data: MotionTemplate): string[] {
+  const errors: string[] = []
+  const animFills = animatedFillPaths(data.layers as unknown as unknown[])
+  for (const [paramId, paramDef] of Object.entries(data.params)) {
+    if (paramDef.kind === 'colour') {
+      for (const bindPath of paramDef.binds) {
+        if (animFills.has(bindPath)) {
+          errors.push(
+            `params.${paramId}: colour param bound to an animated fill at ${bindPath}`
+          )
+        }
+      }
+    }
+  }
+  return errors
+}
+
+/** Validate image params have a particles layer. */
+function validateImageParamRequiresParticles(data: MotionTemplate): string[] {
+  const hasImageParam = Object.values(data.params).some(p => p.kind === 'image')
+  if (hasImageParam && !hasParticlesLayer(data.layers as unknown as unknown[])) {
+    return ['image param requires at least one particles layer']
+  }
+  return []
+}
+
+/** Validate that a param reference points to a param of the expected kind. */
+function validateParamRef(
+  params: MotionTemplate['params'],
+  paramName: string,
+  expectedKind: string,
+  errorPrefix: string
+): string[] {
+  const p = params[paramName]
+  if (!p) {
+    return [`${errorPrefix}: param "${paramName}" does not exist`]
+  }
+  if (p.kind !== expectedKind) {
+    return [`${errorPrefix}: param "${paramName}" must be a ${expectedKind} param`]
+  }
+  return []
+}
+
+/** Per-layer cross-field checks: closed paths, stagger, param refs, eases. */
+function validateLayerCrossFields(
+  layer: Record<string, unknown>,
+  path: string,
+  params: MotionTemplate['params']
+): string[] {
+  const errors: string[] = []
+
+  if (layer.kind === 'path' && typeof layer.d === 'string' && !isClosedPath(layer.d)) {
+    errors.push(`${path}.d: path must be closed (end with Z)`)
+  }
+  if (layer.stagger && layer.kind !== 'text') {
+    errors.push(`${path}.stagger: stagger is only allowed on text layers`)
+  }
+  if (layer.kind === 'series') {
+    const series = layer.series as Record<string, unknown>
+    errors.push(
+      ...validateParamRef(
+        params,
+        series.param as string,
+        'numberList',
+        `${path}.series.param`
+      )
+    )
+  }
+  if (layer.counter && typeof layer.counter === 'object') {
+    const counter = layer.counter as Record<string, unknown>
+    errors.push(
+      ...validateParamRef(
+        params,
+        counter.param as string,
+        'number',
+        `${path}.counter.param`
+      )
+    )
+  }
+  if (layer.kind === 'arc' && layer.sweepFromParam) {
+    const sfp = layer.sweepFromParam as Record<string, unknown>
+    errors.push(
+      ...validateParamRef(
+        params,
+        sfp.param as string,
+        'number',
+        `${path}.sweepFromParam.param`
+      )
+    )
+  }
+
+  const tracks = collectKeyframeTracks(layer, path)
+  for (const { keyframes, fieldPath } of tracks) {
+    errors.push(...validateKeyframeEases(keyframes, fieldPath))
+  }
+
+  return errors
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -425,139 +583,29 @@ export type ParseResult =
  * every load error without try/catch.
  */
 export function parseTemplate(json: unknown): ParseResult {
-  // First check schemaVersion before the full parse, so we can give a clear
-  // message for future versions.
-  if (
-    typeof json === 'object' &&
-    json !== null &&
-    'schemaVersion' in json &&
-    (json as Record<string, unknown>).schemaVersion !== 1
-  ) {
-    return {
-      success: false,
-      error: `unsupported schemaVersion: ${(json as Record<string, unknown>).schemaVersion}`
-    }
+  const versionError = checkSchemaVersion(json)
+  if (versionError) {
+    return { success: false, error: versionError }
   }
 
-  const baseResult = templateBaseSchema.safeParse(json)
-  if (!baseResult.success) {
-    // Extract the first meaningful error message
-    const issues = JSON.parse(baseResult.error.message) as {
-      path: (string | number)[]
-      message: string
-    }[]
-    const first = issues[0]
-    const fieldPath = first?.path?.join('.') || ''
-    const msg = first?.message || 'Invalid template'
-    return {
-      success: false,
-      error: fieldPath ? `${fieldPath}: ${msg}` : msg
-    }
+  const baseResult = parseBaseSchema(json)
+  if ('error' in baseResult) {
+    return { success: false, error: baseResult.error }
   }
 
-  const data = baseResult.data as unknown as MotionTemplate
+  const data = baseResult.data
 
   // Cross-field validations
-  const errors: string[] = []
+  const errors: string[] = [
+    ...validateTiming(data),
+    ...validatePrimaryTextParam(data),
+    ...validateColourBindings(data),
+    ...validateImageParamRequiresParticles(data)
+  ]
 
-  // inEnd <= outStart
-  if (data.inEnd > data.outStart) {
-    errors.push('inEnd must be <= outStart')
-  }
-
-  // primaryTextParam must name a text param
-  if (data.primaryTextParam) {
-    const p = data.params[data.primaryTextParam]
-    if (!p) {
-      errors.push(`primaryTextParam: param "${data.primaryTextParam}" does not exist`)
-    } else if (p.kind !== 'text') {
-      errors.push(
-        `primaryTextParam: param "${data.primaryTextParam}" is not a text param`
-      )
-    }
-  }
-
-  // colour params bound to animated fills
-  const animFills = animatedFillPaths(data.layers as unknown as unknown[])
-  for (const [paramId, paramDef] of Object.entries(data.params)) {
-    if (paramDef.kind === 'colour') {
-      for (const bindPath of paramDef.binds) {
-        if (animFills.has(bindPath)) {
-          errors.push(
-            `params.${paramId}: colour param bound to an animated fill at ${bindPath}`
-          )
-        }
-      }
-    }
-  }
-
-  // image param requires particles layer
-  const hasImageParam = Object.values(data.params).some(p => p.kind === 'image')
-  if (hasImageParam && !hasParticlesLayer(data.layers as unknown as unknown[])) {
-    errors.push('image param requires at least one particles layer')
-  }
-
-  // Walk layers for deeper checks
+  // Per-layer checks
   for (const { layer, path } of walkLayers(data.layers as unknown as unknown[])) {
-    const l = layer as Record<string, unknown>
-
-    // path must be closed
-    if (l.kind === 'path' && typeof l.d === 'string' && !isClosedPath(l.d)) {
-      errors.push(`${path}.d: path must be closed (end with Z)`)
-    }
-
-    // stagger only on text layers
-    if (l.stagger && l.kind !== 'text') {
-      errors.push(`${path}.stagger: stagger is only allowed on text layers`)
-    }
-
-    // series param must be numberList
-    if (l.kind === 'series') {
-      const series = l.series as Record<string, unknown>
-      const seriesParam = series.param as string
-      const p = data.params[seriesParam]
-      if (!p) {
-        errors.push(`${path}.series.param: param "${seriesParam}" does not exist`)
-      } else if (p.kind !== 'numberList') {
-        errors.push(
-          `${path}.series.param: param "${seriesParam}" must be a numberList param`
-        )
-      }
-    }
-
-    // counter param must be number
-    if (l.counter && typeof l.counter === 'object') {
-      const counter = l.counter as Record<string, unknown>
-      const counterParam = counter.param as string
-      const p = data.params[counterParam]
-      if (!p) {
-        errors.push(`${path}.counter.param: param "${counterParam}" does not exist`)
-      } else if (p.kind !== 'number') {
-        errors.push(
-          `${path}.counter.param: param "${counterParam}" must be a number param`
-        )
-      }
-    }
-
-    // sweepFromParam param must be number
-    if (l.kind === 'arc' && l.sweepFromParam) {
-      const sfp = l.sweepFromParam as Record<string, unknown>
-      const sfpParam = sfp.param as string
-      const p = data.params[sfpParam]
-      if (!p) {
-        errors.push(`${path}.sweepFromParam.param: param "${sfpParam}" does not exist`)
-      } else if (p.kind !== 'number') {
-        errors.push(
-          `${path}.sweepFromParam.param: param "${sfpParam}" must be a number param`
-        )
-      }
-    }
-
-    // Keyframe ease validation: non-last must have ease
-    const tracks = collectKeyframeTracks(l, path)
-    for (const { keyframes, fieldPath } of tracks) {
-      errors.push(...validateKeyframeEases(keyframes, fieldPath))
-    }
+    errors.push(...validateLayerCrossFields(layer, path, data.params))
   }
 
   if (errors.length > 0) {

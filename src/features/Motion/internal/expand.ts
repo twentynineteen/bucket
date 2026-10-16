@@ -73,40 +73,21 @@ function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2)
 }
 
-/**
- * Expand a `series` macro layer into primitives: dot ellipses, connector dots,
- * labels, a walking marker and optional hatch-band paths.
- */
-function expandSeries(
-  series: SeriesSpec,
-  items: NumberListItem[],
+/** Point computed during series layout. */
+interface SeriesPoint {
+  x: number
+  y: number
+  label: string
+}
+
+/** Generate connector dot ellipses between adjacent series points. */
+function buildConnectorDots(
+  pts: SeriesPoint[],
+  connector: SeriesSpec['connector'],
   layerId: string,
   anchor: { x: number; y: number }
-): PrimitiveLayer[] {
-  const { area, valueRange, dot, connector, label, marker, band } = series
-  const layers: PrimitiveLayer[] = []
-
-  // Compute point positions
-  const pts = items.map((item, i) => ({
-    x: pointX(i, items.length, area),
-    y: valueToY(item.value, valueRange, area),
-    label: item.label
-  }))
-
-  // Dot ellipses
-  for (let i = 0; i < pts.length; i++) {
-    layers.push({
-      kind: 'ellipse',
-      id: `${layerId}-dot-${i}`,
-      anchor,
-      position: [{ t: 0, value: { x: pts[i].x, y: pts[i].y } }],
-      radiusX: dot.radiusX,
-      radiusY: dot.radiusY,
-      fill: dot.fill
-    } as EllipseLayer)
-  }
-
-  // Connector dots between adjacent points
+): EllipseLayer[] {
+  const layers: EllipseLayer[] = []
   for (let i = 0; i < pts.length - 1; i++) {
     const ax = pts[i].x
     const ay = pts[i].y
@@ -128,6 +109,99 @@ function expandSeries(
       } as EllipseLayer)
     }
   }
+  return layers
+}
+
+/** Generate hatch-band parallelogram paths between two series points. */
+function buildHatchBand(
+  pts: SeriesPoint[],
+  band: NonNullable<SeriesSpec['band']>,
+  area: SeriesSpec['area'],
+  layerId: string,
+  anchor: { x: number; y: number }
+): PathLayer[] {
+  const fromIdx = band.fromIndex !== undefined ? band.fromIndex : pts.length - 2
+  const toIdx = band.toIndex !== undefined ? band.toIndex : pts.length - 1
+
+  if (fromIdx < 0 || toIdx >= pts.length || fromIdx >= toIdx) return []
+
+  const leftX = pts[fromIdx].x
+  const rightX = pts[toIdx].x
+  const bandTop = Math.min(pts[fromIdx].y, pts[toIdx].y)
+  const bandBottom = Math.max(pts[fromIdx].y, pts[toIdx].y)
+  const bandHeight = bandBottom - bandTop || area.h * 0.1
+
+  const { spacing, angle, fill: hatchFill } = band.hatch
+  const radians = (angle * Math.PI) / 180
+  const dx = Math.cos(radians)
+  const dy = Math.sin(radians)
+
+  const bandW = rightX - leftX
+  if (bandW <= 0 || spacing <= 0) return []
+
+  const layers: PathLayer[] = []
+  const lineCount = Math.ceil((bandW + bandHeight) / spacing)
+  const clampX = (x: number) => Math.max(leftX, Math.min(rightX, x))
+  const clampY = (y: number) => Math.max(bandTop, Math.min(bandBottom, y))
+
+  for (let i = 0; i < lineCount; i++) {
+    const offset = i * spacing - bandHeight
+    const thickness = spacing * 0.15
+    const x0 = leftX + offset * dx
+    const x1 = x0 + bandHeight * dy
+    const d = [
+      `M ${clampX(x0)} ${clampY(bandTop)}`,
+      `L ${clampX(x1)} ${clampY(bandBottom)}`,
+      `L ${clampX(x1 + thickness * dx)} ${clampY(bandBottom)}`,
+      `L ${clampX(x0 + thickness * dx)} ${clampY(bandTop)}`,
+      'Z'
+    ].join(' ')
+    layers.push({
+      kind: 'path',
+      id: `${layerId}-hatch-${i}`,
+      anchor,
+      d,
+      fill: hatchFill
+    } as PathLayer)
+  }
+  return layers
+}
+
+/**
+ * Expand a `series` macro layer into primitives: dot ellipses, connector dots,
+ * labels, a walking marker and optional hatch-band paths.
+ */
+function expandSeries(
+  series: SeriesSpec,
+  items: NumberListItem[],
+  layerId: string,
+  anchor: { x: number; y: number }
+): PrimitiveLayer[] {
+  const { area, valueRange, dot, label, marker, band } = series
+  const layers: PrimitiveLayer[] = []
+
+  // Compute point positions
+  const pts: SeriesPoint[] = items.map((item, i) => ({
+    x: pointX(i, items.length, area),
+    y: valueToY(item.value, valueRange, area),
+    label: item.label
+  }))
+
+  // Dot ellipses
+  for (let i = 0; i < pts.length; i++) {
+    layers.push({
+      kind: 'ellipse',
+      id: `${layerId}-dot-${i}`,
+      anchor,
+      position: [{ t: 0, value: { x: pts[i].x, y: pts[i].y } }],
+      radiusX: dot.radiusX,
+      radiusY: dot.radiusY,
+      fill: dot.fill
+    } as EllipseLayer)
+  }
+
+  // Connector dots between adjacent points
+  layers.push(...buildConnectorDots(pts, series.connector, layerId, anchor))
 
   // Labels
   for (let i = 0; i < pts.length; i++) {
@@ -165,65 +239,7 @@ function expandSeries(
 
   // Hatch band (closed filled parallelogram paths)
   if (band && pts.length >= 2) {
-    const fromIdx = band.fromIndex !== undefined ? band.fromIndex : pts.length - 2
-    const toIdx = band.toIndex !== undefined ? band.toIndex : pts.length - 1
-
-    if (fromIdx >= 0 && toIdx < pts.length && fromIdx < toIdx) {
-      const leftX = pts[fromIdx].x
-      const rightX = pts[toIdx].x
-      const bandTop = Math.min(pts[fromIdx].y, pts[toIdx].y)
-      const bandBottom = Math.max(pts[fromIdx].y, pts[toIdx].y)
-      const bandHeight = bandBottom - bandTop || area.h * 0.1
-
-      // Generate hatch lines as closed paths within the band rectangle
-      const { spacing, angle, fill: hatchFill } = band.hatch
-      const radians = (angle * Math.PI) / 180
-      const dx = Math.cos(radians)
-      const dy = Math.sin(radians)
-
-      // Sweep across the band area with hatch lines, creating thin parallelogram
-      // paths (closed and filled, no strokes per the v1 rule)
-      const bandW = rightX - leftX
-      if (bandW > 0 && spacing > 0) {
-        const lineCount = Math.ceil((bandW + bandHeight) / spacing)
-        for (let i = 0; i < lineCount; i++) {
-          const offset = i * spacing - bandHeight
-          // Parallelogram defined by intersecting the hatch direction with the
-          // band rectangle. Clipped by geometry (no masks).
-          const thickness = spacing * 0.15
-          const x0 = leftX + offset * dx
-          const y0 = bandTop
-          const x1 = x0 + bandHeight * dy
-          const y1 = bandBottom
-          const x2 = x1 + thickness * dx
-          const y2 = bandBottom
-          const x3 = x0 + thickness * dx
-          const y3 = bandTop
-
-          // Clip to band rectangle
-          const clampX = (x: number) => Math.max(leftX, Math.min(rightX, x))
-          const clampY = (y: number) => Math.max(bandTop, Math.min(bandBottom, y))
-
-          const cx0 = clampX(x0)
-          const cy0 = clampY(y0)
-          const cx1 = clampX(x1)
-          const cy1 = clampY(y1)
-          const cx2 = clampX(x2)
-          const cy2 = clampY(y2)
-          const cx3 = clampX(x3)
-          const cy3 = clampY(y3)
-
-          const d = `M ${cx0} ${cy0} L ${cx1} ${cy1} L ${cx2} ${cy2} L ${cx3} ${cy3} Z`
-          layers.push({
-            kind: 'path',
-            id: `${layerId}-hatch-${i}`,
-            anchor,
-            d,
-            fill: hatchFill
-          } as PathLayer)
-        }
-      }
-    }
+    layers.push(...buildHatchBand(pts, band, area, layerId, anchor))
   }
 
   return layers
