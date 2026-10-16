@@ -18,11 +18,14 @@ test.describe('motion frame renderer', () => {
 
     const result = await page.evaluate(async () => {
       // Import the frame renderer from the Vite dev server
-      // @ts-expect-error - dynamic Vite import resolved at runtime in the browser
-      const { renderFrameToPng } =
-        await import('/src/features/Motion/internal/frameRenderer.ts')
-      // @ts-expect-error - dynamic Vite import resolved at runtime in the browser
-      const { resolveTemplate } = await import('/src/features/Motion/internal/resolve.ts')
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      const fr: any = await import(
+        '/src/features/Motion/internal/frameRenderer.ts' as any
+      )
+      const rv: any = await import('/src/features/Motion/internal/resolve.ts' as any)
+      /* eslint-enable @typescript-eslint/no-explicit-any */
+      const { renderFrameToPng } = fr
+      const { resolveTemplate } = rv
 
       const template = {
         schemaVersion: 1 as const,
@@ -100,11 +103,14 @@ test.describe('motion frame renderer', () => {
     await page.goto('/')
 
     const result = await page.evaluate(async () => {
-      // @ts-expect-error - dynamic Vite import resolved at runtime in the browser
-      const { renderFrameToPng } =
-        await import('/src/features/Motion/internal/frameRenderer.ts')
-      // @ts-expect-error - dynamic Vite import resolved at runtime in the browser
-      const { resolveTemplate } = await import('/src/features/Motion/internal/resolve.ts')
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      const fr: any = await import(
+        '/src/features/Motion/internal/frameRenderer.ts' as any
+      )
+      const rv: any = await import('/src/features/Motion/internal/resolve.ts' as any)
+      /* eslint-enable @typescript-eslint/no-explicit-any */
+      const { renderFrameToPng } = fr
+      const { resolveTemplate } = rv
 
       const template = {
         schemaVersion: 1 as const,
