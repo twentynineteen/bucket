@@ -258,8 +258,20 @@ describe('S2.4: Scan trail template', () => {
     expect(st).toBeDefined()
     if (!st) return
 
-    // Series layer
-    const series = st.layers.find(l => l.kind === 'series')
+    // Series layer (may be inside a group)
+    function findSeries(
+      layers: MotionTemplate['layers']
+    ): MotionTemplate['layers'][number] | undefined {
+      for (const l of layers) {
+        if (l.kind === 'series') return l
+        if (l.kind === 'group') {
+          const found = findSeries(l.children)
+          if (found) return found
+        }
+      }
+      return undefined
+    }
+    const series = findSeries(st.layers)
     expect(series, 'no series layer').toBeDefined()
     if (!series || series.kind !== 'series') return
 
@@ -286,9 +298,25 @@ describe('S2.4: Scan trail template', () => {
       { label: 'E', value: 40 },
       { label: 'F', value: 60 }
     ]
-    const expanded6 = expandTemplate(st.layers, st.params, {
-      [series.series.param]: sixValues
-    })
+    // Flatten expanded layers (series inside groups become children)
+    function flattenLayers(
+      layers: ReturnType<typeof expandTemplate>
+    ): ReturnType<typeof expandTemplate> {
+      const flat: ReturnType<typeof expandTemplate> = []
+      for (const l of layers) {
+        flat.push(l)
+        if (l.kind === 'group') {
+          flat.push(...flattenLayers(l.children))
+        }
+      }
+      return flat
+    }
+
+    const expanded6 = flattenLayers(
+      expandTemplate(st.layers, st.params, {
+        [series.series.param]: sixValues
+      })
+    )
     const dots6 = expanded6.filter(l => l.kind === 'ellipse' && l.id.includes('-dot-'))
     expect(dots6.length).toBe(6)
     const marker6 = expanded6.find(l => l.id.includes('-marker'))
@@ -298,9 +326,11 @@ describe('S2.4: Scan trail template', () => {
 
     // Expand with 1 value: no hatch
     const oneValue = [{ label: 'A', value: 10 }]
-    const expanded1 = expandTemplate(st.layers, st.params, {
-      [series.series.param]: oneValue
-    })
+    const expanded1 = flattenLayers(
+      expandTemplate(st.layers, st.params, {
+        [series.series.param]: oneValue
+      })
+    )
     const hatch1 = expanded1.filter(l => l.id.includes('-hatch-'))
     expect(hatch1.length).toBe(0)
   })
@@ -327,10 +357,9 @@ describe('S2.5: Score ring and Spread map counters/arcs', () => {
     expect(numDef.max).toBe(100)
 
     // Arc with sweepFromParam
-    const arc = sr.layers.find(l => l.kind === 'arc')
-    expect(arc).toBeDefined()
+    const arc = sr.layers.find(l => l.kind === 'arc' && l.sweepFromParam)
+    expect(arc, 'no arc with sweepFromParam').toBeDefined()
     if (!arc || arc.kind !== 'arc') return
-    expect(arc.sweepFromParam).toBeDefined()
     expect(arc.sweepFromParam!.param).toBe(numId)
 
     // Counter text layer
@@ -341,7 +370,7 @@ describe('S2.5: Score ring and Spread map counters/arcs', () => {
 
     // Resolve with 72: arc sweep is 0.72, counter text ends at "72"
     const expanded = expandTemplate(sr.layers, sr.params, { [numId]: 72 })
-    const expandedArc = expanded.find(l => l.kind === 'arc')
+    const expandedArc = expanded.find(l => l.id === arc.id)
     expect(expandedArc).toBeDefined()
     if (expandedArc && expandedArc.kind === 'arc') {
       const lastSweep = expandedArc.sweep[expandedArc.sweep.length - 1]

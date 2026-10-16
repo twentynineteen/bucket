@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "id": "scan-trail",
+  "version": "1.0.0",
+  "name": "Scan trail",
+  "description": "Dotted line chart with a walking marker. Points are connected by dotted trails; an optional hatched band highlights the gap between the last two values.",
+  "category": "data",
+  "status": "stable",
+  "tags": ["data", "chart", "line", "trail", "series"],
+  "fonts": ["CabritoSemi-NorBol"],
+  "duration": 4.28,
+  "inEnd": 0.8,
+  "outStart": 3.8,
+  "hold": { "min": 1, "max": 8, "default": 3 },
+  "params": {
+    "data": {
+      "kind": "numberList",
+      "label": "Data points",
+      "default": [
+        { "label": "Q1", "value": 34 },
+        { "label": "Q2", "value": 52 },
+        { "label": "Q3", "value": 41 },
+        { "label": "Q4", "value": 67 },
+        { "label": "Q5", "value": 58 },
+        { "label": "Q6", "value": 73 }
+      ],
+      "valueMin": 0,
+      "valueMax": 100
+    },
+    "accent": {
+      "kind": "colour",
+      "label": "Accent",
+      "default": "#C8E64A",
+      "binds": []
+    },
+    "hold": {
+      "kind": "hold",
+      "label": "Hold duration",
+      "min": 1,
+      "max": 8,
+      "default": 3
+    }
+  },
+  "layers": [
+    {
+      "kind": "group",
+      "id": "chart-group",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 0, "y": 0 } }],
+      "opacity": [
+        { "t": 0, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 3.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 4.28, "value": 0 }
+      ],
+      "children": [
+        {
+          "kind": "series",
+          "id": "chart",
+          "anchor": { "x": 0, "y": 0 },
+          "series": {
+            "param": "data",
+            "area": { "x": 500, "y": 500, "w": 2840, "h": 1000 },
+            "valueRange": [0, 100],
+            "dot": { "radiusX": 16, "radiusY": 16, "fill": "#C8E64A" },
+            "connector": { "dotSpacing": 50, "radius": 4, "fill": "#555555" },
+            "label": {
+              "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 32 },
+              "fill": "#999999",
+              "align": "center",
+              "offsetY": 50
+            },
+            "marker": {
+              "ellipse": { "radiusX": 24, "radiusY": 24, "fill": "#ffffff" },
+              "segmentDuration": 0.12,
+              "ease": [0.16, 1, 0.3, 1]
+            },
+            "band": {
+              "hatch": { "spacing": 24, "angle": 45, "fill": "#C8E64A33" }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

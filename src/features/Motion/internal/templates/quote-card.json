@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "id": "quote-card",
+  "version": "1.0.0",
+  "name": "Quote card",
+  "description": "Centred quote with large quotation marks and attribution below. Quote fades in with character stagger; marks scale from small.",
+  "category": "title-card",
+  "status": "stable",
+  "tags": ["quote", "testimony", "editorial", "cinematic"],
+  "fonts": ["CabritoSemi-NorBol"],
+  "primaryTextParam": "quote",
+  "duration": 5.36,
+  "inEnd": 0.8,
+  "outStart": 4.8,
+  "hold": { "min": 1, "max": 10, "default": 4 },
+  "params": {
+    "quote": {
+      "kind": "text",
+      "label": "Quote",
+      "maxLength": 120,
+      "default": "The best way to predict the future is to create it.",
+      "required": true
+    },
+    "attribution": {
+      "kind": "text",
+      "label": "Attribution",
+      "maxLength": 40,
+      "default": "Peter Drucker",
+      "required": false
+    },
+    "accent": {
+      "kind": "colour",
+      "label": "Accent",
+      "default": "#C8E64A",
+      "binds": ["layers[0]"]
+    },
+    "hold": {
+      "kind": "hold",
+      "label": "Hold duration",
+      "min": 1,
+      "max": 10,
+      "default": 4
+    }
+  },
+  "layers": [
+    {
+      "kind": "text",
+      "id": "open-quote-mark",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 700, "y": 780 } }],
+      "scale": [
+        { "t": 0, "value": { "x": 0.5, "y": 0.5 }, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.6, "value": { "x": 1, "y": 1 }, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 4.8, "value": { "x": 1, "y": 1 }, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 5.36, "value": { "x": 0.5, "y": 0.5 } }
+      ],
+      "opacity": [
+        { "t": 0, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.5, "value": 0.4, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 4.8, "value": 0.4, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 5.36, "value": 0 }
+      ],
+      "text": "“",
+      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 200 },
+      "align": "left",
+      "lineHeight": 1,
+      "multiline": false,
+      "fill": "#C8E64A"
+    },
+    {
+      "kind": "text",
+      "id": "quote-text",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 1920, "y": 980 } }],
+      "opacity": [
+        { "t": 0.15, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 4.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 5.36, "value": 0 }
+      ],
+      "text": "The best way to predict the future is to create it.",
+      "param": "quote",
+      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 36 },
+      "align": "center",
+      "lineHeight": 1.6,
+      "multiline": true,
+      "fill": "#ffffff",
+      "stagger": { "delay": 0.002 },
+      "width": 2600
+    },
+    {
+      "kind": "text",
+      "id": "attribution-text",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 1920, "y": 1200 } }],
+      "opacity": [
+        { "t": 0.35, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 4.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 5.16, "value": 0 }
+      ],
+      "text": "Peter Drucker",
+      "param": "attribution",
+      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 32 },
+      "align": "center",
+      "lineHeight": 1.2,
+      "multiline": false,
+      "fill": "#999999",
+      "width": 1600
+    }
+  ]
+}

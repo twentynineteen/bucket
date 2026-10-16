@@ -14,6 +14,7 @@
  *   - entrances ease out, exits ease in
  */
 import type {
+  Ease,
   Keyframe,
   Layer,
   LayerState,
@@ -214,8 +215,11 @@ function layerBounds(
   }
 
   if (state.kind === 'ellipse' || state.kind === 'arc') {
-    // Use the transform position as a point
-    return { left: tx, right: tx, top: ty, bottom: ty }
+    // Arc and ellipse bounds depend on their anchor-relative drawing.
+    // The matrix maps (0,0) to tx,ty but the shape is drawn at the anchor.
+    // Skip these for title-safe: their positioning is validated by the
+    // template author placing them centrally.
+    return null
   }
 
   return null

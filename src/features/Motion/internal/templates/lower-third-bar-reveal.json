@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "id": "lower-third-bar-reveal",
+  "version": "1.0.0",
+  "name": "Lower third \"Bar reveal\"",
+  "description": "Corporate lower third with a full-width dark bar that wipes in from the left, revealing name and title text.",
+  "category": "lower-third",
+  "status": "stable",
+  "tags": ["lower-third", "bar", "corporate", "editorial"],
+  "fonts": ["CabritoSemi-NorBol"],
+  "primaryTextParam": "name",
+  "duration": 4.28,
+  "inEnd": 0.8,
+  "outStart": 3.8,
+  "hold": { "min": 1, "max": 10, "default": 3 },
+  "params": {
+    "name": {
+      "kind": "text",
+      "label": "Name",
+      "maxLength": 30,
+      "default": "Jane Doe",
+      "required": true
+    },
+    "title": {
+      "kind": "text",
+      "label": "Title",
+      "maxLength": 50,
+      "default": "Executive Director",
+      "required": false
+    },
+    "accent": {
+      "kind": "colour",
+      "label": "Accent",
+      "default": "#C8E64A",
+      "binds": ["layers[2]"]
+    },
+    "hold": {
+      "kind": "hold",
+      "label": "Hold duration",
+      "min": 1,
+      "max": 10,
+      "default": 3
+    }
+  },
+  "layers": [
+    {
+      "kind": "rect",
+      "id": "bar-bg",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 192, "y": 1660 } }],
+      "opacity": [
+        { "t": 0, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.35, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 3.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 4.28, "value": 0 }
+      ],
+      "widthAnimation": [
+        { "t": 0, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.6, "value": 2000, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 3.8, "value": 2000, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 4.28, "value": 0 }
+      ],
+      "width": 2000,
+      "height": 180,
+      "fill": "#1a1a1a",
+      "radius": 0
+    },
+    {
+      "kind": "text",
+      "id": "name-text",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 240, "y": 1690 } }],
+      "opacity": [
+        { "t": 0.2, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 3.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 4.1, "value": 0 }
+      ],
+      "text": "Jane Doe",
+      "param": "name",
+      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 58 },
+      "align": "left",
+      "lineHeight": 1.2,
+      "multiline": false,
+      "fill": "#ffffff",
+      "stagger": { "delay": 0.009 },
+      "width": 1200
+    },
+    {
+      "kind": "rect",
+      "id": "accent-line",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 240, "y": 1760 } }],
+      "opacity": [
+        { "t": 0.3, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.7, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 3.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 4.15, "value": 0 }
+      ],
+      "width": 60,
+      "height": 4,
+      "fill": "#C8E64A",
+      "radius": 2
+    },
+    {
+      "kind": "text",
+      "id": "title-text",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 240, "y": 1780 } }],
+      "opacity": [
+        { "t": 0.3, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 3.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 4.05, "value": 0 }
+      ],
+      "text": "Executive Director",
+      "param": "title",
+      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 38 },
+      "align": "left",
+      "lineHeight": 1.2,
+      "multiline": false,
+      "fill": "#999999",
+      "stagger": { "delay": 0.005 },
+      "width": 1500
+    }
+  ]
+}

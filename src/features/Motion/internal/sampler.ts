@@ -39,21 +39,32 @@ export interface SampledPoint {
   region?: string
 }
 
+/** Internal state for the Poisson-disc grid. */
+interface GridState {
+  grid: (number | null)[]
+  gridW: number
+  gridH: number
+  cellSize: number
+  minDistSq: number
+  pointsImg: { x: number; y: number }[]
+}
+
+/** Image descriptor passed to alpha checks. */
+interface ImageDesc {
+  rgba: Uint8Array | Uint8ClampedArray
+  width: number
+  height: number
+}
+
 // ---------------------------------------------------------------------------
 // Alpha check
 // ---------------------------------------------------------------------------
 
 /** Return true when the pixel at (px, py) has alpha > 128. */
-function isOpaque(
-  rgba: Uint8Array | Uint8ClampedArray,
-  width: number,
-  px: number,
-  py: number,
-  height: number
-): boolean {
-  if (px < 0 || py < 0 || px >= width || py >= height) return false
-  const idx = (py * width + px) * 4 + 3 // alpha channel
-  return rgba[idx] > 128
+function isOpaque(img: ImageDesc, px: number, py: number): boolean {
+  if (px < 0 || py < 0 || px >= img.width || py >= img.height) return false
+  const idx = (py * img.width + px) * 4 + 3 // alpha channel
+  return img.rgba[idx] > 128
 }
 
 // ---------------------------------------------------------------------------
@@ -61,29 +72,21 @@ function isOpaque(
 // ---------------------------------------------------------------------------
 
 /** Check whether a candidate point is too close to any existing point. */
-function isTooClose(
-  nx: number,
-  ny: number,
-  gx: number,
-  gy: number,
-  grid: (number | null)[],
-  gridW: number,
-  gridH: number,
-  pointsImg: { x: number; y: number }[],
-  minDistSq: number
-): boolean {
+function isTooClose(nx: number, ny: number, gs: GridState): boolean {
+  const gx = Math.floor(nx / gs.cellSize)
+  const gy = Math.floor(ny / gs.cellSize)
   for (let dy = -2; dy <= 2; dy++) {
     const ggy = gy + dy
-    if (ggy < 0 || ggy >= gridH) continue
+    if (ggy < 0 || ggy >= gs.gridH) continue
     for (let dx = -2; dx <= 2; dx++) {
       const ggx = gx + dx
-      if (ggx < 0 || ggx >= gridW) continue
-      const neighbour = grid[ggy * gridW + ggx]
+      if (ggx < 0 || ggx >= gs.gridW) continue
+      const neighbour = gs.grid[ggy * gs.gridW + ggx]
       if (neighbour === null) continue
-      const op = pointsImg[neighbour]
+      const op = gs.pointsImg[neighbour]
       const ddx = op.x - nx
       const ddy = op.y - ny
-      if (ddx * ddx + ddy * ddy < minDistSq) return true
+      if (ddx * ddx + ddy * ddy < gs.minDistSq) return true
     }
   }
   return false
@@ -96,15 +99,13 @@ function isTooClose(
 /** Find the first opaque pixel using the seeded RNG. Returns null if none. */
 function findStartPoint(
   rng: () => number,
-  rgba: Uint8Array | Uint8ClampedArray,
-  width: number,
-  height: number
+  img: ImageDesc
 ): { x: number; y: number } | null {
-  const maxAttempts = width * height
+  const maxAttempts = img.width * img.height
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const cx = Math.floor(rng() * width)
-    const cy = Math.floor(rng() * height)
-    if (isOpaque(rgba, width, cx, cy, height)) {
+    const cx = Math.floor(rng() * img.width)
+    const cy = Math.floor(rng() * img.height)
+    if (isOpaque(img, cx, cy)) {
       return { x: cx, y: cy }
     }
   }
@@ -121,15 +122,8 @@ function tryCandidate(
   py: number,
   rng: () => number,
   minDistance: number,
-  rgba: Uint8Array | Uint8ClampedArray,
-  width: number,
-  height: number,
-  cellSize: number,
-  grid: (number | null)[],
-  gridW: number,
-  gridH: number,
-  pointsImg: { x: number; y: number }[],
-  minDistSq: number
+  img: ImageDesc,
+  gs: GridState
 ): { x: number; y: number } | null {
   const angle = rng() * Math.PI * 2
   const dist = minDistance + rng() * minDistance
@@ -138,14 +132,12 @@ function tryCandidate(
   const nxi = Math.floor(nx)
   const nyi = Math.floor(ny)
 
-  if (!isOpaque(rgba, width, nxi, nyi, height)) return null
+  if (!isOpaque(img, nxi, nyi)) return null
 
-  const gx = Math.floor(nx / cellSize)
-  const gy = Math.floor(ny / cellSize)
-  if (gx < 0 || gy < 0 || gx >= gridW || gy >= gridH) return null
-  if (isTooClose(nx, ny, gx, gy, grid, gridW, gridH, pointsImg, minDistSq)) {
-    return null
-  }
+  const gx = Math.floor(nx / gs.cellSize)
+  const gy = Math.floor(ny / gs.cellSize)
+  if (gx < 0 || gy < 0 || gx >= gs.gridW || gy >= gs.gridH) return null
+  if (isTooClose(nx, ny, gs)) return null
   return { x: nx, y: ny }
 }
 
@@ -166,44 +158,36 @@ export function samplePoints(input: SamplerInput): SampledPoint[] {
 
   const rng = createRng(seed)
   const cellSize = minDistance / Math.SQRT2
-  const gridW = Math.ceil(width / cellSize)
-  const gridH = Math.ceil(height / cellSize)
-  const grid: (number | null)[] = new Array(gridW * gridH).fill(null)
-  const minDistSq = minDistance * minDistance
+  const img: ImageDesc = { rgba, width, height }
+  const gs: GridState = {
+    grid: new Array(Math.ceil(width / cellSize) * Math.ceil(height / cellSize)).fill(
+      null
+    ),
+    gridW: Math.ceil(width / cellSize),
+    gridH: Math.ceil(height / cellSize),
+    cellSize,
+    minDistSq: minDistance * minDistance,
+    pointsImg: []
+  }
 
-  const pointsImg: { x: number; y: number }[] = []
   const active: number[] = []
   const k = 30 // candidates per active point
 
-  const start = findStartPoint(rng, rgba, width, height)
+  const start = findStartPoint(rng, img)
   if (!start) return []
 
-  addPoint(start.x, start.y)
+  addPoint(start.x, start.y, gs, active)
 
   while (active.length > 0) {
     const activeIdx = Math.floor(rng() * active.length)
     const pIdx = active[activeIdx]
-    const { x: px, y: py } = pointsImg[pIdx]
+    const { x: px, y: py } = gs.pointsImg[pIdx]
     let found = false
 
     for (let i = 0; i < k; i++) {
-      const pt = tryCandidate(
-        px,
-        py,
-        rng,
-        minDistance,
-        rgba,
-        width,
-        height,
-        cellSize,
-        grid,
-        gridW,
-        gridH,
-        pointsImg,
-        minDistSq
-      )
+      const pt = tryCandidate(px, py, rng, minDistance, img, gs)
       if (pt) {
-        addPoint(pt.x, pt.y)
+        addPoint(pt.x, pt.y, gs, active)
         found = true
       }
     }
@@ -214,19 +198,20 @@ export function samplePoints(input: SamplerInput): SampledPoint[] {
   }
 
   // Map from image space to template space
-  return pointsImg.map(p => ({
+  return gs.pointsImg.map(p => ({
     x: Math.round(targetBox.x + (p.x / width) * targetBox.w),
     y: Math.round(targetBox.y + (p.y / height) * targetBox.h)
   }))
+}
 
-  function addPoint(x: number, y: number) {
-    const idx = pointsImg.length
-    pointsImg.push({ x, y })
-    active.push(idx)
-    const gx = Math.floor(x / cellSize)
-    const gy = Math.floor(y / cellSize)
-    if (gx >= 0 && gy >= 0 && gx < gridW && gy < gridH) {
-      grid[gy * gridW + gx] = idx
-    }
+/** Insert a new point into the grid and active list. */
+function addPoint(x: number, y: number, gs: GridState, active: number[]): void {
+  const idx = gs.pointsImg.length
+  gs.pointsImg.push({ x, y })
+  active.push(idx)
+  const gx = Math.floor(x / gs.cellSize)
+  const gy = Math.floor(y / gs.cellSize)
+  if (gx >= 0 && gy >= 0 && gx < gs.gridW && gy < gs.gridH) {
+    gs.grid[gy * gs.gridW + gx] = idx
   }
 }

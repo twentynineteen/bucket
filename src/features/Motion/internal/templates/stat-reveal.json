@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "id": "stat-reveal",
+  "version": "1.0.0",
+  "name": "Stat reveal",
+  "description": "Large animated counter that counts up from zero with a label underneath. Ideal for key statistics and metrics.",
+  "category": "data",
+  "status": "experimental",
+  "tags": ["data", "counter", "statistic", "number"],
+  "fonts": ["CabritoSemi-NorBol"],
+  "primaryTextParam": "label",
+  "duration": 3.28,
+  "inEnd": 0.8,
+  "outStart": 2.8,
+  "hold": { "min": 1, "max": 8, "default": 2 },
+  "params": {
+    "value": {
+      "kind": "number",
+      "label": "Value",
+      "default": 247,
+      "min": 0,
+      "max": 9999
+    },
+    "label": {
+      "kind": "text",
+      "label": "Label",
+      "maxLength": 40,
+      "default": "Active users",
+      "required": false
+    },
+    "suffix": {
+      "kind": "text",
+      "label": "Suffix",
+      "maxLength": 5,
+      "default": "%",
+      "required": false
+    },
+    "accent": {
+      "kind": "colour",
+      "label": "Accent",
+      "default": "#C8E64A",
+      "binds": ["layers[2]"]
+    },
+    "hold": {
+      "kind": "hold",
+      "label": "Hold duration",
+      "min": 1,
+      "max": 8,
+      "default": 2
+    }
+  },
+  "layers": [
+    {
+      "kind": "text",
+      "id": "counter-text",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 1920, "y": 950 } }],
+      "opacity": [
+        { "t": 0, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.4, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 2.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 3.28, "value": 0 }
+      ],
+      "text": "0",
+      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 140 },
+      "align": "center",
+      "lineHeight": 1,
+      "multiline": false,
+      "fill": "#ffffff",
+      "counter": {
+        "param": "value",
+        "decimals": 0,
+        "prefix": "",
+        "suffix": "",
+        "progress": [
+          { "t": 0, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+          { "t": 0.8, "value": 1 }
+        ]
+      }
+    },
+    {
+      "kind": "text",
+      "id": "label-text",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 1920, "y": 1120 } }],
+      "opacity": [
+        { "t": 0.2, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 2.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 3.12, "value": 0 }
+      ],
+      "text": "Active users",
+      "param": "label",
+      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 36 },
+      "align": "center",
+      "lineHeight": 1.2,
+      "multiline": false,
+      "fill": "#999999",
+      "width": 1600
+    },
+    {
+      "kind": "rect",
+      "id": "accent-dot",
+      "anchor": { "x": 4, "y": 4 },
+      "position": [{ "t": 0, "value": { "x": 1920, "y": 1080 } }],
+      "opacity": [
+        { "t": 0.3, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.7, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 2.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 3.2, "value": 0 }
+      ],
+      "width": 8,
+      "height": 8,
+      "fill": "#C8E64A",
+      "radius": 4
+    }
+  ]
+}

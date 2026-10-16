@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "id": "chapter-title-card",
+  "version": "1.0.0",
+  "name": "Chapter title card",
+  "description": "Large chapter number with a title below, centred on screen. The number scales up while the title slides in from below.",
+  "category": "title-card",
+  "status": "stable",
+  "tags": ["title", "chapter", "editorial", "cinematic"],
+  "fonts": ["CabritoSemi-NorBol"],
+  "primaryTextParam": "title",
+  "duration": 3.36,
+  "inEnd": 0.8,
+  "outStart": 2.8,
+  "hold": { "min": 1, "max": 8, "default": 2 },
+  "params": {
+    "chapter": {
+      "kind": "text",
+      "label": "Chapter",
+      "maxLength": 12,
+      "default": "01",
+      "required": false
+    },
+    "title": {
+      "kind": "text",
+      "label": "Title",
+      "maxLength": 40,
+      "default": "Introduction",
+      "required": true
+    },
+    "accent": {
+      "kind": "colour",
+      "label": "Accent",
+      "default": "#C8E64A",
+      "binds": ["layers[2]"]
+    },
+    "hold": {
+      "kind": "hold",
+      "label": "Hold duration",
+      "min": 1,
+      "max": 8,
+      "default": 2
+    }
+  },
+  "layers": [
+    {
+      "kind": "text",
+      "id": "chapter-number",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 1920, "y": 900 } }],
+      "scale": [
+        { "t": 0, "value": { "x": 0.6, "y": 0.6 }, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": { "x": 1, "y": 1 }, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 2.8, "value": { "x": 1, "y": 1 }, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 3.36, "value": { "x": 0.8, "y": 0.8 } }
+      ],
+      "opacity": [
+        { "t": 0, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.6, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 2.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 3.36, "value": 0 }
+      ],
+      "text": "01",
+      "param": "chapter",
+      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 120 },
+      "align": "center",
+      "lineHeight": 1,
+      "multiline": false,
+      "fill": "#666666",
+      "width": 1000
+    },
+    {
+      "kind": "text",
+      "id": "title-text",
+      "anchor": { "x": 0, "y": 0 },
+      "position": [
+        { "t": 0, "value": { "x": 1920, "y": 1120 }, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": { "x": 1920, "y": 1080 }, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 2.8, "value": { "x": 1920, "y": 1080 }, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 3.36, "value": { "x": 1920, "y": 1040 } }
+      ],
+      "opacity": [
+        { "t": 0.1, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 2.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 3.36, "value": 0 }
+      ],
+      "text": "Introduction",
+      "param": "title",
+      "font": { "family": "Cabrito Semi", "style": "Norm Bold", "size": 60 },
+      "align": "center",
+      "lineHeight": 1.2,
+      "multiline": false,
+      "fill": "#ffffff",
+      "width": 1600
+    },
+    {
+      "kind": "rect",
+      "id": "accent-underline",
+      "anchor": { "x": 60, "y": 0 },
+      "position": [{ "t": 0, "value": { "x": 1920, "y": 1160 } }],
+      "opacity": [
+        { "t": 0.2, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": 1, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 2.8, "value": 1, "ease": [0.7, 0, 1, 0.5] },
+        { "t": 3.36, "value": 0 }
+      ],
+      "widthAnimation": [
+        { "t": 0.2, "value": 0, "ease": [0.16, 1, 0.3, 1] },
+        { "t": 0.8, "value": 120 }
+      ],
+      "width": 120,
+      "height": 4,
+      "fill": "#C8E64A",
+      "radius": 2
+    }
+  ]
+}
