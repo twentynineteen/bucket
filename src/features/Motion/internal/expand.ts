@@ -112,7 +112,52 @@ function buildConnectorDots(
   return layers
 }
 
-/** Generate hatch-band parallelogram paths between two series points. */
+type Vec = [number, number]
+
+/** Sutherland-Hodgman clip of a convex polygon to an axis-aligned rectangle. */
+function clipToRect(poly: Vec[], x0: number, y0: number, x1: number, y1: number): Vec[] {
+  const edges: [(p: Vec) => boolean, (a: Vec, b: Vec) => Vec][] = [
+    [
+      p => p[0] >= x0,
+      (a, b) => [x0, a[1] + ((b[1] - a[1]) * (x0 - a[0])) / (b[0] - a[0])]
+    ],
+    [
+      p => p[0] <= x1,
+      (a, b) => [x1, a[1] + ((b[1] - a[1]) * (x1 - a[0])) / (b[0] - a[0])]
+    ],
+    [
+      p => p[1] >= y0,
+      (a, b) => [a[0] + ((b[0] - a[0]) * (y0 - a[1])) / (b[1] - a[1]), y0]
+    ],
+    [
+      p => p[1] <= y1,
+      (a, b) => [a[0] + ((b[0] - a[0]) * (y1 - a[1])) / (b[1] - a[1]), y1]
+    ]
+  ]
+  let out = poly
+  for (const [inside, cross] of edges) {
+    const input = out
+    out = []
+    for (let i = 0; i < input.length; i++) {
+      const cur = input[i]
+      const prev = input[(i + input.length - 1) % input.length]
+      if (inside(cur)) {
+        if (!inside(prev)) out.push(cross(prev, cur))
+        out.push(cur)
+      } else if (inside(prev)) {
+        out.push(cross(prev, cur))
+      }
+    }
+    if (out.length === 0) break
+  }
+  return out
+}
+
+/**
+ * Hatch stripes for the band between two data points: parallel strips at
+ * `angle`, `spacing` apart, each clipped to the band rectangle so every
+ * stripe keeps its angle right up to the border.
+ */
 function buildHatchBand(
   pts: SeriesPoint[],
   band: NonNullable<SeriesSpec['band']>,
@@ -122,46 +167,59 @@ function buildHatchBand(
 ): PathLayer[] {
   const fromIdx = band.fromIndex !== undefined ? band.fromIndex : pts.length - 2
   const toIdx = band.toIndex !== undefined ? band.toIndex : pts.length - 1
-
   if (fromIdx < 0 || toIdx >= pts.length || fromIdx >= toIdx) return []
 
-  const leftX = pts[fromIdx].x
-  const rightX = pts[toIdx].x
-  const bandTop = Math.min(pts[fromIdx].y, pts[toIdx].y)
-  const bandBottom = Math.max(pts[fromIdx].y, pts[toIdx].y)
-  const bandHeight = bandBottom - bandTop || area.h * 0.1
+  const left = pts[fromIdx].x
+  const right = pts[toIdx].x
+  const top = Math.min(pts[fromIdx].y, pts[toIdx].y)
+  const bottom = Math.max(pts[fromIdx].y, pts[toIdx].y) || top + area.h * 0.1
+  const { spacing, angle, fill } = band.hatch
+  if (right - left <= 0 || spacing <= 0) return []
 
-  const { spacing, angle, fill: hatchFill } = band.hatch
-  const radians = (angle * Math.PI) / 180
-  const dx = Math.cos(radians)
-  const dy = Math.sin(radians)
-
-  const bandW = rightX - leftX
-  if (bandW <= 0 || spacing <= 0) return []
+  const rad = (angle * Math.PI) / 180
+  const u: Vec = [Math.cos(rad), Math.sin(rad)]
+  const n: Vec = [-u[1], u[0]]
+  const corners: Vec[] = [
+    [left, top],
+    [right, top],
+    [right, bottom],
+    [left, bottom]
+  ]
+  const proj = corners.map(c => c[0] * n[0] + c[1] * n[1])
+  const reach = Math.hypot(right - left, bottom - top)
+  const thickness = spacing * 0.15
+  const centre: Vec = [(left + right) / 2, (top + bottom) / 2]
+  const centreProj = centre[0] * n[0] + centre[1] * n[1]
 
   const layers: PathLayer[] = []
-  const lineCount = Math.ceil((bandW + bandHeight) / spacing)
-  const clampX = (x: number) => Math.max(leftX, Math.min(rightX, x))
-  const clampY = (y: number) => Math.max(bandTop, Math.min(bandBottom, y))
-
-  for (let i = 0; i < lineCount; i++) {
-    const offset = i * spacing - bandHeight
-    const thickness = spacing * 0.15
-    const x0 = leftX + offset * dx
-    const x1 = x0 + bandHeight * dy
-    const d = [
-      `M ${clampX(x0)} ${clampY(bandTop)}`,
-      `L ${clampX(x1)} ${clampY(bandBottom)}`,
-      `L ${clampX(x1 + thickness * dx)} ${clampY(bandBottom)}`,
-      `L ${clampX(x0 + thickness * dx)} ${clampY(bandTop)}`,
-      'Z'
-    ].join(' ')
+  for (let k = Math.min(...proj); k <= Math.max(...proj); k += spacing) {
+    // A long strip whose near edge sits at projection k along n.
+    const base: Vec = [
+      centre[0] + n[0] * (k - centreProj),
+      centre[1] + n[1] * (k - centreProj)
+    ]
+    const strip: Vec[] = [
+      [base[0] - u[0] * reach, base[1] - u[1] * reach],
+      [base[0] + u[0] * reach, base[1] + u[1] * reach],
+      [
+        base[0] + u[0] * reach + n[0] * thickness,
+        base[1] + u[1] * reach + n[1] * thickness
+      ],
+      [
+        base[0] - u[0] * reach + n[0] * thickness,
+        base[1] - u[1] * reach + n[1] * thickness
+      ]
+    ]
+    const poly = clipToRect(strip, left, top, right, bottom)
+    if (poly.length < 3) continue
+    const d =
+      poly.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ') + ' Z'
     layers.push({
       kind: 'path',
-      id: `${layerId}-hatch-${i}`,
+      id: `${layerId}-hatch-${layers.length}`,
       anchor,
       d,
-      fill: hatchFill
+      fill
     } as PathLayer)
   }
   return layers
