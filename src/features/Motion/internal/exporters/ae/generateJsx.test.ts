@@ -741,3 +741,282 @@ describe('AE8.3 - series expansion', () => {
     expect(allLayers.length).toBeGreaterThanOrEqual(3) // at least the dots
   })
 })
+
+// ---------------------------------------------------------------------------
+// Property coverage: every animatable property on every applicable layer kind
+// ---------------------------------------------------------------------------
+
+describe('Property coverage - all animatable properties on all layer kinds', () => {
+  /**
+   * A fixture that animates every property on every layer kind.
+   * Each layer has position, scale, rotation, and opacity animated.
+   * Kind-specific properties are also animated where applicable.
+   */
+  const coverageFixture: MotionTemplate = {
+    schemaVersion: 1,
+    id: 'fixture-coverage',
+    version: '1.0.0',
+    name: 'coverage',
+    description: 'Coverage fixture',
+    category: 'lower-third',
+    status: 'stable',
+    tags: ['test'],
+    fonts: ['CabritoSemi-NorBol'],
+    duration: 4,
+    inEnd: 1,
+    outStart: 3,
+    params: {
+      score: {
+        kind: 'number' as const,
+        label: 'Score',
+        default: 72,
+        min: 0,
+        max: 100
+      }
+    },
+    layers: [
+      // Text with all transform properties + tracking
+      {
+        kind: 'text' as const,
+        id: 'cov-text',
+        anchor: { x: 0, y: 0 },
+        position: [
+          {
+            t: 0,
+            value: { x: 100, y: 100 },
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: { x: 200, y: 200 } }
+        ],
+        scale: [
+          {
+            t: 0,
+            value: { x: 1, y: 1 },
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: { x: 1.5, y: 1.5 } }
+        ],
+        rotation: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          { t: 1, value: 45 }
+        ],
+        opacity: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          { t: 0.5, value: 1 }
+        ],
+        text: 'Test',
+        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+        align: 'left' as const,
+        lineHeight: 1.2,
+        multiline: false,
+        fill: '#ffffff',
+        tracking: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          { t: 1, value: 50 }
+        ]
+      },
+      // Rect with all transform + animated size + fill animation
+      {
+        kind: 'rect' as const,
+        id: 'cov-rect',
+        anchor: { x: 0, y: 0 },
+        position: [
+          {
+            t: 0,
+            value: { x: 50, y: 50 },
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: { x: 150, y: 150 } }
+        ],
+        scale: [
+          {
+            t: 0,
+            value: { x: 1, y: 1 },
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: { x: 2, y: 2 } }
+        ],
+        rotation: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          { t: 1, value: 90 }
+        ],
+        opacity: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          { t: 1, value: 1 }
+        ],
+        width: 400,
+        height: 200,
+        widthAnimation: [
+          {
+            t: 0,
+            value: 400,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: 600 }
+        ],
+        heightAnimation: [
+          {
+            t: 0,
+            value: 200,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: 300 }
+        ],
+        fill: '#ff3366',
+        fillAnimation: [
+          {
+            t: 0,
+            value: '#ff3366',
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: '#3366ff' }
+        ],
+        radius: 8
+      },
+      // Ellipse with all transform
+      {
+        kind: 'ellipse' as const,
+        id: 'cov-ellipse',
+        anchor: { x: 0, y: 0 },
+        position: [
+          {
+            t: 0,
+            value: { x: 500, y: 500 },
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: { x: 600, y: 600 } }
+        ],
+        opacity: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          { t: 1, value: 1 }
+        ],
+        radiusX: 50,
+        radiusY: 50,
+        fill: '#00ff00'
+      },
+      // Path with all transform
+      {
+        kind: 'path' as const,
+        id: 'cov-path',
+        anchor: { x: 0, y: 0 },
+        position: [
+          {
+            t: 0,
+            value: { x: 300, y: 300 },
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: { x: 400, y: 400 } }
+        ],
+        opacity: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          { t: 1, value: 1 }
+        ],
+        d: 'M 10 10 L 50 90 L 90 10 Z',
+        fill: '#0000ff'
+      },
+      // Arc with all transform + sweep + startAngle
+      {
+        kind: 'arc' as const,
+        id: 'cov-arc',
+        anchor: { x: 500, y: 500 },
+        position: [
+          {
+            t: 0,
+            value: { x: 960, y: 540 },
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: { x: 960, y: 540 } }
+        ],
+        opacity: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          { t: 1, value: 1 }
+        ],
+        innerRadius: 200,
+        outerRadius: 240,
+        sweep: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          { t: 1, value: 0.72 }
+        ],
+        startAngle: [
+          {
+            t: 0,
+            value: -90,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: 0 }
+        ],
+        sweepFromParam: { param: 'score', max: 100 },
+        fill: '#ff3366'
+      }
+    ]
+  }
+
+  // Table of expected properties per layer
+  const expectations: Array<{
+    layerName: string
+    kind: string
+    props: string[]
+  }> = [
+    {
+      layerName: 'cov-text',
+      kind: 'text',
+      props: ['Position', 'Scale', 'Rotation', 'Opacity', 'Tracking Amount']
+    },
+    {
+      layerName: 'cov-rect',
+      kind: 'shape',
+      props: ['Position', 'Scale', 'Rotation', 'Opacity', 'Rectangle Size', 'Fill Color']
+    },
+    {
+      layerName: 'cov-ellipse',
+      kind: 'shape',
+      props: ['Position', 'Opacity']
+    },
+    {
+      layerName: 'cov-path',
+      kind: 'shape',
+      props: ['Position', 'Opacity', 'Path Closed']
+    },
+    {
+      layerName: 'cov-arc',
+      kind: 'shape',
+      props: [
+        'Position',
+        'Opacity',
+        'Trim Paths End',
+        'Trim Paths Offset',
+        'Stroke Width'
+      ]
+    }
+  ]
+
+  it('exports the right properties for each layer kind', () => {
+    const input = makeInput(coverageFixture, { values: { score: 72 } })
+    const result = generateJsx(input)
+    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
+    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const stub = runInAEStub(src)
+    const allLayers = stub.comps.flatMap(c => c.layers)
+
+    for (const exp of expectations) {
+      const layer = allLayers.find(l => l.name === exp.layerName)
+      expect(layer, exp.layerName + ' should exist').toBeDefined()
+      expect(layer!.kind).toBe(exp.kind)
+
+      for (const prop of exp.props) {
+        expect(
+          layer!.properties[prop],
+          exp.layerName + ' should have ' + prop
+        ).toBeDefined()
+      }
+    }
+  })
+
+  it('runs in the stub without ease dimension errors', () => {
+    const input = makeInput(coverageFixture, { values: { score: 72 } })
+    const result = generateJsx(input)
+    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
+    const src = jsx.kind === 'text' ? jsx.contents : ''
+    expect(() => runInAEStub(src)).not.toThrow()
+  })
+})
