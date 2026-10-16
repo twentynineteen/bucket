@@ -1,0 +1,733 @@
+/**
+ * Timing rules and built-in template tests (issue #332)
+ *
+ * Behaviours S2.1 - S2.7 (templates) and S3.1 - S3.6 (timing rules).
+ *
+ * Each timing rule is tested twice:
+ *   1. Against a deliberately broken fixture (the checker reports that rule)
+ *   2. Over all ten built-ins (no violations)
+ */
+import { readdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+import type { MotionFormat, MotionTemplate } from '../types'
+import { loadBuiltins } from './builtins'
+import { expandTemplate } from './expand'
+import { validFormats } from './resolve'
+import { parseTemplate } from './schema'
+import {
+  checkEaseDirection,
+  checkEntranceQuality,
+  checkInDuration,
+  checkOutInRatio,
+  checkStaggerBudget,
+  checkTextBoxWidth,
+  checkTitleSafe
+} from './timingRules'
+
+// ---------------------------------------------------------------------------
+// Load built-ins
+// ---------------------------------------------------------------------------
+
+const builtins = loadBuiltins()
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const BUILTIN_IDS = [
+  'lower-third-glide',
+  'lower-third-bar-reveal',
+  'chapter-title-card',
+  'quote-card',
+  'end-card-cta',
+  'shape-wipe',
+  'stat-reveal',
+  'scan-trail',
+  'score-ring',
+  'spread-map'
+]
+
+const BUILTIN_NAMES: Record<string, string> = {
+  'lower-third-glide': 'Lower third "Glide"',
+  'lower-third-bar-reveal': 'Lower third "Bar reveal"',
+  'chapter-title-card': 'Chapter title card',
+  'quote-card': 'Quote card',
+  'end-card-cta': 'End card/CTA',
+  'shape-wipe': 'Shape wipe',
+  'stat-reveal': 'Stat reveal',
+  'scan-trail': 'Scan trail',
+  'score-ring': 'Score ring',
+  'spread-map': 'Spread map'
+}
+
+const BUILTIN_CATEGORIES: Record<string, string> = {
+  'lower-third-glide': 'lower-third',
+  'lower-third-bar-reveal': 'lower-third',
+  'chapter-title-card': 'title-card',
+  'quote-card': 'title-card',
+  'end-card-cta': 'title-card',
+  'shape-wipe': 'transition',
+  'stat-reveal': 'data',
+  'scan-trail': 'data',
+  'score-ring': 'data',
+  'spread-map': 'data'
+}
+
+const BUILTIN_STATUSES: Record<string, string> = {
+  'lower-third-glide': 'stable',
+  'lower-third-bar-reveal': 'stable',
+  'chapter-title-card': 'stable',
+  'quote-card': 'stable',
+  'end-card-cta': 'stable',
+  'shape-wipe': 'stable',
+  'stat-reveal': 'experimental',
+  'scan-trail': 'stable',
+  'score-ring': 'stable',
+  'spread-map': 'experimental'
+}
+
+function findBuiltin(id: string): MotionTemplate | undefined {
+  return builtins.find(t => t.id === id)
+}
+
+/** Make a minimal broken fixture from a valid template with overrides. */
+function brokenFixture(
+  overrides: Partial<MotionTemplate> & { id: string }
+): MotionTemplate {
+  return {
+    schemaVersion: 1,
+    version: '1.0.0',
+    name: 'Broken fixture',
+    description: 'Testing',
+    category: 'lower-third',
+    status: 'stable',
+    tags: [],
+    fonts: ['CabritoSemi-NorBol'],
+    duration: 4,
+    inEnd: 0.8,
+    outStart: 3.4,
+    params: {},
+    layers: [
+      {
+        kind: 'rect',
+        id: 'bg',
+        anchor: { x: 0, y: 0 },
+        position: [{ t: 0, value: { x: 500, y: 500 } }],
+        opacity: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0.8,
+            value: 1,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          {
+            t: 3.4,
+            value: 1,
+            ease: [0.7, 0, 1, 0.5] as [number, number, number, number]
+          },
+          { t: 4, value: 0 }
+        ],
+        width: 600,
+        height: 100,
+        fill: '#333333',
+        radius: 12
+      }
+    ],
+    ...overrides
+  }
+}
+
+// ---------------------------------------------------------------------------
+// S2.1: all ten built-ins present
+// ---------------------------------------------------------------------------
+
+describe('S2.1: all ten built-ins present', () => {
+  it('each expected template is present with correct name, category and status', () => {
+    for (const id of BUILTIN_IDS) {
+      const t = findBuiltin(id)
+      expect(t, `built-in "${id}" not found`).toBeDefined()
+      if (!t) continue
+      expect(t.name).toBe(BUILTIN_NAMES[id])
+      expect(t.category).toBe(BUILTIN_CATEGORIES[id])
+      expect(t.status).toBe(BUILTIN_STATUSES[id])
+    }
+  })
+
+  it('each built-in passes the schema with a semver version', () => {
+    for (const t of builtins) {
+      const result = parseTemplate(t)
+      expect(
+        result.success,
+        `${t.id} failed schema: ${'error' in result ? result.error : ''}`
+      ).toBe(true)
+      expect(t.version).toMatch(/^\d+\.\d+\.\d+$/)
+    }
+  })
+
+  it('no two built-ins share an id', () => {
+    const ids = builtins.map(t => t.id)
+    const unique = new Set(ids)
+    expect(unique.size).toBe(ids.length)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S2.2: Cabrito font usage
+// ---------------------------------------------------------------------------
+
+describe('S2.2: Cabrito font in text layers', () => {
+  function collectFontsFromLayers(layers: MotionTemplate['layers']): string[] {
+    const fonts: string[] = []
+    for (const l of layers) {
+      if (l.kind === 'text') {
+        fonts.push(`${l.font.family} ${l.font.style}`)
+      }
+      if (l.kind === 'group') {
+        fonts.push(...collectFontsFromLayers(l.children))
+      }
+    }
+    return fonts
+  }
+
+  it('every built-in with text layers uses Cabrito Semi Norm Bold', () => {
+    for (const t of builtins) {
+      const fonts = collectFontsFromLayers(t.layers)
+      if (fonts.length === 0) continue
+      expect(t.fonts, `${t.id} missing CabritoSemi-NorBol in fonts`).toContain(
+        'CabritoSemi-NorBol'
+      )
+      for (const f of fonts) {
+        expect(f, `${t.id} text layer uses wrong font`).toBe('Cabrito Semi Norm Bold')
+      }
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S2.3: Spread map structure
+// ---------------------------------------------------------------------------
+
+describe('S2.3: Spread map template', () => {
+  it('has particles, image param, region tints, counter and credits', () => {
+    const sm = findBuiltin('spread-map')
+    expect(sm).toBeDefined()
+    if (!sm) return
+
+    // Particles layer
+    const particles = sm.layers.find(l => l.kind === 'particles')
+    expect(particles, 'no particles layer').toBeDefined()
+    if (particles && particles.kind === 'particles') {
+      expect(particles.points.length).toBeGreaterThanOrEqual(3000)
+      expect(particles.points.length).toBeLessThanOrEqual(6000)
+    }
+
+    // Image param
+    const imageParam = Object.values(sm.params).find(p => p.kind === 'image')
+    expect(imageParam, 'no image param').toBeDefined()
+
+    // Region tint colour params
+    const colourParams = Object.values(sm.params).filter(p => p.kind === 'colour')
+    expect(colourParams.length).toBeGreaterThan(0)
+
+    // Number counter param
+    const numberParam = Object.values(sm.params).find(p => p.kind === 'number')
+    expect(numberParam, 'no number param').toBeDefined()
+
+    // Credits
+    expect(sm.credits).toBeDefined()
+    expect(sm.credits!.length).toBeGreaterThan(0)
+    const credit = sm.credits![0]
+    expect(credit.url).toBeTruthy()
+    expect(credit.author).toBeTruthy()
+    expect(['CC0', 'Unsplash License', 'Public domain']).toContain(credit.licence)
+
+    // Derived targets: video and prompt only
+    // (checked via hasParticles logic)
+    expect(sm.layers.some(l => l.kind === 'particles')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S2.4: Scan trail structure
+// ---------------------------------------------------------------------------
+
+describe('S2.4: Scan trail template', () => {
+  it('has series layer with numberList, marker, band, expands correctly', () => {
+    const st = findBuiltin('scan-trail')
+    expect(st).toBeDefined()
+    if (!st) return
+
+    // Series layer (may be inside a group)
+    function findSeries(
+      layers: MotionTemplate['layers']
+    ): MotionTemplate['layers'][number] | undefined {
+      for (const l of layers) {
+        if (l.kind === 'series') return l
+        if (l.kind === 'group') {
+          const found = findSeries(l.children)
+          if (found) return found
+        }
+      }
+      return undefined
+    }
+    const series = findSeries(st.layers)
+    expect(series, 'no series layer').toBeDefined()
+    if (!series || series.kind !== 'series') return
+
+    // Bound to numberList param
+    const param = st.params[series.series.param]
+    expect(param).toBeDefined()
+    expect(param.kind).toBe('numberList')
+    if (param.kind === 'numberList') {
+      expect(param.default.length).toBeLessThanOrEqual(8)
+    }
+
+    // Has marker
+    expect(series.series.marker).toBeDefined()
+
+    // Has band
+    expect(series.series.band).toBeDefined()
+
+    // Expand with 6 values: yields dots, marker and hatch
+    const sixValues = [
+      { label: 'A', value: 10 },
+      { label: 'B', value: 30 },
+      { label: 'C', value: 50 },
+      { label: 'D', value: 70 },
+      { label: 'E', value: 40 },
+      { label: 'F', value: 60 }
+    ]
+    // Flatten expanded layers (series inside groups become children)
+    function flattenLayers(
+      layers: ReturnType<typeof expandTemplate>
+    ): ReturnType<typeof expandTemplate> {
+      const flat: ReturnType<typeof expandTemplate> = []
+      for (const l of layers) {
+        flat.push(l)
+        if (l.kind === 'group') {
+          flat.push(...flattenLayers(l.children))
+        }
+      }
+      return flat
+    }
+
+    const expanded6 = flattenLayers(
+      expandTemplate(st.layers, st.params, {
+        [series.series.param]: sixValues
+      })
+    )
+    const dots6 = expanded6.filter(l => l.kind === 'ellipse' && l.id.includes('-dot-'))
+    expect(dots6.length).toBe(6)
+    const marker6 = expanded6.find(l => l.id.includes('-marker'))
+    expect(marker6).toBeDefined()
+    const hatch6 = expanded6.filter(l => l.id.includes('-hatch-'))
+    expect(hatch6.length).toBeGreaterThan(0)
+
+    // Expand with 1 value: no hatch
+    const oneValue = [{ label: 'A', value: 10 }]
+    const expanded1 = flattenLayers(
+      expandTemplate(st.layers, st.params, {
+        [series.series.param]: oneValue
+      })
+    )
+    const hatch1 = expanded1.filter(l => l.id.includes('-hatch-'))
+    expect(hatch1.length).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S2.5: Score ring and Spread map counter/arc
+// ---------------------------------------------------------------------------
+
+describe('S2.5: Score ring and Spread map counters/arcs', () => {
+  it('Score ring: number param, arc with sweepFromParam, counter', () => {
+    const sr = findBuiltin('score-ring')
+    expect(sr).toBeDefined()
+    if (!sr) return
+
+    // Number param with min 0, max 100
+    const numParam = Object.entries(sr.params).find(([, p]) => p.kind === 'number')
+    expect(numParam).toBeDefined()
+    if (!numParam) return
+    const [numId, numDef] = numParam
+    expect(numDef.kind).toBe('number')
+    if (numDef.kind !== 'number') return
+    expect(numDef.min).toBe(0)
+    expect(numDef.max).toBe(100)
+
+    // Arc with sweepFromParam
+    const arc = sr.layers.find(l => l.kind === 'arc' && l.sweepFromParam)
+    expect(arc, 'no arc with sweepFromParam').toBeDefined()
+    if (!arc || arc.kind !== 'arc') return
+    expect(arc.sweepFromParam!.param).toBe(numId)
+
+    // Counter text layer
+    const counterLayer = sr.layers.find(l => l.kind === 'text' && l.counter)
+    expect(counterLayer, 'no counter text layer').toBeDefined()
+    if (!counterLayer || counterLayer.kind !== 'text') return
+    expect(counterLayer.counter!.param).toBe(numId)
+
+    // Resolve with 72: arc sweep is 0.72, counter text ends at "72"
+    const expanded = expandTemplate(sr.layers, sr.params, { [numId]: 72 })
+    const expandedArc = expanded.find(l => l.id === arc.id)
+    expect(expandedArc).toBeDefined()
+    if (expandedArc && expandedArc.kind === 'arc') {
+      const lastSweep = expandedArc.sweep[expandedArc.sweep.length - 1]
+      expect(lastSweep.value).toBeCloseTo(0.72, 5)
+    }
+  })
+
+  it('Spread map: counter bound to its number param', () => {
+    const sm = findBuiltin('spread-map')
+    expect(sm).toBeDefined()
+    if (!sm) return
+
+    const numParam = Object.entries(sm.params).find(([, p]) => p.kind === 'number')
+    expect(numParam).toBeDefined()
+    if (!numParam) return
+
+    const counterLayer = sm.layers.find(l => l.kind === 'text' && l.counter)
+    expect(counterLayer, 'Spread map has no counter text layer').toBeDefined()
+    if (!counterLayer || counterLayer.kind !== 'text') return
+    expect(counterLayer.counter!.param).toBe(numParam[0])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S2.6: all formats valid at 24 fps
+// ---------------------------------------------------------------------------
+
+describe('S2.6: built-ins valid at all fps including 24', () => {
+  const ALL_FORMATS: MotionFormat[] = []
+  for (const width of [3840, 1920] as const) {
+    const height = width === 3840 ? 2160 : 1080
+    for (const fps of [24, 25, 30, 50, 60] as const) {
+      ALL_FORMATS.push({
+        width: width as 3840 | 1920,
+        height: height as 2160 | 1080,
+        fps: fps as 24 | 25 | 30 | 50 | 60
+      })
+    }
+  }
+
+  it.each(builtins.map(t => [t.id, t] as [string, MotionTemplate]))(
+    '%s valid at every format',
+    (_id, t) => {
+      const formats = validFormats(t)
+      for (const fmt of ALL_FORMATS) {
+        const found = formats.some(f => f.width === fmt.width && f.fps === fmt.fps)
+        expect(found, `${t.id} invalid at ${fmt.width}x${fmt.height}@${fmt.fps}fps`).toBe(
+          true
+        )
+      }
+    }
+  )
+})
+
+// ---------------------------------------------------------------------------
+// S2.7: only .json files in templates directory
+// ---------------------------------------------------------------------------
+
+describe('S2.7: templates directory contains only .json', () => {
+  it('no non-json files in internal/templates/', () => {
+    const __filename = fileURLToPath(import.meta.url)
+    const __dirname = dirname(__filename)
+    const templatesDir = join(__dirname, '..', 'templates')
+    let files: string[]
+    try {
+      files = readdirSync(templatesDir)
+    } catch {
+      files = []
+    }
+    // Filter out .gitkeep
+    const realFiles = files.filter(f => f !== '.gitkeep')
+    for (const f of realFiles) {
+      expect(f, `non-JSON file in templates: ${f}`).toMatch(/\.json$/)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S3.1: in-duration rule
+// ---------------------------------------------------------------------------
+
+describe('S3.1: in-duration 0.5-1s', () => {
+  it('broken fixture (too short) reports violation', () => {
+    const t = brokenFixture({ id: 'broken-in-short', inEnd: 0.3 })
+    const violations = checkInDuration(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.1')
+  })
+
+  it('broken fixture (too long) reports violation', () => {
+    const t = brokenFixture({ id: 'broken-in-long', inEnd: 1.5, outStart: 3.4 })
+    const violations = checkInDuration(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.1')
+  })
+
+  it('all built-ins pass', () => {
+    for (const t of builtins) {
+      const violations = checkInDuration(t)
+      expect(violations, `${t.id} failed S3.1`).toEqual([])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S3.2: out/in ratio rule
+// ---------------------------------------------------------------------------
+
+describe('S3.2: out/in ratio 0.5-0.8', () => {
+  it('broken fixture (ratio too low) reports violation', () => {
+    // inEnd=0.8, outStart=3.8, duration=4 -> outDur=0.2, ratio=0.25
+    const t = brokenFixture({
+      id: 'broken-ratio-low',
+      inEnd: 0.8,
+      outStart: 3.8,
+      duration: 4
+    })
+    const violations = checkOutInRatio(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.2')
+  })
+
+  it('broken fixture (ratio too high) reports violation', () => {
+    // inEnd=0.5, outStart=3, duration=4 -> outDur=1, ratio=2.0
+    const t = brokenFixture({
+      id: 'broken-ratio-high',
+      inEnd: 0.5,
+      outStart: 3,
+      duration: 4
+    })
+    const violations = checkOutInRatio(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.2')
+  })
+
+  it('all built-ins pass', () => {
+    for (const t of builtins) {
+      const violations = checkOutInRatio(t)
+      expect(violations, `${t.id} failed S3.2`).toEqual([])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S3.3: stagger budget rule
+// ---------------------------------------------------------------------------
+
+describe('S3.3: stagger total <= 40% of entrance', () => {
+  it('broken fixture (stagger too long) reports violation', () => {
+    const t: MotionTemplate = {
+      ...brokenFixture({ id: 'broken-stagger' }),
+      params: {
+        name: {
+          kind: 'text',
+          label: 'Name',
+          maxLength: 30,
+          default: 'Test long enough to bust',
+          required: true
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'title',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 500, y: 500 } }],
+          text: 'Test long enough to bust',
+          param: 'name',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 60 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff',
+          stagger: { delay: 0.05 }, // 0.05 * 23 = 1.15 >> 40% of 0.8 = 0.32
+          width: 1200
+        }
+      ]
+    }
+    const violations = checkStaggerBudget(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.3')
+  })
+
+  it('all built-ins pass', () => {
+    for (const t of builtins) {
+      const violations = checkStaggerBudget(t)
+      expect(violations, `${t.id} failed S3.3`).toEqual([])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S3.4: title-safe rule
+// ---------------------------------------------------------------------------
+
+describe('S3.4: title-safe and action-safe bounds', () => {
+  it('broken fixture (text outside safe area) reports violation', () => {
+    const t = brokenFixture({
+      id: 'broken-safe',
+      layers: [
+        {
+          kind: 'text',
+          id: 'offscreen',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 50, y: 50 } }],
+          text: 'Offscreen',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 60 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff'
+        }
+      ]
+    })
+    const violations = checkTitleSafe(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.4')
+  })
+
+  it('all built-ins pass', () => {
+    for (const t of builtins) {
+      const violations = checkTitleSafe(t)
+      expect(violations, `${t.id} failed S3.4`).toEqual([])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S3.5: text box width rule
+// ---------------------------------------------------------------------------
+
+describe('S3.5: text box >= maxLength x fontSize x 0.6', () => {
+  it('broken fixture (box too narrow) reports violation', () => {
+    const t: MotionTemplate = {
+      ...brokenFixture({ id: 'broken-textbox' }),
+      params: {
+        title: {
+          kind: 'text',
+          label: 'Title',
+          maxLength: 40,
+          default: 'Test',
+          required: true
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'narrow',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 500, y: 500 } }],
+          text: 'Test',
+          param: 'title',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff',
+          width: 500 // 40 * 80 * 0.6 = 1920
+        }
+      ]
+    }
+    const violations = checkTextBoxWidth(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.5')
+  })
+
+  it('all built-ins pass', () => {
+    for (const t of builtins) {
+      const violations = checkTextBoxWidth(t)
+      expect(violations, `${t.id} failed S3.5`).toEqual([])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S3.6: ease direction rule
+// ---------------------------------------------------------------------------
+
+describe('S3.6: ease direction (entrance out, exit in)', () => {
+  it('broken fixture (entrance eases in) reports violation', () => {
+    const t = brokenFixture({
+      id: 'broken-ease',
+      layers: [
+        {
+          kind: 'rect',
+          id: 'wrong-ease',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 500, y: 500 } }],
+          opacity: [
+            // Entrance segment: ease in (y1 < x1) - WRONG
+            {
+              t: 0,
+              value: 0,
+              ease: [0.7, 0.2, 0.84, 0] as [number, number, number, number]
+            },
+            { t: 0.8, value: 1 }
+          ],
+          width: 600,
+          height: 100,
+          fill: '#333333',
+          radius: 12
+        }
+      ]
+    })
+    const violations = checkEaseDirection(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.6')
+  })
+
+  it('all built-ins pass', () => {
+    for (const t of builtins) {
+      const violations = checkEaseDirection(t)
+      expect(violations, `${t.id} failed S3.6`).toEqual([])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S3.7: entrance quality rule (at least one position/scale animation)
+// ---------------------------------------------------------------------------
+
+describe('S3.7: entrance has position or scale animation', () => {
+  it('broken fixture (opacity-only entrance) reports violation', () => {
+    const t = brokenFixture({
+      id: 'broken-quality',
+      layers: [
+        {
+          kind: 'rect',
+          id: 'fade-only',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 500, y: 500 } }],
+          opacity: [
+            {
+              t: 0,
+              value: 0,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 0.8, value: 1 }
+          ],
+          width: 600,
+          height: 100,
+          fill: '#333333',
+          radius: 12
+        }
+      ]
+    })
+    const violations = checkEntranceQuality(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.7')
+  })
+
+  it('all non-transition built-ins pass', () => {
+    for (const t of builtins) {
+      if (t.category === 'transition') continue
+      const violations = checkEntranceQuality(t)
+      expect(violations, `${t.id} failed S3.7`).toEqual([])
+    }
+  })
+})

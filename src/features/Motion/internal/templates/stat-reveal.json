@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 1,
+  "id": "stat-reveal",
+  "version": "1.0.0",
+  "name": "Stat reveal",
+  "description": "Large counter scales up from the centre, counting from zero to the target value, with a label that slides up and a decorative accent line.",
+  "category": "data",
+  "status": "experimental",
+  "tags": ["data", "stat", "counter", "number"],
+  "fonts": ["CabritoSemi-NorBol"],
+  "primaryTextParam": "label",
+  "duration": 3.28,
+  "inEnd": 0.8,
+  "outStart": 2.8,
+  "hold": {
+    "min": 1,
+    "max": 8,
+    "default": 2
+  },
+  "params": {
+    "value": {
+      "kind": "number",
+      "label": "Value",
+      "default": 247,
+      "min": 0,
+      "max": 9999
+    },
+    "label": {
+      "kind": "text",
+      "label": "Label",
+      "maxLength": 40,
+      "default": "Projects completed",
+      "required": false
+    },
+    "suffix": {
+      "kind": "text",
+      "label": "Suffix",
+      "maxLength": 5,
+      "default": "",
+      "required": false
+    },
+    "accent": {
+      "kind": "colour",
+      "label": "Accent",
+      "default": "#C8E64A",
+      "binds": ["layers[1]"]
+    },
+    "hold": {
+      "kind": "hold",
+      "label": "Hold duration",
+      "min": 1,
+      "max": 8,
+      "default": 2
+    }
+  },
+  "layers": [
+    {
+      "kind": "text",
+      "id": "counter-text",
+      "anchor": {
+        "x": 1920,
+        "y": 920
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1920,
+            "y": 920
+          }
+        }
+      ],
+      "scale": [
+        {
+          "t": 0,
+          "value": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.7,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.28,
+          "value": {
+            "x": 0.85,
+            "y": 0.85
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.45,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.28,
+          "value": 0
+        }
+      ],
+      "text": "0",
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 100
+      },
+      "align": "center",
+      "lineHeight": 1,
+      "multiline": false,
+      "fill": "#ffffff",
+      "counter": {
+        "param": "value",
+        "decimals": 0,
+        "prefix": "",
+        "suffix": "",
+        "progress": [
+          {
+            "t": 0.1,
+            "value": 0,
+            "ease": [0.16, 1, 0.3, 1]
+          },
+          {
+            "t": 0.8,
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "kind": "rect",
+      "id": "accent-line",
+      "anchor": {
+        "x": 0,
+        "y": 0
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1520,
+            "y": 1000
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0.2,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.5,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.2,
+          "value": 0
+        }
+      ],
+      "widthAnimation": [
+        {
+          "t": 0.2,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.6,
+          "value": 800,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": 800,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.2,
+          "value": 0
+        }
+      ],
+      "width": 800,
+      "height": 4,
+      "fill": "#C8E64A",
+      "radius": 2
+    },
+    {
+      "kind": "text",
+      "id": "label-text",
+      "anchor": {
+        "x": 0,
+        "y": 0
+      },
+      "position": [
+        {
+          "t": 0.3,
+          "value": {
+            "x": 1920,
+            "y": 1090
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.8,
+          "value": {
+            "x": 1920,
+            "y": 1040
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": {
+            "x": 1920,
+            "y": 1040
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.2,
+          "value": {
+            "x": 1920,
+            "y": 1060
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0.3,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.7,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.15,
+          "value": 0
+        }
+      ],
+      "text": "Projects completed",
+      "param": "label",
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 42
+      },
+      "align": "center",
+      "lineHeight": 1.2,
+      "multiline": false,
+      "fill": "#999999",
+      "width": 1500
+    }
+  ]
+}

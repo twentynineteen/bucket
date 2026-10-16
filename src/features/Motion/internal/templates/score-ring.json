@@ -1,0 +1,404 @@
+{
+  "schemaVersion": 1,
+  "id": "score-ring",
+  "version": "1.0.0",
+  "name": "Score ring",
+  "description": "Arc ring sweeps from zero to the score percentage while scaling up, animated counter in the centre counts up, label slides up below.",
+  "category": "data",
+  "status": "stable",
+  "tags": ["data", "score", "ring", "gauge", "percentage"],
+  "fonts": ["CabritoSemi-NorBol"],
+  "primaryTextParam": "label",
+  "duration": 3.28,
+  "inEnd": 0.8,
+  "outStart": 2.8,
+  "hold": {
+    "min": 1,
+    "max": 8,
+    "default": 2
+  },
+  "params": {
+    "score": {
+      "kind": "number",
+      "label": "Score",
+      "default": 72,
+      "min": 0,
+      "max": 100
+    },
+    "label": {
+      "kind": "text",
+      "label": "Label",
+      "maxLength": 20,
+      "default": "Completion",
+      "required": false
+    },
+    "accent": {
+      "kind": "colour",
+      "label": "Accent",
+      "default": "#C8E64A",
+      "binds": ["layers[1]"]
+    },
+    "hold": {
+      "kind": "hold",
+      "label": "Hold duration",
+      "min": 1,
+      "max": 8,
+      "default": 2
+    }
+  },
+  "layers": [
+    {
+      "kind": "arc",
+      "id": "track-ring",
+      "anchor": {
+        "x": 1920,
+        "y": 980
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1920,
+            "y": 980
+          }
+        }
+      ],
+      "scale": [
+        {
+          "t": 0,
+          "value": {
+            "x": 0.7,
+            "y": 0.7
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.7,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.28,
+          "value": {
+            "x": 0.85,
+            "y": 0.85
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.4,
+          "value": 0.2,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": 0.2,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.28,
+          "value": 0
+        }
+      ],
+      "innerRadius": 340,
+      "outerRadius": 380,
+      "sweep": [
+        {
+          "t": 0,
+          "value": 1
+        }
+      ],
+      "startAngle": [
+        {
+          "t": 0,
+          "value": -90
+        }
+      ],
+      "fill": "#333333"
+    },
+    {
+      "kind": "arc",
+      "id": "score-arc",
+      "anchor": {
+        "x": 1920,
+        "y": 980
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1920,
+            "y": 980
+          }
+        }
+      ],
+      "scale": [
+        {
+          "t": 0,
+          "value": {
+            "x": 0.7,
+            "y": 0.7
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.7,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.28,
+          "value": {
+            "x": 0.85,
+            "y": 0.85
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.3,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.28,
+          "value": 0
+        }
+      ],
+      "innerRadius": 340,
+      "outerRadius": 380,
+      "sweep": [
+        {
+          "t": 0,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.8,
+          "value": 1
+        }
+      ],
+      "startAngle": [
+        {
+          "t": 0,
+          "value": -90
+        }
+      ],
+      "sweepFromParam": {
+        "param": "score",
+        "max": 100
+      },
+      "fill": "#C8E64A"
+    },
+    {
+      "kind": "text",
+      "id": "counter-text",
+      "anchor": {
+        "x": 1920,
+        "y": 980
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1920,
+            "y": 980
+          }
+        }
+      ],
+      "scale": [
+        {
+          "t": 0,
+          "value": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.7,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.28,
+          "value": {
+            "x": 0.85,
+            "y": 0.85
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.4,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.28,
+          "value": 0
+        }
+      ],
+      "text": "0%",
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 100
+      },
+      "align": "center",
+      "lineHeight": 1,
+      "multiline": false,
+      "fill": "#ffffff",
+      "counter": {
+        "param": "score",
+        "decimals": 0,
+        "prefix": "",
+        "suffix": "%",
+        "progress": [
+          {
+            "t": 0,
+            "value": 0,
+            "ease": [0.16, 1, 0.3, 1]
+          },
+          {
+            "t": 0.8,
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "kind": "text",
+      "id": "label-text",
+      "anchor": {
+        "x": 0,
+        "y": 0
+      },
+      "position": [
+        {
+          "t": 0.3,
+          "value": {
+            "x": 1920,
+            "y": 1460
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.8,
+          "value": {
+            "x": 1920,
+            "y": 1420
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": {
+            "x": 1920,
+            "y": 1420
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.2,
+          "value": {
+            "x": 1920,
+            "y": 1440
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0.3,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.7,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 2.8,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.12,
+          "value": 0
+        }
+      ],
+      "text": "Completion",
+      "param": "label",
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 36
+      },
+      "align": "center",
+      "lineHeight": 1.2,
+      "multiline": false,
+      "fill": "#999999",
+      "width": 800
+    }
+  ]
+}
