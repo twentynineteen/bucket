@@ -196,6 +196,53 @@ function applyTextValues(
 }
 
 // ---------------------------------------------------------------------------
+// Stagger delay clamping
+// ---------------------------------------------------------------------------
+
+/**
+ * Count grapheme clusters in a string using Intl.Segmenter.
+ * Falls back to Array.from if Segmenter is unavailable.
+ */
+function graphemeCount(text: string): number {
+  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+    const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+    return Array.from(segmenter.segment(text)).length
+  }
+  return Array.from(text).length
+}
+
+/**
+ * Clamp stagger delays so the total stagger fits the 40% entrance budget
+ * for the actual (resolved) text content.
+ *
+ * effectiveDelay = min(templateDelay, 0.4 * inEnd / max(1, charCount - 1))
+ */
+function clampStaggerDelays(layers: Layer[], inEnd: number): Layer[] {
+  if (inEnd <= 0) return layers
+  const budget = inEnd * 0.4
+
+  return layers.map(layer => {
+    if (layer.kind === 'group') {
+      return {
+        ...layer,
+        children: clampStaggerDelays(layer.children, inEnd)
+      }
+    }
+    if (layer.kind === 'text' && layer.stagger && layer.stagger.delay > 0) {
+      const charCount = graphemeCount(layer.text)
+      const maxDelay = budget / Math.max(1, charCount - 1)
+      if (layer.stagger.delay > maxDelay) {
+        return {
+          ...layer,
+          stagger: { delay: maxDelay }
+        }
+      }
+    }
+    return layer
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Apply colour param bindings
 // ---------------------------------------------------------------------------
 
@@ -703,6 +750,9 @@ export function resolveTemplate(
 
   // 2. Apply text param values to layers
   let layers = applyTextValues(template.layers, template.params, resolvedValues)
+
+  // 2b. Clamp stagger delays so the total fits the 40% entrance budget
+  layers = clampStaggerDelays(layers, template.inEnd)
 
   // 3. Apply colour bindings
   layers = applyColourBindings(layers, template.params, resolvedValues)

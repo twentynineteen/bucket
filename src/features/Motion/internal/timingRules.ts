@@ -89,12 +89,13 @@ export function checkOutInRatio(t: MotionTemplate): TimingViolation[] {
 // Rule S3.3: stagger total <= 40% of entrance
 // ---------------------------------------------------------------------------
 
-function findTextLayerMaxLength(
+/** Return the default text length for stagger budget measurement. */
+function findDefaultTextLength(
   layer: TextLayer,
   params: MotionTemplate['params']
 ): number {
   if (layer.param && params[layer.param]?.kind === 'text') {
-    return (params[layer.param] as { maxLength: number }).maxLength
+    return (params[layer.param] as { default: string }).default.length
   }
   return layer.text.length
 }
@@ -119,7 +120,7 @@ export function checkStaggerBudget(t: MotionTemplate): TimingViolation[] {
   const violations: TimingViolation[] = []
 
   for (const layer of collectStaggeredTextLayers(t.layers)) {
-    const maxLen = findTextLayerMaxLength(layer, t.params)
+    const maxLen = findDefaultTextLength(layer, t.params)
     const total = layer.stagger!.delay * (maxLen - 1)
     if (total > budget + 1e-9) {
       violations.push({
@@ -214,11 +215,9 @@ function layerBounds(
     return { left: minX, right: maxX, top: minY, bottom: maxY }
   }
 
-  if (state.kind === 'ellipse' || state.kind === 'arc') {
-    // Arc and ellipse bounds depend on their anchor-relative drawing.
-    // The matrix maps (0,0) to tx,ty but the shape is drawn at the anchor.
-    // Skip these for title-safe: their positioning is validated by the
-    // template author placing them centrally.
+  if (state.kind === 'arc' || state.kind === 'ellipse') {
+    // Arc/ellipse bounds depend on their anchor-relative drawing.
+    // Checked separately via checkArcEllipseSafe on the original template.
     return null
   }
 
@@ -271,6 +270,51 @@ function checkLayerTitleSafe(
   return null
 }
 
+/**
+ * Check arc and ellipse layers directly from template data.
+ * Their position keyframe values give the visual centre; we check
+ * that centre +/- radius stays in the safe area at hold times.
+ */
+function checkArcEllipseSafe(
+  layers: Layer[],
+  inEnd: number,
+  outStart: number,
+  templateId: string
+): TimingViolation[] {
+  const violations: TimingViolation[] = []
+  for (const layer of layers) {
+    if (layer.kind === 'group') {
+      violations.push(...checkArcEllipseSafe(layer.children, inEnd, outStart, templateId))
+      continue
+    }
+    if (layer.kind !== 'arc' && layer.kind !== 'ellipse') continue
+
+    const radius =
+      layer.kind === 'arc' ? layer.outerRadius : Math.max(layer.radiusX, layer.radiusY)
+
+    // Check at hold-phase position keyframe times
+    if (!layer.position) continue
+    for (const kf of layer.position) {
+      if (kf.t < inEnd - 1e-9 || kf.t > outStart + 1e-9) continue
+      const cx = kf.value.x
+      const cy = kf.value.y
+      if (
+        cx - radius < TITLE_SAFE.left ||
+        cx + radius > TITLE_SAFE.right ||
+        cy - radius < TITLE_SAFE.top ||
+        cy + radius > TITLE_SAFE.bottom
+      ) {
+        violations.push({
+          templateId,
+          rule: 'S3.4',
+          message: `layer "${layer.id}" arc/ellipse bounds outside 90% title-safe at t=${kf.t}`
+        })
+      }
+    }
+  }
+  return violations
+}
+
 export function checkTitleSafe(t: MotionTemplate): TimingViolation[] {
   if (t.category === 'transition') return []
 
@@ -295,6 +339,10 @@ export function checkTitleSafe(t: MotionTemplate): TimingViolation[] {
       if (v) violations.push(v)
     }
   }
+
+  // Check arc/ellipse layers from template data (not LayerState)
+  violations.push(...checkArcEllipseSafe(t.layers, t.inEnd, t.outStart, t.id))
+
   return violations
 }
 
@@ -423,6 +471,67 @@ export function checkEaseDirection(t: MotionTemplate): TimingViolation[] {
 }
 
 // ---------------------------------------------------------------------------
+// Rule S3.7: entrance quality - at least one position/scale animation
+// ---------------------------------------------------------------------------
+
+/** Check whether a layer has a position track whose value changes during entrance. */
+function hasEntrancePositionChange(layer: Layer, inEnd: number): boolean {
+  if (layer.position && layer.position.length >= 2) {
+    const entranceKeys = layer.position.filter(k => k.t <= inEnd + 1e-9)
+    if (entranceKeys.length >= 2) {
+      const first = entranceKeys[0].value
+      const last = entranceKeys[entranceKeys.length - 1].value
+      if (Math.abs(first.x - last.x) > 1 || Math.abs(first.y - last.y) > 1) {
+        return true
+      }
+    }
+  }
+  if (layer.kind === 'group') {
+    for (const child of layer.children) {
+      if (hasEntrancePositionChange(child, inEnd)) return true
+    }
+  }
+  return false
+}
+
+/** Check whether a layer has a scale track whose value changes during entrance. */
+function hasEntranceScaleChange(layer: Layer, inEnd: number): boolean {
+  if (layer.scale && layer.scale.length >= 2) {
+    const entranceKeys = layer.scale.filter(k => k.t <= inEnd + 1e-9)
+    if (entranceKeys.length >= 2) {
+      const first = entranceKeys[0].value
+      const last = entranceKeys[entranceKeys.length - 1].value
+      if (Math.abs(first.x - last.x) > 0.01 || Math.abs(first.y - last.y) > 0.01) {
+        return true
+      }
+    }
+  }
+  if (layer.kind === 'group') {
+    for (const child of layer.children) {
+      if (hasEntranceScaleChange(child, inEnd)) return true
+    }
+  }
+  return false
+}
+
+export function checkEntranceQuality(t: MotionTemplate): TimingViolation[] {
+  if (t.category === 'transition') return []
+
+  for (const layer of t.layers) {
+    if (hasEntrancePositionChange(layer, t.inEnd)) return []
+    if (hasEntranceScaleChange(layer, t.inEnd)) return []
+  }
+
+  return [
+    {
+      templateId: t.id,
+      rule: 'S3.7',
+      message: 'no position or scale animation changes during entrance'
+    }
+  ]
+}
+
+// ---------------------------------------------------------------------------
 // Run all rules
 // ---------------------------------------------------------------------------
 
@@ -437,6 +546,7 @@ export function checkAllRules(t: MotionTemplate): TimingViolation[] {
     ...checkStaggerBudget(t),
     ...checkTitleSafe(t),
     ...checkTextBoxWidth(t),
-    ...checkEaseDirection(t)
+    ...checkEaseDirection(t),
+    ...checkEntranceQuality(t)
   ]
 }

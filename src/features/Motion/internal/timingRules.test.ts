@@ -528,7 +528,7 @@ describe('S3.3: stagger total <= 40% of entrance', () => {
           kind: 'text',
           label: 'Name',
           maxLength: 30,
-          default: 'Test',
+          default: 'Test long enough to bust',
           required: true
         }
       },
@@ -538,14 +538,14 @@ describe('S3.3: stagger total <= 40% of entrance', () => {
           id: 'title',
           anchor: { x: 0, y: 0 },
           position: [{ t: 0, value: { x: 500, y: 500 } }],
-          text: 'Test',
+          text: 'Test long enough to bust',
           param: 'name',
           font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 60 },
           align: 'left',
           lineHeight: 1.2,
           multiline: false,
           fill: '#ffffff',
-          stagger: { delay: 0.05 }, // 0.05 * 29 = 1.45 >> 40% of 0.8 = 0.32
+          stagger: { delay: 0.05 }, // 0.05 * 23 = 1.15 >> 40% of 0.8 = 0.32
           width: 1200
         }
       ]
