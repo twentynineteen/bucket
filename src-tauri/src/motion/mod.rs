@@ -8,6 +8,11 @@
 //! Stubs created by #327 (Foundation); #334 replaces the bodies.
 
 pub mod commands;
+pub mod encoder;
+pub mod state;
+
+#[cfg(test)]
+mod integration_tests;
 
 pub use commands::{
     motion_render_cancel, motion_render_finish, motion_render_frame, motion_render_start,

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "shape-wipe",
+  "version": "1.0.0",
+  "name": "Shape wipe",
+  "description": "Diagonal rect travels across the full frame as a transition wipe.",
+  "category": "transition",
+  "status": "stable",
+  "tags": ["transition", "wipe", "diagonal"],
+  "fonts": [],
+  "duration": 0.96,
+  "inEnd": 0.6,
+  "outStart": 0.6,
+  "params": {},
+  "layers": [
+    {
+      "kind": "rect",
+      "id": "wipe-rect",
+      "anchor": {
+        "x": 2400,
+        "y": 2400
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": -1200,
+            "y": 1080
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.6,
+          "value": {
+            "x": 1920,
+            "y": 1080
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 0.96,
+          "value": {
+            "x": 5040,
+            "y": 1080
+          }
+        }
+      ],
+      "rotation": [
+        {
+          "t": 0,
+          "value": 15
+        }
+      ],
+      "width": 4800,
+      "height": 4800,
+      "fill": "#1a1a1a",
+      "radius": 0
+    }
+  ]
+}
