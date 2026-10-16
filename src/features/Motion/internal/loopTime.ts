@@ -18,7 +18,8 @@ export const LOOP_GAP = 0.5
  * @param duration - the resolved template duration (with hold applied)
  */
 export function loopTime(elapsed: number, duration: number): number | null {
-  void elapsed
-  void duration
-  throw new Error('not implemented')
+  const period = duration + LOOP_GAP
+  const t = elapsed % period
+  if (t >= duration) return null
+  return t
 }

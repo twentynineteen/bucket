@@ -4,7 +4,7 @@
  * Uses fake timers and a rAF stub - no real time.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { subscribe, subscriberCount } from './ticker'
+import { _reset, subscribe, subscriberCount } from './ticker'
 
 // ---------------------------------------------------------------------------
 // rAF stub: a manual rAF that we control
@@ -46,8 +46,13 @@ beforeEach(() => {
   rafCallbacks = new Map()
   nextRafId = 1
   currentTime = 0
+
+  // Stub rAF before resetting the ticker (reset calls cancelAnimationFrame)
   vi.stubGlobal('requestAnimationFrame', stubRaf)
   vi.stubGlobal('cancelAnimationFrame', stubCancelRaf)
+
+  // Reset the ticker's internal state between tests
+  _reset()
 
   // Reset visibility state to visible
   Object.defineProperty(document, 'visibilityState', {
@@ -58,6 +63,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  _reset()
   vi.restoreAllMocks()
 })
 

@@ -18,8 +18,10 @@ test.describe('motion frame renderer', () => {
 
     const result = await page.evaluate(async () => {
       // Import the frame renderer from the Vite dev server
+      // @ts-expect-error - dynamic Vite import resolved at runtime in the browser
       const { renderFrameToPng } =
         await import('/src/features/Motion/internal/frameRenderer.ts')
+      // @ts-expect-error - dynamic Vite import resolved at runtime in the browser
       const { resolveTemplate } = await import('/src/features/Motion/internal/resolve.ts')
 
       const template = {
@@ -98,8 +100,10 @@ test.describe('motion frame renderer', () => {
     await page.goto('/')
 
     const result = await page.evaluate(async () => {
+      // @ts-expect-error - dynamic Vite import resolved at runtime in the browser
       const { renderFrameToPng } =
         await import('/src/features/Motion/internal/frameRenderer.ts')
+      // @ts-expect-error - dynamic Vite import resolved at runtime in the browser
       const { resolveTemplate } = await import('/src/features/Motion/internal/resolve.ts')
 
       const template = {

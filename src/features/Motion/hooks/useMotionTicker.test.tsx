@@ -51,7 +51,7 @@ beforeEach(() => {
   )
 
   // Reset IO entries
-  delete (window as Record<string, unknown>).__BUCKET_IO_ENTRIES__
+  delete (window as unknown as Record<string, unknown>).__BUCKET_IO_ENTRIES__
 })
 
 afterEach(() => {
@@ -82,7 +82,7 @@ describe('useMotionTicker', () => {
 
     // Configure IO to report as not intersecting
     const ioEntries = new Map()
-    ;(window as Record<string, unknown>).__BUCKET_IO_ENTRIES__ = ioEntries
+    ;(window as unknown as Record<string, unknown>).__BUCKET_IO_ENTRIES__ = ioEntries
 
     const { result } = renderHook(() => useMotionTicker(BASE_OPTIONS))
     const el = document.createElement('div')

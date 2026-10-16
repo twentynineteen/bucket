@@ -4,7 +4,6 @@
  * Mocks api.ts to verify the render pipeline orchestration.
  */
 import { act, renderHook } from '@testing-library/react'
-import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FontData } from '../internal/frameRenderer'
 import type { MotionFormat, MotionRenderProgress, ResolvedTemplate } from '../types'
@@ -96,20 +95,6 @@ const FONT_DATA: FontData[] = [
 ]
 
 // ---------------------------------------------------------------------------
-// Wrapper
-// ---------------------------------------------------------------------------
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { QueryClientProvider, QueryClient } = require('@tanstack/react-query')
-
-function Wrapper({ children }: { children: React.ReactNode }) {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0 } }
-  })
-  return React.createElement(QueryClientProvider, { client }, children)
-}
-
-// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -136,9 +121,7 @@ afterEach(() => {
 describe('useRenderVideo', () => {
   // P6.1: render pipeline orchestration with ffmpegDirectory
   it('p6_1_calls_start_send_finish_with_ffmpeg_directory', async () => {
-    const { result } = renderHook(() => useRenderVideo(), {
-      wrapper: Wrapper
-    })
+    const { result } = renderHook(() => useRenderVideo())
 
     expect(result.current.state).toBe('idle')
 
@@ -181,9 +164,7 @@ describe('useRenderVideo', () => {
   })
 
   it('p6_1_passes_null_ffmpeg_directory_when_unset', async () => {
-    const { result } = renderHook(() => useRenderVideo(), {
-      wrapper: Wrapper
-    })
+    const { result } = renderHook(() => useRenderVideo())
 
     await act(async () => {
       await result.current.render({
@@ -208,20 +189,20 @@ describe('useRenderVideo', () => {
       }
     })
 
-    // Make sendRenderFrame slow so we can check progress mid-render
-    const frameResolvers: Array<() => void> = []
-    mockSendRenderFrame.mockImplementation(() => {
-      return new Promise<void>(resolve => {
-        frameResolvers.push(resolve)
-      })
+    // Block sendRenderFrame on the first call so we can fire progress mid-render
+    let resolveFirstFrame: () => void
+    const firstFramePromise = new Promise<void>(r => {
+      resolveFirstFrame = r
     })
+    mockSendRenderFrame
+      .mockImplementationOnce(() => firstFramePromise)
+      .mockResolvedValue(undefined)
 
-    const { result } = renderHook(() => useRenderVideo(), {
-      wrapper: Wrapper
-    })
+    const { result } = renderHook(() => useRenderVideo())
 
-    let renderPromise: Promise<string | null>
-    await act(async () => {
+    // Start render without awaiting (it will block on the first frame)
+    let renderPromise: Promise<string | null> | undefined
+    act(() => {
       renderPromise = result.current.render({
         resolved: makeResolved(),
         format: FORMAT,
@@ -231,7 +212,12 @@ describe('useRenderVideo', () => {
       })
     })
 
-    // Simulate progress event
+    // Let the microtask queue settle so startRender has been called
+    await act(async () => {
+      await new Promise(r => setTimeout(r, 0))
+    })
+
+    // Simulate progress event for our render id
     await act(async () => {
       progressCb?.({
         renderId: 'render-123',
@@ -251,34 +237,29 @@ describe('useRenderVideo', () => {
       })
     })
 
-    // Progress should still be 1/3
     expect(result.current.progress).toBeCloseTo(1 / 3)
 
-    // Resolve all frames to finish
+    // Unblock the first frame and let the render finish
     await act(async () => {
-      for (const r of frameResolvers) r()
-    })
-
-    await act(async () => {
-      await renderPromise!
+      resolveFirstFrame!()
+      await renderPromise
     })
   })
 
   // P6.3: cancel support
   it('p6_3_cancel_stops_render', async () => {
-    const frameResolvers: Array<() => void> = []
-    mockSendRenderFrame.mockImplementation(() => {
-      return new Promise<void>(resolve => {
-        frameResolvers.push(resolve)
-      })
+    // Block sendRenderFrame on the first call
+    let resolveFirstFrame: () => void
+    const firstFramePromise = new Promise<void>(r => {
+      resolveFirstFrame = r
     })
+    mockSendRenderFrame.mockImplementationOnce(() => firstFramePromise)
 
-    const { result } = renderHook(() => useRenderVideo(), {
-      wrapper: Wrapper
-    })
+    const { result } = renderHook(() => useRenderVideo())
 
-    let renderPromise: Promise<string | null>
-    await act(async () => {
+    // Start render without awaiting
+    let renderPromise: Promise<string | null> | undefined
+    act(() => {
       renderPromise = result.current.render({
         resolved: makeResolved(),
         format: FORMAT,
@@ -286,6 +267,11 @@ describe('useRenderVideo', () => {
         fonts: FONT_DATA,
         ffmpegDirectory: null
       })
+    })
+
+    // Let microtasks settle
+    await act(async () => {
+      await new Promise(r => setTimeout(r, 0))
     })
 
     // Cancel while first frame is pending
@@ -301,15 +287,11 @@ describe('useRenderVideo', () => {
 
     // Resolve pending frame so promise settles
     await act(async () => {
-      for (const r of frameResolvers) r()
+      resolveFirstFrame!()
+      await renderPromise
     })
 
-    await act(async () => {
-      await renderPromise!
-    })
-
-    // No further frames should have been sent after cancel
-    // Only 1 frame was in flight when cancel was called
+    // Only 1 frame was in flight when cancel was called (the first sendRenderFrame)
     expect(mockSendRenderFrame).toHaveBeenCalledTimes(1)
   })
 
@@ -319,9 +301,7 @@ describe('useRenderVideo', () => {
       .mockResolvedValueOnce(undefined) // frame 0 OK
       .mockRejectedValueOnce({ kind: 'encodeFailed' }) // frame 1 fails
 
-    const { result } = renderHook(() => useRenderVideo(), {
-      wrapper: Wrapper
-    })
+    const { result } = renderHook(() => useRenderVideo())
 
     await act(async () => {
       await result.current.render({
