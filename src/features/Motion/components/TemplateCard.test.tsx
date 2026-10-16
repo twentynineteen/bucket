@@ -250,4 +250,14 @@ describe('G1.6 TemplateCard preview', () => {
     renderCard(e)
     expect(screen.getByRole('img', { name: 'Glide preview' })).toBeInTheDocument()
   })
+
+  it('wraps the preview in a dark stage with a fixed dark background', () => {
+    const e = makeEntry('glide', { name: 'Glide' })
+    const { container } = renderCard(e)
+    const stage = container.querySelector('.preview-stage') as HTMLElement
+    expect(stage).not.toBeNull()
+    // The stage has a hard-coded dark background, not theme tokens
+    const bg = stage.style.backgroundColor
+    expect(bg === '#1c1c1c' || bg === 'rgb(28, 28, 28)').toBe(true)
+  })
 })
