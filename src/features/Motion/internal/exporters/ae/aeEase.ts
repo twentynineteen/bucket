@@ -46,7 +46,8 @@ export const EASE_DIMENSIONS: Record<string, number> = {
   'ADBE Vector Trim Offset': 1,
   // Text properties (textlayer matchnames page)
   'ADBE Text Tracking Amount': 1,
-  'ADBE Text Selector Max Amount': 1,
+  'ADBE Text Selector Max Amount': 1, // Range Selector
+  'ADBE Text Expressible Amount': 1, // Expression Selector
   // Effect properties (effects matchnames page)
   'ADBE Slider Control-0001': 1,
   // Friendly aliases (kept for the aeEase.test.ts unit tests)

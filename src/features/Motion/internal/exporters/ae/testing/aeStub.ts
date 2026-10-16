@@ -322,9 +322,14 @@ function Math_max(a, b) { return a > b ? a : b; }
   const ctx = vm.createContext({ Math })
   vm.runInContext(setup, ctx, { timeout: 2000 })
 
-  // Expression may use statements and end with a bare value.
-  // Wrap it so the last expression is returned.
-  const wrappedExpr = '(function() { ' + expression + ' })()'
+  // AE expressions return the last evaluated expression automatically.
+  // In a JS function, we need an explicit return. Split on semicolons,
+  // prepend 'return' to the last non-empty statement.
+  const stmts = expression.split(';').filter((s: string) => s.trim())
+  const last = stmts.pop()!
+  const body =
+    stmts.join('; ') + (stmts.length ? '; ' : '') + 'return ' + last.trim() + ';'
+  const wrappedExpr = '(function() { ' + body + ' })()'
   const result = vm.runInContext(wrappedExpr, ctx, { timeout: 2000 })
   return typeof result === 'number' ? result : 0
 }

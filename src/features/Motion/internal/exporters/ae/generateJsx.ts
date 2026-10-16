@@ -50,6 +50,7 @@ interface GenContext {
   compVar: string
   paramLabels: Record<string, { kind: string; label: string }>
   lines: string[]
+  notes: string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -329,16 +330,28 @@ function emitText(layer: TextLayer, compExpr: string, ctx: GenContext): string {
       ');'
   )
 
-  emitTransform(layer, v, L)
+  if (layer.stagger) {
+    // Stagger: opacity keyframes go to a Slider, not Transform Opacity.
+    // Emit transform without opacity.
+    emitTransform({ ...layer, opacity: undefined }, v, L)
+    // Emit the slider-driven stagger animator
+    emitStaggerAnimator(layer, v, L)
+    // Fill stagger: kept unstaggered on the layer
+    if (layer.fillAnimation && layer.fillAnimation.length > 0) {
+      ctx.notes.push(
+        'Fill colour animation on "' +
+          layer.id +
+          '" is not staggered per character in AE. ' +
+          'The fill animates uniformly across the whole text layer.'
+      )
+    }
+  } else {
+    emitTransform(layer, v, L)
+  }
 
   // Tracking: own animator, never stagger-driven
   if (layer.tracking && layer.tracking.length > 0) {
     emitTrackingAnimator(layer, v, L)
-  }
-
-  // Stagger: separate opacity (+ optional fill) animator with Expression Selector
-  if (layer.stagger) {
-    emitStaggerAnimator(layer, v, L)
   }
 
   if (layer.counter) {
@@ -402,16 +415,56 @@ function emitTrackingAnimator(layer: TextLayer, le: string, lines: string[]): vo
 }
 
 // ---------------------------------------------------------------------------
-// Stagger animator (opacity + optional fill, Expression Selector)
-// Per-character stagger animates opacity and fill only (not position/scale/
-// rotation). Layer transforms stay on the layer's Transform group.
-// textlayer matchnames: ADBE Text Opacity, ADBE Text Fill Color,
-//   ADBE Text Expressible Selector (flagged for #339),
-//   ADBE Text Selector Max Amount
+// Stagger animator
+//
+// Moves the layer's opacity keyframes off Transform onto a Slider Control
+// effect, so an Expression Selector can read them at a per-character
+// time offset via valueAtTime.
+//
+// Animator: ADBE Text Opacity set to 0.
+// Expression Selector amount (ADBE Text Expressible Amount):
+//   100 - effect("Stagger Opacity")("ADBE Slider Control-0001")
+//         .valueAtTime(time - (textIndex - 1) * delay)
+//   clamped to [0, 100].
+//
+// Fill stagger: kept unstaggered on the layer. A note is added to
+// ExportResult.notes explaining the limitation.
+//
+// textlayer matchnames: ADBE Text Opacity, ADBE Text Fill Color
+// Expression Selector: ADBE Text Expressible Selector,
+//   ADBE Text Expressible Amount (community.adobe.com/t5/.../14420729)
+// effects matchnames: ADBE Slider Control, ADBE Slider Control-0001
 // ---------------------------------------------------------------------------
 
 function emitStaggerAnimator(layer: TextLayer, le: string, lines: string[]): void {
   const delay = layer.stagger!.delay
+
+  // 1. Slider Control with the opacity keyframes (0..100)
+  const slVar = lv(layer.id, 'so')
+  lines.push(
+    'var ' +
+      slVar +
+      ' = ' +
+      le +
+      '.property("ADBE Effect Parade").addProperty("ADBE Slider Control");'
+  )
+  lines.push(slVar + '.name = "Stagger Opacity";')
+
+  const spVar = lv(layer.id, 'sop')
+  lines.push('var ' + spVar + ' = ' + slVar + '.property("ADBE Slider Control-0001");')
+
+  // Transfer the opacity keyframes (0..1 -> 0..100) with easing
+  const opacityKfs = layer.opacity || []
+  const scaledKfs = opacityKfs.map(kf => ({
+    ...kf,
+    value: kf.value * 100
+  }))
+  for (const kf of scaledKfs) {
+    lines.push(spVar + '.setValueAtTime(' + kf.t + ', ' + kf.value + ');')
+  }
+  emitEase(spVar, scaledKfs, 'ADBE Slider Control-0001', i => numD(scaledKfs, i), lines)
+
+  // 2. Text Animator with ADBE Text Opacity set to 0
   const san = lv(layer.id, 'sa')
   lines.push(
     'var ' +
@@ -421,20 +474,17 @@ function emitStaggerAnimator(layer: TextLayer, le: string, lines: string[]): voi
       '.property("ADBE Text Properties").property("ADBE Text Animators").addProperty("ADBE Text Animator");'
   )
 
-  // ADBE Text Opacity (textlayer matchnames, Animator Properties section)
+  const opProp = lv(layer.id, 'atop')
   lines.push(
-    san + '.property("ADBE Text Animator Properties").addProperty("ADBE Text Opacity");'
-  )
-
-  // ADBE Text Fill Color when the layer's fill animates
-  if (layer.fillAnimation && layer.fillAnimation.length > 0) {
-    lines.push(
+    'var ' +
+      opProp +
+      ' = ' +
       san +
-        '.property("ADBE Text Animator Properties").addProperty("ADBE Text Fill Color");'
-    )
-  }
+      '.property("ADBE Text Animator Properties").addProperty("ADBE Text Opacity");'
+  )
+  lines.push(opProp + '.setValue(0);')
 
-  // Expression Selector driving per-character delay
+  // 3. Expression Selector on ADBE Text Expressible Amount
   const es = lv(layer.id, 'es')
   lines.push(
     'var ' +
@@ -443,13 +493,19 @@ function emitStaggerAnimator(layer: TextLayer, le: string, lines: string[]): voi
       san +
       '.property("ADBE Text Selectors").addProperty("ADBE Text Expressible Selector");'
   )
+
+  // Expression: read the slider at the per-character time offset.
+  // Uses Math.min/Math.max for clamping (available in AE expressions).
+  // In AE expressions, the last evaluated value is the result.
   const expr =
-    'var d = (textIndex - 1) * ' +
+    'var s = effect("Stagger Opacity")("ADBE Slider Control-0001").valueAtTime(time - (textIndex - 1) * ' +
     delay +
-    '; var t = time - d; if (t < 0) { 0; } else { 100; }'
+    '); ' +
+    'Math.min(100, Math.max(0, 100 - s))'
+
   lines.push(
     es +
-      '.property("ADBE Text Selector Max Amount").expression = ' +
+      '.property("ADBE Text Expressible Amount").expression = ' +
       jsStringLiteral(expr) +
       ';'
   )
@@ -936,7 +992,8 @@ export function generateJsx(input: ExportInput): ExportResult {
     mogrt,
     compVar: mc,
     paramLabels,
-    lines
+    lines,
+    notes
   }
 
   for (const rl of resolved.layers) {

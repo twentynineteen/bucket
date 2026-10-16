@@ -424,34 +424,44 @@ describe('AE4.2 - character stagger', () => {
     expect(slider).toBeDefined()
 
     // Evaluate the expression in a vm for textIndex 1..3 at several times.
-    // The expression calls effect("Stagger Opacity")(1).valueAtTime(...)
-    // which is backed by the slider keyframes with bezier interpolation.
+    // The expression returns the selector amount. In AE, the animator's
+    // ADBE Text Opacity is 0, so character opacity = 100 - selectorAmount.
+    // We verify the per-character opacity (100 - amount) matches expectations.
     const testTimes = [0, 0.1, 0.25, 0.4, 0.52]
     for (const time of testTimes) {
       for (let textIdx = 1; textIdx <= 3; textIdx++) {
-        const val = evaluateStaggerExpression(expression, slider.keyframes, time, textIdx)
-        // Result should be in [0, 100]
-        expect(val).toBeGreaterThanOrEqual(-0.001)
-        expect(val).toBeLessThanOrEqual(100.001)
+        const amount = evaluateStaggerExpression(
+          expression,
+          slider.keyframes,
+          time,
+          textIdx
+        )
+        // Selector amount should be in [0, 100]
+        expect(amount).toBeGreaterThanOrEqual(-0.001)
+        expect(amount).toBeLessThanOrEqual(100.001)
       }
     }
 
-    // Char 1 at time 0 should be near 0 (opacity just starting)
-    const v1t0 = evaluateStaggerExpression(expression, slider.keyframes, 0, 1)
-    expect(v1t0).toBeCloseTo(0, 0)
+    // Char 1 at time 0: slider(0) = 0, r = 100 - 0 = 100.
+    // Character opacity = 100 - 100 = 0 (invisible).
+    const a1t0 = evaluateStaggerExpression(expression, slider.keyframes, 0, 1)
+    expect(100 - a1t0).toBeCloseTo(0, 0)
 
-    // Char 1 at the end of the opacity ramp should be near 100
-    const v1tEnd = evaluateStaggerExpression(
-      expression,
-      slider.keyframes,
-      0.52, // snapped from 0.5 at 25fps
-      1
-    )
-    expect(v1tEnd).toBeCloseTo(100, 0)
+    // Char 1 at end of opacity ramp (0.52): slider(0.52) = 100, r = 0.
+    // Character opacity = 100 - 0 = 100 (fully visible).
+    const a1tEnd = evaluateStaggerExpression(expression, slider.keyframes, 0.52, 1)
+    expect(100 - a1tEnd).toBeCloseTo(100, 0)
 
-    // Char 2 at time 0 should be 0 (still delayed)
-    const v2t0 = evaluateStaggerExpression(expression, slider.keyframes, 0, 2)
-    expect(v2t0).toBeCloseTo(0, 0)
+    // Char 2 at time 0: slider(0 - 0.04) = slider(-0.04) = 0, r = 100.
+    // Character opacity = 100 - 100 = 0 (invisible).
+    const a2t0 = evaluateStaggerExpression(expression, slider.keyframes, 0, 2)
+    expect(100 - a2t0).toBeCloseTo(0, 0)
+
+    // Char 1 reaches full opacity before char 2 (stagger lag)
+    const a1mid = evaluateStaggerExpression(expression, slider.keyframes, 0.3, 1)
+    const a2mid = evaluateStaggerExpression(expression, slider.keyframes, 0.3, 2)
+    // Char 1's opacity >= char 2's opacity at the same time
+    expect(100 - a1mid).toBeGreaterThanOrEqual(100 - a2mid - 0.01)
   })
 })
 
