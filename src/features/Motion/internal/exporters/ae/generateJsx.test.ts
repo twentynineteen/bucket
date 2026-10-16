@@ -26,7 +26,7 @@ import {
   textFixture
 } from '../../testing/fixtures'
 import { generateJsx } from './generateJsx'
-import { runInAEStub } from './testing/aeStub'
+import { evaluateStaggerExpression, runInAEStub } from './testing/aeStub'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -299,73 +299,159 @@ describe('AE4.1 - animated tracking', () => {
 // ---------------------------------------------------------------------------
 
 describe('AE4.2 - character stagger', () => {
-  it('drives an Opacity animator, not Tracking, with an Expression Selector', () => {
-    const fixture: MotionTemplate = {
-      ...textFixture,
-      id: 'fixture-stagger',
-      layers: [
-        {
-          ...textLayerBase,
-          stagger: { delay: 0.04 },
-          tracking: [
-            {
-              t: 0,
-              value: 0,
-              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
-            },
-            { t: 1, value: 50 }
-          ]
-        }
-      ]
-    }
+  const staggerFixture: MotionTemplate = {
+    ...textFixture,
+    id: 'fixture-stagger',
+    layers: [
+      {
+        ...textLayerBase,
+        stagger: { delay: 0.04 },
+        opacity: [
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 0.5, value: 1 }
+        ],
+        tracking: [
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: 50 }
+        ]
+      }
+    ]
+  }
+
+  it('emits a Slider effect with the opacity keyframes and eases', () => {
     const src = getJsxSrc(
-      makeInput(fixture, { format: { width: 1920, height: 1080, fps: 25 } })
+      makeInput(staggerFixture, {
+        format: { width: 1920, height: 1080, fps: 25 }
+      })
     )
     const stub = runInAEStub(src)
-
     const tl = stub.comps[0].layers.find(l => l.kind === 'text')
     expect(tl).toBeDefined()
 
-    // Stagger animator uses ADBE Text Opacity (textlayer matchnames)
-    expect(tl!.properties['ADBE Text Opacity']).toBeDefined()
+    const slider = tl!.properties['ADBE Slider Control-0001']
+    expect(slider).toBeDefined()
+    expect(slider.keyframes.length).toBe(2)
+    expect(slider.keyframes[0].value).toBe(0)
+    expect(slider.keyframes[1].value).toBe(100)
+    expect(slider.keyframes[0].outEase).toBeDefined()
+  })
 
-    // Expression Selector on the opacity animator
-    const amountProp = tl!.properties['ADBE Text Selector Max Amount']
-    expect(amountProp).toBeDefined()
-    expect(amountProp.expression).toBeDefined()
-    expect(amountProp.expression!.length).toBeGreaterThan(0)
-    expect(() => espree.parse(amountProp.expression!, { ecmaVersion: 3 })).not.toThrow()
+  it('sets Transform Opacity to constant 100 (not keyed)', () => {
+    const src = getJsxSrc(
+      makeInput(staggerFixture, {
+        format: { width: 1920, height: 1080, fps: 25 }
+      })
+    )
+    const stub = runInAEStub(src)
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
 
-    // Tracking stays on its own animator, not stagger-driven
+    const opProp = tl!.properties['ADBE Opacity']
+    // Should either not exist (no keyframes set) or be 100
+    if (opProp && opProp.keyframes.length > 0) {
+      for (const kf of opProp.keyframes) {
+        expect(kf.value).toBe(100)
+      }
+    }
+  })
+
+  it('animator ADBE Text Opacity is set to 0', () => {
+    const src = getJsxSrc(
+      makeInput(staggerFixture, {
+        format: { width: 1920, height: 1080, fps: 25 }
+      })
+    )
+    const stub = runInAEStub(src)
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+
+    const opProp = tl!.properties['ADBE Text Opacity']
+    expect(opProp).toBeDefined()
+    expect(opProp.value).toBe(0)
+  })
+
+  it('expression is on ADBE Text Expressible Amount, not Selector Max Amount', () => {
+    const src = getJsxSrc(
+      makeInput(staggerFixture, {
+        format: { width: 1920, height: 1080, fps: 25 }
+      })
+    )
+    const stub = runInAEStub(src)
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+
+    const exprProp = tl!.properties['ADBE Text Expressible Amount']
+    expect(exprProp).toBeDefined()
+    expect(exprProp.expression).toBeDefined()
+    expect(exprProp.expression!.length).toBeGreaterThan(0)
+    expect(() => espree.parse(exprProp.expression!, { ecmaVersion: 3 })).not.toThrow()
+  })
+
+  it('tracking stays on its own independent animator', () => {
+    const src = getJsxSrc(
+      makeInput(staggerFixture, {
+        format: { width: 1920, height: 1080, fps: 25 }
+      })
+    )
+    const stub = runInAEStub(src)
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+
     expect(tl!.properties['ADBE Text Tracking Amount']).toBeDefined()
     expect(tl!.properties['ADBE Text Tracking Amount'].keyframes.length).toBe(2)
   })
 
-  it('adds ADBE Text Fill Color to the stagger animator when fill animates', () => {
-    const fixture: MotionTemplate = {
-      ...textFixture,
-      id: 'fixture-stagger-fill',
-      layers: [
-        {
-          ...textLayerBase,
-          stagger: { delay: 0.04 },
-          fillAnimation: [
-            {
-              t: 0,
-              value: '#ff3366',
-              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
-            },
-            { t: 1, value: '#3366ff' }
-          ]
-        }
-      ]
-    }
-    const src = getJsxSrc(makeInput(fixture))
+  it('per-character opacity matches slider valueAtTime (executable check)', () => {
+    const format: MotionFormat = { width: 1920, height: 1080, fps: 25 }
+    const src = getJsxSrc(makeInput(staggerFixture, { format }))
     const stub = runInAEStub(src)
-
     const tl = stub.comps[0].layers.find(l => l.kind === 'text')
     expect(tl).toBeDefined()
-    expect(tl!.properties['ADBE Text Fill Color']).toBeDefined()
+
+    const exprProp = tl!.properties['ADBE Text Expressible Amount']
+    expect(exprProp).toBeDefined()
+    const expression = exprProp.expression!
+
+    const slider = tl!.properties['ADBE Slider Control-0001']
+    expect(slider).toBeDefined()
+
+    // Evaluate the expression in a vm for textIndex 1..3 at several times.
+    // The expression calls effect("Stagger Opacity")(1).valueAtTime(...)
+    // which is backed by the slider keyframes with bezier interpolation.
+    const testTimes = [0, 0.1, 0.25, 0.4, 0.52]
+    for (const time of testTimes) {
+      for (let textIdx = 1; textIdx <= 3; textIdx++) {
+        const val = evaluateStaggerExpression(expression, slider.keyframes, time, textIdx)
+        // Result should be in [0, 100]
+        expect(val).toBeGreaterThanOrEqual(-0.001)
+        expect(val).toBeLessThanOrEqual(100.001)
+      }
+    }
+
+    // Char 1 at time 0 should be near 0 (opacity just starting)
+    const v1t0 = evaluateStaggerExpression(expression, slider.keyframes, 0, 1)
+    expect(v1t0).toBeCloseTo(0, 0)
+
+    // Char 1 at the end of the opacity ramp should be near 100
+    const v1tEnd = evaluateStaggerExpression(
+      expression,
+      slider.keyframes,
+      0.52, // snapped from 0.5 at 25fps
+      1
+    )
+    expect(v1tEnd).toBeCloseTo(100, 0)
+
+    // Char 2 at time 0 should be 0 (still delayed)
+    const v2t0 = evaluateStaggerExpression(expression, slider.keyframes, 0, 2)
+    expect(v2t0).toBeCloseTo(0, 0)
   })
 })
 

@@ -95,7 +95,8 @@ const EASE_DIMS: Record<string, number> = {
   'ADBE Vector Trim Offset': 1,
   // Text animator properties
   'ADBE Text Tracking Amount': 1,
-  'ADBE Text Selector Max Amount': 1,
+  'ADBE Text Selector Max Amount': 1, // Range Selector only
+  'ADBE Text Expressible Amount': 1, // Expression Selector only (community.adobe.com/t5/.../14420729)
   // Effects
   'ADBE Slider Control-0001': 1,
   // Source Text
@@ -210,7 +211,8 @@ const NAVIGABLE_MATCH_NAMES = new Set([
   'ADBE Text Expressible Selector', // see note above
   'ADBE Text Animator Properties',
   'ADBE Text Tracking Amount',
-  'ADBE Text Selector Max Amount',
+  'ADBE Text Selector Max Amount', // Range Selector child
+  'ADBE Text Expressible Amount', // Expression Selector child (community.adobe.com/t5/.../14420729)
   'ADBE Text Selector Mode',
   'ADBE Text Percent Start',
   'ADBE Text Percent End',
@@ -237,6 +239,94 @@ export function runInAEStub(
   vm.runInContext(preamble, context, { timeout: 5000 })
   vm.runInContext(script, context, { timeout: 5000 })
   return vm.runInContext(extract, context, { timeout: 5000 }) as AEStubResult
+}
+
+// ---------------------------------------------------------------------------
+// Evaluate a stagger expression in isolation
+// ---------------------------------------------------------------------------
+
+/**
+ * Evaluate a stagger selector expression in a vm context.
+ * Sets up effect("name")(idx).valueAtTime backed by provided keyframes
+ * with cubic-bezier interpolation.
+ * Returns the resulting selector amount (0..100).
+ */
+export function evaluateStaggerExpression(
+  expression: string,
+  sliderKfs: AEStubKeyframe[],
+  time: number,
+  textIndex: number
+): number {
+  const kfsJson = JSON.stringify(sliderKfs)
+
+  const setup = `
+function __solve(x1, y1, x2, y2, x) {
+  var t = x;
+  for (var i = 0; i < 8; i++) {
+    var bx = 3*(1-t)*(1-t)*t*x1 + 3*(1-t)*t*t*x2 + t*t*t;
+    var dx = 3*(1-t)*(1-t)*x1 + 6*(1-t)*t*(x2-x1) + 3*t*t*(1-x2);
+    if (Math.abs(dx) < 1e-10) break;
+    t = t - (bx - x) / dx;
+    t = Math.min(1, Math.max(0, t));
+  }
+  return 3*(1-t)*(1-t)*t*y1 + 3*(1-t)*t*t*y2 + t*t*t;
+}
+
+var __kfs = ${kfsJson};
+var time = ${time};
+var textIndex = ${textIndex};
+
+function __valAt(kfs, t) {
+  if (kfs.length === 0) return 0;
+  if (kfs.length === 1) return kfs[0].value;
+  if (t <= kfs[0].time) return kfs[0].value;
+  if (t >= kfs[kfs.length-1].time) return kfs[kfs.length-1].value;
+  for (var i = 0; i < kfs.length - 1; i++) {
+    if (t >= kfs[i].time && t <= kfs[i+1].time) {
+      var t0 = kfs[i].time, t1 = kfs[i+1].time;
+      var v0 = kfs[i].value, v1 = kfs[i+1].value;
+      var dt = t1 - t0;
+      if (dt === 0) return v0;
+      var tN = (t - t0) / dt;
+      var outE = kfs[i].outEase;
+      var inE = kfs[i+1].inEase;
+      if (outE && outE.length > 0 && inE && inE.length > 0) {
+        var avgS = Math.abs(v1 - v0) / dt;
+        if (avgS === 0) avgS = 1;
+        var bx1 = outE[0].influence / 100;
+        var by1 = (outE[0].speed / avgS) * bx1;
+        var bx2 = 1 - inE[0].influence / 100;
+        var by2 = 1 - (inE[0].speed / avgS) * (1 - bx2);
+        var prog = __solve(bx1, by1, bx2, by2, tN);
+        return v0 + (v1 - v0) * prog;
+      }
+      return v0 + (v1 - v0) * tN;
+    }
+  }
+  return kfs[kfs.length-1].value;
+}
+
+function effect(name) {
+  return function(idx) {
+    return {
+      valueAtTime: function(t) { return __valAt(__kfs, t); },
+      value: __valAt(__kfs, time)
+    };
+  };
+}
+
+function Math_min(a, b) { return a < b ? a : b; }
+function Math_max(a, b) { return a > b ? a : b; }
+`
+
+  const ctx = vm.createContext({ Math })
+  vm.runInContext(setup, ctx, { timeout: 2000 })
+
+  // Expression may use statements and end with a bare value.
+  // Wrap it so the last expression is returned.
+  const wrappedExpr = '(function() { ' + expression + ' })()'
+  const result = vm.runInContext(wrappedExpr, ctx, { timeout: 2000 })
+  return typeof result === 'number' ? result : 0
 }
 
 // ---------------------------------------------------------------------------
@@ -335,6 +425,21 @@ function TextDocument(text) {
   this.pointText = true;      // read-only in real AE
 }
 
+// -- Cubic-bezier solver for valueAtTime interpolation --------------------
+// Solves cubic-bezier(x1, y1, x2, y2) at parameter t, returning the y value.
+function __solveCubicBezier(x1, y1, x2, y2, x) {
+  // Newton-Raphson to find t where bezierX(t) = x
+  var t = x;
+  for (var i = 0; i < 8; i++) {
+    var bx = 3 * (1 - t) * (1 - t) * t * x1 + 3 * (1 - t) * t * t * x2 + t * t * t;
+    var dx = 3 * (1 - t) * (1 - t) * x1 + 6 * (1 - t) * t * (x2 - x1) + 3 * t * t * (1 - x2);
+    if (Math.abs(dx) < 1e-10) break;
+    t = t - (bx - x) / dx;
+    t = Math.min(1, Math.max(0, t));
+  }
+  return 3 * (1 - t) * (1 - t) * t * y1 + 3 * (1 - t) * t * t * y2 + t * t * t;
+}
+
 // -- Property --------------------------------------------------------------
 // ae-scripting.docsforadobe.dev/property/property/
 function __makeProp(matchName, valueType) {
@@ -361,6 +466,45 @@ function __makeProp(matchName, valueType) {
       prop.__kfs.push({ time: time, value: val });
       prop.numKeys = prop.__kfs.length;
       prop.value = val;
+    },
+
+    // property/property/ - valueAtTime(time, preExpression)
+    // Interpolates keyframes using the stored bezier easing.
+    valueAtTime: function(time) {
+      var kfs = prop.__kfs;
+      if (kfs.length === 0) return prop.value || 0;
+      if (kfs.length === 1) return kfs[0].value;
+      if (time <= kfs[0].time) return kfs[0].value;
+      if (time >= kfs[kfs.length - 1].time) return kfs[kfs.length - 1].value;
+      // Find the segment
+      for (var si = 0; si < kfs.length - 1; si++) {
+        if (time >= kfs[si].time && time <= kfs[si + 1].time) {
+          var t0 = kfs[si].time;
+          var t1 = kfs[si + 1].time;
+          var v0 = kfs[si].value;
+          var v1 = kfs[si + 1].value;
+          var dt = t1 - t0;
+          if (dt === 0) return v0;
+          var tNorm = (time - t0) / dt;
+          // If the outgoing key has ease, use cubic-bezier
+          var outE = kfs[si].outEase;
+          var inE = kfs[si + 1].inEase;
+          if (outE && outE.length > 0 && inE && inE.length > 0) {
+            // Convert AE speed/influence back to bezier x1,y1,x2,y2
+            var avgSpeed = Math.abs(v1 - v0) / dt;
+            if (avgSpeed === 0) avgSpeed = 1;
+            var x1 = outE[0].influence / 100;
+            var y1 = (outE[0].speed / avgSpeed) * x1;
+            var x2 = 1 - inE[0].influence / 100;
+            var y2 = 1 - (inE[0].speed / avgSpeed) * (1 - x2);
+            var progress = __solveCubicBezier(x1, y1, x2, y2, tNorm);
+            return v0 + (v1 - v0) * progress;
+          }
+          // Linear
+          return v0 + (v1 - v0) * tNorm;
+        }
+      }
+      return kfs[kfs.length - 1].value;
     },
 
     // property/property/ - setTemporalEaseAtKey
@@ -495,6 +639,12 @@ function __makeGroup(matchName) {
           child.__children["ADBE Slider Control-0001"] = __makeProp("ADBE Slider Control-0001");
         }
         if (name === "ADBE Text Expressible Selector") {
+          // Expression Selector's Amount is "ADBE Text Expressible Amount"
+          // (community.adobe.com/t5/.../14420729), NOT "ADBE Text Selector Max Amount"
+          child.__children["ADBE Text Expressible Amount"] = __makeProp("ADBE Text Expressible Amount");
+        }
+        if (name === "ADBE Text Selector") {
+          // Range Selector's Amount is "ADBE Text Selector Max Amount"
           child.__children["ADBE Text Selector Max Amount"] = __makeProp("ADBE Text Selector Max Amount");
         }
       } else {
