@@ -102,7 +102,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
   return (
     <div
       data-template-id={template.id}
-      className="bg-card border-border flex flex-col overflow-hidden rounded-xl border shadow-sm"
+      className="bg-card border-border flex h-full flex-col overflow-hidden rounded-xl border shadow-sm"
     >
       {/* 16:9 preview on a dark stage */}
       <PreviewStage>

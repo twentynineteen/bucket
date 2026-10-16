@@ -196,7 +196,8 @@ const MotionMarketplacePage: React.FC = () => {
             aria-label="Templates"
             className="grid gap-4"
             style={{
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))'
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gridAutoRows: '1fr'
             }}
           >
             {sortedEntries.map(entry => {
@@ -204,7 +205,7 @@ const MotionMarketplacePage: React.FC = () => {
                 prefs.defaults[entry.template.category] === entry.template.id
 
               return (
-                <li key={entry.template.id}>
+                <li key={entry.template.id} className="h-full">
                   <TemplateCard
                     entry={entry}
                     format={PREVIEW_FORMAT}
