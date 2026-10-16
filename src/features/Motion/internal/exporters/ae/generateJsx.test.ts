@@ -299,7 +299,7 @@ describe('AE4.1 - animated tracking', () => {
 // ---------------------------------------------------------------------------
 
 describe('AE4.2 - character stagger', () => {
-  it('adds an Expression Selector with a parseable expression', () => {
+  it('drives an Opacity animator, not Tracking, with an Expression Selector', () => {
     const fixture: MotionTemplate = {
       ...textFixture,
       id: 'fixture-stagger',
@@ -325,12 +325,47 @@ describe('AE4.2 - character stagger', () => {
 
     const tl = stub.comps[0].layers.find(l => l.kind === 'text')
     expect(tl).toBeDefined()
-    // The Expression Selector's Amount property
+
+    // Stagger animator uses ADBE Text Opacity (textlayer matchnames)
+    expect(tl!.properties['ADBE Text Opacity']).toBeDefined()
+
+    // Expression Selector on the opacity animator
     const amountProp = tl!.properties['ADBE Text Selector Max Amount']
     expect(amountProp).toBeDefined()
     expect(amountProp.expression).toBeDefined()
     expect(amountProp.expression!.length).toBeGreaterThan(0)
     expect(() => espree.parse(amountProp.expression!, { ecmaVersion: 3 })).not.toThrow()
+
+    // Tracking stays on its own animator, not stagger-driven
+    expect(tl!.properties['ADBE Text Tracking Amount']).toBeDefined()
+    expect(tl!.properties['ADBE Text Tracking Amount'].keyframes.length).toBe(2)
+  })
+
+  it('adds ADBE Text Fill Color to the stagger animator when fill animates', () => {
+    const fixture: MotionTemplate = {
+      ...textFixture,
+      id: 'fixture-stagger-fill',
+      layers: [
+        {
+          ...textLayerBase,
+          stagger: { delay: 0.04 },
+          fillAnimation: [
+            {
+              t: 0,
+              value: '#ff3366',
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: '#3366ff' }
+          ]
+        }
+      ]
+    }
+    const src = getJsxSrc(makeInput(fixture))
+    const stub = runInAEStub(src)
+
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+    expect(tl!.properties['ADBE Text Fill Color']).toBeDefined()
   })
 })
 
@@ -795,6 +830,22 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
           },
           { t: 1, value: { x: 600, y: 600 } }
         ],
+        scale: [
+          {
+            t: 0,
+            value: { x: 1, y: 1 },
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: { x: 1.5, y: 1.5 } }
+        ],
+        rotation: [
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: 45 }
+        ],
         opacity: [
           {
             t: 0,
@@ -805,7 +856,15 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
         ],
         radiusX: 50,
         radiusY: 50,
-        fill: '#00ff00'
+        fill: '#00ff00',
+        fillAnimation: [
+          {
+            t: 0,
+            value: '#00ff00',
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: '#ff0000' }
+        ]
       },
       {
         kind: 'path' as const,
@@ -819,6 +878,22 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
           },
           { t: 1, value: { x: 400, y: 400 } }
         ],
+        scale: [
+          {
+            t: 0,
+            value: { x: 1, y: 1 },
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: { x: 1.2, y: 1.2 } }
+        ],
+        rotation: [
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: 30 }
+        ],
         opacity: [
           {
             t: 0,
@@ -828,7 +903,15 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
           { t: 1, value: 1 }
         ],
         d: 'M 10 10 L 50 90 L 90 10 Z',
-        fill: '#0000ff'
+        fill: '#0000ff',
+        fillAnimation: [
+          {
+            t: 0,
+            value: '#0000ff',
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: '#ff00ff' }
+        ]
       },
       {
         kind: 'arc' as const,
@@ -841,6 +924,22 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
             ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
           },
           { t: 1, value: { x: 960, y: 540 } }
+        ],
+        scale: [
+          {
+            t: 0,
+            value: { x: 1, y: 1 },
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: { x: 1.3, y: 1.3 } }
+        ],
+        rotation: [
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: 15 }
         ],
         opacity: [
           {
@@ -905,18 +1004,32 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
     {
       layerName: 'cov-ellipse',
       kind: 'shape',
-      props: ['ADBE Position', 'ADBE Opacity']
+      props: [
+        'ADBE Position',
+        'ADBE Scale',
+        'ADBE Rotate Z',
+        'ADBE Opacity',
+        'ADBE Vector Fill Color'
+      ]
     },
     {
       layerName: 'cov-path',
       kind: 'shape',
-      props: ['ADBE Position', 'ADBE Opacity']
+      props: [
+        'ADBE Position',
+        'ADBE Scale',
+        'ADBE Rotate Z',
+        'ADBE Opacity',
+        'ADBE Vector Fill Color'
+      ]
     },
     {
       layerName: 'cov-arc',
       kind: 'shape',
       props: [
         'ADBE Position',
+        'ADBE Scale',
+        'ADBE Rotate Z',
         'ADBE Opacity',
         'ADBE Vector Trim End',
         'ADBE Vector Trim Offset',
