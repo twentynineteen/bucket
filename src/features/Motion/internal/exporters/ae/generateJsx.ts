@@ -331,8 +331,14 @@ function emitText(layer: TextLayer, compExpr: string, ctx: GenContext): string {
 
   emitTransform(layer, v, L)
 
+  // Tracking: own animator, never stagger-driven
   if (layer.tracking && layer.tracking.length > 0) {
-    emitTracking(layer, v, L)
+    emitTrackingAnimator(layer, v, L)
+  }
+
+  // Stagger: separate opacity (+ optional fill) animator with Expression Selector
+  if (layer.stagger) {
+    emitStaggerAnimator(layer, v, L)
   }
 
   if (layer.counter) {
@@ -354,14 +360,12 @@ function emitText(layer: TextLayer, compExpr: string, ctx: GenContext): string {
 }
 
 // ---------------------------------------------------------------------------
-// Tracking + stagger
+// Tracking animator (own animator, never stagger-driven)
 // textlayer matchnames: ADBE Text Animators, ADBE Text Animator,
-//   ADBE Text Animator Properties, ADBE Text Tracking Amount,
-//   ADBE Text Selectors, ADBE Text Expressible Selector (flagged for #339),
-//   ADBE Text Selector Max Amount
+//   ADBE Text Animator Properties, ADBE Text Tracking Amount
 // ---------------------------------------------------------------------------
 
-function emitTracking(layer: TextLayer, le: string, lines: string[]): void {
+function emitTrackingAnimator(layer: TextLayer, le: string, lines: string[]): void {
   const tracking = layer.tracking!
   const an = lv(layer.id, 'an')
   lines.push(
@@ -395,28 +399,60 @@ function emitTracking(layer: TextLayer, le: string, lines: string[]): void {
     i => numD(tracking, i),
     lines
   )
+}
 
-  if (layer.stagger) {
-    const dl = layer.stagger.delay
-    const es = lv(layer.id, 'es')
+// ---------------------------------------------------------------------------
+// Stagger animator (opacity + optional fill, Expression Selector)
+// Per-character stagger animates opacity and fill only (not position/scale/
+// rotation). Layer transforms stay on the layer's Transform group.
+// textlayer matchnames: ADBE Text Opacity, ADBE Text Fill Color,
+//   ADBE Text Expressible Selector (flagged for #339),
+//   ADBE Text Selector Max Amount
+// ---------------------------------------------------------------------------
+
+function emitStaggerAnimator(layer: TextLayer, le: string, lines: string[]): void {
+  const delay = layer.stagger!.delay
+  const san = lv(layer.id, 'sa')
+  lines.push(
+    'var ' +
+      san +
+      ' = ' +
+      le +
+      '.property("ADBE Text Properties").property("ADBE Text Animators").addProperty("ADBE Text Animator");'
+  )
+
+  // ADBE Text Opacity (textlayer matchnames, Animator Properties section)
+  lines.push(
+    san + '.property("ADBE Text Animator Properties").addProperty("ADBE Text Opacity");'
+  )
+
+  // ADBE Text Fill Color when the layer's fill animates
+  if (layer.fillAnimation && layer.fillAnimation.length > 0) {
     lines.push(
-      'var ' +
-        es +
-        ' = ' +
-        an +
-        '.property("ADBE Text Selectors").addProperty("ADBE Text Expressible Selector");'
-    )
-    const expr =
-      'var d = (textIndex - 1) * ' +
-      dl +
-      '; var t = time - d; if (t < 0) { 0; } else { 100; }'
-    lines.push(
-      es +
-        '.property("ADBE Text Selector Max Amount").expression = ' +
-        jsStringLiteral(expr) +
-        ';'
+      san +
+        '.property("ADBE Text Animator Properties").addProperty("ADBE Text Fill Color");'
     )
   }
+
+  // Expression Selector driving per-character delay
+  const es = lv(layer.id, 'es')
+  lines.push(
+    'var ' +
+      es +
+      ' = ' +
+      san +
+      '.property("ADBE Text Selectors").addProperty("ADBE Text Expressible Selector");'
+  )
+  const expr =
+    'var d = (textIndex - 1) * ' +
+    delay +
+    '; var t = time - d; if (t < 0) { 0; } else { 100; }'
+  lines.push(
+    es +
+      '.property("ADBE Text Selector Max Amount").expression = ' +
+      jsStringLiteral(expr) +
+      ';'
+  )
 }
 
 // ---------------------------------------------------------------------------

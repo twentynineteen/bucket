@@ -836,9 +836,8 @@ function buildExtractScript(): string {
       for (var j = 0; j < group.__indexedChildren.length; j++) {
         var ic = group.__indexedChildren[j];
         if (ic && ic.__kfs !== undefined) {
-          if (ic.__kfs.length > 0 || ic.value !== undefined || ic.__expression) {
-            props[ic.__matchName] = xProp(ic);
-          }
+          // Include any property that was explicitly added via addProperty
+          props[ic.__matchName] = xProp(ic);
         } else if (ic && ic.__children) {
           xGroup(ic, props);
         }
