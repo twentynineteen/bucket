@@ -11,6 +11,7 @@ import * as espree from 'espree'
 import { describe, expect, it } from 'vitest'
 import type { ExportInput, MotionFormat, MotionTemplate, TextLayer } from '../../../types'
 import { loadBuiltins } from '../../builtins'
+import { evaluate } from '../../evaluate'
 import { resolveTemplate } from '../../resolve'
 import {
   allAnimatedFixture,
@@ -456,6 +457,30 @@ describe('AE4.2 - character stagger', () => {
     // Character opacity = 100 - 100 = 0 (invisible).
     const a2t0 = evaluateStaggerExpression(expression, slider.keyframes, 0, 2)
     expect(100 - a2t0).toBeCloseTo(0, 0)
+
+    // Exact match with the preview: each character's AE opacity must equal the
+    // evaluator's per-unit opacity, mid-ramp included, so the eased curve
+    // survives the bezier -> KeyframeEase mapping on the slider.
+    const resolved = resolveTemplate(staggerFixture, {}, format)
+    for (const time of [0.05, 0.12, 0.2, 0.3, 0.4]) {
+      const states = evaluate(resolved, time)
+      const text = states.find(st => st.kind === 'text')
+      const units = text && text.kind === 'text' ? text.units : undefined
+      expect(units, 'stagger fixture must produce per-character units').toBeDefined()
+      for (let textIdx = 1; textIdx <= 3; textIdx++) {
+        const amount = evaluateStaggerExpression(
+          expression,
+          slider.keyframes,
+          time,
+          textIdx
+        )
+        const aeOpacity = (100 - amount) / 100
+        expect(aeOpacity, `char ${textIdx} at t=${time}`).toBeCloseTo(
+          units![textIdx - 1].opacity,
+          3
+        )
+      }
+    }
 
     // Char 1 reaches full opacity before char 2 (stagger lag)
     const a1mid = evaluateStaggerExpression(expression, slider.keyframes, 0.3, 1)
