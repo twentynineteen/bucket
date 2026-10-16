@@ -90,7 +90,7 @@ function summarisePoints(layer: ParticlesLayer): PointSummary {
  */
 function prepareTemplateForPrompt(template: MotionTemplate): unknown {
   function processLayer(layer: Layer): unknown {
-    if (layer.kind === 'particles_DISABLED') {
+    if (layer.kind === 'particles') {
       const summary = summarisePoints(layer)
       return { ...layer, points: summary }
     }
