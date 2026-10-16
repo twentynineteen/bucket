@@ -71,6 +71,11 @@ const READY: UseKavanaghAvailabilityResult = {
   available: true,
   reason: null,
   pending: false,
+  ffmpeg: {
+    status: 'ready',
+    ffmpeg: '/usr/local/bin/ffmpeg',
+    ffprobe: '/usr/local/bin/ffprobe'
+  },
   referenceFolder: '/Volumes/Brand/QC references',
   pools: {
     watermarks: { status: 'ready', reason: null },

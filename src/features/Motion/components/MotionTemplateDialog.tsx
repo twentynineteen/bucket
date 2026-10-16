@@ -23,7 +23,7 @@ import {
   resolveTemplate,
   validateParams
 } from '../internal/resolve'
-import { checkTextOverflow } from '../internal/textOverflow'
+import { checkTextOverflow, createCanvasMeasurer } from '../internal/textOverflow'
 import type {
   CatalogueEntry,
   MotionFormat,
@@ -164,16 +164,15 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     )
   }, [resolved.layers])
 
+  // Measurer uses canvas.measureText with the loaded template font when
+  // available, falling back to a coarse approximation in jsdom. Created
+  // once and reused for the lifetime of the dialog.
+  const measurer = useMemo(() => createCanvasMeasurer(), [])
+
   const overflowResults = useMemo(() => {
     if (textLayers.length === 0) return []
-    // Simple measurer: approximate width = text.length * fontSize * 0.6
-    const measurer = {
-      measure(text: string, font: { size: number }) {
-        return text.length * font.size * 0.6
-      }
-    }
     return checkTextOverflow(textLayers, measurer)
-  }, [textLayers])
+  }, [textLayers, measurer])
 
   const hasOverflow = overflowResults.some(r => r.overflowing)
 
@@ -183,10 +182,9 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
 
   // Font availability
   const fontInstalled = fontState.status === 'ready'
-  // ffmpeg is available when Kavanagh doesn't report it as the blocking reason
-  const ffmpegAvailable =
-    kavanaghAvail.available ||
-    (!kavanaghAvail.pending && !kavanaghAvail.reason?.toLowerCase().includes('ffmpeg'))
+  // ffmpeg availability is checked directly via the typed field, not by
+  // string-matching the reason text (which could be about pools, not ffmpeg).
+  const ffmpegAvailable = kavanaghAvail.ffmpeg?.status === 'ready'
 
   // Can export: folder set, at least one target, params valid
   const canExport = projectFolder !== null && targets.length > 0 && !hasParamErrors

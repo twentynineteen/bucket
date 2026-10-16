@@ -15,7 +15,7 @@
  * M5.6: Video render progress and cancel.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -298,14 +298,15 @@ describe('MotionTemplateDialog', () => {
     })
 
     it('shows Pause and Restart buttons; Pause toggles to Play', async () => {
-      const user = userEvent.setup()
       renderDialog(makeEntry())
 
       const pauseBtn = screen.getByRole('button', { name: /^Pause$/i })
       expect(pauseBtn).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /^Restart$/i })).toBeInTheDocument()
 
-      await user.click(pauseBtn)
+      // fireEvent.click because Radix Dialog's pointer-events:none on body
+      // prevents userEvent's pointer dispatch inside the portal
+      fireEvent.click(pauseBtn)
 
       // After clicking Pause, the button relabels to Play
       await waitFor(() => {
@@ -344,20 +345,33 @@ describe('MotionTemplateDialog', () => {
 
   describe('M4.2 - Project folder', () => {
     it('picks a folder, shows the path, shows a warning for a non-Bucket folder, and enables Export', async () => {
-      const user = userEvent.setup()
+      const api = await import('../api')
       renderDialog(makeEntry())
 
       // Before picking: Export is disabled
       expect(screen.getByRole('button', { name: /Export to project/i })).toBeDisabled()
 
       // Click the folder button; the mock returns '/p'
-      // and pathExists returns false for breadcrumbs.json and Graphics
-      await user.click(screen.getByRole('button', { name: /Choose project folder/i }))
+      // and pathExists returns false for breadcrumbs.json and Graphics.
+      // Using fireEvent instead of user.click because Radix Dialog's
+      // pointer-events:none on body prevents userEvent pointer dispatch.
+      fireEvent.click(screen.getByRole('button', { name: /Choose project folder/i }))
 
-      // The picked path should be shown (last segment)
-      await waitFor(() => {
-        expect(screen.getByText('p')).toBeInTheDocument()
-      })
+      // Verify the handler ran: pickFolder was called
+      await waitFor(
+        () => {
+          expect(api.pickFolder).toHaveBeenCalled()
+        },
+        { timeout: 2000 }
+      )
+
+      // The picked path's last segment should be visible
+      await waitFor(
+        () => {
+          expect(screen.getByText('p')).toBeInTheDocument()
+        },
+        { timeout: 2000 }
+      )
 
       // Warning should appear: no breadcrumbs.json or Graphics/
       expect(screen.getByText(/does not look like a Bucket project/i)).toBeInTheDocument()
