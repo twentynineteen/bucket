@@ -101,8 +101,8 @@ function ShapeElement({ state }: { state: ShapeLayerState }) {
       <ellipse
         cx="0"
         cy="0"
-        rx="1"
-        ry="1"
+        rx={state.radii?.rx ?? 0}
+        ry={state.radii?.ry ?? 0}
         fill={state.fill}
         opacity={state.opacity}
         transform={transform}

@@ -246,6 +246,40 @@ function clampStaggerDelays(layers: Layer[], inEnd: number): Layer[] {
 // Apply colour param bindings
 // ---------------------------------------------------------------------------
 
+/**
+ * Particle region tints name colour params (spec D2a). Replace each name with
+ * that param's value. A literal hex colour is kept as authored; any other
+ * name falls back to the layer's base fill, so a canvas never receives a
+ * string it cannot paint (which it would silently draw black).
+ */
+function resolveRegionFills(
+  layers: Layer[],
+  params: MotionTemplate['params'],
+  values: ParamValues
+): Layer[] {
+  const colourOf = (name: string, fallback: string): string => {
+    const def = params[name]
+    if (def?.kind === 'colour') {
+      const v = values[name]
+      return typeof v === 'string' ? v : def.default
+    }
+    return /^#[0-9a-f]{3,8}$/i.test(name) ? name : fallback
+  }
+  return layers.map(layer => {
+    if (layer.kind === 'group') {
+      return { ...layer, children: resolveRegionFills(layer.children, params, values) }
+    }
+    if (layer.kind !== 'particles') return layer
+    const regionFills = Object.fromEntries(
+      Object.entries(layer.regionFills).map(([region, ref]) => [
+        region,
+        colourOf(ref, layer.baseFill)
+      ])
+    )
+    return { ...layer, regionFills }
+  })
+}
+
 function applyColourBindings(
   layers: Layer[],
   params: Record<string, ParamDef>,
@@ -756,6 +790,7 @@ export function resolveTemplate(
 
   // 3. Apply colour bindings
   layers = applyColourBindings(layers, template.params, resolvedValues)
+  layers = resolveRegionFills(layers, template.params, resolvedValues)
 
   // 4. Expand macros (series, sweepFromParam)
   layers = expandTemplate(layers, template.params, resolvedValues)

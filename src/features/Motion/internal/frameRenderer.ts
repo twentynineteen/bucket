@@ -94,7 +94,9 @@ function renderShapeState(state: ShapeLayerState): string {
   }
 
   if (state.kind === 'ellipse') {
-    return `<ellipse cx="0" cy="0" rx="1" ry="1" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}" />`
+    const rx = state.radii?.rx ?? 0
+    const ry = state.radii?.ry ?? 0
+    return `<ellipse cx="0" cy="0" rx="${rx}" ry="${ry}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}" />`
   }
 
   if (state.kind === 'path' && state.d) {
