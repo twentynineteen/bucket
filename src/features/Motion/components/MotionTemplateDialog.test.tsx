@@ -15,7 +15,7 @@
  * M5.6: Video render progress and cancel.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -91,12 +91,13 @@ vi.mock('@shared/hooks', async importOriginal => {
   }
 })
 
-// Mock Kavanagh availability
+// Default Kavanagh mock: ffmpeg ready, pools ready
 vi.mock('@features/Kavanagh', () => ({
   useKavanaghAvailability: vi.fn(() => ({
     available: true,
     reason: null,
     pending: false,
+    ffmpeg: { status: 'ready', ffmpeg: '/usr/bin/ffmpeg', ffprobe: '/usr/bin/ffprobe' },
     pools: { watermarks: { status: 'ready' }, stings: { status: 'ready' } },
     poolFiles: { watermarks: [], stings: [] },
     referenceFolder: null
@@ -296,11 +297,20 @@ describe('MotionTemplateDialog', () => {
       expect(preview).toBeInTheDocument()
     })
 
-    it('shows Pause and Restart buttons', () => {
+    it('shows Pause and Restart buttons; Pause toggles to Play', async () => {
+      const user = userEvent.setup()
       renderDialog(makeEntry())
 
-      expect(screen.getByRole('button', { name: /Pause/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /Restart/i })).toBeInTheDocument()
+      const pauseBtn = screen.getByRole('button', { name: /^Pause$/i })
+      expect(pauseBtn).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /^Restart$/i })).toBeInTheDocument()
+
+      await user.click(pauseBtn)
+
+      // After clicking Pause, the button relabels to Play
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /^Play$/i })).toBeInTheDocument()
+      })
     })
   })
 
@@ -333,12 +343,29 @@ describe('MotionTemplateDialog', () => {
   })
 
   describe('M4.2 - Project folder', () => {
-    it('shows the "Choose project folder" button', () => {
+    it('picks a folder, shows the path, shows a warning for a non-Bucket folder, and enables Export', async () => {
+      const user = userEvent.setup()
       renderDialog(makeEntry())
 
+      // Before picking: Export is disabled
+      expect(screen.getByRole('button', { name: /Export to project/i })).toBeDisabled()
+
+      // Click the folder button; the mock returns '/p'
+      // and pathExists returns false for breadcrumbs.json and Graphics
+      await user.click(screen.getByRole('button', { name: /Choose project folder/i }))
+
+      // The picked path should be shown (last segment)
+      await waitFor(() => {
+        expect(screen.getByText('p')).toBeInTheDocument()
+      })
+
+      // Warning should appear: no breadcrumbs.json or Graphics/
+      expect(screen.getByText(/does not look like a Bucket project/i)).toBeInTheDocument()
+
+      // Export should now be enabled (folder set, targets defaulted)
       expect(
-        screen.getByRole('button', { name: /Choose project folder/i })
-      ).toBeInTheDocument()
+        screen.getByRole('button', { name: /Export to project/i })
+      ).not.toBeDisabled()
     })
   })
 
@@ -356,7 +383,6 @@ describe('MotionTemplateDialog', () => {
       ]
 
       for (const name of targetNames) {
-        // Use exact name match to avoid matching label text too
         const cb = screen.getByRole('checkbox', { name })
         expect(cb).toBeInTheDocument()
       }
@@ -377,13 +403,88 @@ describe('MotionTemplateDialog', () => {
   })
 
   describe('M4.5 - Video disabled when ffmpeg unavailable', () => {
-    it('disables Video with a link to Settings', async () => {
+    it('ffmpeg ready and pools missing: Video stays enabled', async () => {
+      const { useKavanaghAvailability } = await import('@features/Kavanagh')
+      ;(useKavanaghAvailability as ReturnType<typeof vi.fn>).mockReturnValue({
+        available: false,
+        reason: 'Watermark references not found',
+        pending: false,
+        ffmpeg: {
+          status: 'ready',
+          ffmpeg: '/usr/bin/ffmpeg',
+          ffprobe: '/usr/bin/ffprobe'
+        },
+        pools: { watermarks: { status: 'missing' }, stings: { status: 'ready' } },
+        poolFiles: { watermarks: [], stings: [] },
+        referenceFolder: '/ref'
+      })
+
+      renderDialog(makeEntry())
+
+      // Video should be enabled despite pools being unavailable
+      const videoCheckbox = screen.getByRole('checkbox', { name: /^Video$/i })
+      expect(videoCheckbox).not.toBeDisabled()
+
+      // Restore
+      ;(useKavanaghAvailability as ReturnType<typeof vi.fn>).mockReturnValue({
+        available: true,
+        reason: null,
+        pending: false,
+        ffmpeg: {
+          status: 'ready',
+          ffmpeg: '/usr/bin/ffmpeg',
+          ffprobe: '/usr/bin/ffprobe'
+        },
+        pools: { watermarks: { status: 'ready' }, stings: { status: 'ready' } },
+        poolFiles: { watermarks: [], stings: [] },
+        referenceFolder: null
+      })
+    })
+
+    it('ffmpeg notFound but reason mentions pools: Video still disabled', async () => {
+      // Proves that Video availability checks the ffmpeg field directly,
+      // not the reason string. If a pool fault comes first in the reason,
+      // the old string-matching code would wrongly enable Video.
+      const { useKavanaghAvailability } = await import('@features/Kavanagh')
+      ;(useKavanaghAvailability as ReturnType<typeof vi.fn>).mockReturnValue({
+        available: false,
+        reason: 'Watermark references not found',
+        pending: false,
+        ffmpeg: { status: 'notFound', missing: ['ffmpeg'], searched: ['/usr/bin'] },
+        pools: { watermarks: { status: 'missing' }, stings: { status: 'ready' } },
+        poolFiles: { watermarks: [], stings: [] },
+        referenceFolder: null
+      })
+
+      renderDialog(makeEntry())
+
+      const videoCheckbox = screen.getByRole('checkbox', { name: /^Video$/i })
+      expect(videoCheckbox).toBeDisabled()
+
+      // Restore
+      ;(useKavanaghAvailability as ReturnType<typeof vi.fn>).mockReturnValue({
+        available: true,
+        reason: null,
+        pending: false,
+        ffmpeg: {
+          status: 'ready',
+          ffmpeg: '/usr/bin/ffmpeg',
+          ffprobe: '/usr/bin/ffprobe'
+        },
+        pools: { watermarks: { status: 'ready' }, stings: { status: 'ready' } },
+        poolFiles: { watermarks: [], stings: [] },
+        referenceFolder: null
+      })
+    })
+
+    it('ffmpeg null: Video disabled with Settings link', async () => {
       const { useKavanaghAvailability } = await import('@features/Kavanagh')
       ;(useKavanaghAvailability as ReturnType<typeof vi.fn>).mockReturnValue({
         available: false,
         reason: 'ffmpeg was not found',
         pending: false,
-        pools: { watermarks: { status: 'ok' }, stings: { status: 'ok' } },
+        ffmpeg: null,
+        pools: { watermarks: { status: 'missing' }, stings: { status: 'ready' } },
         poolFiles: { watermarks: [], stings: [] },
         referenceFolder: null
       })
@@ -397,11 +498,16 @@ describe('MotionTemplateDialog', () => {
         screen.getByRole('link', { name: /Set up ffmpeg in Settings/i })
       ).toHaveAttribute('href', '/settings/general#kavanagh')
 
-      // Restore mock
+      // Restore
       ;(useKavanaghAvailability as ReturnType<typeof vi.fn>).mockReturnValue({
         available: true,
         reason: null,
         pending: false,
+        ffmpeg: {
+          status: 'ready',
+          ffmpeg: '/usr/bin/ffmpeg',
+          ffprobe: '/usr/bin/ffprobe'
+        },
         pools: { watermarks: { status: 'ready' }, stings: { status: 'ready' } },
         poolFiles: { watermarks: [], stings: [] },
         referenceFolder: null
@@ -435,8 +541,6 @@ describe('MotionTemplateDialog', () => {
 
   describe('M4.7 - Invalid fps disabled', () => {
     it('valid formats exclude collapsed fps options', async () => {
-      // Test the validFormats function directly - this is what the
-      // ExportPanel uses to disable invalid format options
       const resolveModule = await import('../internal/resolve')
       const { validFormats } = resolveModule
       // Keyframes at 0 and 0.02: both snap to frame 0 at 24fps
@@ -486,7 +590,6 @@ describe('MotionTemplateDialog', () => {
     it('Copy Claude prompt is enabled when params are valid', () => {
       renderDialog(makeEntry())
 
-      // Copy prompt doesn't need a folder, just valid params
       expect(
         screen.getByRole('button', { name: /Copy Claude prompt/i })
       ).not.toBeDisabled()
@@ -497,7 +600,6 @@ describe('MotionTemplateDialog', () => {
     it('dialog renders with export controls', () => {
       renderDialog(makeEntry())
 
-      // Verify the dialog has the export button and targets
       expect(
         screen.getByRole('button', { name: /Export to project/i })
       ).toBeInTheDocument()
