@@ -323,7 +323,7 @@ export async function installMotionMocks(
           const data = args as unknown
           let text = ''
           if (data instanceof Uint8Array || ArrayBuffer.isView(data)) {
-            text = new TextDecoder().decode(data as ArrayBuffer)
+            text = new TextDecoder().decode(data as unknown as BufferSource)
           } else if (Array.isArray(data)) {
             text = new TextDecoder().decode(Uint8Array.from(data))
           }
@@ -340,7 +340,7 @@ export async function installMotionMocks(
           const data = args as unknown
           let text = ''
           if (data instanceof Uint8Array || ArrayBuffer.isView(data)) {
-            text = new TextDecoder().decode(data as ArrayBuffer)
+            text = new TextDecoder().decode(data as unknown as BufferSource)
           } else if (Array.isArray(data)) {
             text = new TextDecoder().decode(Uint8Array.from(data))
           }
