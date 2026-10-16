@@ -216,43 +216,102 @@ function checkLayerPositionsSafe(
   templateId: string
 ): TimingViolation[] {
   const violations: TimingViolation[] = []
+  walkSafe(layers, { x: 0, y: 0 }, inEnd, outStart, templateId, violations)
+  return violations
+}
 
-  function walk(ls: Layer[]) {
-    for (const layer of ls) {
-      if (layer.kind === 'group') {
-        walk(layer.children)
-        continue
-      }
-      if (layer.kind === 'particles' || layer.kind === 'series') continue
-      if (!layer.position) continue
+interface Point {
+  x: number
+  y: number
+}
 
-      const isText = layer.kind === 'text'
-      let radius = 0
-      if (layer.kind === 'arc') radius = layer.outerRadius
-      if (layer.kind === 'ellipse') radius = Math.max(layer.radiusX, layer.radiusY)
+/** Extent of a leaf layer around its anchored origin: [left, top, right, bottom]. */
+function layerExtent(layer: Layer): [number, number, number, number] {
+  if (layer.kind === 'rect') return [0, 0, layer.width, layer.height]
+  if (layer.kind === 'arc') {
+    const r = layer.outerRadius
+    return [-r, -r, r, r]
+  }
+  if (layer.kind === 'ellipse')
+    return [-layer.radiusX, -layer.radiusY, layer.radiusX, layer.radiusY]
+  return [0, 0, 0, 0]
+}
 
-      for (const kf of layer.position) {
-        if (!isText && (kf.t < inEnd - 1e-9 || kf.t > outStart + 1e-9)) continue
-        const px = kf.value.x
-        const py = kf.value.y
-        if (
-          px - radius < TITLE_SAFE.left ||
-          px + radius > TITLE_SAFE.right ||
-          py - radius < TITLE_SAFE.top ||
-          py + radius > TITLE_SAFE.bottom
-        ) {
-          violations.push({
-            templateId,
-            rule: 'S3.4',
-            message: `layer "${layer.id}" position (${px.toFixed(0)}, ${py.toFixed(0)}) outside 90% title-safe at t=${kf.t}`
-          })
-        }
-      }
+/** Static offset a group adds to its children at hold: its position minus its anchor. */
+function groupOffset(layer: Layer, inEnd: number, parent: Point): Point {
+  const kf = layer.position?.find(k => k.t >= inEnd - 1e-9) ?? layer.position?.at(-1)
+  const pos = kf?.value ?? { x: 0, y: 0 }
+  return { x: parent.x + pos.x - layer.anchor.x, y: parent.y + pos.y - layer.anchor.y }
+}
+
+function isOutsideTitleSafe(box: [number, number, number, number]): boolean {
+  const [l, t, r, b] = box
+  return (
+    l < TITLE_SAFE.left ||
+    r > TITLE_SAFE.right ||
+    t < TITLE_SAFE.top ||
+    b > TITLE_SAFE.bottom
+  )
+}
+
+/**
+ * Position keys to test. Text is checked at every key. Other layers are checked
+ * at the hold only: every key inside it, plus the value already in effect when
+ * the hold starts (the last key at or before inEnd), which a static or
+ * entrance-only track would otherwise never present.
+ */
+function positionsToCheck(layer: Layer, inEnd: number, outStart: number) {
+  const keys = layer.position ?? []
+  if (layer.kind === 'text') return keys
+  const inHold = keys.filter(k => k.t >= inEnd - 1e-9 && k.t <= outStart + 1e-9)
+  const atHoldStart = [...keys].reverse().find(k => k.t <= inEnd + 1e-9) ?? keys[0]
+  return atHoldStart && !inHold.includes(atHoldStart) ? [atHoldStart, ...inHold] : inHold
+}
+
+function checkLeafSafe(
+  layer: Layer,
+  origin: Point,
+  inEnd: number,
+  outStart: number,
+  templateId: string,
+  violations: TimingViolation[]
+): void {
+  if (!layer.position) return
+  const [ex0, ey0, ex1, ey1] = layerExtent(layer)
+  for (const kf of positionsToCheck(layer, inEnd, outStart)) {
+    const x = origin.x + kf.value.x - layer.anchor.x
+    const y = origin.y + kf.value.y - layer.anchor.y
+    if (!isOutsideTitleSafe([x + ex0, y + ey0, x + ex1, y + ey1])) continue
+    violations.push({
+      templateId,
+      rule: 'S3.4',
+      message: `layer "${layer.id}" bounds (${(x + ex0).toFixed(0)}, ${(y + ey0).toFixed(0)}) to (${(x + ex1).toFixed(0)}, ${(y + ey1).toFixed(0)}) outside 90% title-safe at t=${kf.t}`
+    })
+  }
+}
+
+function walkSafe(
+  layers: Layer[],
+  origin: Point,
+  inEnd: number,
+  outStart: number,
+  templateId: string,
+  violations: TimingViolation[]
+): void {
+  for (const layer of layers) {
+    if (layer.kind === 'group') {
+      walkSafe(
+        layer.children,
+        groupOffset(layer, inEnd, origin),
+        inEnd,
+        outStart,
+        templateId,
+        violations
+      )
+    } else if (layer.kind !== 'particles' && layer.kind !== 'series') {
+      checkLeafSafe(layer, origin, inEnd, outStart, templateId, violations)
     }
   }
-
-  walk(layers)
-  return violations
 }
 
 export function checkTitleSafe(t: MotionTemplate): TimingViolation[] {

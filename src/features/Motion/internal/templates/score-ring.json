@@ -51,8 +51,8 @@
       "kind": "arc",
       "id": "track-ring",
       "anchor": {
-        "x": 1920,
-        "y": 980
+        "x": 0,
+        "y": 0
       },
       "position": [
         {
@@ -137,8 +137,8 @@
       "kind": "arc",
       "id": "score-arc",
       "anchor": {
-        "x": 1920,
-        "y": 980
+        "x": 0,
+        "y": 0
       },
       "position": [
         {
@@ -232,8 +232,8 @@
       "kind": "text",
       "id": "counter-text",
       "anchor": {
-        "x": 1920,
-        "y": 980
+        "x": 0,
+        "y": 0
       },
       "position": [
         {
