@@ -218,6 +218,233 @@ function staticInput(key: string, value: number | string): LuaEntry {
 }
 
 // ---------------------------------------------------------------------------
+// Animated base-property helpers (position, scale, rotation, opacity)
+// ---------------------------------------------------------------------------
+
+/**
+ * Add animated position for a shape tool (XOffset / YOffset in shape coords).
+ * Replaces any static XOffset/YOffset already in `inputs`.
+ */
+function addShapePositionAnimation(
+  inputs: LuaEntry[],
+  layer: PrimitiveLayer,
+  w: number,
+  h: number,
+  fps: number,
+  tools: FusionTool[]
+): void {
+  if (!layer.position || layer.position.length < 2) return
+  const xKfs = layer.position.map(kf => ({
+    t: kf.t,
+    value: toShapeCoords(kf.value.x, kf.value.y, w, h).x,
+    ease: kf.ease
+  }))
+  const yKfs = layer.position.map(kf => ({
+    t: kf.t,
+    value: toShapeCoords(kf.value.x, kf.value.y, w, h).y,
+    ease: kf.ease
+  }))
+  // Remove static offsets and replace with animated
+  const keep = inputs.filter(e => e.key !== 'XOffset' && e.key !== 'YOffset')
+  inputs.length = 0
+  inputs.push(...keep)
+  inputs.push(animatedNumberInput(layer.id, 'XOffset', xKfs, fps, tools))
+  inputs.push(animatedNumberInput(layer.id, 'YOffset', yKfs, fps, tools))
+}
+
+/**
+ * Add animated scale for a shape tool via a per-layer image Transform.
+ * Returns the Transform tool (caller adds it to the appropriate list).
+ */
+function buildShapeScaleTransform(
+  layer: PrimitiveLayer,
+  fps: number,
+  tools: FusionTool[]
+): FusionTool | null {
+  if (!layer.scale || layer.scale.length < 2) return null
+  const name = toolName(layer.id, 'scale_xf')
+  const sizeKfs = layer.scale.map(kf => ({
+    t: kf.t,
+    value: kf.value.x,
+    ease: kf.ease
+  }))
+  const xfInputs: LuaEntry[] = [animatedNumberInput(name, 'Size', sizeKfs, fps, tools)]
+  return {
+    name,
+    type: 'Transform',
+    entries: [{ key: 'Inputs', value: xfInputs }]
+  }
+}
+
+/**
+ * Add animated rotation for a shape tool (Angle input, negated).
+ */
+function addShapeRotationAnimation(
+  inputs: LuaEntry[],
+  layer: PrimitiveLayer,
+  fps: number,
+  tools: FusionTool[]
+): void {
+  if (!layer.rotation || layer.rotation.length < 2) return
+  const rotKfs = layer.rotation.map(kf => ({
+    t: kf.t,
+    value: toFusionRotation(kf.value),
+    ease: kf.ease
+  }))
+  inputs.push(animatedNumberInput(layer.id, 'Angle', rotKfs, fps, tools))
+}
+
+/**
+ * Add animated or static opacity for a shape tool.
+ */
+function addShapeOpacity(
+  inputs: LuaEntry[],
+  layer: PrimitiveLayer,
+  shapeName: string,
+  fps: number,
+  tools: FusionTool[]
+): void {
+  if (layer.opacity && layer.opacity.length > 1) {
+    inputs.push(animatedNumberInput(shapeName, 'Opacity', layer.opacity, fps, tools))
+  } else if (layer.opacity && layer.opacity.length === 1) {
+    inputs.push(staticInput('Opacity', layer.opacity[0].value))
+  }
+}
+
+/**
+ * Add animated position for a Text+ tool (Center in image coords).
+ * Position is a two-component path - we emit separate X/Y splines linked
+ * through a single Center input with SourceOp connections.
+ */
+function addTextPositionAnimation(
+  inputs: LuaEntry[],
+  layer: TextLayer,
+  w: number,
+  h: number,
+  fps: number,
+  tools: FusionTool[]
+): void {
+  if (!layer.position || layer.position.length < 2) return
+  const xKfs = layer.position.map(kf => ({
+    t: kf.t,
+    value: toImageCoords(kf.value.x, kf.value.y, w, h).x,
+    ease: kf.ease
+  }))
+  const yKfs = layer.position.map(kf => ({
+    t: kf.t,
+    value: toImageCoords(kf.value.x, kf.value.y, w, h).y,
+    ease: kf.ease
+  }))
+  // Remove the static Center and replace with animated X/Y
+  const keep = inputs.filter(e => e.key !== 'Center')
+  inputs.length = 0
+  inputs.push(...keep)
+  inputs.push(
+    animatedNumberInput(toolName(layer.id, 'text'), 'CenterX', xKfs, fps, tools)
+  )
+  inputs.push(
+    animatedNumberInput(toolName(layer.id, 'text'), 'CenterY', yKfs, fps, tools)
+  )
+}
+
+/**
+ * Add animated scale for a Text+ tool (Size input).
+ */
+function addTextScaleAnimation(
+  inputs: LuaEntry[],
+  layer: TextLayer,
+  fps: number,
+  tools: FusionTool[]
+): void {
+  if (!layer.scale || layer.scale.length < 2) return
+  const sizeKfs = layer.scale.map(kf => ({
+    t: kf.t,
+    value: kf.value.x,
+    ease: kf.ease
+  }))
+  inputs.push(
+    animatedNumberInput(toolName(layer.id, 'text'), 'Size', sizeKfs, fps, tools)
+  )
+}
+
+/**
+ * Add animated rotation for a Text+ tool (Angle input, negated).
+ */
+function addTextRotationAnimation(
+  inputs: LuaEntry[],
+  layer: TextLayer,
+  fps: number,
+  tools: FusionTool[]
+): void {
+  if (!layer.rotation || layer.rotation.length < 2) return
+  const rotKfs = layer.rotation.map(kf => ({
+    t: kf.t,
+    value: toFusionRotation(kf.value),
+    ease: kf.ease
+  }))
+  inputs.push(
+    animatedNumberInput(toolName(layer.id, 'text'), 'Angle', rotKfs, fps, tools)
+  )
+}
+
+/**
+ * Add animated properties for a group's image Transform.
+ */
+function addGroupTransformAnimations(
+  inputs: LuaEntry[],
+  group: GroupLayer,
+  format: { w: number; h: number; fps: number },
+  tools: FusionTool[],
+  transformName: string
+): void {
+  const { w, h, fps } = format
+  // Animated position -> Center
+  if (group.position && group.position.length > 1) {
+    const xKfs = group.position.map(kf => ({
+      t: kf.t,
+      value: toImageCoords(kf.value.x, kf.value.y, w, h).x,
+      ease: kf.ease
+    }))
+    const yKfs = group.position.map(kf => ({
+      t: kf.t,
+      value: toImageCoords(kf.value.x, kf.value.y, w, h).y,
+      ease: kf.ease
+    }))
+    const keep = inputs.filter(e => e.key !== 'Center')
+    inputs.length = 0
+    inputs.push(...keep)
+    inputs.push(animatedNumberInput(transformName, 'CenterX', xKfs, fps, tools))
+    inputs.push(animatedNumberInput(transformName, 'CenterY', yKfs, fps, tools))
+  }
+
+  // Animated scale -> Size
+  if (group.scale && group.scale.length > 1) {
+    const sizeKfs = group.scale.map(kf => ({
+      t: kf.t,
+      value: kf.value.x,
+      ease: kf.ease
+    }))
+    const keep = inputs.filter(e => e.key !== 'Size')
+    inputs.length = 0
+    inputs.push(...keep)
+    inputs.push(animatedNumberInput(transformName, 'Size', sizeKfs, fps, tools))
+  }
+
+  // Animated rotation -> Angle
+  if (group.rotation && group.rotation.length > 1) {
+    const rotKfs = group.rotation.map(kf => ({
+      t: kf.t,
+      value: toFusionRotation(kf.value),
+      ease: kf.ease
+    }))
+    const keep = inputs.filter(e => e.key !== 'Angle')
+    inputs.length = 0
+    inputs.push(...keep)
+    inputs.push(animatedNumberInput(transformName, 'Angle', rotKfs, fps, tools))
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Hex colour helpers
 // ---------------------------------------------------------------------------
 
@@ -301,7 +528,7 @@ function buildShapeInputs(
       return buildArcInputs(layer, w, h, format.fps, tools)
     case 'path':
       // Simple paths -> sPolygon, bezier paths handled in buildPathFallback
-      return buildPolygonInputs(layer, w, h)
+      return buildPolygonInputs(layer, w, h, format.fps, tools)
     default:
       return []
   }
@@ -346,6 +573,10 @@ function buildRectInputs(
     inputs.push(animatedNumberInput(layer.id, 'Height', scaledKfs, fps, tools))
   }
 
+  // Base animatable properties
+  addShapePositionAnimation(inputs, layer, w, h, fps, tools)
+  addShapeRotationAnimation(inputs, layer, fps, tools)
+
   return inputs
 }
 
@@ -369,24 +600,9 @@ function buildEllipseInputs(
     staticInput('YOffset', pos.y)
   ]
 
-  // Animated position -> separate XOffset/YOffset BezierSplines
-  if (layer.position && layer.position.length > 1) {
-    const xKfs = layer.position.map(kf => ({
-      t: kf.t,
-      value: toShapeCoords(kf.value.x, kf.value.y, w, h).x,
-      ease: kf.ease
-    }))
-    const yKfs = layer.position.map(kf => ({
-      t: kf.t,
-      value: toShapeCoords(kf.value.x, kf.value.y, w, h).y,
-      ease: kf.ease
-    }))
-    // Replace static XOffset/YOffset with animated
-    const filtered = inputs.filter(e => e.key !== 'XOffset' && e.key !== 'YOffset')
-    filtered.push(animatedNumberInput(layer.id, 'XOffset', xKfs, fps, tools))
-    filtered.push(animatedNumberInput(layer.id, 'YOffset', yKfs, fps, tools))
-    return filtered
-  }
+  // Base animatable properties
+  addShapePositionAnimation(inputs, layer, w, h, fps, tools)
+  addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
 }
@@ -429,10 +645,20 @@ function buildArcInputs(
     inputs.push(staticInput('WritePosition', layer.startAngle[0].value / 360))
   }
 
+  // Base animatable properties
+  addShapePositionAnimation(inputs, layer, w, h, fps, tools)
+  addShapeRotationAnimation(inputs, layer, fps, tools)
+
   return inputs
 }
 
-function buildPolygonInputs(layer: PathLayer, w: number, h: number): LuaEntry[] {
+function buildPolygonInputs(
+  layer: PathLayer,
+  w: number,
+  h: number,
+  fps: number,
+  tools: FusionTool[]
+): LuaEntry[] {
   const points = parseLinearPath(layer.d)
   if (points.length === 0) return []
 
@@ -448,7 +674,7 @@ function buildPolygonInputs(layer: PathLayer, w: number, h: number): LuaEntry[] 
     }
   })
 
-  return [
+  const inputs: LuaEntry[] = [
     staticInput('Closed', 1),
     {
       key: 'Polyline',
@@ -466,6 +692,12 @@ function buildPolygonInputs(layer: PathLayer, w: number, h: number): LuaEntry[] 
       }
     }
   ]
+
+  // Base animatable properties
+  addShapePositionAnimation(inputs, layer, w, h, fps, tools)
+  addShapeRotationAnimation(inputs, layer, fps, tools)
+
+  return inputs
 }
 
 // ---------------------------------------------------------------------------
@@ -594,12 +826,8 @@ function buildFillColourAnimation(
 // Text+ builder
 // ---------------------------------------------------------------------------
 
-function buildTextTool(
-  layer: TextLayer,
-  format: MotionFormat,
-  fps: number,
-  tools: FusionTool[]
-): FusionTool {
+/** Build the static base inputs for a Text+ tool. */
+function buildTextBaseInputs(layer: TextLayer, format: MotionFormat): LuaEntry[] {
   const pos = toImageCoords(
     layer.position?.[0]?.value.x ?? layer.anchor.x,
     layer.position?.[0]?.value.y ?? layer.anchor.y,
@@ -607,10 +835,9 @@ function buildTextTool(
     format.height
   )
 
-  // Alignment: Fusion Text+ uses 0 = center, -1 = left, 1 = right
   const justification = layer.align === 'left' ? 0 : layer.align === 'right' ? 1 : 0.5
 
-  const textInputs: LuaEntry[] = [
+  return [
     staticInput('Width', 1),
     staticInput('Height', 1),
     staticInput('UseFrameFormatSettings', 0),
@@ -636,59 +863,64 @@ function buildTextTool(
     staticInput('HorizontalJustification', justification),
     staticInput('LineSpacing', layer.lineHeight)
   ]
+}
 
-  // Opacity
+/** Add animated tracks for Text+ (opacity, tracking, position, scale, rotation). */
+function addTextAnimations(
+  inputs: LuaEntry[],
+  layer: TextLayer,
+  format: MotionFormat,
+  fps: number,
+  tools: FusionTool[]
+): void {
+  const name = toolName(layer.id, 'text')
+
   if (layer.opacity && layer.opacity.length > 1) {
-    textInputs.push(
-      animatedNumberInput(
-        toolName(layer.id, 'text'),
-        'Opacity',
-        layer.opacity,
-        fps,
-        tools
-      )
-    )
+    inputs.push(animatedNumberInput(name, 'Opacity', layer.opacity, fps, tools))
   } else if (layer.opacity && layer.opacity.length === 1) {
-    textInputs.push(staticInput('Opacity', layer.opacity[0].value))
+    inputs.push(staticInput('Opacity', layer.opacity[0].value))
   }
 
-  // Tracking
   if (layer.tracking && layer.tracking.length > 1) {
-    textInputs.push(
-      animatedNumberInput(
-        toolName(layer.id, 'text'),
-        'Tracking',
-        layer.tracking,
-        fps,
-        tools
-      )
-    )
+    inputs.push(animatedNumberInput(name, 'Tracking', layer.tracking, fps, tools))
   } else if (layer.tracking && layer.tracking.length === 1) {
-    textInputs.push(staticInput('Tracking', layer.tracking[0].value))
+    inputs.push(staticInput('Tracking', layer.tracking[0].value))
   }
 
-  // Fill colour
-  const rgb = hexToRgb(layer.fill)
-  textInputs.push(staticInput('Red1', rgb.r))
-  textInputs.push(staticInput('Green1', rgb.g))
-  textInputs.push(staticInput('Blue1', rgb.b))
+  addTextPositionAnimation(inputs, layer, format.width, format.height, fps, tools)
+  addTextScaleAnimation(inputs, layer, fps, tools)
+  addTextRotationAnimation(inputs, layer, fps, tools)
+}
 
-  // Fill colour animation
+/** Add fill colour (static or animated) to a Text+ inputs list. */
+function addTextFillColour(
+  inputs: LuaEntry[],
+  layer: TextLayer,
+  fps: number,
+  tools: FusionTool[]
+): void {
+  const rgb = hexToRgb(layer.fill)
   const fillAnim = buildFillColourAnimation(layer, toolName(layer.id, 'text'), fps, tools)
   if (fillAnim) {
-    // Replace static RGB with animated
-    const filtered = textInputs.filter(
-      e => e.key !== 'Red1' && e.key !== 'Green1' && e.key !== 'Blue1'
-    )
-    filtered.push(fillAnim.r)
-    filtered.push(fillAnim.g)
-    filtered.push(fillAnim.b)
-    return {
-      name: toolName(layer.id, 'text'),
-      type: 'TextPlus',
-      entries: [{ key: 'Inputs', value: filtered }]
-    }
+    inputs.push(fillAnim.r)
+    inputs.push(fillAnim.g)
+    inputs.push(fillAnim.b)
+  } else {
+    inputs.push(staticInput('Red1', rgb.r))
+    inputs.push(staticInput('Green1', rgb.g))
+    inputs.push(staticInput('Blue1', rgb.b))
   }
+}
+
+function buildTextTool(
+  layer: TextLayer,
+  format: MotionFormat,
+  fps: number,
+  tools: FusionTool[]
+): FusionTool {
+  const textInputs = buildTextBaseInputs(layer, format)
+  addTextAnimations(textInputs, layer, format, fps, tools)
+  addTextFillColour(textInputs, layer, fps, tools)
 
   return {
     name: toolName(layer.id, 'text'),
@@ -855,6 +1087,93 @@ function isHatchBand(layer: PrimitiveLayer): boolean {
   return layer.kind === 'path' && layer.id.includes('-hatch-')
 }
 
+/** Process a text layer: build Text+, optional counter expression, optional Follower. */
+function processTextLayer(
+  layer: TextLayer,
+  format: MotionFormat,
+  result: ProcessedLayers,
+  notes: string[],
+  values: Record<string, unknown>
+): void {
+  const fps = format.fps
+  let textTool: FusionTool
+  if (layer.counter) {
+    textTool = buildCounterTextTool(layer, format, fps, result.splineTools, values)
+  } else {
+    textTool = buildTextTool(layer, format, fps, result.splineTools)
+  }
+
+  if (layer.stagger) {
+    const stagger = computeStaggerDelay(layer.stagger.delay, fps)
+    if (stagger.rounded) {
+      notes.push(
+        `Stagger delay was rounded from ${stagger.originalFrames.toFixed(2)} ` +
+          `to ${stagger.delayFrames} frame(s) for Resolve Follower compatibility`
+      )
+    }
+    result.splineTools.push(buildFollowerModifier(textTool.name, stagger.delayFrames))
+  }
+
+  result.textTools.push(textTool)
+}
+
+/** Process a shape layer (rect, ellipse, arc) into an s* tool. */
+function processShapeLayer(
+  layer: RectLayer | EllipseLayer | ArcLayer,
+  format: MotionFormat,
+  result: ProcessedLayers
+): void {
+  const shapeName = toolName(layer.id, 'shape')
+  const shapeType = layer.kind === 'rect' ? 'sRectangle' : 'sEllipse'
+  const fps = format.fps
+
+  const inputs = buildShapeInputs(layer, format, result.splineTools)
+  addShapeOpacity(inputs, layer, shapeName, fps, result.splineTools)
+  const fillInputs = buildShapeFillInputs(layer, shapeName, fps, result.splineTools)
+
+  result.shapeTools.push({
+    name: shapeName,
+    type: shapeType,
+    entries: [{ key: 'Inputs', value: [...inputs, ...fillInputs] }]
+  })
+
+  const scaleXf = buildShapeScaleTransform(layer, fps, result.splineTools)
+  if (scaleXf) result.splineTools.push(scaleXf)
+}
+
+/** Process a path layer into sPolygon or Background fallback. */
+function processPathLayer(
+  layer: PathLayer,
+  format: MotionFormat,
+  result: ProcessedLayers
+): void {
+  if (isHatchBand(layer) || pathNeedsFallback(layer)) {
+    const fallback = buildPathFallback(
+      layer,
+      format.width,
+      format.height,
+      luaIdent(layer.id)
+    )
+    result.fallbackTools.push(...fallback)
+    return
+  }
+
+  const shapeName = toolName(layer.id, 'shape')
+  const fps = format.fps
+  const inputs = buildShapeInputs(layer, format, result.splineTools)
+  addShapeOpacity(inputs, layer, shapeName, fps, result.splineTools)
+  const fillInputs = buildShapeFillInputs(layer, shapeName, fps, result.splineTools)
+
+  result.shapeTools.push({
+    name: shapeName,
+    type: 'sPolygon',
+    entries: [{ key: 'Inputs', value: [...inputs, ...fillInputs] }]
+  })
+
+  const scaleXf = buildShapeScaleTransform(layer, fps, result.splineTools)
+  if (scaleXf) result.splineTools.push(scaleXf)
+}
+
 function processLayer(
   layer: PrimitiveLayer,
   format: MotionFormat,
@@ -862,105 +1181,108 @@ function processLayer(
   notes: string[],
   values: Record<string, unknown>
 ): void {
-  const w = format.width
-  const h = format.height
-  const fps = format.fps
-
   switch (layer.kind) {
-    case 'text': {
-      let textTool: FusionTool
-      if (layer.counter) {
-        textTool = buildCounterTextTool(layer, format, fps, result.splineTools, values)
-      } else {
-        textTool = buildTextTool(layer, format, fps, result.splineTools)
-      }
-
-      // Stagger / Follower
-      if (layer.stagger) {
-        const stagger = computeStaggerDelay(layer.stagger.delay, fps)
-        if (stagger.rounded) {
-          notes.push(
-            `Stagger delay was rounded from ${stagger.originalFrames.toFixed(2)} ` +
-              `to ${stagger.delayFrames} frame(s) for Resolve Follower compatibility`
-          )
-        }
-        result.splineTools.push(buildFollowerModifier(textTool.name, stagger.delayFrames))
-      }
-
-      result.textTools.push(textTool)
+    case 'text':
+      processTextLayer(layer, format, result, notes, values)
       break
-    }
-
     case 'rect':
     case 'ellipse':
-    case 'arc': {
-      const shapeName = toolName(layer.id, 'shape')
-      const shapeType = layer.kind === 'rect' ? 'sRectangle' : 'sEllipse'
-
-      const inputs = buildShapeInputs(layer, format, result.splineTools)
-
-      // Opacity animation on shape
-      if (layer.opacity && layer.opacity.length > 1) {
-        inputs.push(
-          animatedNumberInput(
-            shapeName,
-            'Opacity',
-            layer.opacity,
-            fps,
-            result.splineTools
-          )
-        )
-      } else if (layer.opacity && layer.opacity.length === 1) {
-        inputs.push(staticInput('Opacity', layer.opacity[0].value))
-      }
-
-      const fillInputs = buildShapeFillInputs(layer, shapeName, fps, result.splineTools)
-
-      result.shapeTools.push({
-        name: shapeName,
-        type: shapeType,
-        entries: [
-          {
-            key: 'Inputs',
-            value: [...inputs, ...fillInputs]
-          }
-        ]
-      })
+    case 'arc':
+      processShapeLayer(layer, format, result)
       break
-    }
-
-    case 'path': {
-      if (isHatchBand(layer) || pathNeedsFallback(layer)) {
-        // Fallback: Polygon mask on Background
-        const fallback = buildPathFallback(layer, w, h, luaIdent(layer.id))
-        result.fallbackTools.push(...fallback)
-      } else {
-        // Simple polygon -> sPolygon
-        const shapeName = toolName(layer.id, 'shape')
-        const inputs = buildShapeInputs(layer, format, result.splineTools)
-        const fillInputs = buildShapeFillInputs(layer, shapeName, fps, result.splineTools)
-        result.shapeTools.push({
-          name: shapeName,
-          type: 'sPolygon',
-          entries: [
-            {
-              key: 'Inputs',
-              value: [...inputs, ...fillInputs]
-            }
-          ]
-        })
-      }
+    case 'path':
+      processPathLayer(layer, format, result)
       break
-    }
-
     case 'group':
       processGroup(layer as GroupLayer, format, result, notes, values)
       break
-
     case 'particles':
-      // Should have been rejected earlier
       break
   }
+}
+
+/** Build the group's image Transform tool if it has position, scale or rotation. */
+function buildGroupTransform(
+  group: GroupLayer,
+  format: MotionFormat,
+  splineTools: FusionTool[]
+): FusionTool | null {
+  const hasTransform =
+    (group.position && group.position.length > 0) ||
+    (group.scale && group.scale.length > 0) ||
+    (group.rotation && group.rotation.length > 0)
+
+  if (!hasTransform) return null
+
+  const transformName = toolName(group.id, 'transform')
+  const pos = group.position?.[0]
+    ? toImageCoords(
+        group.position[0].value.x,
+        group.position[0].value.y,
+        format.width,
+        format.height
+      )
+    : { x: 0.5, y: 0.5 }
+
+  const inputs: LuaEntry[] = [
+    {
+      key: 'Center',
+      value: {
+        call: 'Input',
+        arg: [
+          {
+            key: 'Value',
+            value: [
+              { key: null, value: pos.x },
+              { key: null, value: pos.y }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+
+  if (group.scale && group.scale.length > 0) {
+    inputs.push(staticInput('Size', group.scale[0].value.x))
+  }
+  if (group.rotation && group.rotation.length > 0) {
+    inputs.push(staticInput('Angle', toFusionRotation(group.rotation[0].value)))
+  }
+
+  addGroupTransformAnimations(
+    inputs,
+    group,
+    { w: format.width, h: format.height, fps: format.fps },
+    splineTools,
+    transformName
+  )
+
+  return {
+    name: transformName,
+    type: 'Transform',
+    entries: [{ key: 'Inputs', value: inputs }]
+  }
+}
+
+/** Build a Merge with Blend for group opacity, if the group has opacity keyframes. */
+function buildGroupOpacityMerge(
+  group: GroupLayer,
+  format: MotionFormat,
+  splineTools: FusionTool[]
+): FusionTool | null {
+  if (!group.opacity || group.opacity.length === 0) return null
+
+  const name = toolName(group.id, 'blend')
+  const inputs: LuaEntry[] = []
+  if (group.opacity.length > 1) {
+    inputs.push(
+      animatedNumberInput(name, 'Blend', group.opacity, format.fps, splineTools)
+    )
+  } else {
+    inputs.push(staticInput('Blend', group.opacity[0].value))
+  }
+
+  return { name, type: 'Merge', entries: [{ key: 'Inputs', value: inputs }] }
 }
 
 function processGroup(
@@ -970,62 +1292,15 @@ function processGroup(
   notes: string[],
   values: Record<string, unknown>
 ): void {
-  // Process children
   for (const child of group.children as PrimitiveLayer[]) {
     processLayer(child, format, result, notes, values)
   }
 
-  // If the group has a transform, add an image Transform tool
-  const hasTransform =
-    (group.position && group.position.length > 0) ||
-    (group.scale && group.scale.length > 0) ||
-    (group.rotation && group.rotation.length > 0)
+  const transform = buildGroupTransform(group, format, result.splineTools)
+  if (transform) result.splineTools.push(transform)
 
-  if (hasTransform) {
-    const transformName = toolName(group.id, 'transform')
-    const pos = group.position?.[0]
-      ? toImageCoords(
-          group.position[0].value.x,
-          group.position[0].value.y,
-          format.width,
-          format.height
-        )
-      : { x: 0.5, y: 0.5 }
-
-    const transformInputs: LuaEntry[] = [
-      {
-        key: 'Center',
-        value: {
-          call: 'Input',
-          arg: [
-            {
-              key: 'Value',
-              value: [
-                { key: null, value: pos.x },
-                { key: null, value: pos.y }
-              ]
-            }
-          ]
-        }
-      }
-    ]
-
-    if (group.scale && group.scale.length > 0) {
-      transformInputs.push(staticInput('Size', group.scale[0].value.x))
-    }
-
-    if (group.rotation && group.rotation.length > 0) {
-      transformInputs.push(
-        staticInput('Angle', toFusionRotation(group.rotation[0].value))
-      )
-    }
-
-    result.splineTools.push({
-      name: transformName,
-      type: 'Transform',
-      entries: [{ key: 'Inputs', value: transformInputs }]
-    })
-  }
+  const blendMerge = buildGroupOpacityMerge(group, format, result.splineTools)
+  if (blendMerge) result.splineTools.push(blendMerge)
 }
 
 // ---------------------------------------------------------------------------
@@ -1167,6 +1442,87 @@ function buildColourBackgrounds(
 // Merge chain
 // ---------------------------------------------------------------------------
 
+/** Create a SourceOp connection input. */
+function sourceOpInput(key: string, sourceOp: string): LuaEntry {
+  return {
+    key,
+    value: {
+      call: 'Input',
+      arg: [
+        { key: 'SourceOp', value: sourceOp },
+        { key: 'Source', value: 'Output' }
+      ]
+    }
+  }
+}
+
+/** Chain shape tools through sMerge nodes and an sRender, returning the output name. */
+function buildShapeMergeChain(
+  shapeTools: FusionTool[],
+  mergeTools: FusionTool[]
+): string | null {
+  if (shapeTools.length === 0) return null
+
+  // Build sMerge chain
+  let prevOutput = shapeTools[0].name
+  for (let i = 1; i < shapeTools.length; i++) {
+    const smergeName = `shape_smerge_${i}`
+    const inputs: LuaEntry[] = [
+      sourceOpInput('Background', prevOutput),
+      sourceOpInput('Foreground', shapeTools[i].name)
+    ]
+    mergeTools.push({
+      name: smergeName,
+      type: 'sMerge',
+      entries: [{ key: 'Inputs', value: inputs }]
+    })
+    prevOutput = smergeName
+  }
+
+  // Single shape still needs sMerge for the sRender chain
+  if (shapeTools.length === 1) {
+    const smergeName = 'shape_smerge'
+    mergeTools.push({
+      name: smergeName,
+      type: 'sMerge',
+      entries: [{ key: 'Inputs', value: [sourceOpInput('Background', prevOutput)] }]
+    })
+    prevOutput = smergeName
+  }
+
+  // sRender
+  const sRenderName = 'shape_srender'
+  mergeTools.push({
+    name: sRenderName,
+    type: 'sRender',
+    entries: [{ key: 'Inputs', value: [sourceOpInput('Background', prevOutput)] }]
+  })
+  return sRenderName
+}
+
+/** Chain multiple image outputs through Merge nodes. */
+function buildImageMergeChain(outputs: string[], mergeTools: FusionTool[]): void {
+  if (outputs.length <= 1) return
+  let prevOutput = outputs[0]
+  for (let i = 1; i < outputs.length; i++) {
+    const mergeName = `merge_${i}`
+    mergeTools.push({
+      name: mergeName,
+      type: 'Merge',
+      entries: [
+        {
+          key: 'Inputs',
+          value: [
+            sourceOpInput('Background', prevOutput),
+            sourceOpInput('Foreground', outputs[i])
+          ]
+        }
+      ]
+    })
+    prevOutput = mergeName
+  }
+}
+
 function buildMergeChain(
   shapeTools: FusionTool[],
   textTools: FusionTool[],
@@ -1176,207 +1532,31 @@ function buildMergeChain(
 ): FusionTool[] {
   const mergeTools: FusionTool[] = []
 
-  // 1. Chain shapes through sMerge
-  let shapeMergeOutput: string | null = null
-  if (shapeTools.length > 0) {
-    if (shapeTools.length === 1) {
-      // Single shape -> sMerge -> sRender
-      const smergeName = 'shape_smerge'
-      mergeTools.push({
-        name: smergeName,
-        type: 'sMerge',
-        entries: [
-          {
-            key: 'Inputs',
-            value: [
-              {
-                key: 'Background',
-                value: {
-                  call: 'Input',
-                  arg: [
-                    { key: 'SourceOp', value: shapeTools[0].name },
-                    { key: 'Source', value: 'Output' }
-                  ]
-                }
-              }
-            ]
-          }
-        ]
-      })
-      shapeMergeOutput = smergeName
-    } else {
-      // Chain multiple shapes through sMerges
-      let prevMerge = ''
-      for (let i = 0; i < shapeTools.length; i++) {
-        const smergeName = `shape_smerge_${i + 1}`
-        const inputs: LuaEntry[] = []
-
-        if (i === 0) {
-          inputs.push({
-            key: 'Background',
-            value: {
-              call: 'Input',
-              arg: [
-                { key: 'SourceOp', value: shapeTools[0].name },
-                { key: 'Source', value: 'Output' }
-              ]
-            }
-          })
-          if (shapeTools.length > 1) {
-            inputs.push({
-              key: 'Foreground',
-              value: {
-                call: 'Input',
-                arg: [
-                  { key: 'SourceOp', value: shapeTools[1].name },
-                  { key: 'Source', value: 'Output' }
-                ]
-              }
-            })
-          }
-          mergeTools.push({
-            name: smergeName,
-            type: 'sMerge',
-            entries: [{ key: 'Inputs', value: inputs }]
-          })
-          prevMerge = smergeName
-          i++ // consumed two shapes
-        } else {
-          inputs.push({
-            key: 'Background',
-            value: {
-              call: 'Input',
-              arg: [
-                { key: 'SourceOp', value: prevMerge },
-                { key: 'Source', value: 'Output' }
-              ]
-            }
-          })
-          inputs.push({
-            key: 'Foreground',
-            value: {
-              call: 'Input',
-              arg: [
-                { key: 'SourceOp', value: shapeTools[i].name },
-                { key: 'Source', value: 'Output' }
-              ]
-            }
-          })
-          mergeTools.push({
-            name: smergeName,
-            type: 'sMerge',
-            entries: [{ key: 'Inputs', value: inputs }]
-          })
-          prevMerge = smergeName
-        }
-      }
-      shapeMergeOutput = prevMerge
-    }
-
-    // sRender
-    const sRenderName = 'shape_srender'
-    mergeTools.push({
-      name: sRenderName,
-      type: 'sRender',
-      entries: [
-        {
-          key: 'Inputs',
-          value: [
-            {
-              key: 'Background',
-              value: {
-                call: 'Input',
-                arg: [
-                  { key: 'SourceOp', value: shapeMergeOutput },
-                  { key: 'Source', value: 'Output' }
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    })
-
-    shapeMergeOutput = sRenderName
-  }
+  let shapeMergeOutput = buildShapeMergeChain(shapeTools, mergeTools)
 
   // Apply group transform if present
   const transform = transformTools.find(t => t.type === 'Transform')
   if (transform && shapeMergeOutput) {
-    // Connect transform input to shape render output
     const transformInputs = transform.entries.find(e => e.key === 'Inputs')
     if (transformInputs && Array.isArray(transformInputs.value)) {
-      ;(transformInputs.value as LuaEntry[]).unshift({
-        key: 'Input',
-        value: {
-          call: 'Input',
-          arg: [
-            { key: 'SourceOp', value: shapeMergeOutput },
-            { key: 'Source', value: 'Output' }
-          ]
-        }
-      })
+      ;(transformInputs.value as LuaEntry[]).unshift(
+        sourceOpInput('Input', shapeMergeOutput)
+      )
     }
     mergeTools.push(transform)
     shapeMergeOutput = transform.name
   }
 
-  // 2. Build the image-level Merge chain
-  // Collect all image outputs to merge: shape render, text tools, fallback backgrounds, colour bgs
+  // Collect image outputs
   const imageOutputs: string[] = []
   if (shapeMergeOutput) imageOutputs.push(shapeMergeOutput)
   for (const ft of fallbackTools) {
     if (ft.type === 'Background') imageOutputs.push(ft.name)
   }
-  for (const cb of colourBgTools) {
-    imageOutputs.push(cb.name)
-  }
-  for (const tt of textTools) {
-    imageOutputs.push(tt.name)
-  }
+  for (const cb of colourBgTools) imageOutputs.push(cb.name)
+  for (const tt of textTools) imageOutputs.push(tt.name)
 
-  if (imageOutputs.length <= 1) {
-    // No merging needed
-    return mergeTools
-  }
-
-  // Chain image outputs through Merge nodes
-  let prevOutput = imageOutputs[0]
-  for (let i = 1; i < imageOutputs.length; i++) {
-    const mergeName = `merge_${i}`
-    mergeTools.push({
-      name: mergeName,
-      type: 'Merge',
-      entries: [
-        {
-          key: 'Inputs',
-          value: [
-            {
-              key: 'Background',
-              value: {
-                call: 'Input',
-                arg: [
-                  { key: 'SourceOp', value: prevOutput },
-                  { key: 'Source', value: 'Output' }
-                ]
-              }
-            },
-            {
-              key: 'Foreground',
-              value: {
-                call: 'Input',
-                arg: [
-                  { key: 'SourceOp', value: imageOutputs[i] },
-                  { key: 'Source', value: 'Output' }
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    })
-    prevOutput = mergeName
-  }
+  buildImageMergeChain(imageOutputs, mergeTools)
 
   return mergeTools
 }
