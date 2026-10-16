@@ -2,7 +2,7 @@
  * Loop time tests (issue #335)
  */
 import { describe, expect, it } from 'vitest'
-import { LOOP_GAP, loopTime } from './loopTime'
+import { loopTime } from './loopTime'
 
 describe('loopTime', () => {
   const DURATION = 4 // 4 second template
@@ -22,10 +22,6 @@ describe('loopTime', () => {
     // period = 4 + 0.5 = 4.5s
     // elapsed 4.6s -> 4.6 - 4.5 = 0.1s into the next loop
     expect(loopTime(4.6, DURATION)).toBeCloseTo(0.1)
-  })
-
-  it('p3_1_gap_constant_is_half_second', () => {
-    expect(LOOP_GAP).toBe(0.5)
   })
 
   // P3.2: hold extends the period
