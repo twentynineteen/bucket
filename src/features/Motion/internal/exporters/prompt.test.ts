@@ -345,7 +345,7 @@ describe('PR2.8 particle point list replacement', () => {
     expect(templateJson).not.toBeNull()
 
     // Find the particles layer
-    const layers = templateJson.layers as Record<string, unknown>[]
+    const layers = templateJson!.layers as Record<string, unknown>[]
     const particlesLayer = layers.find(
       (l: Record<string, unknown>) => l.kind === 'particles'
     )
