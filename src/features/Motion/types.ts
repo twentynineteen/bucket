@@ -307,6 +307,8 @@ export interface ShapeLayerState {
   fill: string
   size?: { w: number; h: number }
   radius?: number
+  /** Ellipse radii in output pixels. */
+  radii?: { rx: number; ry: number }
   d?: string
   arc?: {
     innerRadius: number

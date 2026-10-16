@@ -312,6 +312,10 @@ function evaluateShapeLayer(
     base.radius = (layer as RectLayer).radius
   }
 
+  if (layer.kind === 'ellipse') {
+    base.radii = { rx: layer.radiusX, ry: layer.radiusY }
+  }
+
   if (layer.kind === 'arc') {
     const arc = layer as ArcLayer
     base.arc = {

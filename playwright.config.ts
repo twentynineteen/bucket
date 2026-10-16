@@ -26,6 +26,15 @@ import { defineConfig, devices } from '@playwright/test'
  * Their union is the whole suite, so tagging a spec moves it between CI jobs
  * and can never drop it from both.
  */
+/**
+ * Port for the e2e dev server. Defaults to 1422 (the Tauri port). Set E2E_PORT
+ * to run from a second checkout or worktree at the same time: with
+ * reuseExistingServer on, every checkout would otherwise share whichever
+ * server started first and silently test someone else's code.
+ */
+const port = Number(process.env.E2E_PORT ?? 1422)
+const baseURL = `http://localhost:${port}`
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -39,7 +48,7 @@ export default defineConfig({
   reporter: [['html', { open: 'never' }], ['list']],
 
   use: {
-    baseURL: 'http://localhost:1422',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -91,8 +100,8 @@ export default defineConfig({
   // compile happens after this resolves. `globalSetup` above is what waits for the
   // app to actually render (issue #227).
   webServer: {
-    command: 'bun run dev',
-    url: 'http://localhost:1422',
+    command: `bun run dev -- --port ${port}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000
   }

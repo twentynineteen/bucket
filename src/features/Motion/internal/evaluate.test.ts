@@ -634,3 +634,38 @@ describe('E5.4 evaluate is pure', () => {
     expect(a).toEqual(b)
   })
 })
+
+describe('ellipse radii reach the layer state', () => {
+  it('an ellipse layer evaluates with its radiusX and radiusY', () => {
+    const template = {
+      schemaVersion: 1 as const,
+      id: 'ellipse-radii',
+      version: '1.0.0',
+      name: 'Ellipse radii',
+      description: '',
+      category: 'accent' as const,
+      status: 'stable' as const,
+      tags: [],
+      fonts: [],
+      duration: 1,
+      inEnd: 0.5,
+      outStart: 0.5,
+      params: {},
+      layers: [
+        {
+          kind: 'ellipse' as const,
+          id: 'dot',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 1920, y: 1080 } }],
+          radiusX: 50,
+          radiusY: 30,
+          fill: '#00ff00'
+        }
+      ]
+    }
+    const resolved = resolveTemplate(template, {}, { width: 3840, height: 2160, fps: 25 })
+    const [state] = evaluate(resolved, 0.5)
+    expect(state.kind).toBe('ellipse')
+    expect(state.kind === 'ellipse' && state.radii).toEqual({ rx: 50, ry: 30 })
+  })
+})

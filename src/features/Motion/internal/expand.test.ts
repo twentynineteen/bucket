@@ -142,6 +142,55 @@ describe('Expansion (internal/expand.ts)', () => {
       }
     })
 
+    it('stripes are parallel: every edge follows the hatch angle or lies on the band border', () => {
+      const fourItems: NumberListItem[] = [
+        { label: 'A', value: 10 },
+        { label: 'B', value: 50 },
+        { label: 'C', value: 30 },
+        { label: 'D', value: 70 }
+      ]
+      const result = expandTemplate(seriesFixture.layers, seriesParams, {
+        data: fourItems
+      })
+      const hatchPaths = result.filter(
+        l => l.kind === 'path' && l.id.includes('-hatch-')
+      ) as PathLayer[]
+      expect(hatchPaths.length).toBeGreaterThan(2)
+
+      // Band spans points 2 and 3: x 1733..2400, y between their values.
+      const leftX = 400 + (2 / 3) * 2000
+      const rightX = 2400
+      const yOf = (v: number) => 600 + 800 - (v / 100) * 800
+      const top = Math.min(yOf(30), yOf(70))
+      const bottom = Math.max(yOf(30), yOf(70))
+      const onBorder = (a: number[], b: number[]) =>
+        (Math.abs(a[0] - b[0]) < 0.5 &&
+          (Math.abs(a[0] - leftX) < 0.5 || Math.abs(a[0] - rightX) < 0.5)) ||
+        (Math.abs(a[1] - b[1]) < 0.5 &&
+          (Math.abs(a[1] - top) < 0.5 || Math.abs(a[1] - bottom) < 0.5))
+      const hatchAngle = Math.PI / 4
+      const parallel = (a: number[], b: number[]) => {
+        const ang = Math.atan2(b[1] - a[1], b[0] - a[0])
+        const diff = Math.abs(Math.sin(ang - hatchAngle))
+        return diff < Math.sin((1 * Math.PI) / 180)
+      }
+
+      for (const p of hatchPaths) {
+        const nums = p.d.match(/-?\d+(\.\d+)?/g)!.map(Number)
+        const pts: number[][] = []
+        for (let i = 0; i < nums.length; i += 2) pts.push([nums[i], nums[i + 1]])
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i]
+          const b = pts[(i + 1) % pts.length]
+          if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 0.5) continue
+          expect(
+            parallel(a, b) || onBorder(a, b),
+            `${p.id} edge ${JSON.stringify(a)}->${JSON.stringify(b)}`
+          ).toBe(true)
+        }
+      }
+    })
+
     it('with 1 point or no band spec, no hatch paths are produced', () => {
       const oneItem: NumberListItem[] = [{ label: 'A', value: 10 }]
       const result = expandTemplate(seriesFixture.layers, seriesParams, { data: oneItem })
