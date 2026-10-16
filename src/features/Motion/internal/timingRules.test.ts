@@ -18,6 +18,7 @@ import { validFormats } from './resolve'
 import { parseTemplate } from './schema'
 import {
   checkEaseDirection,
+  checkEntranceQuality,
   checkInDuration,
   checkOutInRatio,
   checkStaggerBudget,
@@ -684,6 +685,49 @@ describe('S3.6: ease direction (entrance out, exit in)', () => {
     for (const t of builtins) {
       const violations = checkEaseDirection(t)
       expect(violations, `${t.id} failed S3.6`).toEqual([])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S3.7: entrance quality rule (at least one position/scale animation)
+// ---------------------------------------------------------------------------
+
+describe('S3.7: entrance has position or scale animation', () => {
+  it('broken fixture (opacity-only entrance) reports violation', () => {
+    const t = brokenFixture({
+      id: 'broken-quality',
+      layers: [
+        {
+          kind: 'rect',
+          id: 'fade-only',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 500, y: 500 } }],
+          opacity: [
+            {
+              t: 0,
+              value: 0,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 0.8, value: 1 }
+          ],
+          width: 600,
+          height: 100,
+          fill: '#333333',
+          radius: 12
+        }
+      ]
+    })
+    const violations = checkEntranceQuality(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.7')
+  })
+
+  it('all non-transition built-ins pass', () => {
+    for (const t of builtins) {
+      if (t.category === 'transition') continue
+      const violations = checkEntranceQuality(t)
+      expect(violations, `${t.id} failed S3.7`).toEqual([])
     }
   })
 })
