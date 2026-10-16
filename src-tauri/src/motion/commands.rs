@@ -72,16 +72,32 @@ pub trait ProgressSink: Send {
 /// This is the function the Tauri command delegates to; the only line it
 /// does not cover is the `AppHandle::emit` adapter.
 pub fn write_frame_with_progress(
-    _registry: &super::state::RenderRegistry,
-    _render_id: &str,
-    _png_data: &[u8],
-    _sink: &dyn ProgressSink,
+    registry: &super::state::RenderRegistry,
+    render_id: &str,
+    png_data: &[u8],
+    sink: &dyn ProgressSink,
 ) -> Result<(), MotionError> {
-    // #334: stub - to be replaced by the real implementation
-    Err(MotionError {
-        kind: "notImplemented".to_string(),
-        message: "write_frame_with_progress not yet implemented".to_string(),
-    })
+    let progress = registry.with_render_mut(render_id, |render| {
+        render.write_frame(png_data)?;
+        Ok(RenderProgress {
+            render_id: render_id.to_string(),
+            frames_written: render.frames_written(),
+            total_frames: render.total_frames(),
+        })
+    });
+
+    match progress {
+        Ok(p) => {
+            sink.emit(&p);
+            Ok(())
+        }
+        Err(e) => {
+            if e.kind == "encodeFailed" {
+                let _ = registry.remove(render_id);
+            }
+            Err(e)
+        }
+    }
 }
 
 /// Adapter that emits progress events through a Tauri `AppHandle`.
