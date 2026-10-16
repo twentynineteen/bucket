@@ -591,6 +591,56 @@ describe('S3.4: title-safe and action-safe bounds', () => {
     expect(violations[0].rule).toBe('S3.4')
   })
 
+  it('rect whose position is safe but whose width overhangs the right edge reports violation', () => {
+    const t = brokenFixture({
+      id: 'broken-safe-wide-rect',
+      layers: [
+        {
+          kind: 'rect',
+          id: 'overhang',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 3000, y: 1700 } }],
+          width: 900,
+          height: 100,
+          fill: '#333333',
+          radius: 0
+        }
+      ]
+    })
+    const violations = checkTitleSafe(t)
+    expect(violations.map(v => v.rule)).toContain('S3.4')
+    expect(violations[0].message).toContain('overhang')
+  })
+
+  it('child inside a group is checked at its world position, including the group offset', () => {
+    const t = brokenFixture({
+      id: 'broken-safe-group-offset',
+      layers: [
+        {
+          kind: 'group',
+          id: 'shifted',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 3500, y: 0 } }],
+          children: [
+            {
+              kind: 'rect',
+              id: 'child-bar',
+              anchor: { x: 0, y: 0 },
+              position: [{ t: 0, value: { x: 300, y: 1700 } }],
+              width: 100,
+              height: 100,
+              fill: '#333333',
+              radius: 0
+            }
+          ]
+        }
+      ]
+    })
+    const violations = checkTitleSafe(t)
+    expect(violations.map(v => v.rule)).toContain('S3.4')
+    expect(violations[0].message).toContain('child-bar')
+  })
+
   it('all built-ins pass', () => {
     for (const t of builtins) {
       const violations = checkTitleSafe(t)
