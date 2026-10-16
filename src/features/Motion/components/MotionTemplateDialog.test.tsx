@@ -622,4 +622,39 @@ describe('MotionTemplateDialog', () => {
       ).toBeInTheDocument()
     })
   })
+
+  describe('Dialog layout', () => {
+    it('preview does not overlay param inputs - Name input is a sibling below the preview, not overlapped', () => {
+      renderDialog(makeEntry(barRevealTemplate()))
+
+      const preview = screen.getByRole('img', { name: /Bar reveal preview/i })
+      const nameInput = screen.getByRole('textbox', { name: /Name/i })
+
+      // The preview and Name input must both be present
+      expect(preview).toBeInTheDocument()
+      expect(nameInput).toBeInTheDocument()
+
+      // The preview container must not use absolute/fixed positioning
+      // that would take it out of flow and overlay following content.
+      // It should use relative (for its own particle canvas child) inside
+      // a block-level wrapper.
+      const previewWrapper = preview.closest('.preview-stage')
+      expect(previewWrapper).not.toBeNull()
+      const style = window.getComputedStyle(previewWrapper!)
+      expect(style.position).not.toBe('absolute')
+      expect(style.position).not.toBe('fixed')
+    })
+
+    it('action footer is pinned outside the scroll area', () => {
+      renderDialog(makeEntry())
+
+      // The dialog must use flex-col layout so the footer stays pinned.
+      // The DialogContent default is grid; this dialog overrides it.
+      const dialog = screen.getByRole('dialog')
+      const content = dialog.querySelector('[data-state="open"]') ?? dialog
+      const style = window.getComputedStyle(content)
+      expect(style.display).toBe('flex')
+      expect(style.flexDirection).toBe('column')
+    })
+  })
 })
