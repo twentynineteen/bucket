@@ -312,9 +312,82 @@ function addShapeOpacity(
 }
 
 /**
+ * Build an XYPath modifier for an animated point input.
+ *
+ * Fusion animates point inputs (Text+ Center, Transform Center) through
+ * an XYPath modifier: the point input sources from the XYPath's Value
+ * output, and the XYPath's X and Y each source from a BezierSpline.
+ *
+ * Source: Resolve 18.6 manual (XY Path modifier, steakunderwater.com);
+ * forum.blackmagicdesign.com viewtopic.php?f=22&t=67065 (wiring pattern);
+ * viewtopic.php?f=22&t=223637 (AddModifier for XYPath);
+ * viewtopic.php?f=22&t=75019 (BezierSpline vs XYPath on Center).
+ */
+function buildXYPath(
+  baseName: string,
+  xKfs: Keyframe<number>[],
+  yKfs: Keyframe<number>[],
+  fps: number,
+  tools: FusionTool[]
+): { xyPathTool: FusionTool; sourceEntry: LuaEntry } {
+  const xyPathName = luaIdent(`${baseName}_xypath`)
+
+  // X spline
+  const xSplineName = nextSplineName(xyPathName, 'X')
+  const xFusionKfs = toFusionKeyframes(xKfs, fps)
+  tools.push(buildSplineTool(xSplineName, xFusionKfs))
+
+  // Y spline
+  const ySplineName = nextSplineName(xyPathName, 'Y')
+  const yFusionKfs = toFusionKeyframes(yKfs, fps)
+  tools.push(buildSplineTool(ySplineName, yFusionKfs))
+
+  // XYPath tool
+  const xyPathTool: FusionTool = {
+    name: xyPathName,
+    type: 'XYPath',
+    entries: [
+      {
+        key: 'X',
+        value: {
+          call: 'Input',
+          arg: [
+            { key: 'SourceOp', value: xSplineName },
+            { key: 'Source', value: 'Value' }
+          ]
+        }
+      },
+      {
+        key: 'Y',
+        value: {
+          call: 'Input',
+          arg: [
+            { key: 'SourceOp', value: ySplineName },
+            { key: 'Source', value: 'Value' }
+          ]
+        }
+      }
+    ]
+  }
+
+  // Source entry for the parent input (e.g. Center)
+  const sourceEntry: LuaEntry = {
+    key: 'Center',
+    value: {
+      call: 'Input',
+      arg: [
+        { key: 'SourceOp', value: xyPathName },
+        { key: 'Source', value: 'Value' }
+      ]
+    }
+  }
+
+  return { xyPathTool, sourceEntry }
+}
+
+/**
  * Add animated position for a Text+ tool (Center in image coords).
- * Position is a two-component path - we emit separate X/Y splines linked
- * through a single Center input with SourceOp connections.
+ * Uses an XYPath modifier with separate X/Y BezierSplines.
  */
 function addTextPositionAnimation(
   inputs: LuaEntry[],
@@ -335,16 +408,21 @@ function addTextPositionAnimation(
     value: toImageCoords(kf.value.x, kf.value.y, w, h).y,
     ease: kf.ease
   }))
-  // Remove the static Center and replace with animated X/Y
+
+  const { xyPathTool, sourceEntry } = buildXYPath(
+    toolName(layer.id, 'text_center'),
+    xKfs,
+    yKfs,
+    fps,
+    tools
+  )
+  tools.push(xyPathTool)
+
+  // Replace static Center with XYPath-driven Center
   const keep = inputs.filter(e => e.key !== 'Center')
   inputs.length = 0
   inputs.push(...keep)
-  inputs.push(
-    animatedNumberInput(toolName(layer.id, 'text'), 'CenterX', xKfs, fps, tools)
-  )
-  inputs.push(
-    animatedNumberInput(toolName(layer.id, 'text'), 'CenterY', yKfs, fps, tools)
-  )
+  inputs.push(sourceEntry)
 }
 
 /**
@@ -398,7 +476,7 @@ function addGroupTransformAnimations(
   transformName: string
 ): void {
   const { w, h, fps } = format
-  // Animated position -> Center
+  // Animated position -> Center via XYPath
   if (group.position && group.position.length > 1) {
     const xKfs = group.position.map(kf => ({
       t: kf.t,
@@ -410,11 +488,18 @@ function addGroupTransformAnimations(
       value: toImageCoords(kf.value.x, kf.value.y, w, h).y,
       ease: kf.ease
     }))
+    const { xyPathTool, sourceEntry } = buildXYPath(
+      luaIdent(`${transformName}_center`),
+      xKfs,
+      yKfs,
+      fps,
+      tools
+    )
+    tools.push(xyPathTool)
     const keep = inputs.filter(e => e.key !== 'Center')
     inputs.length = 0
     inputs.push(...keep)
-    inputs.push(animatedNumberInput(transformName, 'CenterX', xKfs, fps, tools))
-    inputs.push(animatedNumberInput(transformName, 'CenterY', yKfs, fps, tools))
+    inputs.push(sourceEntry)
   }
 
   // Animated scale -> Size

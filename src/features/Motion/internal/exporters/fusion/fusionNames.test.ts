@@ -75,6 +75,12 @@ const KNOWN_TOOL_TYPES = new Set([
   // Input wrapper - every .setting file uses this
   'Input',
 
+  // XYPath modifier for animated point inputs - Resolve 18.6 manual;
+  // forum.blackmagicdesign.com viewtopic.php?f=22&t=67065 (wiring pattern),
+  // viewtopic.php?f=22&t=223637 (AddModifier script),
+  // viewtopic.php?f=22&t=75019 (BezierSpline vs XYPath on Center)
+  'XYPath',
+
   // Follower modifier - Blackmagic forum Text+ Follower threads
   // UNVERIFIED exact type ID; flagged for #339
   'StyledTextFollower'
@@ -160,9 +166,7 @@ const KNOWN_INPUTS: Record<string, Set<string>> = {
     'Font',
     'Style',
     'Size',
-    'Center',
-    'CenterX',
-    'CenterY', // CenterX/CenterY: UNVERIFIED split; flagged for #339
+    'Center', // animated via XYPath modifier, not CenterX/CenterY
     'HorizontalJustification',
     'LineSpacing',
     'Tracking',
@@ -188,15 +192,12 @@ const KNOWN_INPUTS: Record<string, Set<string>> = {
   ]),
 
   // Transform - Fusion 7 Tool Reference; Fusion 18.6 manual
-  Transform: new Set([
-    'Inputs',
-    'Input',
-    'Center',
-    'CenterX',
-    'CenterY',
-    'Size',
-    'Angle'
-  ]),
+  // Animated Center uses XYPath modifier, not CenterX/CenterY
+  Transform: new Set(['Inputs', 'Input', 'Center', 'Size', 'Angle']),
+
+  // XYPath modifier - Resolve 18.6 manual; forum.blackmagicdesign.com
+  // viewtopic.php?f=22&t=67065, t=223637, t=75019
+  XYPath: new Set(['X', 'Y']),
 
   // BezierSpline - Grokipedia reference; Fusion scripting guide
   BezierSpline: new Set(['SplineColor', 'KeyFrames']),
