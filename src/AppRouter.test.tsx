@@ -20,10 +20,26 @@ vi.mock('@tauri-apps/plugin-updater', () => ({
   check: vi.fn()
 }))
 
-// Mock all page components
-vi.mock('./app/dashboard/page', () => ({
-  default: () => <div data-testid="page-layout">Page Layout</div>
-}))
+// Mock all page components - includes Outlet so nested routes render.
+// React.Suspense wraps the Outlet because AppRouter uses React.lazy for every
+// route component; without it, lazy chunks throw a missing-Suspense error.
+vi.mock('./app/dashboard/page', async () => {
+  const React = await import('react')
+  const { Outlet } = await import('react-router-dom')
+  return {
+    default: () =>
+      React.createElement(
+        'div',
+        { 'data-testid': 'page-layout' },
+        'Page Layout',
+        React.createElement(
+          React.Suspense,
+          { fallback: null },
+          React.createElement(Outlet)
+        )
+      )
+  }
+})
 
 vi.mock('@features/AITools', () => ({
   ExampleEmbeddings: () => <div>Example Embeddings</div>,
@@ -56,6 +72,23 @@ vi.mock('@features/Trello', () => ({
   UploadTrello: () => <div>Upload Trello</div>
 }))
 
+vi.mock('@features/Motion', () => ({
+  MotionMarketplacePage: () => (
+    <div>
+      <h1>Motion marketplace</h1>
+    </div>
+  ),
+  MotionSection: () => (
+    <div id="motion">
+      <h2>Motion</h2>
+    </div>
+  )
+}))
+
+vi.mock('@features/Kavanagh', () => ({
+  KavanaghPage: () => <div>Kavanagh</div>
+}))
+
 describe('AppRouter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -74,6 +107,20 @@ describe('AppRouter', () => {
       await waitFor(() => {
         expect(window.location.pathname).toBe('/ingest/build')
       })
+    })
+
+    it('F5.1 renders Motion marketplace heading at /motion/marketplace', async () => {
+      window.history.pushState({}, 'Test page', '/motion/marketplace')
+
+      render(
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      )
+
+      expect(
+        await screen.findByRole('heading', { name: /motion marketplace/i })
+      ).toBeInTheDocument()
     })
 
     it('should render Page layout component when on protected routes', async () => {
