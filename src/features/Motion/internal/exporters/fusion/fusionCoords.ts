@@ -13,8 +13,11 @@
  *   y = (height/2 - templateY) / width
  *
  * Source: Blackmagic Fusion 18.6 manual (sRectangle, sEllipse documentation) -
- * shape tools use offset from centre, normalised to frame width. Confirmed by
- * forum reports on steakunderwater.com and forum.blackmagicdesign.com.
+ * shape tools use offset from frame centre, normalised to frame width for both
+ * axes. Confirmed by forum reports:
+ * - https://forum.blackmagicdesign.com/viewtopic.php?t=154118 (sRectangle Y)
+ * - https://jayaretv.com/fusion/sellipse-node/ (sEllipse documentation)
+ * - https://www.steakunderwater.com/VFXPedia (Fusion 18.6 manual mirror)
  *
  * Size: relative to width (pixels / width).
  * Rotation: negated (template degrees -> -degrees in Fusion).
@@ -27,8 +30,10 @@ export function toImageCoords(
   width: number,
   height: number
 ): { x: number; y: number } {
-  void [x, y, width, height]
-  throw new Error('Not implemented')
+  return {
+    x: x / width,
+    y: 1 - y / height
+  }
 }
 
 /** Convert a template point to Fusion shape-space coordinates. */
@@ -38,18 +43,18 @@ export function toShapeCoords(
   width: number,
   height: number
 ): { x: number; y: number } {
-  void [x, y, width, height]
-  throw new Error('Not implemented')
+  return {
+    x: (x - width / 2) / width,
+    y: (height / 2 - y) / width
+  }
 }
 
 /** Convert a template size (pixels) to Fusion size (relative to width). */
 export function toFusionSize(pixels: number, width: number): number {
-  void [pixels, width]
-  throw new Error('Not implemented')
+  return pixels / width
 }
 
 /** Convert a template rotation (degrees) to Fusion rotation. */
 export function toFusionRotation(degrees: number): number {
-  void degrees
-  throw new Error('Not implemented')
+  return -degrees
 }

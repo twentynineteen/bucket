@@ -23,8 +23,9 @@ import type {
   ExportInput,
   MotionFormat,
   MotionTemplate,
-  ParamValues
-} from '../../../../types'
+  ParamValues,
+  TextLayer
+} from '../../../types'
 import { resolveTemplate } from '../../resolve'
 import {
   allAnimatedFixture,
@@ -403,16 +404,13 @@ describe('RES5.6: animated rect size and fill colour', () => {
 // ---------------------------------------------------------------------------
 
 describe('RES6.1: Follower modifier for stagger', () => {
+  const baseText = textFixture.layers[0] as TextLayer
+
   it('creates a Follower for text with stagger', () => {
     const staggerTemplate: MotionTemplate = {
       ...textFixture,
       id: 'res6-stagger',
-      layers: [
-        {
-          ...textFixture.layers[0],
-          stagger: { delay: 0.04 }
-        }
-      ]
+      layers: [{ ...baseText, stagger: { delay: 0.04 } }]
     }
     const text = getSettingText(makeInput(staggerTemplate))
     expect(text).toMatch(/Follower/i)
@@ -423,12 +421,7 @@ describe('RES6.1: Follower modifier for stagger', () => {
     const staggerTemplate: MotionTemplate = {
       ...textFixture,
       id: 'res6-stagger-1frame',
-      layers: [
-        {
-          ...textFixture.layers[0],
-          stagger: { delay: 0.04 }
-        }
-      ]
+      layers: [{ ...baseText, stagger: { delay: 0.04 } }]
     }
     const text = getSettingText(makeInput(staggerTemplate))
     // Delay should be 1 frame
@@ -443,15 +436,11 @@ describe('RES6.1: Follower modifier for stagger', () => {
 describe('RES6.2: fractional delay rounding', () => {
   it('rounds 0.75 frame to 1 frame and adds a note', () => {
     // 0.03s at 25fps = 0.75 frames -> round to 1
+    const baseText = textFixture.layers[0] as TextLayer
     const staggerTemplate: MotionTemplate = {
       ...textFixture,
       id: 'res6-fractional',
-      layers: [
-        {
-          ...textFixture.layers[0],
-          stagger: { delay: 0.03 }
-        }
-      ]
+      layers: [{ ...baseText, stagger: { delay: 0.03 } }]
     }
     const result = generateSetting(makeInput(staggerTemplate))
     const text = (result.files[0] as { contents: string }).contents

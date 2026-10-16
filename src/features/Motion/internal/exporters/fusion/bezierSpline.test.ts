@@ -5,7 +5,7 @@
  * RES3.2: specific segment conversion at 25 fps
  */
 import { describe, expect, it } from 'vitest'
-import type { Keyframe } from '../../../../types'
+import type { Keyframe } from '../../../types'
 import { computeLH, computeRH, toFusionKeyframes } from './bezierSpline'
 
 // ---------------------------------------------------------------------------
