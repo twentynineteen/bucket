@@ -13,8 +13,6 @@
  * - forum.blackmagicdesign.com viewtopic.php?f=22&t=75019 (BezierSpline on Center)
  */
 import { describe, expect, it } from 'vitest'
-import { generateSetting } from './generateSetting'
-import { resolveTemplate } from '../../resolve'
 import type {
   ExportInput,
   GroupLayer,
@@ -22,6 +20,8 @@ import type {
   MotionTemplate,
   TextLayer
 } from '../../../types'
+import { resolveTemplate } from '../../resolve'
+import { generateSetting } from './generateSetting'
 
 // ---------------------------------------------------------------------------
 // Helpers
