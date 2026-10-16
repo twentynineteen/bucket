@@ -21,7 +21,6 @@ export interface OverflowResult {
  * Returns one result per text layer that has a `width` property.
  */
 export function checkTextOverflow(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   layers: Array<{
     kind: string
     id: string
@@ -29,8 +28,22 @@ export function checkTextOverflow(
     font: { family: string; size: number }
     width?: number
   }>,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   measurer: TextMeasurer
 ): OverflowResult[] {
-  throw new Error('not implemented')
+  const results: OverflowResult[] = []
+
+  for (const layer of layers) {
+    if (layer.kind !== 'text') continue
+    if (layer.width == null) continue
+
+    const measuredWidth = measurer.measure(layer.text, layer.font)
+    results.push({
+      layerId: layer.id,
+      overflowing: measuredWidth > layer.width,
+      measuredWidth,
+      boxWidth: layer.width
+    })
+  }
+
+  return results
 }

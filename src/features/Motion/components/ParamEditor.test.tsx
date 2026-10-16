@@ -10,9 +10,37 @@
  */
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import React, { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { MotionTemplate, ParamValues } from '../types'
 import ParamEditor from './ParamEditor'
+
+// ---------------------------------------------------------------------------
+// Stateful wrapper for controlled-component tests
+// ---------------------------------------------------------------------------
+
+function Wrapper({
+  template,
+  initialValues,
+  onPickImage,
+  imageError
+}: {
+  template: MotionTemplate
+  initialValues: ParamValues
+  onPickImage?: () => void
+  imageError?: string | null
+}) {
+  const [values, setValues] = useState(initialValues)
+  return (
+    <ParamEditor
+      template={template}
+      values={values}
+      onChange={setValues}
+      onPickImage={onPickImage}
+      imageError={imageError}
+    />
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -133,12 +161,9 @@ function imageTemplate(): MotionTemplate {
 
 describe('ParamEditor', () => {
   it('M2.1 - text param shows input with maxLength counter', async () => {
-    const onChange = vi.fn()
     const user = userEvent.setup()
 
-    render(
-      <ParamEditor template={textTemplate()} values={{ name: '' }} onChange={onChange} />
-    )
+    render(<Wrapper template={textTemplate()} initialValues={{ name: '' }} />)
 
     const input = screen.getByRole('textbox', { name: /Name/i })
     expect(input).toBeInTheDocument()
@@ -147,34 +172,17 @@ describe('ParamEditor', () => {
 
     // Check counter shows character count
     expect(screen.getByText(/8\/40/)).toBeInTheDocument()
-
-    // onChange should be called with the typed text
-    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1]
-    expect(lastCall[0]).toHaveProperty('name', 'Jane Doe')
   })
 
-  it('M2.1 - text param refuses characters beyond maxLength', async () => {
-    const onChange = vi.fn()
-
-    render(
-      <ParamEditor template={textTemplate()} values={{ name: '' }} onChange={onChange} />
-    )
+  it('M2.1 - text param refuses characters beyond maxLength', () => {
+    render(<Wrapper template={textTemplate()} initialValues={{ name: '' }} />)
 
     const input = screen.getByRole('textbox', { name: /Name/i })
-    // The input should have maxLength attribute
     expect(input).toHaveAttribute('maxLength', '40')
   })
 
   it('M2.2 - colour param shows colour input', () => {
-    const onChange = vi.fn()
-
-    render(
-      <ParamEditor
-        template={colourTemplate()}
-        values={{ accent: '#ff3366' }}
-        onChange={onChange}
-      />
-    )
+    render(<Wrapper template={colourTemplate()} initialValues={{ accent: '#ff3366' }} />)
 
     const input = screen.getByLabelText(/Accent/i)
     expect(input).toBeInTheDocument()
@@ -182,11 +190,7 @@ describe('ParamEditor', () => {
   })
 
   it('M2.3 - hold slider appears when template has hold param', () => {
-    const onChange = vi.fn()
-
-    render(
-      <ParamEditor template={holdTemplate()} values={{ hold: 2 }} onChange={onChange} />
-    )
+    render(<Wrapper template={holdTemplate()} initialValues={{ hold: 2 }} />)
 
     const slider = screen.getByRole('slider', { name: /Hold/i })
     expect(slider).toBeInTheDocument()
@@ -195,40 +199,36 @@ describe('ParamEditor', () => {
   })
 
   it('M2.3 - no hold slider when template lacks hold param', () => {
-    const onChange = vi.fn()
-
-    render(
-      <ParamEditor
-        template={textTemplate()}
-        values={{ name: 'Jane Doe' }}
-        onChange={onChange}
-      />
-    )
+    render(<Wrapper template={textTemplate()} initialValues={{ name: 'Jane Doe' }} />)
 
     expect(screen.queryByRole('slider', { name: /Hold/i })).not.toBeInTheDocument()
   })
 
   it('M2.4 - numberList shows rows and supports add/remove', async () => {
-    const onChange = vi.fn()
     const user = userEvent.setup()
 
-    const values: ParamValues = {
-      data: [
-        { label: 'Jan', value: 10 },
-        { label: 'Feb', value: 50 },
-        { label: 'Mar', value: 30 }
-      ]
-    }
-
     render(
-      <ParamEditor template={numberListTemplate()} values={values} onChange={onChange} />
+      <Wrapper
+        template={numberListTemplate()}
+        initialValues={{
+          data: [
+            { label: 'Jan', value: 10 },
+            { label: 'Feb', value: 50 },
+            { label: 'Mar', value: 30 }
+          ]
+        }}
+      />
     )
 
     // Click "Add row" 5 times (3 existing + 5 = 8 max)
-    const addButton = screen.getByRole('button', { name: /Add row/i })
     for (let i = 0; i < 5; i++) {
-      await user.click(addButton)
+      const btn = screen.getByRole('button', { name: /Add row/i })
+      await user.click(btn)
     }
+
+    // Count visible rows: each row has a "Remove row N" button
+    const removeButtons = screen.getAllByRole('button', { name: /Remove row/i })
+    expect(removeButtons).toHaveLength(8)
 
     // After 5 clicks, the Add row button should be disabled (at 8 rows)
     expect(screen.getByRole('button', { name: /Add row/i })).toBeDisabled()
@@ -239,19 +239,19 @@ describe('ParamEditor', () => {
   })
 
   it('M2.4 - numberList shows error for out-of-range value', async () => {
-    const onChange = vi.fn()
     const user = userEvent.setup()
 
-    const values: ParamValues = {
-      data: [
-        { label: 'Jan', value: 10 },
-        { label: 'Feb', value: 50 },
-        { label: 'Mar', value: 30 }
-      ]
-    }
-
     render(
-      <ParamEditor template={numberListTemplate()} values={values} onChange={onChange} />
+      <Wrapper
+        template={numberListTemplate()}
+        initialValues={{
+          data: [
+            { label: 'Jan', value: 10 },
+            { label: 'Feb', value: 50 },
+            { label: 'Mar', value: 30 }
+          ]
+        }}
+      />
     )
 
     // Find the value input for the first row and set it to 150 (out of range)
@@ -264,16 +264,9 @@ describe('ParamEditor', () => {
   })
 
   it('M2.5 - number param shows spinbutton and validates range', async () => {
-    const onChange = vi.fn()
     const user = userEvent.setup()
 
-    render(
-      <ParamEditor
-        template={numberTemplate()}
-        values={{ score: 72 }}
-        onChange={onChange}
-      />
-    )
+    render(<Wrapper template={numberTemplate()} initialValues={{ score: 72 }} />)
 
     const input = screen.getByRole('spinbutton', { name: /Score/i })
     expect(input).toBeInTheDocument()
@@ -283,11 +276,7 @@ describe('ParamEditor', () => {
     await user.type(input, '120')
 
     // Error should appear
-    expect(screen.getByText(/outside|invalid|range/i)).toBeInTheDocument()
-
-    // Enter valid value
-    await user.clear(input)
-    await user.type(input, '72')
+    expect(screen.getByText(/outside/i)).toBeInTheDocument()
   })
 
   it('M2.6 - image param shows Choose image button', async () => {
@@ -295,12 +284,7 @@ describe('ParamEditor', () => {
     const user = userEvent.setup()
 
     render(
-      <ParamEditor
-        template={imageTemplate()}
-        values={{}}
-        onChange={vi.fn()}
-        onPickImage={onPickImage}
-      />
+      <Wrapper template={imageTemplate()} initialValues={{}} onPickImage={onPickImage} />
     )
 
     const chooseButton = screen.getByRole('button', { name: /Choose image/i })
@@ -310,10 +294,9 @@ describe('ParamEditor', () => {
 
   it('M2.6 - image param shows error message', () => {
     render(
-      <ParamEditor
+      <Wrapper
         template={imageTemplate()}
-        values={{}}
-        onChange={vi.fn()}
+        initialValues={{}}
         onPickImage={vi.fn()}
         imageError="Image has no transparent pixels"
       />
