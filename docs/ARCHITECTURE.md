@@ -129,6 +129,15 @@ bucket/
 │   │   │   ├── hooks/
 │   │   │   └── internal/
 │   │   │
+│   │   ├── Motion/                 # Reusable motion graphics templates
+│   │   │   ├── api.ts
+│   │   │   ├── types.ts
+│   │   │   ├── index.ts
+│   │   │   ├── __contracts__/
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   └── internal/           # Schema, evaluator, exporters, sampler, templates
+│   │   │
 │   │   ├── Settings/               # App configuration with per-domain tabs
 │   │   │   ├── api.ts
 │   │   │   ├── types.ts
@@ -692,6 +701,9 @@ Upload -------> Baker (VideoLink type), Kavanagh (QC hooks)
 Settings -----> Trello (TrelloBoardSelector), Upload (SproutFolderPicker), Kavanagh (availability)
 AITools ------> Settings (useAIProvider)
 BuildProject -> Trello (TrelloCardsManager)
+Settings -----> Motion (MotionSection)
+Motion -------> Kavanagh (useKavanaghAvailability: ffmpeg)
+Motion -------> Upload (posterFrameFontPath)
 ```
 
 ### External Dependencies (Key Packages)

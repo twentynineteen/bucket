@@ -97,3 +97,7 @@ export { formatTransferredBytes } from './internal/formatTransferredBytes'
 // Validation
 /** Whether a title contains a colon - the sole hard block on Sprout titles */
 export { hasColon } from './internal/namingConventions'
+
+// Font path (shared with Motion, issue #167)
+/** Full path to the poster frame font (Cabrito.otf) - single source of the path */
+export { posterFrameFontPath } from './api'

@@ -238,6 +238,72 @@ const mockBrowserApis = () => {
     }
   }
 
+  // IntersectionObserver stub for Motion preview visibility tracking (#327).
+  // Reports every target as intersecting by default. Tests can override via
+  // (window as any).__BUCKET_IO_ENTRIES__ to control visibility.
+  global.IntersectionObserver = class IntersectionObserver {
+    private callback: IntersectionObserverCallback
+    constructor(
+      callback: IntersectionObserverCallback,
+      _options?: IntersectionObserverInit
+    ) {
+      this.callback = callback
+    }
+    observe = vi.fn((target: Element) => {
+      const entries = (window as any).__BUCKET_IO_ENTRIES__
+      const isIntersecting = entries ? entries.get(target) !== false : true
+      this.callback(
+        [
+          {
+            target,
+            isIntersecting,
+            intersectionRatio: isIntersecting ? 1 : 0
+          } as IntersectionObserverEntry
+        ],
+        this as any
+      )
+    })
+    unobserve = vi.fn()
+    disconnect = vi.fn()
+    takeRecords = vi.fn(() => [] as IntersectionObserverEntry[])
+    get root() {
+      return null
+    }
+    get rootMargin() {
+      return '0px'
+    }
+    get thresholds() {
+      return [0]
+    }
+  }
+
+  // FontFace stub for Motion font loading (#327).
+  // document.fonts.add is a no-op; the stub records loaded fonts for assertion.
+  if (typeof globalThis.FontFace === 'undefined') {
+    ;(globalThis as any).FontFace = class FontFace {
+      family: string
+      source: string
+      status: string = 'loaded'
+      constructor(family: string, source: string) {
+        this.family = family
+        this.source = source
+      }
+      load = vi.fn(async function (this: any) {
+        return this
+      })
+    }
+  }
+  if (!document.fonts) {
+    Object.defineProperty(document, 'fonts', {
+      value: {
+        add: vi.fn(),
+        delete: vi.fn(),
+        has: vi.fn(() => false)
+      },
+      writable: true
+    })
+  }
+
   // Mock getBoundingClientRect for virtual scrolling in tests
   Element.prototype.getBoundingClientRect = vi.fn(() => ({
     width: 800,
