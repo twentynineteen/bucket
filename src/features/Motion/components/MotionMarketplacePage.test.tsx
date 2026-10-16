@@ -68,6 +68,23 @@ vi.mock('../internal/ticker', () => ({
   }))
 }))
 
+// Ensure matchMedia is always available (mockReset clears the setup-file mock)
+beforeEach(() => {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    }))
+  })
+})
+
 // Set test clock
 beforeAll(() => {
   ;(window as unknown as Record<string, unknown>).__BUCKET_MOTION_CLOCK__ = 0.5
@@ -211,24 +228,31 @@ function createWrapper() {
   }
 }
 
-async function renderPage() {
+async function renderPage(opts?: { waitForTemplates?: boolean }) {
   const MotionMarketplacePage = (await import('./MotionMarketplacePage')).default
   const result = render(<MotionMarketplacePage />, { wrapper: createWrapper() })
-  // Wait for the catalogue to load
+  // Wait for the page heading
   await waitFor(() => {
     expect(
       screen.getByRole('heading', { name: /motion marketplace/i })
     ).toBeInTheDocument()
   })
+  // Wait for template cards to appear (prefs + catalogue are async)
+  if (opts?.waitForTemplates !== false) {
+    await waitFor(() => {
+      const list = screen.queryByRole('list', { name: /templates/i })
+      if (list) {
+        expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(0)
+      }
+    })
+  }
   return result
 }
 
 beforeEach(() => {
   mockEntries = defaultEntries
-  mockIssues = defaultIssues
   mockPrefsText = null
   mockFontAvailable = true
-  rescanCount = 0
   writeTextFileMock.mockClear()
 })
 
@@ -247,10 +271,11 @@ describe('G1.1 grid and cards', () => {
     const list = screen.getByRole('list', { name: /templates/i })
     expect(list).toBeInTheDocument()
 
-    // Named-presence checks, no count
-    expect(within(list).getByRole('button', { name: /quote card/i })).toBeInTheDocument()
-    expect(within(list).getByRole('button', { name: /score ring/i })).toBeInTheDocument()
-    expect(within(list).getByRole('button', { name: /spread map/i })).toBeInTheDocument()
+    // Named-presence checks, no count. Use exact match to avoid
+    // collisions with the "Favourite <name>" star buttons.
+    expect(within(list).getByRole('button', { name: 'Quote card' })).toBeInTheDocument()
+    expect(within(list).getByRole('button', { name: 'Score ring' })).toBeInTheDocument()
+    expect(within(list).getByRole('button', { name: 'Spread map' })).toBeInTheDocument()
   })
 })
 
@@ -264,7 +289,9 @@ describe('G1.5 dialog open/close', () => {
     const user = userEvent.setup()
 
     const list = screen.getByRole('list', { name: /templates/i })
-    const cardButton = within(list).getByRole('button', { name: /quote card/i })
+    const cardButton = within(list).getByRole('button', {
+      name: 'Quote card'
+    })
 
     // Focus and press Enter
     cardButton.focus()
@@ -283,7 +310,9 @@ describe('G1.5 dialog open/close', () => {
     })
 
     // Focus should return to the card button
-    expect(document.activeElement).toBe(cardButton)
+    await waitFor(() => {
+      expect(document.activeElement).toBe(cardButton)
+    })
   })
 })
 
@@ -358,15 +387,15 @@ describe('G2.2 curation controls', () => {
     // Glide should show Default marker
     const list = screen.getByRole('list', { name: /templates/i })
     const glideCard = within(list)
-      .getByRole('button', { name: /glide/i })
-      .closest('[data-template-id]')
+      .getByRole('button', { name: 'Glide' })
+      .closest('[data-template-id]') as HTMLElement | null
     expect(glideCard).not.toBeNull()
     expect(within(glideCard!).getByText('Default')).toBeInTheDocument()
 
     // Bar reveal should not show Default
     const barRevealCard = within(list)
-      .getByRole('button', { name: /bar reveal/i })
-      .closest('[data-template-id]')
+      .getByRole('button', { name: 'Bar reveal' })
+      .closest('[data-template-id]') as HTMLElement | null
     expect(within(barRevealCard!).queryByText('Default')).not.toBeInTheDocument()
   })
 })

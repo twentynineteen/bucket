@@ -31,6 +31,15 @@ export const DEFAULT_FILTERS: FilterCriteria = {
 // Filter
 // ---------------------------------------------------------------------------
 
+function matchesSearch(entry: CatalogueEntry, term: string): boolean {
+  const lower = term.toLowerCase()
+  const t = entry.template
+  if (t.name.toLowerCase().includes(lower)) return true
+  if (t.description.toLowerCase().includes(lower)) return true
+  if (t.tags.some(tag => tag.toLowerCase().includes(lower))) return true
+  return false
+}
+
 /** Filter catalogue entries by the given criteria (AND). */
 export function filterEntries(
   entries: CatalogueEntry[],
@@ -38,11 +47,36 @@ export function filterEntries(
   favourites: string[],
   derivedTargets: (entry: CatalogueEntry) => MotionTarget[]
 ): CatalogueEntry[] {
-  void entries
-  void criteria
-  void favourites
-  void derivedTargets
-  throw new Error('not implemented')
+  const favSet = new Set(favourites)
+
+  return entries.filter(entry => {
+    const t = entry.template
+
+    if (criteria.category !== 'all' && t.category !== criteria.category) {
+      return false
+    }
+
+    if (criteria.status !== 'all' && t.status !== criteria.status) {
+      return false
+    }
+
+    if (criteria.favouritesOnly && !favSet.has(t.id)) {
+      return false
+    }
+
+    if (criteria.target !== 'all') {
+      const targets = derivedTargets(entry)
+      if (!targets.includes(criteria.target)) {
+        return false
+      }
+    }
+
+    if (criteria.search.trim() && !matchesSearch(entry, criteria.search.trim())) {
+      return false
+    }
+
+    return true
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -55,8 +89,26 @@ export function sortEntries(
   defaults: Partial<Record<MotionCategory, string>>,
   favourites: string[]
 ): CatalogueEntry[] {
-  void entries
-  void defaults
-  void favourites
-  throw new Error('not implemented')
+  const defaultIds = new Set(Object.values(defaults).filter(Boolean) as string[])
+  const favSet = new Set(favourites)
+
+  return [...entries].sort((a, b) => {
+    const aId = a.template.id
+    const bId = b.template.id
+    const aDefault = defaultIds.has(aId)
+    const bDefault = defaultIds.has(bId)
+    const aFav = favSet.has(aId)
+    const bFav = favSet.has(bId)
+
+    // Defaults first
+    if (aDefault && !bDefault) return -1
+    if (!aDefault && bDefault) return 1
+
+    // Favourites next
+    if (aFav && !bFav) return -1
+    if (!aFav && bFav) return 1
+
+    // Alphabetical by name
+    return a.template.name.localeCompare(b.template.name)
+  })
 }
