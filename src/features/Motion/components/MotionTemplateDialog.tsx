@@ -8,8 +8,14 @@
 import { useKavanaghAvailability } from '@features/Kavanagh'
 import { useApiKeys } from '@shared/hooks'
 import { Button } from '@shared/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
-import { Star } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle
+} from '@shared/ui/dialog'
+import { Clipboard, Loader2, Package, Star } from 'lucide-react'
 import React, { useCallback, useMemo, useState } from 'react'
 import { pathExists, pickFolder, pickPngImage, readBytes } from '../api'
 import { useMotionExport } from '../hooks/useMotionExport'
@@ -312,8 +318,11 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl" hideClose={motionExport.isExporting}>
-        {/* Header */}
+      <DialogContent
+        className="flex max-h-[85vh] max-w-3xl flex-col"
+        hideClose={motionExport.isExporting}
+      >
+        {/* Header - stays pinned above the scroll */}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <DialogTitle>{template.name}</DialogTitle>
@@ -345,72 +354,100 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
           </div>
         </div>
 
-        {/* Preview */}
-        <PreviewStage>
-          <MotionPreview
+        {/* Scrollable body - everything between header and footer */}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto" data-slot="dialog-body">
+          {/* Preview in a block-level wrapper so it takes 16:9 space */}
+          <PreviewStage>
+            <MotionPreview
+              template={template}
+              values={values}
+              format={format}
+              time={time}
+              name={template.name}
+            />
+          </PreviewStage>
+
+          {/* Play controls */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePlayPause}
+              aria-label={playing ? 'Pause' : 'Play'}
+            >
+              {playing ? 'Pause' : 'Play'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRestart}
+              aria-label="Restart"
+            >
+              Restart
+            </Button>
+          </div>
+
+          {/* Overflow warning */}
+          {hasOverflow && (
+            <p className="text-warning text-sm" role="status">
+              Text is wider than its box
+            </p>
+          )}
+
+          {/* Param editor */}
+          <ParamEditor
             template={template}
             values={values}
-            format={format}
-            time={time}
-            name={template.name}
+            onChange={setValues}
+            onPickImage={handlePickImage}
+            imageError={imageError}
           />
-        </PreviewStage>
 
-        {/* Play controls */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handlePlayPause}
-            aria-label={playing ? 'Pause' : 'Play'}
-          >
-            {playing ? 'Pause' : 'Play'}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleRestart} aria-label="Restart">
-            Restart
-          </Button>
+          {/* Export settings (format, folder, targets, progress) */}
+          <ExportPanel
+            template={template}
+            format={format}
+            onFormatChange={setFormat}
+            projectFolder={projectFolder}
+            onPickFolder={handlePickFolder}
+            folderWarning={folderWarning}
+            targets={targets}
+            onTargetsChange={handleTargetsChange}
+            supportedTargets={supportedTargets}
+            isParticle={isParticle}
+            ffmpegAvailable={ffmpegAvailable}
+            fontInstalled={fontInstalled}
+            fontName="Cabrito.otf"
+            renderProgress={motionExport.renderProgress}
+            onCancelRender={motionExport.cancelRender}
+            validFormats={allValidFormats}
+          />
         </div>
 
-        {/* Overflow warning */}
-        {hasOverflow && (
-          <p className="text-warning text-sm" role="status">
-            Text is wider than its box
-          </p>
-        )}
-
-        {/* Param editor */}
-        <ParamEditor
-          template={template}
-          values={values}
-          onChange={setValues}
-          onPickImage={handlePickImage}
-          imageError={imageError}
-        />
-
-        {/* Export panel */}
-        <ExportPanel
-          template={template}
-          format={format}
-          onFormatChange={setFormat}
-          projectFolder={projectFolder}
-          onPickFolder={handlePickFolder}
-          folderWarning={folderWarning}
-          targets={targets}
-          onTargetsChange={handleTargetsChange}
-          supportedTargets={supportedTargets}
-          isParticle={isParticle}
-          ffmpegAvailable={ffmpegAvailable}
-          fontInstalled={fontInstalled}
-          fontName="Cabrito.otf"
-          canExport={canExport}
-          isExporting={motionExport.isExporting}
-          onExport={handleExport}
-          canCopyPrompt={canCopyPrompt}
-          onCopyPrompt={handleCopyPrompt}
-          renderProgress={motionExport.renderProgress}
-          onCancelRender={motionExport.cancelRender}
-          validFormats={allValidFormats}
-        />
+        {/* Pinned footer - always visible */}
+        <DialogFooter className="gap-2 border-t pt-4 sm:justify-stretch">
+          <Button
+            onClick={handleExport}
+            disabled={!canExport || motionExport.isExporting}
+            className="flex-1"
+          >
+            {motionExport.isExporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Package className="mr-2 h-4 w-4" />
+                Export to project
+              </>
+            )}
+          </Button>
+          <Button variant="outline" onClick={handleCopyPrompt} disabled={!canCopyPrompt}>
+            <Clipboard className="mr-2 h-4 w-4" />
+            Copy Claude prompt
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

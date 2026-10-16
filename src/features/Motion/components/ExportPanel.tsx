@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@shared/ui/select'
-import { AlertTriangle, Clipboard, FolderOpen, Loader2, Package, X } from 'lucide-react'
+import { AlertTriangle, FolderOpen, X } from 'lucide-react'
 import React, { useMemo } from 'react'
 import type { MotionFormat, MotionTarget, MotionTemplate } from '../types'
 
@@ -32,11 +32,6 @@ export interface ExportPanelProps {
   ffmpegAvailable: boolean
   fontInstalled: boolean
   fontName: string
-  canExport: boolean
-  isExporting: boolean
-  onExport: () => void
-  canCopyPrompt: boolean
-  onCopyPrompt: () => void
   renderProgress: number | null
   onCancelRender: () => void
   validFormats: MotionFormat[]
@@ -106,11 +101,6 @@ const ExportPanel: React.FC<ExportPanelProps> = ({
   ffmpegAvailable,
   fontInstalled,
   fontName,
-  canExport,
-  isExporting,
-  onExport,
-  canCopyPrompt,
-  onCopyPrompt,
   renderProgress,
   onCancelRender,
   validFormats
@@ -236,31 +226,6 @@ const ExportPanel: React.FC<ExportPanelProps> = ({
           </Button>
         </div>
       )}
-
-      {/* Actions */}
-      <div className="flex gap-2">
-        <Button
-          onClick={onExport}
-          disabled={!canExport || isExporting}
-          className="flex-1"
-        >
-          {isExporting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Exporting...
-            </>
-          ) : (
-            <>
-              <Package className="mr-2 h-4 w-4" />
-              Export to project
-            </>
-          )}
-        </Button>
-        <Button variant="outline" onClick={onCopyPrompt} disabled={!canCopyPrompt}>
-          <Clipboard className="mr-2 h-4 w-4" />
-          Copy Claude prompt
-        </Button>
-      </div>
     </div>
   )
 }

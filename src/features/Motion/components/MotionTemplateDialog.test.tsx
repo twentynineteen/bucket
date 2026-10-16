@@ -648,13 +648,14 @@ describe('MotionTemplateDialog', () => {
     it('action footer is pinned outside the scroll area', () => {
       renderDialog(makeEntry())
 
-      // The dialog must use flex-col layout so the footer stays pinned.
-      // The DialogContent default is grid; this dialog overrides it.
-      const dialog = screen.getByRole('dialog')
-      const content = dialog.querySelector('[data-state="open"]') ?? dialog
-      const style = window.getComputedStyle(content)
-      expect(style.display).toBe('flex')
-      expect(style.flexDirection).toBe('column')
+      // The Export button must NOT be inside the scrollable body div.
+      // It lives in the pinned DialogFooter below the scroller.
+      const exportBtn = screen.getByRole('button', {
+        name: /Export to project/i
+      })
+      const scrollBody = document.querySelector('[data-slot="dialog-body"]')
+      expect(scrollBody).not.toBeNull()
+      expect(scrollBody!.contains(exportBtn)).toBe(false)
     })
   })
 })
