@@ -209,6 +209,35 @@ describe('S2.2: Cabrito font in text layers', () => {
 // S2.3: Spread map structure
 // ---------------------------------------------------------------------------
 
+describe('Spread map stipple forms a figure', () => {
+  it('points cover a silhouette, not their whole bounding box', () => {
+    // An inverted cut-out mask fills the rectangle around the subject and
+    // leaves the figure as a hole. A real silhouette leaves most of its
+    // bounding box empty.
+    const t = builtins.find(b => b.id === 'spread-map')!
+    const layer = t.layers.find(l => l.kind === 'particles')
+    if (!layer || layer.kind !== 'particles')
+      throw new Error('spread-map has no particles')
+    const xs = layer.points.map(p => p.x)
+    const ys = layer.points.map(p => p.y)
+    const [x0, x1, y0, y1] = [
+      Math.min(...xs),
+      Math.max(...xs),
+      Math.min(...ys),
+      Math.max(...ys)
+    ]
+    const cells = 24
+    const occupied = new Set(
+      layer.points.map(
+        p =>
+          `${Math.min(cells - 1, Math.floor(((p.x - x0) / (x1 - x0)) * cells))},` +
+          `${Math.min(cells - 1, Math.floor(((p.y - y0) / (y1 - y0)) * cells))}`
+      )
+    )
+    expect(occupied.size / (cells * cells)).toBeLessThan(0.6)
+  })
+})
+
 describe('S2.3: Spread map template', () => {
   it('has particles, image param, region tints, counter and credits', () => {
     const sm = findBuiltin('spread-map')

@@ -24,8 +24,11 @@ import {
   type ReferencePool,
   type ReferencePoolState
 } from '../internal/referencePool'
+import type { FfmpegAvailability } from '../types'
 
 export interface UseKavanaghAvailabilityResult extends KavanaghAvailability {
+  /** The raw ffmpeg detection result, so consumers can check ffmpeg independently of pool state. */
+  ffmpeg: FfmpegAvailability | null
   /** Per-pool state, so Settings can show both at once rather than only the first fault. */
   pools: Record<ReferencePool, ReferencePoolState>
   /**
@@ -75,6 +78,7 @@ export function useKavanaghAvailability(): UseKavanaghAvailabilityResult {
 
   return {
     ...availability,
+    ffmpeg: ffmpeg ?? null,
     pools: { watermarks: watermarks.state, stings: stings.state },
     poolFiles: { watermarks: watermarks.files, stings: stings.files },
     referenceFolder
