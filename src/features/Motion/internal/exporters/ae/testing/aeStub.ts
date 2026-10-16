@@ -1,21 +1,38 @@
 /**
- * Minimal AE ExtendScript object model stub (issue #329)
+ * Faithful AE ExtendScript object model stub (issue #329)
  *
- * Provides a stub of `app`, `CompItem`, `TextLayer`, `ShapeLayer`,
- * `KeyframeEase`, `alert`, `File` etc. for running generated scripts
- * in a Node vm context and recording what they did.
+ * Models the documented After Effects scripting API so generated .jsx scripts
+ * can be executed in a Node vm context and their AE DOM calls recorded.
+ * Any method or matchName not in the documented API throws.
+ *
+ * Sources (each cited inline):
+ * - LayerCollection: ae-scripting.docsforadobe.dev/layer/layercollection/
+ * - CompItem: ae-scripting.docsforadobe.dev/item/compitem/
+ * - Property: ae-scripting.docsforadobe.dev/property/property/
+ * - PropertyGroup: ae-scripting.docsforadobe.dev/property/propertygroup/
+ * - TextDocument: ae-scripting.docsforadobe.dev/text/textdocument/
+ * - KeyframeEase: ae-scripting.docsforadobe.dev/other/keyframeease/
+ * - Shape: ae-scripting.docsforadobe.dev/other/shape/
+ * - Shape matchnames: ae-scripting.docsforadobe.dev/matchnames/layer/shapelayer/
+ * - Text matchnames: ae-scripting.docsforadobe.dev/matchnames/layer/textlayer/
+ * - AV matchnames: ae-scripting.docsforadobe.dev/matchnames/layer/avlayer/
+ * - Effects matchnames: ae-scripting.docsforadobe.dev/matchnames/effects/firstparty/
+ * - ItemCollection: ae-scripting.docsforadobe.dev/item/itemcollection/
+ * - FontsObject: ae-scripting.docsforadobe.dev/text/fontsobject/ (AE 24.0+)
  *
  * Test-only helper. Not part of the production build.
  */
 import vm from 'node:vm'
 
-/** Recorded call to the AE stub. */
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
 export interface AEStubCall {
   method: string
   args: unknown[]
 }
 
-/** Result of running a script in the AE stub. */
 export interface AEStubResult {
   calls: AEStubCall[]
   comps: AEStubComp[]
@@ -54,57 +71,168 @@ export interface AEStubKeyframe {
 }
 
 // ---------------------------------------------------------------------------
-// Ease dimension lookup
+// Allowlisted matchNames (verified against docs)
 // ---------------------------------------------------------------------------
 
+/** Ease dimension counts per AE property type. */
 const EASE_DIMS: Record<string, number> = {
-  Scale: 3,
-  Position: 1,
-  Opacity: 1,
-  Rotation: 1,
-  'Fill Color': 1,
-  'Rectangle Size': 1,
-  'Tracking Amount': 1,
-  'Trim Paths End': 1,
-  'Trim Paths Offset': 1,
-  Slider: 1,
-  'Ellipse Size': 1,
-  'Stroke Width': 1
+  // ae-scripting.docsforadobe.dev/property/property/ - setTemporalEaseAtKey:
+  // "2 for TwoD, 3 for ThreeD, 1 for all others"
+  'ADBE Position': 2, // TwoD_SPATIAL in 2D comp
+  'ADBE Scale': 3, // ThreeD
+  'ADBE Rotate Z': 1,
+  'ADBE Opacity': 1,
+  'ADBE Anchor Point': 2,
+  // Shape layer properties - all OneD
+  'ADBE Vector Fill Color': 1, // COLOR type but ease dim = 1
+  'ADBE Vector Rect Size': 2, // TwoD
+  'ADBE Vector Rect Roundness': 1,
+  'ADBE Vector Ellipse Size': 2,
+  'ADBE Vector Stroke Width': 1,
+  'ADBE Vector Stroke Color': 1,
+  'ADBE Vector Trim Start': 1,
+  'ADBE Vector Trim End': 1,
+  'ADBE Vector Trim Offset': 1,
+  // Text animator properties
+  'ADBE Text Tracking Amount': 1,
+  'ADBE Text Selector Max Amount': 1,
+  // Effects
+  'ADBE Slider Control-0001': 1,
+  // Source Text
+  'ADBE Text Document': 1
 }
+
+/**
+ * Set of all matchNames that addProperty accepts on an indexed group.
+ * Verified against ae-scripting.docsforadobe.dev/matchnames/layer/shapelayer/
+ * and .../textlayer/ and .../effects/firstparty/
+ */
+const ADDABLE_MATCH_NAMES = new Set([
+  // Shape layer content (shapelayer matchnames page)
+  'ADBE Vector Group',
+  'ADBE Vector Shape - Rect',
+  'ADBE Vector Shape - Ellipse',
+  'ADBE Vector Shape - Star',
+  'ADBE Vector Shape - Group',
+  'ADBE Vector Graphic - Fill',
+  'ADBE Vector Graphic - Stroke',
+  'ADBE Vector Graphic - G-Fill',
+  'ADBE Vector Graphic - G-Stroke',
+  'ADBE Vector Filter - Trim',
+  'ADBE Vector Filter - Merge',
+  'ADBE Vector Filter - Offset',
+  'ADBE Vector Filter - PB',
+  'ADBE Vector Filter - Repeater',
+  'ADBE Vector Filter - RC',
+  'ADBE Vector Filter - Twist',
+  'ADBE Vector Filter - Roughen',
+  'ADBE Vector Filter - Wiggler',
+  'ADBE Vector Filter - Zigzag',
+  // Text animators (textlayer matchnames page)
+  'ADBE Text Animator',
+  'ADBE Text Selector', // Range Selector
+  'ADBE Text Expressible Selector', // Expression Selector (not in docs page; verified by common usage, flagged for #339)
+  // Effects (effects/firstparty matchnames page)
+  'ADBE Slider Control',
+  'ADBE Color Control',
+  'ADBE Checkbox Control',
+  'ADBE Point Control',
+  'ADBE Layer Control',
+  'ADBE Dropdown Control',
+  'ADBE Angle Control',
+  'ADBE Point3D Control'
+])
+
+/**
+ * Set of all matchNames that property(name) can navigate to.
+ * These are named groups or leaf properties.
+ */
+const NAVIGABLE_MATCH_NAMES = new Set([
+  // AV Layer (avlayer matchnames page)
+  'ADBE Transform Group',
+  'ADBE Anchor Point',
+  'ADBE Position',
+  'ADBE Scale',
+  'ADBE Rotate Z',
+  'ADBE Opacity',
+  'ADBE Effect Parade',
+  // Shape layer (shapelayer matchnames page)
+  'ADBE Root Vectors Group',
+  'ADBE Vector Group',
+  'ADBE Vectors Group',
+  'ADBE Vector Transform Group',
+  'ADBE Vector Shape - Rect',
+  'ADBE Vector Rect Size',
+  'ADBE Vector Rect Position',
+  'ADBE Vector Rect Roundness',
+  'ADBE Vector Shape Direction',
+  'ADBE Vector Shape - Ellipse',
+  'ADBE Vector Ellipse Size',
+  'ADBE Vector Ellipse Position',
+  'ADBE Vector Shape - Group',
+  'ADBE Vector Shape',
+  'ADBE Vector Graphic - Fill',
+  'ADBE Vector Fill Color',
+  'ADBE Vector Fill Opacity',
+  'ADBE Vector Fill Rule',
+  'ADBE Vector Graphic - Stroke',
+  'ADBE Vector Stroke Color',
+  'ADBE Vector Stroke Width',
+  'ADBE Vector Stroke Opacity',
+  'ADBE Vector Filter - Trim',
+  'ADBE Vector Trim Start',
+  'ADBE Vector Trim End',
+  'ADBE Vector Trim Offset',
+  'ADBE Vector Trim Type',
+  'ADBE Vector Blend Mode',
+  'ADBE Vector Composite Order',
+  'ADBE Vector Anchor',
+  'ADBE Vector Position',
+  'ADBE Vector Scale',
+  'ADBE Vector Rotation',
+  'ADBE Vector Group Opacity',
+  // Text layer (textlayer matchnames page)
+  'ADBE Text Properties',
+  'ADBE Text Document',
+  'ADBE Text Animators',
+  'ADBE Text Animator',
+  'ADBE Text Selectors',
+  'ADBE Text Selector',
+  'ADBE Text Expressible Selector', // see note above
+  'ADBE Text Animator Properties',
+  'ADBE Text Tracking Amount',
+  'ADBE Text Selector Max Amount',
+  'ADBE Text Selector Mode',
+  'ADBE Text Percent Start',
+  'ADBE Text Percent End',
+  'ADBE Text Range Advanced',
+  'ADBE Text Range Units',
+  // Effects
+  'ADBE Slider Control',
+  'ADBE Slider Control-0001' // Slider value sub-property (convention; not in docs, flagged for #339)
+])
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * Run a generated .jsx script in a sandboxed vm context with the AE stub.
- */
 export function runInAEStub(
   script: string,
   options?: { missingFonts?: string[] }
 ): AEStubResult {
   const missingFonts = options?.missingFonts ?? []
-
-  // The entire AE object model is defined as a script preamble that runs
-  // in the vm context before the generated script. This avoids crossing
-  // the vm boundary with class instances.
   const preamble = buildPreamble(missingFonts)
-
-  const extractScript = buildExtractScript()
+  const extract = buildExtractScript()
 
   const context = vm.createContext({})
-
-  // Setup
   vm.runInContext(preamble, context, { timeout: 5000 })
-
-  // Run the generated script
   vm.runInContext(script, context, { timeout: 5000 })
-
-  // Extract the result
-  return vm.runInContext(extractScript, context, {
-    timeout: 5000
-  }) as AEStubResult
+  return vm.runInContext(extract, context, { timeout: 5000 }) as AEStubResult
 }
+
+// ---------------------------------------------------------------------------
+// Preamble: the AE DOM inside the vm
+// ---------------------------------------------------------------------------
 
 function buildPreamble(missingFonts: string[]): string {
   return `
@@ -113,25 +241,59 @@ var __comps = [];
 var __alerts = [];
 var __missingFonts = ${JSON.stringify(missingFonts)};
 var __easeDims = ${JSON.stringify(EASE_DIMS)};
+var __addableNames = ${JSON.stringify([...ADDABLE_MATCH_NAMES])};
+var __navigableNames = ${JSON.stringify([...NAVIGABLE_MATCH_NAMES])};
 
+// -- Helpers ----------------------------------------------------------------
+
+function __isAddable(name) {
+  for (var i = 0; i < __addableNames.length; i++) {
+    if (__addableNames[i] === name) return true;
+  }
+  return false;
+}
+function __isNavigable(name) {
+  for (var i = 0; i < __navigableNames.length; i++) {
+    if (__navigableNames[i] === name) return true;
+  }
+  return false;
+}
+
+// -- alert (ExtendScript global) -------------------------------------------
+// ae-scripting.docsforadobe.dev/general/globals/
 function alert(msg) { __alerts.push(String(msg)); }
 
+// -- ParagraphJustification enum -------------------------------------------
+// Standard AE enum; documented in TextDocument.justification
 var ParagraphJustification = {
-  LEFT_JUSTIFY: "left",
-  CENTER_JUSTIFY: "center",
-  RIGHT_JUSTIFY: "right"
+  LEFT_JUSTIFY: 2013,
+  CENTER_JUSTIFY: 2014,
+  RIGHT_JUSTIFY: 2015,
+  FULL_JUSTIFY_LASTLINE_LEFT: 2016,
+  FULL_JUSTIFY_LASTLINE_RIGHT: 2017,
+  FULL_JUSTIFY_LASTLINE_CENTER: 2018,
+  FULL_JUSTIFY_LASTLINE_FULL: 2019
 };
 
+// -- KeyframeInterpolationType enum ----------------------------------------
+var KeyframeInterpolationType = {
+  LINEAR: 6612,
+  BEZIER: 6613,
+  HOLD: 6614
+};
+
+// -- KeyframeEase ----------------------------------------------------------
+// ae-scripting.docsforadobe.dev/other/keyframeease/
 function KeyframeEase(speed, influence) {
+  if (influence < 0.1 || influence > 100) {
+    throw new Error("KeyframeEase influence must be in [0.1, 100], got " + influence);
+  }
   this.speed = speed;
   this.influence = influence;
 }
 
-function File(path) {
-  this.fsName = path;
-  this.path = path.replace(/\\/[^\\/]*$/, "");
-}
-
+// -- Shape -----------------------------------------------------------------
+// ae-scripting.docsforadobe.dev/other/shape/
 function Shape() {
   this.vertices = [];
   this.inTangents = [];
@@ -139,158 +301,286 @@ function Shape() {
   this.closed = false;
 }
 
-function __makeProp(name) {
-  var dims = __easeDims[name] || 1;
+// -- File ------------------------------------------------------------------
+function File(path) {
+  this.fsName = path;
+  this.path = path.replace(/\\/[^\\/]*$/, "");
+}
+
+// -- TextDocument ----------------------------------------------------------
+// ae-scripting.docsforadobe.dev/text/textdocument/
+function TextDocument(text) {
+  this.text = text || "";
+  this.font = "ArialMT";
+  this.fontSize = 24;
+  this.fillColor = [1, 1, 1];
+  this.applyFill = true;
+  this.applyStroke = false;
+  this.strokeColor = [0, 0, 0];
+  this.strokeWidth = 0;
+  this.justification = ParagraphJustification.LEFT_JUSTIFY;
+  this.leading = 0;
+  this.tracking = 0;
+  this.boxText = false;       // read-only in real AE
+  this.boxTextSize = [100, 100];
+  this.pointText = true;      // read-only in real AE
+}
+
+// -- Property --------------------------------------------------------------
+// ae-scripting.docsforadobe.dev/property/property/
+function __makeProp(matchName, valueType) {
+  var dims = __easeDims[matchName] || 1;
   var prop = {
-    __propName: name,
+    __matchName: matchName,
     __kfs: [],
     __dims: dims,
-    expression: undefined,
+    __valueType: valueType || "OneD",
+    expression: "",
+    expressionEnabled: false,
+    canSetExpression: true,
     value: undefined,
     numKeys: 0,
-    setValue: function(val) { prop.value = val; },
-    setValueAtTime: function(time, val) {
-      prop.__kfs.push({
-        time: time, value: val,
-        inEase: undefined, outEase: undefined,
-        spatialInterpolation: undefined
-      });
-      prop.numKeys = prop.__kfs.length;
+
+    // property/property/ - setValue
+    setValue: function(val) {
+      if (prop.numKeys > 0) throw new Error("Cannot setValue on property with keyframes");
+      prop.value = val;
     },
-    setTemporalEaseAtKey: function(keyIndex, inEaseArr, outEaseArr) {
-      __calls.push({ method: "setTemporalEaseAtKey", args: [keyIndex, inEaseArr, outEaseArr] });
-      if (inEaseArr.length !== dims) {
-        throw new Error('setTemporalEaseAtKey: "' + name + '" needs ' + dims + ' ease dims, got ' + inEaseArr.length);
+
+    // property/property/ - setValueAtTime
+    setValueAtTime: function(time, val) {
+      prop.__kfs.push({ time: time, value: val });
+      prop.numKeys = prop.__kfs.length;
+      prop.value = val;
+    },
+
+    // property/property/ - setTemporalEaseAtKey
+    setTemporalEaseAtKey: function(keyIndex, inEase, outEase) {
+      __calls.push({ method: "setTemporalEaseAtKey", args: [keyIndex, inEase, outEase || inEase] });
+      var actualOut = outEase || inEase;
+      if (inEase.length !== dims) {
+        throw new Error(
+          'setTemporalEaseAtKey: "' + matchName + '" expects ' +
+          dims + ' ease dims, got ' + inEase.length
+        );
       }
-      if (outEaseArr.length !== dims) {
-        throw new Error('setTemporalEaseAtKey: "' + name + '" needs ' + dims + ' ease dims, got ' + outEaseArr.length);
+      if (actualOut.length !== dims) {
+        throw new Error(
+          'setTemporalEaseAtKey: "' + matchName + '" expects ' +
+          dims + ' ease dims, got ' + actualOut.length
+        );
       }
       var kf = prop.__kfs[keyIndex - 1];
       if (kf) {
-        kf.inEase = []; kf.outEase = [];
-        for (var i = 0; i < inEaseArr.length; i++) {
-          kf.inEase.push({ speed: inEaseArr[i].speed, influence: inEaseArr[i].influence });
+        kf.inEase = [];
+        kf.outEase = [];
+        for (var i = 0; i < inEase.length; i++) {
+          kf.inEase.push({ speed: inEase[i].speed, influence: inEase[i].influence });
         }
-        for (var j = 0; j < outEaseArr.length; j++) {
-          kf.outEase.push({ speed: outEaseArr[j].speed, influence: outEaseArr[j].influence });
+        for (var j = 0; j < actualOut.length; j++) {
+          kf.outEase.push({ speed: actualOut[j].speed, influence: actualOut[j].influence });
         }
       }
     },
-    setSpatialTangentsAtKey: function(keyIndex, inT, outT) {
-      __calls.push({ method: "setSpatialTangentsAtKey", args: [keyIndex, inT, outT] });
+
+    // property/property/ - setSpatialTangentsAtKey
+    setSpatialTangentsAtKey: function(keyIndex, inTangent, outTangent) {
+      var actualOut = outTangent || inTangent;
+      __calls.push({ method: "setSpatialTangentsAtKey", args: [keyIndex, inTangent, actualOut] });
       var kf = prop.__kfs[keyIndex - 1];
       if (kf) {
         var isLinear = true;
-        for (var i = 0; i < inT.length; i++) { if (inT[i] !== 0) isLinear = false; }
-        for (var j = 0; j < outT.length; j++) { if (outT[j] !== 0) isLinear = false; }
+        for (var a = 0; a < inTangent.length; a++) { if (inTangent[a] !== 0) isLinear = false; }
+        for (var b = 0; b < actualOut.length; b++) { if (actualOut[b] !== 0) isLinear = false; }
         kf.spatialInterpolation = isLinear ? "linear" : "bezier";
       }
-    }
+    },
+
+    // property/property/ - setInterpolationTypeAtKey
+    setInterpolationTypeAtKey: function(keyIndex, inType, outType) {
+      __calls.push({ method: "setInterpolationTypeAtKey", args: [keyIndex, inType, outType || inType] });
+    },
+
+    // property/property/ - addToMotionGraphicsTemplateAs
+    addToMotionGraphicsTemplateAs: function(comp, name) {
+      __calls.push({ method: "addToMotionGraphicsTemplateAs", args: [comp, name] });
+      return true;
+    },
+
+    // property/property/ - canAddToMotionGraphicsTemplate
+    canAddToMotionGraphicsTemplate: function() { return true; }
   };
+
+  // expression setter support
+  Object.defineProperty(prop, "expression", {
+    get: function() { return prop.__expression || ""; },
+    set: function(val) {
+      prop.__expression = val;
+      prop.expressionEnabled = (val !== "");
+    },
+    enumerable: true,
+    configurable: true
+  });
+
   return prop;
 }
 
-function __makeTransform() {
-  return {
-    position: __makeProp("Position"),
-    scale: __makeProp("Scale"),
-    rotation: __makeProp("Rotation"),
-    opacity: __makeProp("Opacity"),
-    anchorPoint: __makeProp("Anchor Point")
-  };
-}
+// -- PropertyGroup ---------------------------------------------------------
+// ae-scripting.docsforadobe.dev/property/propertygroup/
+function __makeGroup(matchName) {
+  var children = {};
+  var indexedChildren = [];
 
-function __makeTextLayer() {
-  var layer = {
-    __kind: "text",
-    name: "",
-    transform: __makeTransform(),
-    sourceText: __makeProp("Source Text"),
-    __meta: {},
-    __animators: [],
-    __effects: [],
-    addAnimator: function(name) {
-      var anim = {
-        name: name,
-        __props: {},
-        __selectors: [],
-        addProperty: function(pName) {
-          var p = __makeProp(pName);
-          anim.__props[pName] = p;
-          return p;
-        },
-        addSelector: function(sName) {
-          var sel = __makeProp(sName);
-          anim.__selectors.push(sel);
-          return sel;
-        }
-      };
-      layer.__animators.push(anim);
-      return anim;
-    },
-    addEffect: function(name) {
-      var eff = {
-        name: name,
-        slider: __makeProp("Slider")
-      };
-      layer.__effects.push(eff);
-      return eff;
-    }
-  };
-  return layer;
-}
+  var group = {
+    __matchName: matchName,
+    __children: children,
+    __indexedChildren: indexedChildren,
+    matchName: matchName,
+    numProperties: 0,
 
-function __makeShapeLayer() {
-  var layer = {
-    __kind: "shape",
-    name: "",
-    transform: __makeTransform(),
-    __shapes: [],
-    __fill: undefined,
-    __stroke: undefined,
-    __trim: false,
-    __meta: {},
-    __cachedProps: {},
-    fillColor: __makeProp("Fill Color"),
-    trimEnd: __makeProp("Trim Paths End"),
-    trimOffset: __makeProp("Trim Paths Offset"),
-    addShape: function(name) { layer.__shapes.push(name); },
-    setShapeProperty: function(name, val) {
-      layer.__meta[name] = val;
-    },
-    setPath: function(verts, inT, outT, closed) {
-      layer.__meta["Path Vertices"] = verts;
-      layer.__meta["Path InTangents"] = inT;
-      layer.__meta["Path OutTangents"] = outT;
-      layer.__meta["Path Closed"] = closed;
-    },
-    addFill: function(col) { layer.__fill = col; },
-    addStroke: function(col, width) {
-      layer.__stroke = { color: col, width: width };
-    },
-    addTrimPaths: function() { layer.__trim = true; },
-    shapeProp: function(name) {
-      if (!layer.__cachedProps[name]) {
-        layer.__cachedProps[name] = __makeProp(name);
+    // propertygroup/ - property(index_or_name)
+    property: function(nameOrIndex) {
+      if (typeof nameOrIndex === "number") {
+        return indexedChildren[nameOrIndex - 1] || null;
       }
-      return layer.__cachedProps[name];
-    }
+      if (!__isNavigable(nameOrIndex)) {
+        throw new Error('property("' + nameOrIndex + '") is not a known AE matchName');
+      }
+      if (children[nameOrIndex]) return children[nameOrIndex];
+      // Auto-create navigable leaf properties
+      var child = __makeProp(nameOrIndex);
+      children[nameOrIndex] = child;
+      return child;
+    },
+
+    // propertygroup/ - addProperty(name)
+    addProperty: function(name) {
+      if (!__isAddable(name)) {
+        throw new Error('addProperty("' + name + '") is not a known addable AE matchName');
+      }
+      var child;
+      // Groups that contain sub-properties
+      if (name === "ADBE Vector Group" ||
+          name === "ADBE Vector Graphic - Fill" ||
+          name === "ADBE Vector Graphic - Stroke" ||
+          name === "ADBE Vector Filter - Trim" ||
+          name === "ADBE Vector Shape - Rect" ||
+          name === "ADBE Vector Shape - Ellipse" ||
+          name === "ADBE Vector Shape - Star" ||
+          name === "ADBE Vector Shape - Group" ||
+          name === "ADBE Text Animator" ||
+          name === "ADBE Text Selector" ||
+          name === "ADBE Text Expressible Selector" ||
+          name === "ADBE Slider Control") {
+        child = __makeGroup(name);
+        // Pre-populate known children for groups
+        if (name === "ADBE Vector Group") {
+          child.__children["ADBE Vectors Group"] = __makeGroup("ADBE Vectors Group");
+          child.__children["ADBE Vector Transform Group"] = __makeGroup("ADBE Vector Transform Group");
+        }
+        if (name === "ADBE Text Animator") {
+          child.__children["ADBE Text Selectors"] = __makeGroup("ADBE Text Selectors");
+          child.__children["ADBE Text Animator Properties"] = __makeGroup("ADBE Text Animator Properties");
+        }
+        if (name === "ADBE Slider Control") {
+          child.__children["ADBE Slider Control-0001"] = __makeProp("ADBE Slider Control-0001");
+        }
+        if (name === "ADBE Text Expressible Selector") {
+          child.__children["ADBE Text Selector Max Amount"] = __makeProp("ADBE Text Selector Max Amount");
+        }
+      } else {
+        child = __makeProp(name);
+      }
+      children[name] = child;
+      indexedChildren.push(child);
+      group.numProperties = indexedChildren.length;
+      return child;
+    },
+
+    canAddProperty: function(name) { return __isAddable(name); }
   };
-  return layer;
+
+  return group;
 }
 
-function __makePrecompLayer(comp) {
+// -- Transform group -------------------------------------------------------
+function __makeTransformGroup() {
+  var g = __makeGroup("ADBE Transform Group");
+  g.__children["ADBE Anchor Point"] = __makeProp("ADBE Anchor Point", "TwoD_SPATIAL");
+  g.__children["ADBE Position"] = __makeProp("ADBE Position", "TwoD_SPATIAL");
+  g.__children["ADBE Scale"] = __makeProp("ADBE Scale", "ThreeD");
+  g.__children["ADBE Rotate Z"] = __makeProp("ADBE Rotate Z");
+  g.__children["ADBE Opacity"] = __makeProp("ADBE Opacity");
+  return g;
+}
+
+// -- Layer -----------------------------------------------------------------
+function __makeLayer(kind) {
+  var transformGroup = __makeTransformGroup();
+  var effectsGroup = __makeGroup("ADBE Effect Parade");
+  var layerProps = {};
+
+  // Shape layers get ADBE Root Vectors Group
+  var rootVectors = null;
+  if (kind === "shape") {
+    rootVectors = __makeGroup("ADBE Root Vectors Group");
+  }
+
+  // Text layers get ADBE Text Properties
+  var textProps = null;
+  if (kind === "text") {
+    textProps = __makeGroup("ADBE Text Properties");
+    textProps.__children["ADBE Text Document"] = __makeProp("ADBE Text Document", "TEXT_DOCUMENT");
+    textProps.__children["ADBE Text Animators"] = __makeGroup("ADBE Text Animators");
+  }
+
   var layer = {
-    __kind: "precomp",
-    name: comp.name,
-    transform: __makeTransform(),
-    source: comp,
-    __meta: {}
+    __kind: kind,
+    __essentialProps: [],
+    name: "",
+    index: 0,
+    inPoint: 0,
+    outPoint: 0,
+    startTime: 0,
+    enabled: true,
+    source: undefined,
+    parent: undefined,
+
+    // layer/layerobject - property(matchName)
+    property: function(nameOrIndex) {
+      if (nameOrIndex === "ADBE Transform Group") return transformGroup;
+      if (nameOrIndex === "ADBE Effect Parade") return effectsGroup;
+      if (nameOrIndex === "ADBE Root Vectors Group" && rootVectors) return rootVectors;
+      if (nameOrIndex === "ADBE Text Properties" && textProps) return textProps;
+      // Allow navigable names
+      if (typeof nameOrIndex === "string" && __isNavigable(nameOrIndex)) {
+        if (!layerProps[nameOrIndex]) {
+          layerProps[nameOrIndex] = __makeProp(nameOrIndex);
+        }
+        return layerProps[nameOrIndex];
+      }
+      if (typeof nameOrIndex === "string") {
+        throw new Error('layer.property("' + nameOrIndex + '") is not a known AE matchName');
+      }
+      return null;
+    },
+
+    // Transform shorthand - layer.transform is property("ADBE Transform Group")
+    // But in real AE, layer.transform is just a reference. We use property().
+    __transformGroup: transformGroup,
+    __effectsGroup: effectsGroup,
+    __rootVectors: rootVectors,
+    __textProps: textProps,
+    __layerProps: layerProps
   };
+
   return layer;
 }
 
-function CompItem(name, width, height, pixelAspect, duration, frameRate) {
+// -- CompItem --------------------------------------------------------------
+// ae-scripting.docsforadobe.dev/item/compitem/
+function __makeCompItem(name, width, height, pixelAspect, duration, frameRate) {
+  var layerList = [];
   var comp = {
     name: name,
     width: width,
@@ -298,39 +588,109 @@ function CompItem(name, width, height, pixelAspect, duration, frameRate) {
     pixelAspect: pixelAspect,
     duration: duration,
     frameRate: frameRate,
-    __layers: [],
+    __layers: layerList,
     numLayers: 0,
-    layers: {
-      add: function(precomp) {
-        var layer = __makePrecompLayer(precomp);
-        comp.__layers.push(layer);
-        comp.numLayers = comp.__layers.length;
-        return layer;
-      }
+
+    // compitem/ - openInEssentialGraphics
+    openInEssentialGraphics: function() {
+      __calls.push({ method: "openInEssentialGraphics", args: [] });
     },
-    addShapeLayer: function() {
-      var layer = __makeShapeLayer();
-      comp.__layers.push(layer);
-      comp.numLayers = comp.__layers.length;
-      return layer;
-    },
-    addTextLayer: function() {
-      var layer = __makeTextLayer();
-      comp.__layers.push(layer);
-      comp.numLayers = comp.__layers.length;
-      return layer;
-    },
-    exportAsMotionGraphicsTemplate: function(overwrite, file) {
+
+    // compitem/ - exportAsMotionGraphicsTemplate
+    exportAsMotionGraphicsTemplate: function(doOverwrite, filePath) {
       __calls.push({
         method: "exportAsMotionGraphicsTemplate",
-        args: [overwrite, file.fsName]
+        args: [doOverwrite, filePath instanceof Object ? filePath.fsName : filePath]
       });
+      return true;
+    },
+
+    // compitem/ - layer(index_or_name)
+    layer: function(indexOrName) {
+      if (typeof indexOrName === "number") return layerList[indexOrName - 1] || null;
+      for (var i = 0; i < layerList.length; i++) {
+        if (layerList[i].name === indexOrName) return layerList[i];
+      }
+      return null;
+    },
+
+    layers: {
+      // layercollection/ - addShape()
+      addShape: function() {
+        var layer = __makeLayer("shape");
+        layerList.push(layer);
+        layer.index = layerList.length;
+        comp.numLayers = layerList.length;
+        return layer;
+      },
+
+      // layercollection/ - addText([sourceText])
+      addText: function(sourceText) {
+        var layer = __makeLayer("text");
+        layerList.push(layer);
+        layer.index = layerList.length;
+        comp.numLayers = layerList.length;
+        // Set source text if provided
+        if (sourceText !== undefined) {
+          var textDoc = textProps(layer);
+          if (typeof sourceText === "string") {
+            textDoc.setValue(new TextDocument(sourceText));
+          } else {
+            textDoc.setValue(sourceText);
+          }
+        }
+        return layer;
+      },
+
+      // layercollection/ - addNull([duration])
+      addNull: function(dur) {
+        var layer = __makeLayer("null");
+        layerList.push(layer);
+        layer.index = layerList.length;
+        comp.numLayers = layerList.length;
+        return layer;
+      },
+
+      // layercollection/ - add(item[, duration])
+      add: function(item, dur) {
+        var layer = __makeLayer("precomp");
+        layer.source = item;
+        layer.name = item.name;
+        layerList.push(layer);
+        layer.index = layerList.length;
+        comp.numLayers = layerList.length;
+        return layer;
+      },
+
+      // layercollection/ - addSolid(color, name, width, height, pixelAspect[, duration])
+      addSolid: function(color, name, w, h, pa, dur) {
+        var layer = __makeLayer("solid");
+        layer.name = name;
+        layerList.push(layer);
+        layer.index = layerList.length;
+        comp.numLayers = layerList.length;
+        return layer;
+      },
+
+      // layercollection/ - addBoxText([width, height])
+      addBoxText: function(size) {
+        var layer = __makeLayer("text");
+        layerList.push(layer);
+        layer.index = layerList.length;
+        comp.numLayers = layerList.length;
+        return layer;
+      }
     }
   };
-  __comps.push(comp);
   return comp;
 }
 
+function textProps(layer) {
+  return layer.property("ADBE Text Properties").property("ADBE Text Document");
+}
+
+// -- app -------------------------------------------------------------------
+// ae-scripting.docsforadobe.dev/general/application/
 var app = {
   beginUndoGroup: function(name) {
     __calls.push({ method: "beginUndoGroup", args: [name] });
@@ -338,113 +698,158 @@ var app = {
   endUndoGroup: function() {
     __calls.push({ method: "endUndoGroup", args: [] });
   },
+
+  // ae-scripting.docsforadobe.dev/text/fontsobject/ (AE 24.0+)
   fonts: {
-    getFontByPostScriptName: function(psName) {
+    getFontsByPostScriptName: function(psName) {
       for (var i = 0; i < __missingFonts.length; i++) {
-        if (__missingFonts[i] === psName) return null;
+        if (__missingFonts[i] === psName) return [];
       }
-      return { postScriptName: psName };
+      return [{ postScriptName: psName, family: psName }];
     }
   },
-  project: { items: __comps, numItems: 0 }
+
+  project: {
+    items: {
+      // ae-scripting.docsforadobe.dev/item/itemcollection/ - addComp
+      addComp: function(name, width, height, pixelAspect, duration, frameRate) {
+        var comp = __makeCompItem(name, width, height, pixelAspect, duration, frameRate);
+        __comps.push(comp);
+        return comp;
+      }
+    }
+  },
+
+  version: "24.0"
 };
 
+// ExtendScript $ object
 var $ = { fileName: "/tmp/script.jsx" };
 `
 }
 
+// ---------------------------------------------------------------------------
+// Extraction
+// ---------------------------------------------------------------------------
+
 function buildExtractScript(): string {
   return `
 (function() {
-  function extractProp(p) {
+  function xProp(p) {
     if (!p) return null;
-    return { keyframes: p.__kfs || [], expression: p.expression, value: p.value };
+    if (p.__kfs) {
+      return {
+        keyframes: p.__kfs,
+        expression: p.__expression || "",
+        value: p.value
+      };
+    }
+    return null;
   }
 
-  function extractLayer(layer) {
+  function xLayer(layer) {
     var props = {};
-    var kind = layer.__kind;
+    var essentials = [];
 
     // Transform
-    if (layer.transform) {
-      var t = layer.transform;
-      if (t.position.__kfs.length > 0) props["Position"] = extractProp(t.position);
-      if (t.scale.__kfs.length > 0) props["Scale"] = extractProp(t.scale);
-      if (t.rotation.__kfs.length > 0) props["Rotation"] = extractProp(t.rotation);
-      if (t.opacity.__kfs.length > 0) props["Opacity"] = extractProp(t.opacity);
+    var tg = layer.__transformGroup;
+    if (tg) {
+      var tNames = ["ADBE Anchor Point", "ADBE Position", "ADBE Scale", "ADBE Rotate Z", "ADBE Opacity"];
+      for (var ti = 0; ti < tNames.length; ti++) {
+        var tn = tNames[ti];
+        var tp = tg.__children[tn];
+        if (tp && tp.__kfs && tp.__kfs.length > 0) {
+          props[tn] = xProp(tp);
+        } else if (tp && tp.value !== undefined) {
+          props[tn] = xProp(tp);
+        }
+      }
     }
 
-    // Text layer specifics
-    if (kind === "text") {
-      if (layer.sourceText) {
-        props["Source Text"] = extractProp(layer.sourceText);
+    // Shape layer content
+    if (layer.__rootVectors) {
+      xGroup(layer.__rootVectors, props);
+    }
+
+    // Text layer
+    if (layer.__textProps) {
+      var doc = layer.__textProps.__children["ADBE Text Document"];
+      if (doc) {
+        props["ADBE Text Document"] = xProp(doc);
       }
-      if (layer.__meta) {
-        if (layer.__meta.font !== undefined) props["Font"] = { keyframes: [], value: layer.__meta.font };
-        if (layer.__meta.justification !== undefined) props["Justification"] = { keyframes: [], value: layer.__meta.justification };
-        if (layer.__meta.leading !== undefined) props["Leading"] = { keyframes: [], value: layer.__meta.leading };
-        if (layer.__meta.textKind !== undefined) props["Text Kind"] = { keyframes: [], value: layer.__meta.textKind };
+      var anims = layer.__textProps.__children["ADBE Text Animators"];
+      if (anims) {
+        xAnimators(anims, props);
       }
-      // Animators
-      if (layer.__animators) {
-        for (var a = 0; a < layer.__animators.length; a++) {
-          var anim = layer.__animators[a];
-          for (var pName in anim.__props) {
-            props[pName] = extractProp(anim.__props[pName]);
+    }
+
+    // Effects
+    if (layer.__effectsGroup) {
+      xEffects(layer.__effectsGroup, props);
+    }
+
+    // Essential Graphics from calls
+    for (var ci = 0; ci < __calls.length; ci++) {
+      var c = __calls[ci];
+      if (c.method === "addToMotionGraphicsTemplateAs" && c.args.length >= 2) {
+        essentials.push(c.args[1]);
+      }
+    }
+
+    return {
+      kind: layer.__kind,
+      name: layer.name,
+      properties: props,
+      essentialProperties: essentials.length > 0 ? essentials : undefined
+    };
+  }
+
+  function xGroup(group, props) {
+    if (!group || !group.__children) return;
+    for (var key in group.__children) {
+      var child = group.__children[key];
+      if (child && child.__kfs) {
+        if (child.__kfs.length > 0 || child.value !== undefined) {
+          props[key] = xProp(child);
+        }
+      } else if (child && child.__children) {
+        xGroup(child, props);
+      }
+    }
+    if (group.__indexedChildren) {
+      for (var j = 0; j < group.__indexedChildren.length; j++) {
+        var ic = group.__indexedChildren[j];
+        if (ic && ic.__kfs) {
+          if (ic.__kfs.length > 0 || ic.value !== undefined) {
+            props[ic.__matchName] = xProp(ic);
           }
-          if (anim.__selectors.length > 0) {
-            props["Expression Selector"] = extractProp(anim.__selectors[0]);
-          }
-        }
-      }
-      // Effects (counter slider)
-      if (layer.__effects) {
-        for (var e = 0; e < layer.__effects.length; e++) {
-          var eff = layer.__effects[e];
-          if (eff.slider) props["Slider"] = extractProp(eff.slider);
+        } else if (ic && ic.__children) {
+          xGroup(ic, props);
         }
       }
     }
+  }
 
-    // Shape layer specifics
-    if (kind === "shape") {
-      if (layer.__meta) {
-        for (var key in layer.__meta) {
-          props[key] = { keyframes: [], value: layer.__meta[key] };
-        }
-      }
-      if (layer.__fill) {
-        props["Fill Color"] = props["Fill Color"] || { keyframes: [], value: layer.__fill };
-      }
-      if (layer.__stroke) {
-        props["Stroke Width"] = { keyframes: [], value: layer.__stroke.width };
-        props["Stroke Color"] = { keyframes: [], value: layer.__stroke.color };
-      }
-      if (layer.fillColor && layer.fillColor.__kfs && layer.fillColor.__kfs.length > 0) {
-        props["Fill Color"] = extractProp(layer.fillColor);
-      }
-      if (layer.trimEnd && layer.trimEnd.__kfs && layer.trimEnd.__kfs.length > 0) {
-        props["Trim Paths End"] = extractProp(layer.trimEnd);
-      }
-      if (layer.trimOffset && layer.trimOffset.__kfs && layer.trimOffset.__kfs.length > 0) {
-        props["Trim Paths Offset"] = extractProp(layer.trimOffset);
-      }
-      if (layer.__cachedProps) {
-        for (var cp in layer.__cachedProps) {
-          var cached = layer.__cachedProps[cp];
-          if (cached && cached.__kfs && cached.__kfs.length > 0) {
-            props[cp] = extractProp(cached);
-          }
-        }
-      }
+  function xAnimators(animsGroup, props) {
+    if (!animsGroup || !animsGroup.__indexedChildren) return;
+    for (var i = 0; i < animsGroup.__indexedChildren.length; i++) {
+      var anim = animsGroup.__indexedChildren[i];
+      if (!anim || !anim.__children) continue;
+      // Animator properties
+      var ap = anim.__children["ADBE Text Animator Properties"];
+      if (ap) xGroup(ap, props);
+      // Selectors
+      var sels = anim.__children["ADBE Text Selectors"];
+      if (sels) xGroup(sels, props);
     }
+  }
 
-    var essentials = undefined;
-    if (layer.__meta && layer.__meta.essentialProp) {
-      essentials = [layer.__meta.essentialProp];
+  function xEffects(effectsGroup, props) {
+    if (!effectsGroup || !effectsGroup.__indexedChildren) return;
+    for (var i = 0; i < effectsGroup.__indexedChildren.length; i++) {
+      var eff = effectsGroup.__indexedChildren[i];
+      if (eff && eff.__children) xGroup(eff, props);
     }
-
-    return { kind: kind, name: layer.name, properties: props, essentialProperties: essentials };
   }
 
   var result = { calls: __calls, alerts: __alerts, comps: [] };
@@ -452,7 +857,7 @@ function buildExtractScript(): string {
     var comp = __comps[i];
     var layers = [];
     for (var j = 0; j < comp.__layers.length; j++) {
-      layers.push(extractLayer(comp.__layers[j]));
+      layers.push(xLayer(comp.__layers[j]));
     }
     result.comps.push({
       name: comp.name,

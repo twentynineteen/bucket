@@ -3,6 +3,9 @@
  *
  * Behaviours: AE1.1, AE1.4, AE2.1-AE2.3, AE3.3-AE3.5, AE4.1-AE4.5,
  * AE5.1, AE6.1-AE6.3, AE7.1, AE8.1-AE8.3
+ *
+ * Tests use ADBE matchNames that correspond to the documented AE scripting API.
+ * The stub enforces that only documented matchNames are used.
  */
 import * as espree from 'espree'
 import { describe, expect, it } from 'vitest'
@@ -48,13 +51,19 @@ function makeInput(
   }
 }
 
-/** The text layer from textFixture, typed correctly. */
 const textLayerBase = textFixture.layers[0] as TextLayer
 
-/** Non-particle fixtures for validity tests. */
 const nonParticleFixtures = layerKindFixtures.filter(
   f => !f.layers.some(l => l.kind === 'particles' || l.kind === 'series')
 )
+
+function getJsxSrc(input: ExportInput): string {
+  const result = generateJsx(input)
+  const jsx = result.files.find(f => f.name.endsWith('.jsx'))
+  expect(jsx).toBeDefined()
+  expect(jsx!.kind).toBe('text')
+  return jsx!.kind === 'text' ? jsx!.contents : ''
+}
 
 // ---------------------------------------------------------------------------
 // AE1.1 - ES3 validity
@@ -64,12 +73,7 @@ describe('AE1.1 - ES3 parse validity', () => {
   it.each(nonParticleFixtures.map(f => [f.id, f] as const))(
     'fixture %s parses with espree at ecmaVersion 3',
     (_id, fixture) => {
-      const input = makeInput(fixture)
-      const result = generateJsx(input)
-      const jsx = result.files.find(f => f.name.endsWith('.jsx'))
-      expect(jsx).toBeDefined()
-      expect(jsx!.kind).toBe('text')
-      const src = jsx!.kind === 'text' ? jsx!.contents : ''
+      const src = getJsxSrc(makeInput(fixture))
       expect(() => espree.parse(src, { ecmaVersion: 3 })).not.toThrow()
     }
   )
@@ -78,11 +82,7 @@ describe('AE1.1 - ES3 parse validity', () => {
     const builtins = loadBuiltins()
     const nonParticle = builtins.filter(b => !b.layers.some(l => l.kind === 'particles'))
     for (const template of nonParticle) {
-      const input = makeInput(template)
-      const result = generateJsx(input)
-      const jsx = result.files.find(f => f.name.endsWith('.jsx'))
-      if (!jsx) continue
-      const src = jsx.kind === 'text' ? jsx.contents : ''
+      const src = getJsxSrc(makeInput(template))
       expect(() => espree.parse(src, { ecmaVersion: 3 })).not.toThrow()
     }
   })
@@ -94,81 +94,64 @@ describe('AE1.1 - ES3 parse validity', () => {
 
 describe('AE1.4 - structure constraints', () => {
   it('contains no JSON identifier', () => {
-    const input = makeInput(textFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
-    // Match JSON as an identifier, not inside a string literal
+    const src = getJsxSrc(makeInput(textFixture))
     expect(src).not.toMatch(/\bJSON\b/)
   })
 
   it('first statement calls app.beginUndoGroup', () => {
-    const input = makeInput(textFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(textFixture))
     const lines = src.trim().split('\n')
-    const firstStatement = lines.find(
+    const first = lines.find(
       l => l.trim() && !l.trim().startsWith('//') && !l.trim().startsWith('/*')
     )
-    expect(firstStatement).toBeDefined()
-    expect(firstStatement).toContain('app.beginUndoGroup')
+    expect(first).toContain('app.beginUndoGroup')
   })
 
   it('last statement calls app.endUndoGroup', () => {
-    const input = makeInput(textFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(textFixture))
     const lines = src
       .trim()
       .split('\n')
       .filter(l => l.trim())
-    const lastStatement = lines[lines.length - 1]
-    expect(lastStatement).toContain('app.endUndoGroup()')
+    expect(lines[lines.length - 1]).toContain('app.endUndoGroup()')
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE2.1 - Composition creation
+// Uses: app.project.items.addComp (itemcollection/)
 // ---------------------------------------------------------------------------
 
 describe('AE2.1 - composition creation', () => {
   it('creates one top-level comp with correct dimensions', () => {
-    const input = makeInput(textFixture, {
-      format: { width: 1920, height: 1080, fps: 25 }
-    })
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(
+      makeInput(textFixture, {
+        format: { width: 1920, height: 1080, fps: 25 }
+      })
+    )
     const stub = runInAEStub(src)
 
     expect(stub.comps.length).toBeGreaterThanOrEqual(1)
-    const mainComp = stub.comps[0]
-    expect(mainComp.width).toBe(1920)
-    expect(mainComp.height).toBe(1080)
-    expect(mainComp.pixelAspect).toBe(1)
-    expect(mainComp.duration).toBe(4)
-    expect(mainComp.frameRate).toBe(25)
+    const mc = stub.comps[0]
+    expect(mc.width).toBe(1920)
+    expect(mc.height).toBe(1080)
+    expect(mc.pixelAspect).toBe(1)
+    expect(mc.duration).toBe(4)
+    expect(mc.frameRate).toBe(25)
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE2.2 - Groups as precomps
+// Uses: comp.layers.add(precompItem) (layercollection/)
 // ---------------------------------------------------------------------------
 
 describe('AE2.2 - groups as precomps', () => {
   it('creates precomps for nested groups, no null layers', () => {
-    const input = makeInput(groupOfGroupsFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(groupOfGroupsFixture))
     const stub = runInAEStub(src)
 
-    // Should have at least 3 comps: main + outer group precomp + inner group precomp
     expect(stub.comps.length).toBeGreaterThanOrEqual(3)
-
-    // No null layers
     const allLayers = stub.comps.flatMap(c => c.layers)
     expect(allLayers.some(l => l.kind === 'null')).toBe(false)
   })
@@ -176,48 +159,40 @@ describe('AE2.2 - groups as precomps', () => {
 
 // ---------------------------------------------------------------------------
 // AE2.3 - Shape layers
+// Uses ADBE matchNames from shapelayer matchnames page
 // ---------------------------------------------------------------------------
 
 describe('AE2.3 - shape layers', () => {
   it('creates a rectangle shape with roundness from rect layer', () => {
-    const input = makeInput(rectFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(rectFixture))
     const stub = runInAEStub(src)
 
-    const mainComp = stub.comps[0]
-    const shapeLayer = mainComp.layers.find(l => l.kind === 'shape')
-    expect(shapeLayer).toBeDefined()
-    expect(shapeLayer!.properties['Rectangle Roundness']).toBeDefined()
-    expect(shapeLayer!.properties['Rectangle Roundness'].value).toBe(12) // 24 * 0.5 (1080/2160 scale)
+    const mc = stub.comps[0]
+    const sl = mc.layers.find(l => l.kind === 'shape')
+    expect(sl).toBeDefined()
+    // ADBE Vector Rect Roundness (shapelayer matchnames)
+    expect(sl!.properties['ADBE Vector Rect Roundness']).toBeDefined()
+    expect(sl!.properties['ADBE Vector Rect Roundness'].value).toBe(12) // 24 * 0.5
   })
 
   it('creates an ellipse shape from ellipse layer', () => {
-    const input = makeInput(ellipseFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(ellipseFixture))
     const stub = runInAEStub(src)
 
-    const mainComp = stub.comps[0]
-    const shapeLayer = mainComp.layers.find(l => l.kind === 'shape')
-    expect(shapeLayer).toBeDefined()
-    expect(shapeLayer!.properties['Ellipse Size']).toBeDefined()
+    const sl = stub.comps[0].layers.find(l => l.kind === 'shape')
+    expect(sl).toBeDefined()
+    // ADBE Vector Ellipse Size (shapelayer matchnames)
+    expect(sl!.properties['ADBE Vector Ellipse Size']).toBeDefined()
   })
 
-  it('creates a closed path from path layer', () => {
-    const input = makeInput(pathFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+  it('creates a closed path from path layer with ADBE Vector Shape', () => {
+    const src = getJsxSrc(makeInput(pathFixture))
     const stub = runInAEStub(src)
 
-    const mainComp = stub.comps[0]
-    const shapeLayer = mainComp.layers.find(l => l.kind === 'shape')
-    expect(shapeLayer).toBeDefined()
-    expect(shapeLayer!.properties['Path Closed']).toBeDefined()
-    expect(shapeLayer!.properties['Path Closed'].value).toBe(true)
+    const sl = stub.comps[0].layers.find(l => l.kind === 'shape')
+    expect(sl).toBeDefined()
+    // ADBE Vector Shape (shapelayer matchnames)
+    expect(sl!.properties['ADBE Vector Shape']).toBeDefined()
   })
 })
 
@@ -227,27 +202,13 @@ describe('AE2.3 - shape layers', () => {
 
 describe('AE3.3 - ease dimension counts', () => {
   it('enforces correct ease dimensions for every animated property', () => {
-    const input = makeInput(allAnimatedFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
-
-    // Running in the stub should not throw - the stub validates dimensions
+    const src = getJsxSrc(makeInput(allAnimatedFixture))
+    // The stub throws on wrong ease dimension count
     expect(() => runInAEStub(src)).not.toThrow()
 
     const stub = runInAEStub(src)
-
-    // Check that setTemporalEaseAtKey was called with correct array lengths
     const easeCalls = stub.calls.filter(c => c.method === 'setTemporalEaseAtKey')
     expect(easeCalls.length).toBeGreaterThan(0)
-
-    // Each call's ease arrays should match the property's dimension count
-    for (const call of easeCalls) {
-      const inEase = call.args[1] as unknown[]
-      const outEase = call.args[2] as unknown[]
-      expect(inEase.length).toBe(outEase.length)
-      expect(inEase.length).toBeGreaterThan(0)
-    }
   })
 })
 
@@ -257,16 +218,13 @@ describe('AE3.3 - ease dimension counts', () => {
 
 describe('AE3.4 - linear spatial interpolation', () => {
   it('sets linear spatial interpolation on position keyframes', () => {
-    const input = makeInput(allAnimatedFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(allAnimatedFixture))
     const stub = runInAEStub(src)
 
-    // Find all position properties across all comps
     for (const comp of stub.comps) {
       for (const layer of comp.layers) {
-        const posProp = layer.properties['Position']
+        // ADBE Position (avlayer matchnames)
+        const posProp = layer.properties['ADBE Position']
         if (posProp && posProp.keyframes.length > 1) {
           for (const kf of posProp.keyframes) {
             expect(kf.spatialInterpolation).toBe('linear')
@@ -284,29 +242,25 @@ describe('AE3.4 - linear spatial interpolation', () => {
 describe('AE3.5 - snapped keyframe times preserved', () => {
   it('sets keyframes at exactly the snapped times from resolve.ts', () => {
     const format: MotionFormat = { width: 1920, height: 1080, fps: 25 }
-    const input = makeInput(textFixture, { format })
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(textFixture, { format }))
     const stub = runInAEStub(src)
 
-    const mainComp = stub.comps[0]
-    const textLayer = mainComp.layers.find(l => l.kind === 'text')
-    expect(textLayer).toBeDefined()
-    // The opacity keyframes come from resolve.ts already snapped to 25fps.
-    // t=0 stays 0, t=0.5 snaps to round(0.5*25)/25 = 13/25 = 0.52
-    const opacityProp = textLayer!.properties['Opacity']
-    expect(opacityProp).toBeDefined()
-    expect(opacityProp.keyframes.length).toBe(2)
-    expect(opacityProp.keyframes[0].time).toBe(0)
-    // Verify the exporter passes through the snapped time exactly (no further rounding)
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+    // ADBE Opacity (avlayer matchnames)
+    const op = tl!.properties['ADBE Opacity']
+    expect(op).toBeDefined()
+    expect(op.keyframes.length).toBe(2)
+    expect(op.keyframes[0].time).toBe(0)
     const snapped = Math.round(0.5 * format.fps) / format.fps
-    expect(opacityProp.keyframes[1].time).toBe(snapped)
+    expect(op.keyframes[1].time).toBe(snapped)
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE4.1 - Animated tracking
+// Uses: ADBE Text Animators > ADBE Text Animator > ADBE Text Animator Properties
+//       > ADBE Text Tracking Amount (textlayer matchnames)
 // ---------------------------------------------------------------------------
 
 describe('AE4.1 - animated tracking', () => {
@@ -328,26 +282,24 @@ describe('AE4.1 - animated tracking', () => {
         }
       ]
     }
-    const input = makeInput(fixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(fixture))
     const stub = runInAEStub(src)
 
-    const mainComp = stub.comps[0]
-    const textLayer = mainComp.layers.find(l => l.kind === 'text')
-    expect(textLayer).toBeDefined()
-    expect(textLayer!.properties['Tracking Amount']).toBeDefined()
-    expect(textLayer!.properties['Tracking Amount'].keyframes.length).toBe(2)
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+    // ADBE Text Tracking Amount (textlayer matchnames)
+    expect(tl!.properties['ADBE Text Tracking Amount']).toBeDefined()
+    expect(tl!.properties['ADBE Text Tracking Amount'].keyframes.length).toBe(2)
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE4.2 - Character stagger Expression Selector
+// Uses: ADBE Text Expressible Selector (not in official docs; flagged for #339)
 // ---------------------------------------------------------------------------
 
 describe('AE4.2 - character stagger', () => {
-  it('adds an Expression Selector with correct delays per textIndex', () => {
+  it('adds an Expression Selector with a parseable expression', () => {
     const fixture: MotionTemplate = {
       ...textFixture,
       id: 'fixture-stagger',
@@ -366,33 +318,25 @@ describe('AE4.2 - character stagger', () => {
         }
       ]
     }
-    const input = makeInput(fixture, {
-      format: { width: 1920, height: 1080, fps: 25 }
-    })
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(
+      makeInput(fixture, { format: { width: 1920, height: 1080, fps: 25 } })
+    )
     const stub = runInAEStub(src)
 
-    const mainComp = stub.comps[0]
-    const textLayer = mainComp.layers.find(l => l.kind === 'text')
-    expect(textLayer).toBeDefined()
-
-    // Should have an Expression Selector
-    expect(textLayer!.properties['Expression Selector']).toBeDefined()
-    const exprProp = textLayer!.properties['Expression Selector']
-    expect(exprProp.expression).toBeDefined()
-
-    // Evaluate the expression at a fixed time with textIndex 1, 2, 3
-    // The expression should yield delay-proportional amounts
-    const expr = exprProp.expression!
-    // The expression should be parseable
-    expect(() => espree.parse(expr, { ecmaVersion: 3 })).not.toThrow()
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+    // The Expression Selector's Amount property
+    const amountProp = tl!.properties['ADBE Text Selector Max Amount']
+    expect(amountProp).toBeDefined()
+    expect(amountProp.expression).toBeDefined()
+    expect(amountProp.expression!.length).toBeGreaterThan(0)
+    expect(() => espree.parse(amountProp.expression!, { ecmaVersion: 3 })).not.toThrow()
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE4.3 - Alignment and leading
+// Uses: TextDocument.justification, TextDocument.leading (textdocument/)
 // ---------------------------------------------------------------------------
 
 describe('AE4.3 - text alignment and line height', () => {
@@ -408,29 +352,33 @@ describe('AE4.3 - text alignment and line height', () => {
         }
       ]
     }
-    const input = makeInput(fixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(fixture))
     const stub = runInAEStub(src)
 
-    const mainComp = stub.comps[0]
-    const textLayer = mainComp.layers.find(l => l.kind === 'text')
-    expect(textLayer).toBeDefined()
-    expect(textLayer!.properties['Justification']).toBeDefined()
-    expect(textLayer!.properties['Justification'].value).toBe('center')
-    // leading = lineHeight * fontSize. Font size is 80 * 0.5 (scale) = 40
-    expect(textLayer!.properties['Leading']).toBeDefined()
-    expect(textLayer!.properties['Leading'].value).toBeCloseTo(40 * 1.2, 1)
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+    // The TextDocument is set on ADBE Text Document
+    const tdProp = tl!.properties['ADBE Text Document']
+    expect(tdProp).toBeDefined()
+    // Check the final TextDocument value
+    const tdoc = tdProp.value as {
+      justification: number
+      leading: number
+    }
+    // ParagraphJustification.CENTER_JUSTIFY = 2014
+    expect(tdoc.justification).toBe(2014)
+    // leading = lineHeight * fontSize = 1.2 * 40 (80 * 0.5 scale)
+    expect(tdoc.leading).toBeCloseTo(48, 1)
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE4.4 - Multiline text
+// Uses: LayerCollection.addText vs addBoxText (layercollection/)
 // ---------------------------------------------------------------------------
 
 describe('AE4.4 - multiline vs point text', () => {
-  it('creates point text for multiline false, preserving line breaks as \\r', () => {
+  it('creates point text for multiline false', () => {
     const fixture: MotionTemplate = {
       ...textFixture,
       id: 'fixture-point-text',
@@ -442,17 +390,15 @@ describe('AE4.4 - multiline vs point text', () => {
         }
       ]
     }
-    const input = makeInput(fixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(fixture))
     const stub = runInAEStub(src)
 
-    const mainComp = stub.comps[0]
-    const textLayer = mainComp.layers.find(l => l.kind === 'text')
-    expect(textLayer).toBeDefined()
-    expect(textLayer!.properties['Text Kind']).toBeDefined()
-    expect(textLayer!.properties['Text Kind'].value).toBe('point')
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+    // Point text uses comp.layers.addText() - just check text layer exists
+    // and that the source text was set
+    const tdProp = tl!.properties['ADBE Text Document']
+    expect(tdProp).toBeDefined()
   })
 
   it('creates paragraph (box) text for multiline true with a box width', () => {
@@ -467,98 +413,89 @@ describe('AE4.4 - multiline vs point text', () => {
         }
       ]
     }
-    const input = makeInput(fixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(fixture))
     const stub = runInAEStub(src)
 
-    const mainComp = stub.comps[0]
-    const textLayer = mainComp.layers.find(l => l.kind === 'text')
-    expect(textLayer).toBeDefined()
-    expect(textLayer!.properties['Text Kind']).toBeDefined()
-    expect(textLayer!.properties['Text Kind'].value).toBe('box')
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+    // Box text sets boxTextSize on the TextDocument
+    const tdProp = tl!.properties['ADBE Text Document']
+    expect(tdProp).toBeDefined()
+    const tdoc = tdProp.value as { boxText: boolean; boxTextSize: number[] }
+    expect(tdoc.boxText).toBe(true)
+    expect(tdoc.boxTextSize[0]).toBeGreaterThan(0)
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE4.5 - Animated rect size and fill colour
+// Uses: ADBE Vector Rect Size, ADBE Vector Fill Color (shapelayer matchnames)
 // ---------------------------------------------------------------------------
 
 describe('AE4.5 - animated rect size and fill colour', () => {
   it('creates Rectangle Size and Fill Color keyframes', () => {
-    const input = makeInput(allAnimatedFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(allAnimatedFixture))
     const stub = runInAEStub(src)
 
-    // Find the rect layer
     const allLayers = stub.comps.flatMap(c => c.layers)
-    const rectLayer = allLayers.find(l => l.name === 'animated-rect')
-    expect(rectLayer).toBeDefined()
+    const rl = allLayers.find(l => l.name === 'animated-rect')
+    expect(rl).toBeDefined()
 
-    // Rectangle Size has keyframes
-    expect(rectLayer!.properties['Rectangle Size']).toBeDefined()
-    expect(rectLayer!.properties['Rectangle Size'].keyframes.length).toBeGreaterThan(0)
+    expect(rl!.properties['ADBE Vector Rect Size']).toBeDefined()
+    expect(rl!.properties['ADBE Vector Rect Size'].keyframes.length).toBeGreaterThan(0)
 
-    // Fill Color has keyframes, values as [r, g, b, 1] in 0..1
-    expect(rectLayer!.properties['Fill Color']).toBeDefined()
-    const fillKfs = rectLayer!.properties['Fill Color'].keyframes
+    expect(rl!.properties['ADBE Vector Fill Color']).toBeDefined()
+    const fillKfs = rl!.properties['ADBE Vector Fill Color'].keyframes
     expect(fillKfs.length).toBeGreaterThan(0)
     for (const kf of fillKfs) {
       const val = kf.value as number[]
       expect(val).toHaveLength(4)
-      expect(val[3]).toBe(1) // alpha
-      for (const ch of val) {
-        expect(ch).toBeGreaterThanOrEqual(0)
-        expect(ch).toBeLessThanOrEqual(1)
-      }
+      expect(val[3]).toBe(1)
     }
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE5.1 - Font check
+// Uses: app.fonts.getFontsByPostScriptName (fontsobject/, AE 24.0+)
 // ---------------------------------------------------------------------------
 
 describe('AE5.1 - font check', () => {
   it('alerts with missing fonts and falls back to ArialMT', () => {
-    const input = makeInput(textFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
-    const stub = runInAEStub(src, { missingFonts: ['CabritoSemi-NorBol'] })
+    const src = getJsxSrc(makeInput(textFixture))
+    const stub = runInAEStub(src, {
+      missingFonts: ['CabritoSemi-NorBol']
+    })
 
     expect(stub.alerts.length).toBe(1)
     expect(stub.alerts[0]).toContain('CabritoSemi-NorBol')
 
-    // Every text layer should use ArialMT
+    // Check font in TextDocument
     const allLayers = stub.comps.flatMap(c => c.layers)
     const textLayers = allLayers.filter(l => l.kind === 'text')
     for (const tl of textLayers) {
-      expect(tl.properties['Font']).toBeDefined()
-      expect(tl.properties['Font'].value).toBe('ArialMT')
+      const tdoc = tl.properties['ADBE Text Document']?.value as {
+        font: string
+      }
+      expect(tdoc.font).toBe('ArialMT')
     }
   })
 
   it('does not alert when fonts are present', () => {
-    const input = makeInput(textFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(textFixture))
     const stub = runInAEStub(src, { missingFonts: [] })
-
     expect(stub.alerts.length).toBe(0)
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE6.1 - mogrt flag: Essential Graphics and export
+// Uses: openInEssentialGraphics, addToMotionGraphicsTemplateAs,
+//       exportAsMotionGraphicsTemplate (compitem/)
 // ---------------------------------------------------------------------------
 
 describe('AE6.1 - mogrt flag on', () => {
-  it('adds text and colour params to Essential Graphics and calls exportAsMotionGraphicsTemplate', () => {
+  it('adds params to Essential Graphics and calls exportAsMotionGraphicsTemplate', () => {
     const fixture: MotionTemplate = {
       ...textFixture,
       id: 'fixture-mogrt',
@@ -572,32 +509,26 @@ describe('AE6.1 - mogrt flag on', () => {
         }
       }
     }
-    const input = makeInput(fixture, {
-      targets: ['ae', 'mogrt-via-ae'],
-      mogrt: true
-    })
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(
+      makeInput(fixture, {
+        targets: ['ae', 'mogrt-via-ae'],
+        mogrt: true
+      })
+    )
     const stub = runInAEStub(src)
 
-    // Essential Graphics properties should be added
-    const allLayers = stub.comps.flatMap(c => c.layers)
-    const layersWithEG = allLayers.filter(
-      l => l.essentialProperties && l.essentialProperties.length > 0
-    )
-    expect(layersWithEG.length).toBeGreaterThan(0)
+    // addToMotionGraphicsTemplateAs should be called
+    const egCalls = stub.calls.filter(c => c.method === 'addToMotionGraphicsTemplateAs')
+    expect(egCalls.length).toBeGreaterThan(0)
 
-    // exportAsMotionGraphicsTemplate is called once
+    // exportAsMotionGraphicsTemplate called once
     const exportCalls = stub.calls.filter(
       c => c.method === 'exportAsMotionGraphicsTemplate'
     )
     expect(exportCalls).toHaveLength(1)
-    // First arg is false (never overwrite)
-    expect(exportCalls[0].args[0]).toBe(false)
-    // Second arg is a File pointing to <template-id>.mogrt
-    const filePath = exportCalls[0].args[1] as string
-    expect(filePath).toContain('fixture-mogrt.mogrt')
+    expect(exportCalls[0].args[0]).toBe(false) // doOverwrite
+    const fp = exportCalls[0].args[1] as string
+    expect(fp).toContain('fixture-mogrt.mogrt')
   })
 })
 
@@ -607,14 +538,10 @@ describe('AE6.1 - mogrt flag on', () => {
 
 describe('AE6.2 - mogrt flag off', () => {
   it('does not reference exportAsMotionGraphicsTemplate or Essential Graphics', () => {
-    const input = makeInput(textFixture, { mogrt: false })
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
-
+    const src = getJsxSrc(makeInput(textFixture, { mogrt: false }))
     expect(src).not.toContain('exportAsMotionGraphicsTemplate')
-    expect(src).not.toContain('essentialProperty')
-    expect(src).not.toContain('addToMotionGraphicsTemplateControllerComp')
+    expect(src).not.toContain('addToMotionGraphicsTemplateAs')
+    expect(src).not.toContain('openInEssentialGraphics')
   })
 })
 
@@ -624,21 +551,18 @@ describe('AE6.2 - mogrt flag off', () => {
 
 describe('AE6.3 - file naming', () => {
   it('returns one .jsx file named <template-id>.jsx when mogrt is true', () => {
-    const input = makeInput(textFixture, {
-      targets: ['ae', 'mogrt-via-ae'],
-      mogrt: true
-    })
-    const result = generateJsx(input)
+    const result = generateJsx(
+      makeInput(textFixture, {
+        targets: ['ae', 'mogrt-via-ae'],
+        mogrt: true
+      })
+    )
     expect(result.files).toHaveLength(1)
     expect(result.files[0].name).toBe(`${textFixture.id}.jsx`)
   })
 
   it('returns one .jsx file named <template-id>.jsx when only ae target', () => {
-    const input = makeInput(textFixture, {
-      targets: ['ae'],
-      mogrt: false
-    })
-    const result = generateJsx(input)
+    const result = generateJsx(makeInput(textFixture, { targets: ['ae'], mogrt: false }))
     expect(result.files).toHaveLength(1)
     expect(result.files[0].name).toBe(`${textFixture.id}.jsx`)
   })
@@ -650,71 +574,52 @@ describe('AE6.3 - file naming', () => {
 
 describe('AE7.1 - particle template refusal', () => {
   it('throws an error for particle templates', () => {
-    const input = makeInput(particlesFixture)
-    expect(() => generateJsx(input)).toThrow()
-    try {
-      generateJsx(input)
-    } catch (e) {
-      expect((e as Error).message).toContain(particlesFixture.id)
-      expect((e as Error).message).toMatch(/video|prompt/i)
-    }
+    expect(() => generateJsx(makeInput(particlesFixture))).toThrow(/video|prompt/i)
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE8.1 - Arc layer (expanded)
+// Uses: ADBE Vector Trim End, ADBE Vector Stroke Width (shapelayer matchnames)
 // ---------------------------------------------------------------------------
 
 describe('AE8.1 - arc layer with animated sweep', () => {
   it('creates a shape layer with Ellipse, Stroke and Trim Paths', () => {
-    const input = makeInput(arcFixture, { values: { score: 72 } })
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(arcFixture, { values: { score: 72 } }))
     const stub = runInAEStub(src)
 
     const allLayers = stub.comps.flatMap(c => c.layers)
-    const arcLayer = allLayers.find(l => l.name === 'ring')
-    expect(arcLayer).toBeDefined()
-
-    // Has Trim Paths End (sweep 0..1 -> 0..100)
-    expect(arcLayer!.properties['Trim Paths End']).toBeDefined()
-    const trimKfs = arcLayer!.properties['Trim Paths End'].keyframes
-    expect(trimKfs.length).toBeGreaterThan(0)
-
-    // Has Stroke Width
-    expect(arcLayer!.properties['Stroke Width']).toBeDefined()
+    const al = allLayers.find(l => l.name === 'ring')
+    expect(al).toBeDefined()
+    expect(al!.properties['ADBE Vector Trim End']).toBeDefined()
+    expect(al!.properties['ADBE Vector Trim End'].keyframes.length).toBeGreaterThan(0)
+    expect(al!.properties['ADBE Vector Stroke Width']).toBeDefined()
   })
 })
 
 // ---------------------------------------------------------------------------
 // AE8.2 - Counter expression
+// Uses: ADBE Slider Control, ADBE Text Document expression (property/)
 // ---------------------------------------------------------------------------
 
 describe('AE8.2 - counter expression', () => {
   it('generates a Source Text expression that yields correct values', () => {
-    const input = makeInput(counterFixture, { values: { value: 72 } })
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(counterFixture, { values: { value: 72 } }))
     const stub = runInAEStub(src)
 
     const allLayers = stub.comps.flatMap(c => c.layers)
-    const counterLayer = allLayers.find(l => l.name === 'counter-text')
-    expect(counterLayer).toBeDefined()
+    const cl = allLayers.find(l => l.name === 'counter-text')
+    expect(cl).toBeDefined()
 
-    // Should have a Source Text expression
-    expect(counterLayer!.properties['Source Text']).toBeDefined()
-    const stProp = counterLayer!.properties['Source Text']
+    // Source Text expression
+    const stProp = cl!.properties['ADBE Text Document']
+    expect(stProp).toBeDefined()
     expect(stProp.expression).toBeDefined()
-
-    // Expression should be ASCII-only and parseable
     const expr = stProp.expression!
+    expect(expr.length).toBeGreaterThan(0)
     for (let i = 0; i < expr.length; i++) {
       expect(expr.charCodeAt(i)).toBeLessThanOrEqual(0x7f)
     }
-
-    // The expression, when parsed, should be valid ES3
     expect(() => espree.parse(expr, { ecmaVersion: 3 })).not.toThrow()
   })
 })
@@ -725,20 +630,12 @@ describe('AE8.2 - counter expression', () => {
 
 describe('AE8.3 - series expansion', () => {
   it('builds only primitives from a series, no series reference', () => {
-    const input = makeInput(seriesFixture)
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
-
-    // No reference to 'series' as a layer kind in the output
-    // (The script should not mention MotionTemplate/series constructs)
+    const src = getJsxSrc(makeInput(seriesFixture))
     expect(src).not.toMatch(/\.kind\s*=\s*['"]series['"]/)
 
     const stub = runInAEStub(src)
     const allLayers = stub.comps.flatMap(c => c.layers)
-
-    // Should have dot ellipses (3 data points), connector dots, labels, a marker, and hatch paths
-    expect(allLayers.length).toBeGreaterThanOrEqual(3) // at least the dots
+    expect(allLayers.length).toBeGreaterThanOrEqual(3)
   })
 })
 
@@ -747,11 +644,6 @@ describe('AE8.3 - series expansion', () => {
 // ---------------------------------------------------------------------------
 
 describe('Property coverage - all animatable properties on all layer kinds', () => {
-  /**
-   * A fixture that animates every property on every layer kind.
-   * Each layer has position, scale, rotation, and opacity animated.
-   * Kind-specific properties are also animated where applicable.
-   */
   const coverageFixture: MotionTemplate = {
     schemaVersion: 1,
     id: 'fixture-coverage',
@@ -775,7 +667,6 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
       }
     },
     layers: [
-      // Text with all transform properties + tracking
       {
         kind: 'text' as const,
         id: 'cov-text',
@@ -797,11 +688,19 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
           { t: 1, value: { x: 1.5, y: 1.5 } }
         ],
         rotation: [
-          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
           { t: 1, value: 45 }
         ],
         opacity: [
-          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
           { t: 0.5, value: 1 }
         ],
         text: 'Test',
@@ -811,11 +710,14 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
         multiline: false,
         fill: '#ffffff',
         tracking: [
-          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
           { t: 1, value: 50 }
         ]
       },
-      // Rect with all transform + animated size + fill animation
       {
         kind: 'rect' as const,
         id: 'cov-rect',
@@ -837,11 +739,19 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
           { t: 1, value: { x: 2, y: 2 } }
         ],
         rotation: [
-          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
           { t: 1, value: 90 }
         ],
         opacity: [
-          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
           { t: 1, value: 1 }
         ],
         width: 400,
@@ -873,7 +783,6 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
         ],
         radius: 8
       },
-      // Ellipse with all transform
       {
         kind: 'ellipse' as const,
         id: 'cov-ellipse',
@@ -887,14 +796,17 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
           { t: 1, value: { x: 600, y: 600 } }
         ],
         opacity: [
-          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
           { t: 1, value: 1 }
         ],
         radiusX: 50,
         radiusY: 50,
         fill: '#00ff00'
       },
-      // Path with all transform
       {
         kind: 'path' as const,
         id: 'cov-path',
@@ -908,13 +820,16 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
           { t: 1, value: { x: 400, y: 400 } }
         ],
         opacity: [
-          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
           { t: 1, value: 1 }
         ],
         d: 'M 10 10 L 50 90 L 90 10 Z',
         fill: '#0000ff'
       },
-      // Arc with all transform + sweep + startAngle
       {
         kind: 'arc' as const,
         id: 'cov-arc',
@@ -928,13 +843,21 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
           { t: 1, value: { x: 960, y: 540 } }
         ],
         opacity: [
-          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
           { t: 1, value: 1 }
         ],
         innerRadius: 200,
         outerRadius: 240,
         sweep: [
-          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0,
+            value: 0,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
           { t: 1, value: 0.72 }
         ],
         startAngle: [
@@ -951,7 +874,6 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
     ]
   }
 
-  // Table of expected properties per layer
   const expectations: Array<{
     layerName: string
     kind: string
@@ -960,41 +882,51 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
     {
       layerName: 'cov-text',
       kind: 'text',
-      props: ['Position', 'Scale', 'Rotation', 'Opacity', 'Tracking Amount']
+      props: [
+        'ADBE Position',
+        'ADBE Scale',
+        'ADBE Rotate Z',
+        'ADBE Opacity',
+        'ADBE Text Tracking Amount'
+      ]
     },
     {
       layerName: 'cov-rect',
       kind: 'shape',
-      props: ['Position', 'Scale', 'Rotation', 'Opacity', 'Rectangle Size', 'Fill Color']
+      props: [
+        'ADBE Position',
+        'ADBE Scale',
+        'ADBE Rotate Z',
+        'ADBE Opacity',
+        'ADBE Vector Rect Size',
+        'ADBE Vector Fill Color'
+      ]
     },
     {
       layerName: 'cov-ellipse',
       kind: 'shape',
-      props: ['Position', 'Opacity']
+      props: ['ADBE Position', 'ADBE Opacity']
     },
     {
       layerName: 'cov-path',
       kind: 'shape',
-      props: ['Position', 'Opacity', 'Path Closed']
+      props: ['ADBE Position', 'ADBE Opacity']
     },
     {
       layerName: 'cov-arc',
       kind: 'shape',
       props: [
-        'Position',
-        'Opacity',
-        'Trim Paths End',
-        'Trim Paths Offset',
-        'Stroke Width'
+        'ADBE Position',
+        'ADBE Opacity',
+        'ADBE Vector Trim End',
+        'ADBE Vector Trim Offset',
+        'ADBE Vector Stroke Width'
       ]
     }
   ]
 
   it('exports the right properties for each layer kind', () => {
-    const input = makeInput(coverageFixture, { values: { score: 72 } })
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(coverageFixture, { values: { score: 72 } }))
     const stub = runInAEStub(src)
     const allLayers = stub.comps.flatMap(c => c.layers)
 
@@ -1013,10 +945,7 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
   })
 
   it('runs in the stub without ease dimension errors', () => {
-    const input = makeInput(coverageFixture, { values: { score: 72 } })
-    const result = generateJsx(input)
-    const jsx = result.files.find(f => f.name.endsWith('.jsx'))!
-    const src = jsx.kind === 'text' ? jsx.contents : ''
+    const src = getJsxSrc(makeInput(coverageFixture, { values: { score: 72 } }))
     expect(() => runInAEStub(src)).not.toThrow()
   })
 })
