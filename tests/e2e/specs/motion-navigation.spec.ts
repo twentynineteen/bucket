@@ -4,12 +4,20 @@
  * Verifies that the sidebar group and items land on the correct routes.
  */
 import { expect, test } from '@playwright/test'
+import { setupTauriMocks } from '../fixtures/mocks.fixture'
 import { installMotionMocks } from '../fixtures/motion.fixture'
 
 test.describe('Motion navigation', () => {
   test('F5.3 sidebar Motion graphics group navigates to marketplace', async ({
     page
   }) => {
+    // Collect console errors from the very first load, so the check does not
+    // depend on when an async error happens to surface.
+    const errors: string[] = []
+    page.on('console', msg => {
+      if (msg.type() === 'error') errors.push(msg.text())
+    })
+    await setupTauriMocks(page)
     await installMotionMocks(page)
     await page.goto('/')
 
@@ -27,19 +35,13 @@ test.describe('Motion navigation', () => {
     await expect(page).toHaveURL(/\/motion\/marketplace/)
     await expect(page.getByRole('heading', { name: /Motion marketplace/i })).toBeVisible()
 
-    // Verify no console errors
-    const errors: string[] = []
-    page.on('console', msg => {
-      if (msg.type() === 'error') errors.push(msg.text())
-    })
-    // Give any async errors time to surface
-    await page.waitForTimeout(500)
-    expect(errors).toHaveLength(0)
+    expect(errors).toEqual([])
   })
 
   test('F5.3 Settings Motion item navigates to settings with motion hash', async ({
     page
   }) => {
+    await setupTauriMocks(page)
     await installMotionMocks(page)
     await page.goto('/')
 
