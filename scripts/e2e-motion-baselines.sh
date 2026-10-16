@@ -36,8 +36,11 @@ mkdir -p "$SNAP_DIR"
 
 # Run the visual tests with --update-snapshots inside the container.
 # The container runs as root, so we fix ownership after.
+# The anonymous /work/node_modules volume keeps the container's Linux install
+# from overwriting the host's macOS node_modules (native binaries differ).
 docker run --rm \
   -v "$REPO_ROOT:/work" \
+  -v /work/node_modules \
   -w /work \
   "$IMAGE" \
   bash -c "
@@ -52,10 +55,9 @@ docker run --rm \
     bunx playwright test tests/e2e/specs/motion-visual.spec.ts \
       --project=e2e \
       --update-snapshots \
-      --reporter=list \
-      || true
+      --reporter=list
 
-    # Fix ownership so the host user can read the files
+    # Fix ownership so the host user can edit the files
     chown -R $(id -u):$(id -g) '$SNAP_DIR' 2>/dev/null || true
   "
 

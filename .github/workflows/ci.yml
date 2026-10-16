@@ -222,6 +222,18 @@ jobs:
       - name: Run E2E Tests
         run: bunx playwright test --project=e2e
 
+      # When a screenshot baseline is missing, Playwright renders it into this
+      # folder and fails the test. Uploading the folder lets a reviewer check
+      # the Linux-rendered baselines and commit them (issue #338).
+      - name: Upload Motion screenshot baselines
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        if: failure()
+        with:
+          name: motion-visual-snapshots
+          path: tests/e2e/specs/motion-visual.spec.ts-snapshots/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload Playwright Report
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         if: failure() # Only upload on failure to save storage
