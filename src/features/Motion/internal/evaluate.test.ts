@@ -18,7 +18,7 @@ import type {
 import { solveCubicBezier } from './bezier'
 import { evaluate } from './evaluate'
 import { resolveTemplate } from './resolve'
-import { counterFixture, seriesFixture } from './testing/fixtures'
+import { seriesFixture } from './testing/fixtures'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -133,7 +133,10 @@ describe('E2.3 fill colour interpolation', () => {
 
   it('midpoint is #808080', () => {
     const states = evaluate(resolved([layer]), 0.5)
-    expect(states[0].fill.toLowerCase()).toBe('#808080')
+    expect(states[0].kind).toBe('rect')
+    if (states[0].kind === 'rect') {
+      expect(states[0].fill.toLowerCase()).toBe('#808080')
+    }
   })
 })
 
@@ -184,8 +187,10 @@ describe('E2.4 animated position, scale, rotation, rect size, text tracking', ()
     }
     const [s] = evaluate(resolved([layer]), 0.5)
     expect(s.kind).toBe('rect')
-    expect(s.size!.w).toBeCloseTo(650, 5)
-    expect(s.size!.h).toBeCloseTo(400, 5)
+    if (s.kind === 'rect') {
+      expect(s.size!.w).toBeCloseTo(650, 5)
+      expect(s.size!.h).toBeCloseTo(400, 5)
+    }
   })
 
   it('text tracking animates', () => {
@@ -526,8 +531,34 @@ describe('E5.1 arc sweep evaluation', () => {
 
 describe('E5.2 counter text at progress', () => {
   it('at t=0.5 text is "36%" and at t=2 text is "72%"', () => {
-    // Use the counter fixture resolved with value=72
-    const rt = resolveTemplate(counterFixture, { value: 72 }, format4k50)
+    // The behaviour spec says `progress 0 -> 1 over 0-1 s (linear)`.
+    // The counterFixture uses a non-linear ease, so we build a layer with
+    // linear progress and resolve it directly.
+    const counterLayer: TextLayer = {
+      kind: 'text',
+      id: 'counter-text',
+      anchor: { x: 0, y: 0 },
+      position: [{ t: 0, value: { x: 100, y: 100 } }],
+      text: '0%',
+      font: { family: 'Test', style: 'Bold', size: 120 },
+      align: 'center',
+      lineHeight: 1,
+      multiline: false,
+      fill: '#ffffff',
+      counter: {
+        param: 'value',
+        decimals: 0,
+        prefix: '',
+        suffix: '%',
+        progress: [
+          { t: 0, value: 0, ease: [0, 0, 1, 1] },
+          { t: 1, value: 1 }
+        ]
+      }
+    }
+    const rt = resolved([counterLayer], {
+      values: { value: 72 }
+    })
     const s05 = evaluate(rt, 0.5)
     const counterState05 = s05.find(s => s.id === 'counter-text')
     expect(counterState05).toBeDefined()

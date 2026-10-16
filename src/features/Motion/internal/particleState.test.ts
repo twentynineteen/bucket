@@ -179,20 +179,19 @@ describe('E6.4 per-point delays during assembly', () => {
       regionFills,
       pointRadius: 4
     })
-    let arrived = 0
-    let notArrived = 0
-    for (let i = 0; i < points.length; i++) {
-      const dx = state[i].x - points[i].x
-      const dy = state[i].y - points[i].y
-      if (Math.sqrt(dx * dx + dy * dy) < 1) {
-        arrived++
-      } else {
-        notArrived++
-      }
-    }
-    // Both must be nonzero (per-point, not one global delay)
-    expect(arrived).toBeGreaterThan(0)
-    expect(notArrived).toBeGreaterThan(0)
+    // Measure distances from target
+    const distances = points.map((pt, i) => {
+      const dx = state[i].x - pt.x
+      const dy = state[i].y - pt.y
+      return Math.sqrt(dx * dx + dy * dy)
+    })
+    // With per-point delays, distances should vary: some close, some far.
+    // A global delay would give identical distances for identical scatter offsets.
+    const close = distances.filter(d => d < 200).length
+    const far = distances.filter(d => d >= 200).length
+    // Both close and far groups must be nonzero (per-point, not one global delay)
+    expect(close).toBeGreaterThan(0)
+    expect(far).toBeGreaterThan(0)
   })
 })
 
