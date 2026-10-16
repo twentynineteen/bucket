@@ -14,7 +14,8 @@ import {
   HardDriveUpload,
   Puzzle,
   Save,
-  Settings
+  Settings,
+  Sparkles
 } from 'lucide-react'
 import * as React from 'react'
 import { NavMain } from './nav-main'
@@ -61,6 +62,18 @@ const data = {
         {
           title: 'Example embeddings',
           url: '/ai-tools/example-embeddings'
+        }
+      ]
+    },
+    {
+      title: 'Motion graphics',
+      url: '/motion/marketplace',
+      icon: Sparkles,
+      isActive: false,
+      items: [
+        {
+          title: 'Marketplace',
+          url: '/motion/marketplace'
         }
       ]
     },
@@ -135,6 +148,10 @@ const data = {
         {
           title: 'Kavanagh',
           url: '/settings/general#kavanagh'
+        },
+        {
+          title: 'Motion',
+          url: '/settings/general#motion'
         }
       ]
     }

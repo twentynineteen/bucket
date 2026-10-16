@@ -160,6 +160,17 @@ export const queryKeys = {
       ['kavanagh', 'reference-folder-present', folderPath ?? 'none'] as const
   },
 
+  // Motion Marketplace domain (issue #326)
+  motion: {
+    all: ['motion'] as const,
+    prefs: () => ['motion', 'prefs'] as const,
+    catalogue: (libraryFolder: string | null) =>
+      ['motion', 'catalogue', libraryFolder ?? 'none'] as const,
+    font: () => ['motion', 'font'] as const,
+    projectFolder: (path: string | null) =>
+      ['motion', 'project-folder', path ?? 'none'] as const
+  },
+
   // Image/Canvas domain
   images: {
     all: ['images'] as const,
@@ -283,7 +294,8 @@ export function validateQueryKey(key: QueryKey): boolean {
     'settings',
     'upload',
     'images',
-    'camera'
+    'camera',
+    'motion'
   ]
 
   if (typeof domain !== 'string' || !validDomains.includes(domain)) {

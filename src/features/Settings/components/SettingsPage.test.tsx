@@ -48,6 +48,18 @@ vi.mock('./SproutVideoSection', () => stubSection('sprout'))
 vi.mock('./TrelloSection', () => stubSection('trello'))
 vi.mock('./KavanaghSection', () => stubSection('kavanagh'))
 
+// MotionSection is loaded lazily from @features/Motion
+vi.mock('@features/Motion', () => ({
+  MotionSection: (props: Record<string, unknown>) => {
+    sectionProps['motion'] = props
+    return (
+      <section data-testid="section-motion" id="motion">
+        <h2>Motion</h2>
+      </section>
+    )
+  }
+}))
+
 const SECTIONS = [
   'ai-models',
   'appearance',
@@ -121,5 +133,18 @@ describe('SettingsPage - settings read failure (#166)', () => {
     for (const name of SAVING_SECTIONS) {
       expect(sectionProps[name]).toMatchObject({ settingsUnavailable: false })
     }
+  })
+
+  it('F5.2 shows a Motion section with id motion and heading Motion', async () => {
+    vi.mocked(api.loadSettingsApiKeys).mockResolvedValue({})
+
+    renderPage()
+
+    const section = await screen.findByTestId('section-motion', undefined, {
+      timeout: 5000
+    })
+    expect(section).toBeInTheDocument()
+    expect(section.id).toBe('motion')
+    expect(section.querySelector('h2')?.textContent).toBe('Motion')
   })
 })

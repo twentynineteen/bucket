@@ -48,6 +48,11 @@ const UploadTrello = React.lazy(() =>
 const KavanaghPage = React.lazy(() =>
   import('@features/Kavanagh').then(m => ({ default: m.KavanaghPage }))
 )
+const MotionMarketplacePage = React.lazy(() =>
+  import('@features/Motion').then(m => ({
+    default: m.MotionMarketplacePage
+  }))
+)
 
 const log = createNamespacedLogger('AppRouter')
 
@@ -140,6 +145,10 @@ export const AppRouter: React.FC = () => {
         <Route path="premiere">
           <Route index element={<Navigate to="/premiere/premiere-plugins" replace />} />
           <Route path="premiere-plugins" element={<PremierePluginManager />} />
+        </Route>
+        <Route path="motion">
+          <Route index element={<Navigate to="/motion/marketplace" replace />} />
+          <Route path="marketplace" element={<MotionMarketplacePage />} />
         </Route>
         <Route path="settings">
           <Route index element={<Navigate to="/settings/general" replace />} />

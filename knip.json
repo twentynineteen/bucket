@@ -22,7 +22,10 @@
     "tailwindcss",
     "prettier-plugin-tailwindcss",
     "@ianvs/prettier-plugin-sort-imports",
-    "babel-plugin-transform-import-meta"
+    "babel-plugin-transform-import-meta",
+    "espree",
+    "luaparse",
+    "pngjs"
   ],
   "vite": false,
   "vitest": false,
