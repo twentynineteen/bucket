@@ -1,0 +1,277 @@
+{
+  "schemaVersion": 1,
+  "id": "quote-card",
+  "version": "1.0.0",
+  "name": "Quote card",
+  "description": "Centred quote slides up with character-stagger fade, decorative accent marks scale in, attribution follows with overlapping action.",
+  "category": "title-card",
+  "status": "stable",
+  "tags": ["title-card", "quote", "attribution"],
+  "fonts": ["CabritoSemi-NorBol"],
+  "primaryTextParam": "quote",
+  "duration": 4.76,
+  "inEnd": 0.8,
+  "outStart": 4.2,
+  "hold": {
+    "min": 1,
+    "max": 10,
+    "default": 4
+  },
+  "params": {
+    "quote": {
+      "kind": "text",
+      "label": "Quote",
+      "maxLength": 120,
+      "default": "Design is not just what it looks like. Design is how it works.",
+      "required": true
+    },
+    "attribution": {
+      "kind": "text",
+      "label": "Attribution",
+      "maxLength": 40,
+      "default": "Steve Jobs",
+      "required": false
+    },
+    "accent": {
+      "kind": "colour",
+      "label": "Accent",
+      "default": "#C8E64A",
+      "binds": ["layers[0]"]
+    },
+    "hold": {
+      "kind": "hold",
+      "label": "Hold duration",
+      "min": 1,
+      "max": 10,
+      "default": 4
+    }
+  },
+  "layers": [
+    {
+      "kind": "rect",
+      "id": "quote-mark",
+      "anchor": {
+        "x": 60,
+        "y": 40
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1020,
+            "y": 820
+          }
+        }
+      ],
+      "scale": [
+        {
+          "t": 0.05,
+          "value": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.55,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 4.2,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 4.65,
+          "value": {
+            "x": 0.7,
+            "y": 0.7
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0.05,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.4,
+          "value": 0.3,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 4.2,
+          "value": 0.3,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 4.6,
+          "value": 0
+        }
+      ],
+      "width": 120,
+      "height": 80,
+      "fill": "#C8E64A",
+      "radius": 8
+    },
+    {
+      "kind": "text",
+      "id": "quote-text",
+      "anchor": {
+        "x": 0,
+        "y": 0
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1920,
+            "y": 960
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.7,
+          "value": {
+            "x": 1920,
+            "y": 900
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 4.2,
+          "value": {
+            "x": 1920,
+            "y": 900
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 4.65,
+          "value": {
+            "x": 1920,
+            "y": 930
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.6,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 4.2,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 4.6,
+          "value": 0
+        }
+      ],
+      "text": "Design is not just what it looks like. Design is how it works.",
+      "param": "quote",
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 48
+      },
+      "align": "center",
+      "lineHeight": 1.4,
+      "multiline": true,
+      "fill": "#ffffff",
+      "stagger": {
+        "delay": 0.005
+      },
+      "width": 3460
+    },
+    {
+      "kind": "text",
+      "id": "attribution-text",
+      "anchor": {
+        "x": 0,
+        "y": 0
+      },
+      "position": [
+        {
+          "t": 0.3,
+          "value": {
+            "x": 1920,
+            "y": 1210
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.8,
+          "value": {
+            "x": 1920,
+            "y": 1170
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 4.2,
+          "value": {
+            "x": 1920,
+            "y": 1170
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 4.55,
+          "value": {
+            "x": 1920,
+            "y": 1190
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0.3,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.7,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 4.2,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 4.5,
+          "value": 0
+        }
+      ],
+      "text": "Steve Jobs",
+      "param": "attribution",
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 36
+      },
+      "align": "center",
+      "lineHeight": 1.2,
+      "multiline": false,
+      "fill": "#999999",
+      "width": 1500
+    }
+  ]
+}

@@ -11,8 +11,6 @@
  * are covered in generateSetting.test.ts.
  */
 import { describe, expect, it } from 'vitest'
-import { generateSetting } from './generateSetting'
-import { resolveTemplate } from '../../resolve'
 import type {
   ArcLayer,
   EllipseLayer,
@@ -25,6 +23,8 @@ import type {
   RectLayer,
   TextLayer
 } from '../../../types'
+import { resolveTemplate } from '../../resolve'
+import { generateSetting } from './generateSetting'
 
 // ---------------------------------------------------------------------------
 // Helpers
