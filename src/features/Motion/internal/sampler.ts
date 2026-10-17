@@ -243,16 +243,16 @@ export function samplePoints(input: SamplerInput): SampledPoint[] {
 
     for (let i = 0; i < k; i++) {
       const pt = luminanceWeighted
-        ? tryCandidateWeighted(
+        ? tryCandidateWeighted({
             px,
             py,
             rng,
             localMinDist,
             img,
             gs,
-            minDistance,
-            luminanceWeighted.maxDistance
-          )
+            baseMinDist: minDistance,
+            maxDist: luminanceWeighted.maxDistance
+          })
         : tryCandidate(px, py, rng, minDistance, img, gs)
       if (pt) {
         addPoint(pt.x, pt.y, gs, active)
@@ -272,17 +272,22 @@ export function samplePoints(input: SamplerInput): SampledPoint[] {
   }))
 }
 
+interface WeightedCandidateArgs {
+  px: number
+  py: number
+  rng: () => number
+  localMinDist: number
+  img: ImageDesc
+  gs: GridState
+  baseMinDist: number
+  maxDist: number
+}
+
 /** Try one candidate with luminance-weighted minimum distance. */
 function tryCandidateWeighted(
-  px: number,
-  py: number,
-  rng: () => number,
-  localMinDist: number,
-  img: ImageDesc,
-  gs: GridState,
-  baseMinDist: number,
-  maxDist: number
+  args: WeightedCandidateArgs
 ): { x: number; y: number } | null {
+  const { px, py, rng, localMinDist, img, gs, baseMinDist, maxDist } = args
   const angle = rng() * Math.PI * 2
   const dist = localMinDist + rng() * localMinDist
   const nx = px + Math.cos(angle) * dist
