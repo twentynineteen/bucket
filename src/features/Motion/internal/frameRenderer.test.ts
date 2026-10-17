@@ -482,6 +482,141 @@ describe('preview vs. frameRenderer parity', () => {
 
     expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
   })
+
+  // W0: Staggered multiline text keeps its lines (bug fix)
+
+  it('W0.1 staggered multiline "Hi.\\nYes." draws two lines mid-stagger', () => {
+    const multiStaggerFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'stagger-multiline-parity',
+      layers: [
+        {
+          ...textFixture.layers[0],
+          text: 'Hi.\nYes.',
+          multiline: true,
+          lineHeight: 1.4,
+          align: 'center' as const,
+          stagger: { delay: 0.02 }
+        }
+      ]
+    }
+
+    const t = 0.15 // mid-stagger
+    const values = { name: 'Hi.\nYes.' }
+    const resolved = resolveTemplate(multiStaggerFixture, values, FORMAT)
+    const states = evaluate(resolved, t)
+
+    // --- Renderer side ---
+    const rendererSvg = buildSvgString(states, 3840, 2160, [])
+
+    // Must contain a dy attribute for the second line
+    expect(rendererSvg).toContain('dy=')
+    // Must contain x="0" for the second line reset
+    expect(rendererSvg).toContain('x="0"')
+    // The newline character itself must not appear as visible text
+    expect(rendererSvg).not.toContain('>&#10;</tspan>')
+    expect(rendererSvg).not.toContain('>\n</tspan>')
+
+    // --- Preview side ---
+    setTestClock(t)
+    const html = renderToStaticMarkup(
+      React.createElement(MotionPreview, {
+        template: multiStaggerFixture,
+        values,
+        format: FORMAT,
+        time: 999,
+        name: 'stagger-multiline-parity'
+      })
+    )
+    const previewSvg = extractSvgElement(html)
+
+    // Preview must also have dy for the second line
+    expect(previewSvg).toContain('dy=')
+    expect(previewSvg).toContain('x="0"')
+
+    // --- Parity ---
+    const rendererBody = extractSvgBody(rendererSvg)
+    const previewBody = extractSvgBody(previewSvg)
+    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+  })
+
+  it('W0.1 staggered multiline "Hi.\\nYes." draws two lines when settled', () => {
+    const multiStaggerFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'stagger-multiline-settled',
+      layers: [
+        {
+          ...textFixture.layers[0],
+          text: 'Hi.\nYes.',
+          multiline: true,
+          lineHeight: 1.4,
+          align: 'center' as const,
+          stagger: { delay: 0.02 }
+        }
+      ]
+    }
+
+    const t = 2.0 // settled (well past stagger)
+    const values = { name: 'Hi.\nYes.' }
+    const resolved = resolveTemplate(multiStaggerFixture, values, FORMAT)
+    const states = evaluate(resolved, t)
+
+    const rendererSvg = buildSvgString(states, 3840, 2160, [])
+    expect(rendererSvg).toContain('dy=')
+    expect(rendererSvg).toContain('x="0"')
+
+    setTestClock(t)
+    const html = renderToStaticMarkup(
+      React.createElement(MotionPreview, {
+        template: multiStaggerFixture,
+        values,
+        format: FORMAT,
+        time: 999,
+        name: 'stagger-multiline-settled'
+      })
+    )
+    const previewSvg = extractSvgElement(html)
+    expect(previewSvg).toContain('dy=')
+
+    const rendererBody = extractSvgBody(rendererSvg)
+    const previewBody = extractSvgBody(previewSvg)
+    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+  })
+
+  it('W0.2 staggered multiline preserves per-character opacity order', () => {
+    const multiStaggerFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'stagger-multiline-opacity',
+      layers: [
+        {
+          ...textFixture.layers[0],
+          text: 'AB\nCD',
+          multiline: true,
+          lineHeight: 1.4,
+          align: 'left' as const,
+          stagger: { delay: 0.02 }
+        }
+      ]
+    }
+
+    const t = 0.15 // mid-stagger so opacities differ
+    const values = { name: 'AB\nCD' }
+    const resolved = resolveTemplate(multiStaggerFixture, values, FORMAT)
+    const states = evaluate(resolved, t)
+
+    const textState = states.find(s => s.kind === 'text') as LayerState & {
+      kind: 'text'
+    }
+    // Units should exist and contain graphemes (A, B, \n, C, D)
+    expect(textState.units).toBeDefined()
+    const units = textState.units!
+    // The visible graphemes (excluding \n) should have decreasing opacity
+    // because stagger delay makes later characters lag behind
+    const visible = units.filter(u => u.text !== '\n')
+    expect(visible).toHaveLength(4) // A, B, C, D
+    // First character should have the highest (or equal) opacity
+    expect(visible[0].opacity).toBeGreaterThanOrEqual(visible[3].opacity)
+  })
 })
 
 describe('buildFrameList', () => {
