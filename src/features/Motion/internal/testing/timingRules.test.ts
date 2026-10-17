@@ -11,10 +11,11 @@ import { readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import type { MotionFormat, MotionTemplate } from '../../types'
+import type { MotionFormat, MotionTemplate, ParamValues } from '../../types'
 import { loadBuiltins } from '../builtins'
+import { evaluate } from '../evaluate'
 import { expandTemplate } from '../expand'
-import { validFormats } from '../resolve'
+import { resolveTemplate, validFormats } from '../resolve'
 import { parseTemplate } from '../schema'
 import {
   checkEaseDirection,
@@ -526,6 +527,90 @@ describe('S3.6: ease direction (entrance out, exit in)', () => {
       expect(violations, `${t.id} failed S3.6`).toEqual([])
     }
   })
+})
+
+// ---------------------------------------------------------------------------
+// Accent overlap guard: no thin rect strikes through text at hold time
+// ---------------------------------------------------------------------------
+
+describe('accent overlap guard: no thin rect strikes through text at hold', () => {
+  const FORMAT: MotionFormat = { width: 3840, height: 2160, fps: 25 }
+
+  interface Box {
+    id: string
+    top: number
+    bottom: number
+    left: number
+    right: number
+  }
+
+  /** Estimated horizontal extent of a text state. */
+  function textHBounds(
+    x: number,
+    align: 'left' | 'center' | 'right',
+    w: number
+  ): { left: number; right: number } {
+    if (align === 'center') return { left: x - w / 2, right: x + w / 2 }
+    if (align === 'right') return { left: x - w, right: x }
+    return { left: x, right: x + w }
+  }
+
+  /** Default param values (text, number, hold, colour). */
+  function defaults(tmpl: MotionTemplate): ParamValues {
+    const v: ParamValues = {}
+    for (const [id, p] of Object.entries(tmpl.params)) {
+      if ('default' in p) v[id] = p.default
+    }
+    return v
+  }
+
+  for (const tmpl of builtins) {
+    it(`${tmpl.id}: thin rects clear of text at hold`, () => {
+      const holdTime = (tmpl.inEnd + tmpl.outStart) / 2
+      const resolved = resolveTemplate(tmpl, defaults(tmpl), FORMAT)
+      const states = evaluate(resolved, holdTime)
+
+      const thinRects: Box[] = []
+      const textBoxes: Box[] = []
+
+      for (const s of states) {
+        if (s.kind === 'rect' && s.size && s.size.h <= 12) {
+          const x = s.matrix[4]
+          const y = s.matrix[5]
+          thinRects.push({
+            id: s.id,
+            top: y,
+            bottom: y + s.size.h,
+            left: x,
+            right: x + s.size.w
+          })
+        }
+        if (s.kind === 'text') {
+          const estW = s.text.length * s.font.size * 0.6
+          const h = textHBounds(s.matrix[4], s.align, estW)
+          textBoxes.push({
+            id: s.id,
+            top: s.matrix[5] - 0.75 * s.font.size,
+            bottom: s.matrix[5] + 0.25 * s.font.size,
+            ...h
+          })
+        }
+      }
+
+      for (const rect of thinRects) {
+        for (const text of textBoxes) {
+          const vOverlap = rect.top < text.bottom && rect.bottom > text.top
+          const hOverlap = rect.left < text.right && rect.right > text.left
+          if (vOverlap && hOverlap) {
+            expect.fail(
+              `${tmpl.id}: thin rect "${rect.id}" (y ${rect.top.toFixed(0)}-${rect.bottom.toFixed(0)}) ` +
+                `overlaps text "${text.id}" (y ${text.top.toFixed(0)}-${text.bottom.toFixed(0)})`
+            )
+          }
+        }
+      }
+    })
+  }
 })
 
 // ---------------------------------------------------------------------------

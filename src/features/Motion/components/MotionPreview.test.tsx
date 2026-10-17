@@ -202,6 +202,33 @@ describe('MotionPreview', () => {
     expect(text).not.toBeNull()
   })
 
+  it('staggered text preserves whitespace in tspans', () => {
+    // A staggered text layer splits into per-character tspans. A space
+    // character as its own tspan would be collapsed by SVG unless the
+    // text element sets xml:space="preserve" or white-space: pre.
+    const staggerFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'stagger-ws-preview',
+      layers: [
+        {
+          ...(textFixture.layers[0] as TextLayer),
+          stagger: { delay: 0.02 }
+        }
+      ]
+    }
+
+    // At t=2.0 (hold), all units are fully visible
+    const { container } = renderPreview(staggerFixture, { name: 'A B' }, 2.0)
+
+    const svg = container.querySelector('svg')!
+    const textEl = svg.querySelector('text')
+    expect(textEl).not.toBeNull()
+
+    // The text element must declare whitespace preservation
+    const xmlSpace = textEl!.getAttribute('xml:space')
+    expect(xmlSpace).toBe('preserve')
+  })
+
   // Time null hides the content
   it('time_null_renders_empty_svg', () => {
     const { container } = renderPreview(

@@ -232,6 +232,39 @@ describe('buildSvgString', () => {
     expect(svg).toContain('text-anchor="start"')
   })
 
+  it('staggered text preserves whitespace with xml:space', () => {
+    // Per-character tspans collapse a lone space tspan in SVG unless the
+    // text element sets xml:space="preserve".
+    const states: LayerState[] = [
+      {
+        kind: 'text',
+        id: 't-ws',
+        matrix: IDENTITY,
+        opacity: 1,
+        fill: '#ffffff',
+        text: 'A B',
+        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+        align: 'left',
+        lineHeight: 1.2,
+        multiline: false,
+        tracking: 0,
+        units: [
+          { text: 'A', matrix: IDENTITY, opacity: 1, fill: '#ffffff' },
+          { text: ' ', matrix: IDENTITY, opacity: 1, fill: '#ffffff' },
+          { text: 'B', matrix: IDENTITY, opacity: 1, fill: '#ffffff' }
+        ]
+      }
+    ]
+
+    const svg = buildSvgString(states, 3840, 2160, [])
+
+    // The serialised SVG must include xml:space="preserve" on the text element
+    expect(svg).toContain('xml:space="preserve"')
+
+    // The space tspan must survive (not be empty or collapsed)
+    expect(svg).toContain('> </tspan>')
+  })
+
   it('font CSS is memoised across frames', () => {
     const fontBytes = new Uint8Array([0x4f, 0x54, 0x54, 0x4f])
     const fonts: FontData[] = [{ family: 'Cabrito Semi', bytes: fontBytes }]

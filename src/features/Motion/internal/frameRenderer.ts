@@ -98,7 +98,8 @@ function renderTextState(state: TextLayerState): string {
   const fill = escapeXml(state.fill)
   const anchor = alignToAnchor(state.align)
 
-  // Staggered text: each unit is its own tspan
+  // Staggered text: each unit is its own tspan.
+  // xml:space="preserve" prevents SVG from collapsing a lone space tspan.
   if (state.units && state.units.length > 0) {
     const tspans = state.units
       .map(
@@ -106,7 +107,7 @@ function renderTextState(state: TextLayerState): string {
           `<tspan opacity="${u.opacity}" fill="${escapeXml(u.fill)}">${escapeXml(u.text)}</tspan>`
       )
       .join('')
-    return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${tspans}</text>`
+    return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}" xml:space="preserve">${tspans}</text>`
   }
 
   // Multiline text: one tspan per line

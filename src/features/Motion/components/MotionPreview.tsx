@@ -107,7 +107,8 @@ function TextElement({ state }: { state: TextLayerState }) {
   const fontFamily = `"${state.font.family}"`
   const textAnchor = alignToAnchor(state.align)
 
-  // Staggered text: each unit is its own tspan
+  // Staggered text: each unit is its own tspan.
+  // xml:space="preserve" prevents SVG from collapsing a lone space tspan.
   if (state.units && state.units.length > 0) {
     return (
       <text
@@ -117,6 +118,7 @@ function TextElement({ state }: { state: TextLayerState }) {
         opacity={state.opacity}
         textAnchor={textAnchor}
         transform={transform}
+        xmlSpace="preserve"
       >
         {state.units.map((u, i) => (
           <tspan key={i} opacity={u.opacity} fill={u.fill}>
