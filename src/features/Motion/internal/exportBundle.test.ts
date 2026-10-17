@@ -338,4 +338,27 @@ describe('Ar11 - stale .tmp-* sweep', () => {
 
     expect(api.removeDirRecursive).not.toHaveBeenCalled()
   })
+
+  it('one failing stat does not prevent removal of other stale folders', async () => {
+    const now = Date.now()
+    const TWO_DAYS_AGO = now - 2 * 24 * 60 * 60 * 1000
+
+    const api = mockApi({
+      listFolder: vi.fn(async () => [
+        { name: '.tmp-broken-aaa', isFile: false },
+        { name: '.tmp-stale-bbb', isFile: false }
+      ]),
+      modifiedTimeMs: vi.fn(async (path: string) => {
+        if (path.includes('.tmp-broken-aaa')) throw new Error('permission denied')
+        return TWO_DAYS_AGO
+      })
+    })
+
+    await beginBundle(baseInput(), api)
+
+    // The second folder should still be removed even though the first stat failed
+    expect(api.removeDirRecursive).toHaveBeenCalledWith(
+      '/p/Graphics/Motion/.tmp-stale-bbb'
+    )
+  })
 })
