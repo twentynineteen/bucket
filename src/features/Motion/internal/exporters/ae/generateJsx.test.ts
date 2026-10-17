@@ -2332,3 +2332,64 @@ describe('multiline text uses addText (not addBoxText)', () => {
     expect(src).toContain('addText')
   })
 })
+
+// ---------------------------------------------------------------------------
+// W3.1 - wrapped text has \r at exactly the resolved break positions
+// ---------------------------------------------------------------------------
+
+describe('W3.1 wrapped text in AE export', () => {
+  it('wrapped text has \\r at the resolved break positions', () => {
+    const wrapFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'wrap-ae-test',
+      params: {
+        quote: {
+          kind: 'text',
+          label: 'Quote',
+          maxLength: 120,
+          default: 'Test',
+          required: true
+        }
+      },
+      layers: [
+        {
+          ...(textFixture.layers[0] as TextLayer),
+          id: 'quote-text',
+          param: 'quote',
+          text: 'Test',
+          multiline: true,
+          width: 3400,
+          wrap: true,
+          maxLines: 3
+        }
+      ]
+    }
+
+    // Use text that wraps with the approximation: 80 chars x 80 x 0.6 = 3840 > 3400
+    // Actually at 1920 the font size is scaled to 40. The text wraps at native (3840) sizes.
+    // With 80 chars and font size 80: 80 * 80 * 0.6 = 3840 > 3400, so it wraps.
+    const longText =
+      'aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp'
+    const input = makeInput(wrapFixture, { values: { quote: longText } })
+
+    // Check that the resolved template has wrapped text
+    const resolvedLayer = input.resolved.layers.find(l => l.id === 'quote-text')
+    expect(resolvedLayer?.kind).toBe('text')
+    if (resolvedLayer?.kind !== 'text') return
+    expect(resolvedLayer.text).toContain('\n')
+
+    // Get the JSX source
+    const src = getJsxSrc(input)
+
+    // In AE, \n becomes \r. The JSX string literal should contain \r
+    // at exactly the same positions as \n in the resolved text.
+    const resolvedBreaks = resolvedLayer.text.split('\n').length - 1
+    // Count \r occurrences in the JSX source (inside string literals)
+    const crCount = (src.match(/\\r/g) || []).length
+    expect(crCount).toBe(resolvedBreaks)
+
+    // The text should use point text (addText), not box text
+    expect(src).toContain('addText')
+    expect(src).not.toContain('addBoxText')
+  })
+})

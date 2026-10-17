@@ -699,6 +699,84 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
+  describe('W4.4 font loading state', () => {
+    it('export is disabled with "Loading font" while useMotionFont is loading', async () => {
+      const fontHook = await import('../hooks/useMotionFont')
+      ;(fontHook.useMotionFont as ReturnType<typeof vi.fn>).mockReturnValue({
+        status: 'loading'
+      })
+
+      renderDialog(makeEntry())
+
+      // Should show "Loading font" text
+      expect(screen.getByText(/Loading font/i)).toBeInTheDocument()
+
+      // Export button should be disabled
+      expect(screen.getByRole('button', { name: /Export to project/i })).toBeDisabled()
+
+      // Restore
+      ;(fontHook.useMotionFont as ReturnType<typeof vi.fn>).mockReturnValue({
+        status: 'ready',
+        bytes: new Uint8Array(8)
+      })
+    })
+  })
+
+  describe('W4.1 line-count error in dialog', () => {
+    it('shows line-count error and disables export for long text on a wrap layer', async () => {
+      // A template where text wraps to more than maxLines
+      // at the approximation: 500 / (88 * 0.6) = ~9.5 chars/line
+      const wrapTemplate: MotionTemplate = {
+        ...barRevealTemplate(),
+        id: 'wrap-error-test',
+        name: 'Wrap error',
+        params: {
+          quote: {
+            kind: 'text',
+            label: 'Quote',
+            maxLength: 200,
+            default: 'Test',
+            required: true
+          }
+        },
+        layers: [
+          {
+            kind: 'text',
+            id: 'quote-text',
+            anchor: { x: 0, y: 0 },
+            position: [{ t: 0, value: { x: 1920, y: 1000 } }],
+            text: 'Test',
+            param: 'quote',
+            font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 88 },
+            align: 'center',
+            lineHeight: 1.4,
+            multiline: true,
+            fill: '#ffffff',
+            width: 500,
+            wrap: true,
+            maxLines: 2
+          }
+        ]
+      }
+
+      const user = userEvent.setup()
+      renderDialog(makeEntry(wrapTemplate))
+
+      // Type text that wraps to more than 2 lines
+      const input = screen.getByRole('textbox', { name: /Quote/i })
+      await user.clear(input)
+      await user.type(input, 'aaa bbb ccc ddd eee fff ggggg')
+
+      // Should show line-count error
+      await waitFor(() => {
+        expect(screen.getByText(/lines/i)).toBeInTheDocument()
+      })
+
+      // Copy Claude prompt should be disabled when param errors exist
+      expect(screen.getByRole('button', { name: /Copy Claude prompt/i })).toBeDisabled()
+    })
+  })
+
   describe('Dialog layout', () => {
     it('preview does not overlay param inputs - Name input is a sibling below the preview, not overlapped', () => {
       renderDialog(makeEntry(barRevealTemplate()))

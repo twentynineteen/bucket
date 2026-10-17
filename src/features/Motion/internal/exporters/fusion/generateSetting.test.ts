@@ -3278,3 +3278,61 @@ describe('Lua injection defence in serialised .setting', () => {
     expect(() => parseSetting(text)).not.toThrow()
   })
 })
+
+// ---------------------------------------------------------------------------
+// W3.2 - wrapped text in Fusion StyledText has the same lines
+// ---------------------------------------------------------------------------
+
+describe('W3.2 wrapped text in Fusion export', () => {
+  it('StyledText contains the same lines as the resolved text', () => {
+    const wrapFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'wrap-fusion-test',
+      params: {
+        quote: {
+          kind: 'text',
+          label: 'Quote',
+          maxLength: 120,
+          default: 'Test',
+          required: true
+        }
+      },
+      layers: [
+        {
+          ...(textFixture.layers[0] as TextLayer),
+          id: 'quote-text',
+          param: 'quote',
+          text: 'Test',
+          multiline: true,
+          width: 3400,
+          wrap: true,
+          maxLines: 3
+        }
+      ]
+    }
+
+    // Text that wraps: 80 chars x 80 x 0.6 = 3840 > 3400
+    const longText =
+      'aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp'
+    const input = makeInput(wrapFixture, { quote: longText })
+
+    // Check the resolved text
+    const resolvedLayer = input.resolved.layers.find(l => l.id === 'quote-text')
+    expect(resolvedLayer?.kind).toBe('text')
+    if (resolvedLayer?.kind !== 'text') return
+    expect(resolvedLayer.text).toContain('\n')
+
+    // Get the .setting text
+    const settingText = getSettingText(input)
+
+    // The StyledText should contain the same lines. In Fusion, \n appears
+    // literally in the Lua string (escaped as part of the Lua literal).
+    // Check that each resolved line is present in the setting text.
+    const resolvedLines = resolvedLayer.text.split('\n')
+    for (const line of resolvedLines) {
+      if (line.trim()) {
+        expect(settingText).toContain(line)
+      }
+    }
+  })
+})
