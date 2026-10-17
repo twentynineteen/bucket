@@ -79,7 +79,7 @@ function clampInfluence(v: number): number {
  * x1 and (1-x2) are clamped to 0.001 for speed computation when they are 0.
  * Influence is clamped to [0.1, 100].
  *
- * Sk7: for non-spatial multi-dimensional properties (Scale, Rect Size), `delta`
+ * For non-spatial multi-dimensional properties (Scale, Rect Size), `delta`
  * is an array of per-dimension signed speeds. Each dimension gets its own speed
  * value while sharing the influence (which depends only on the bezier control
  * points, not on the value change). Spatial Position keeps a single magnitude.
