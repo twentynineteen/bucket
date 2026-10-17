@@ -37,7 +37,16 @@ export function checkTextOverflow(
     if (layer.kind !== 'text') continue
     if (layer.width == null) continue
 
-    const measuredWidth = measurer.measure(layer.text, layer.font)
+    // Measure the widest \n-separated line, not the whole string.
+    // Wrapped or multiline text would show a false overflow if the whole
+    // string were measured as one run.
+    const lines = layer.text.split('\n')
+    let widest = 0
+    for (const line of lines) {
+      const w = measurer.measure(line, layer.font)
+      if (w > widest) widest = w
+    }
+    const measuredWidth = widest
     results.push({
       layerId: layer.id,
       overflowing: measuredWidth > layer.width,
@@ -50,18 +59,23 @@ export function checkTextOverflow(
 }
 
 /**
+ * Default measurer: chars x size x 0.6. Used by timing rules, unit tests,
+ * and as the fallback when no canvas is available.
+ */
+export const APPROX_MEASURER: TextMeasurer = {
+  measure(text: string, font: { family: string; size: number }): number {
+    return text.length * font.size * 0.6
+  }
+}
+
+/**
  * Create a measurer that uses canvas.measureText with the template font.
  *
  * The font must already be loaded via document.fonts (useMotionFont registers
  * Cabrito Semi as a FontFace). When the canvas or font is unavailable (jsdom,
- * or before the font finishes loading), falls back to an approximation:
- * `length * fontSize * 0.6`, which is a coarse estimate tuned to monospaced-ish
- * bold fonts. The injected-measurer seam in checkTextOverflow lets unit tests
- * bypass this entirely.
+ * or before the font finishes loading), falls back to APPROX_MEASURER.
  */
 export function createCanvasMeasurer(): TextMeasurer {
-  // Try to get a 2D canvas context. jsdom doesn't implement getContext, so
-  // this returns null in the test environment.
   let ctx: CanvasRenderingContext2D | null = null
   try {
     const canvas = document.createElement('canvas')
@@ -76,9 +90,7 @@ export function createCanvasMeasurer(): TextMeasurer {
         ctx.font = `${font.size}px "${font.family}"`
         return ctx.measureText(text).width
       }
-      // Fallback: coarse approximation when no canvas is available.
-      // 0.6 is a rough average width-to-em ratio for a bold sans font.
-      return text.length * font.size * 0.6
+      return APPROX_MEASURER.measure(text, font)
     }
   }
 }

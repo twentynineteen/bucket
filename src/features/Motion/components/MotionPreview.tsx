@@ -16,7 +16,9 @@ import React, { useEffect, useMemo, useRef } from 'react'
 import { readTestClock } from '../internal/clock'
 import { evaluate } from '../internal/evaluate'
 import { resolveTemplate } from '../internal/resolve'
+import { staggerLineBreaks } from '../internal/staggerLineBreaks'
 import { arcPath, matrixStr } from '../internal/svgGeometry'
+import type { TextMeasurer } from '../internal/textOverflow'
 import type {
   MotionFormat,
   MotionTemplate,
@@ -37,6 +39,8 @@ export interface MotionPreviewProps {
   format: MotionFormat
   time: number | null
   name: string
+  /** When provided, the resolver uses this for line wrapping instead of the approximation. */
+  measurer?: TextMeasurer
 }
 
 // ---------------------------------------------------------------------------
@@ -109,7 +113,12 @@ function TextElement({ state }: { state: TextLayerState }) {
 
   // Staggered text: each unit is its own tspan.
   // xml:space="preserve" prevents SVG from collapsing a lone space tspan.
+  // staggerLineBreaks computes the dy multiplier per unit, handling
+  // consecutive \n (blank lines) correctly in both renderers.
   if (state.units && state.units.length > 0) {
+    const lineAdvance = state.lineHeight * state.font.size
+    const breaks = staggerLineBreaks(state.units)
+
     return (
       <text
         fontFamily={fontFamily}
@@ -120,11 +129,21 @@ function TextElement({ state }: { state: TextLayerState }) {
         transform={transform}
         xmlSpace="preserve"
       >
-        {state.units.map((u, i) => (
-          <tspan key={i} opacity={u.opacity} fill={u.fill}>
-            {u.text}
-          </tspan>
-        ))}
+        {state.units.map((u, i) => {
+          const dy = breaks[i]
+          if (dy === -1) return null
+          return (
+            <tspan
+              key={i}
+              opacity={u.opacity}
+              fill={u.fill}
+              x={dy > 0 ? '0' : undefined}
+              dy={dy > 0 ? String(dy * lineAdvance) : undefined}
+            >
+              {u.text}
+            </tspan>
+          )
+        })}
       </text>
     )
   }
@@ -252,9 +271,10 @@ const MotionPreview: React.FC<MotionPreviewProps> = ({
   values,
   format,
   time,
-  name
+  name,
+  measurer
 }) => {
-  // Resolve the template once when template/values/format change.
+  // Resolve the template once when template/values/format/measurer change.
   // The preview always resolves at the native 3840x2160 space.
   const previewFormat = useMemo<MotionFormat>(
     () => ({ width: 3840, height: 2160, fps: format.fps }),
@@ -262,8 +282,8 @@ const MotionPreview: React.FC<MotionPreviewProps> = ({
   )
 
   const resolved = useMemo(
-    () => resolveTemplate(template, values, previewFormat),
-    [template, values, previewFormat]
+    () => resolveTemplate(template, values, previewFormat, measurer),
+    [template, values, previewFormat, measurer]
   )
 
   // Determine the effective time (test clock overrides prop)

@@ -1181,3 +1181,243 @@ describe('param id must be a safe identifier', () => {
     expect(result.success).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// W1: wrap schema validation
+// ---------------------------------------------------------------------------
+
+describe('W1 wrap schema validation', () => {
+  const wrapBase = {
+    schemaVersion: 1,
+    id: 'wrap-test',
+    version: '1.0.0',
+    name: 'Wrap test',
+    description: 'test',
+    category: 'title-card' as const,
+    status: 'stable' as const,
+    tags: [],
+    fonts: [],
+    duration: 4,
+    inEnd: 1,
+    outStart: 3,
+    params: {
+      quote: {
+        kind: 'text',
+        label: 'Quote',
+        maxLength: 120,
+        default: 'Test',
+        required: true
+      }
+    }
+  }
+
+  it('W1.1 wrap: true without width fails', () => {
+    const bad = {
+      ...wrapBase,
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          text: 'Test',
+          param: 'quote',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'center',
+          lineHeight: 1.4,
+          multiline: true,
+          fill: '#ffffff',
+          wrap: true,
+          maxLines: 3
+        }
+      ]
+    }
+    const result = parseTemplate(bad)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain('width')
+    }
+  })
+
+  it('W1.2 wrap: true without maxLines fails', () => {
+    const bad = {
+      ...wrapBase,
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          text: 'Test',
+          param: 'quote',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'center',
+          lineHeight: 1.4,
+          multiline: true,
+          fill: '#ffffff',
+          wrap: true,
+          width: 3400
+        }
+      ]
+    }
+    const result = parseTemplate(bad)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain('maxLines')
+    }
+  })
+
+  it('W1.2 wrap: true with maxLines < 2 fails', () => {
+    const bad = {
+      ...wrapBase,
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          text: 'Test',
+          param: 'quote',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'center',
+          lineHeight: 1.4,
+          multiline: true,
+          fill: '#ffffff',
+          wrap: true,
+          maxLines: 1,
+          width: 3400
+        }
+      ]
+    }
+    const result = parseTemplate(bad)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain('maxLines')
+    }
+  })
+
+  it('W1.3 wrap: true with multiline: false fails', () => {
+    const bad = {
+      ...wrapBase,
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          text: 'Test',
+          param: 'quote',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'center',
+          lineHeight: 1.4,
+          multiline: false,
+          fill: '#ffffff',
+          wrap: true,
+          maxLines: 3,
+          width: 3400
+        }
+      ]
+    }
+    const result = parseTemplate(bad)
+    expect(result.success).toBe(false)
+  })
+
+  it('W1.3 wrap: true with counter fails', () => {
+    const bad = {
+      ...wrapBase,
+      params: {
+        value: {
+          kind: 'number',
+          label: 'Value',
+          default: 72,
+          min: 0,
+          max: 100
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          text: '0%',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'center',
+          lineHeight: 1.4,
+          multiline: true,
+          fill: '#ffffff',
+          wrap: true,
+          maxLines: 3,
+          width: 3400,
+          counter: {
+            param: 'value',
+            decimals: 0,
+            prefix: '',
+            suffix: '%',
+            progress: [
+              { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] },
+              { t: 1, value: 1 }
+            ]
+          }
+        }
+      ]
+    }
+    const result = parseTemplate(bad)
+    expect(result.success).toBe(false)
+  })
+
+  it('W1.3 wrap: true with tracking animation fails', () => {
+    const bad = {
+      ...wrapBase,
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          text: 'Test',
+          param: 'quote',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'center',
+          lineHeight: 1.4,
+          multiline: true,
+          fill: '#ffffff',
+          wrap: true,
+          maxLines: 3,
+          width: 3400,
+          tracking: [
+            { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] },
+            { t: 1, value: 50 }
+          ]
+        }
+      ]
+    }
+    const result = parseTemplate(bad)
+    expect(result.success).toBe(false)
+  })
+
+  it('W1.4 no wrap field: existing built-ins still parse', () => {
+    // textFixture has no wrap field and must still pass
+    const result = parseTemplate(textFixture)
+    expect(result.success).toBe(true)
+  })
+
+  it('W1 valid wrap layer parses', () => {
+    const good = {
+      ...wrapBase,
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          text: 'Test',
+          param: 'quote',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'center',
+          lineHeight: 1.4,
+          multiline: true,
+          fill: '#ffffff',
+          wrap: true,
+          maxLines: 3,
+          width: 3400
+        }
+      ]
+    }
+    const result = parseTemplate(good)
+    expect(result.success).toBe(true)
+  })
+})

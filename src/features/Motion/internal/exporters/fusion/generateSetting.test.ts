@@ -3278,3 +3278,68 @@ describe('Lua injection defence in serialised .setting', () => {
     expect(() => parseSetting(text)).not.toThrow()
   })
 })
+
+// ---------------------------------------------------------------------------
+// W3.2 - wrapped text in Fusion StyledText has the same lines
+// ---------------------------------------------------------------------------
+
+describe('W3.2 wrapped text in Fusion export', () => {
+  it('StyledText contains the same lines as the resolved text', () => {
+    const wrapFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'wrap-fusion-test',
+      params: {
+        quote: {
+          kind: 'text',
+          label: 'Quote',
+          maxLength: 120,
+          default: 'Test',
+          required: true
+        }
+      },
+      layers: [
+        {
+          ...(textFixture.layers[0] as TextLayer),
+          id: 'quote-text',
+          param: 'quote',
+          text: 'Test',
+          multiline: true,
+          width: 3400,
+          wrap: true,
+          maxLines: 3
+        }
+      ]
+    }
+
+    // Text that wraps: 80 chars x 80 x 0.6 = 3840 > 3400
+    const longText =
+      'aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp'
+    const input = makeInput(wrapFixture, { quote: longText })
+
+    // Check the resolved text
+    const resolvedLayer = input.resolved.layers.find(l => l.id === 'quote-text')
+    expect(resolvedLayer?.kind).toBe('text')
+    if (resolvedLayer?.kind !== 'text') return
+    expect(resolvedLayer.text).toContain('\n')
+
+    // Parse the .setting and extract the StyledText value from the Text+ tool
+    const settingText = getSettingText(input)
+    expect(() => parseSetting(settingText)).not.toThrow()
+
+    // Extract StyledText value: appears as StyledText = Input { Value = "..." }
+    // or StyledText = "..." in the serialised Lua table. Use a regex to find
+    // the value string following StyledText.
+    const styledMatch = settingText.match(
+      /StyledText\s*=\s*(?:Input\s*\{\s*Value\s*=\s*"([^"]*)"|\s*"([^"]*)")/
+    )
+    expect(styledMatch, 'StyledText not found in .setting').toBeDefined()
+    // Lua escapes \n as \010 (decimal 10, three-digit). Decode that back.
+    const styledText = (styledMatch![1] ?? styledMatch![2]).replace(
+      /\\(\d{1,3})/g,
+      (_, digits: string) => String.fromCharCode(parseInt(digits, 10))
+    )
+
+    // The StyledText must equal the resolved layer text exactly
+    expect(styledText).toBe(resolvedLayer.text)
+  })
+})

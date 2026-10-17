@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import React, { useMemo } from 'react'
 import { deriveTargets } from '../internal/resolve'
+import type { TextMeasurer } from '../internal/textOverflow'
 import type { CatalogueEntry, MotionFormat, MotionTarget, ParamValues } from '../types'
 import MotionPreview from './MotionPreview'
 import PreviewStage from './PreviewStage'
@@ -34,6 +35,8 @@ export interface TemplateCardProps {
   onToggleFavourite: () => void
   onSelect: () => void
   time: number | null
+  /** When provided, the preview uses this for line wrapping. */
+  measurer?: TextMeasurer
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +94,8 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
   isDefault,
   onToggleFavourite,
   onSelect,
-  time
+  time,
+  measurer
 }) => {
   const { template, source } = entry
   const targets = useMemo(() => deriveTargets(template), [template])
@@ -110,6 +114,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
           template={template}
           values={values}
           format={format}
+          measurer={measurer}
           time={time}
           name={template.name}
         />
