@@ -818,10 +818,16 @@ function __makeCompItem(name, width, height, pixelAspect, duration, frameRate) {
       },
 
       // layercollection/ - add(item[, duration])
+      // ae-scripting.docsforadobe.dev/layer/layercollection/:
+      // "When you add a CompItem as a layer [...] the Anchor Point is set
+      //  to the center of the source composition."
       add: function(item, dur) {
         var layer = __makeLayer("precomp");
         layer.source = item;
         layer.name = item.name;
+        // Default Anchor Point to source comp centre (Sk4)
+        var ap = layer.property("ADBE Transform Group").property("ADBE Anchor Point");
+        ap.setValue([item.width / 2, item.height / 2]);
         layerList.push(layer);
         layer.index = layerList.length;
         comp.numLayers = layerList.length;

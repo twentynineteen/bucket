@@ -79,30 +79,38 @@ function clampInfluence(v: number): number {
  * x1 and (1-x2) are clamped to 0.001 for speed computation when they are 0.
  * Influence is clamped to [0.1, 100].
  *
+ * Sk7: for non-spatial multi-dimensional properties (Scale, Rect Size), `delta`
+ * is an array of per-dimension signed speeds. Each dimension gets its own speed
+ * value while sharing the influence (which depends only on the bezier control
+ * points, not on the value change). Spatial Position keeps a single magnitude.
+ *
  * @param ease - [x1, y1, x2, y2] cubic-bezier control points
- * @param delta - the average speed (|value change| / time change)
+ * @param delta - the average speed per dimension (signed), or a single magnitude
  * @param dimensions - number of ease dimensions for this property
  */
-export function mapEase(ease: Ease, delta: number, dimensions: number): AEEasePair {
+export function mapEase(
+  ease: Ease,
+  delta: number | number[],
+  dimensions: number
+): AEEasePair {
   const [x1, y1, x2, y2] = ease
 
   const x1Clamped = Math.max(x1, 0.001)
   const outInfluence = clampInfluence(x1 * 100)
-  const outSpeed = (y1 / x1Clamped) * delta
 
   const oneMinusX2 = 1 - x2
   const oneMinusX2Clamped = Math.max(oneMinusX2, 0.001)
   const inInfluence = clampInfluence(oneMinusX2 * 100)
-  const inSpeed = ((1 - y2) / oneMinusX2Clamped) * delta
-
-  const outEase: AEKeyframeEase = { speed: outSpeed, influence: outInfluence }
-  const inEase: AEKeyframeEase = { speed: inSpeed, influence: inInfluence }
 
   const outgoing: AEKeyframeEase[] = []
   const incoming: AEKeyframeEase[] = []
+
   for (let d = 0; d < dimensions; d++) {
-    outgoing.push({ ...outEase })
-    incoming.push({ ...inEase })
+    const dd = Array.isArray(delta) ? (delta[d] ?? 0) : delta
+    const outSpeed = (y1 / x1Clamped) * dd
+    const inSpeed = ((1 - y2) / oneMinusX2Clamped) * dd
+    outgoing.push({ speed: outSpeed, influence: outInfluence })
+    incoming.push({ speed: inSpeed, influence: inInfluence })
   }
 
   return { outgoing, incoming }
