@@ -544,10 +544,10 @@ describe('RES8.3: series expansion into primitives', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S3: colour InstanceInputs bind to shape fills, not Background tools
+// colour InstanceInputs bind to shape fills, not Background tools
 // ---------------------------------------------------------------------------
 
-describe('S3: colour InstanceInputs bind to shape fills', () => {
+describe('colour InstanceInputs bind to shape fills', () => {
   it('does not emit a full-frame colour Background for colour params', () => {
     const template: MotionTemplate = {
       ...colourParamFixture,
@@ -647,10 +647,10 @@ describe('S3: colour InstanceInputs bind to shape fills', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S5: rect/ellipse centre conversion with anchor folded in
+// rect/ellipse centre conversion with anchor folded in
 // ---------------------------------------------------------------------------
 
-describe('S5: rect origin parity with evaluator convention', () => {
+describe('rect origin parity with evaluator convention', () => {
   it('rect centre accounts for anchor offset', () => {
     // quote-card: anchor=(60,40), width=120, height=80, position=(1020,820)
     // evaluator: world_centre = pos - anchor + (w/2, h/2)
@@ -1640,7 +1640,7 @@ describe('stagger scope: position/scale/rotation stay on the layer', () => {
 })
 
 // ===========================================================================
-// S5 pivot: scale and rotation about the anchor
+// pivot: scale and rotation about the anchor
 //
 // The evaluator applies scale and rotation about the layer's anchor:
 //   world = position + R * S * (local - anchor)
@@ -1726,7 +1726,7 @@ function extractPointInput(text: string, key: string): { x: number; y: number } 
   return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : null
 }
 
-describe('S5 pivot: scale and rotation about the anchor', () => {
+describe('pivot: scale and rotation about the anchor', () => {
   it('rect with non-zero anchor: scale+rotation pivots around anchor', () => {
     // Rect: anchor=(100,50), width=400, height=200, position=(500,600)
     // scale=0.5, rotation=30
@@ -1859,14 +1859,14 @@ describe('S5 pivot: scale and rotation about the anchor', () => {
 })
 
 // ===========================================================================
-// R2 fixes: Sk1, Sk2, Sk5, Sk6, Ar4
+// arc, text, group and shape transform fixes
 // ===========================================================================
 
 // ---------------------------------------------------------------------------
-// Sk1: arc position uses position - anchor (not anchor alone)
+// arc position uses position - anchor (not anchor alone)
 // ---------------------------------------------------------------------------
 
-describe('Sk1: arc centre at position - anchor', () => {
+describe('arc centre at position - anchor', () => {
   it('arc with anchor at centre and position offset places the ring correctly', () => {
     // score-ring pattern: anchor=(1920,1080), position=(1920,980)
     // evaluator: world_centre = position - anchor + (0,0) = (0, -100)
@@ -1933,10 +1933,10 @@ describe('Sk1: arc centre at position - anchor', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sk2: text InstanceInputs found for kebab-case layer ids
+// text InstanceInputs found for kebab-case layer ids
 // ---------------------------------------------------------------------------
 
-describe('Sk2: text InstanceInputs with kebab-case ids', () => {
+describe('text InstanceInputs with kebab-case ids', () => {
   it('emits StyledText InstanceInput for a layer with hyphens in its id', () => {
     const template: MotionTemplate = {
       ...animBase('sk2-kebab'),
@@ -1978,10 +1978,10 @@ describe('Sk2: text InstanceInputs with kebab-case ids', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sk5: group opacity wired, group transform applies to text
+// group opacity wired, group transform applies to text
 // ---------------------------------------------------------------------------
 
-describe('Sk5: group opacity and transform wiring', () => {
+describe('group opacity and transform wiring', () => {
   it('final output depends on the group opacity Blend (not dangling)', () => {
     // Group with opacity and a child rect
     const template: MotionTemplate = {
@@ -2200,10 +2200,10 @@ describe('Sk5: group opacity and transform wiring', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sk6: per-shape transforms, animated pivot
+// per-shape transforms, animated pivot
 // ---------------------------------------------------------------------------
 
-describe('Sk6: per-shape transforms', () => {
+describe('per-shape transforms', () => {
   it('two shapes with different transforms each get their own Transform', () => {
     const template: MotionTemplate = {
       ...animBase('sk6-two-transforms'),
@@ -2345,10 +2345,10 @@ describe('Sk6: per-shape transforms', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Ar4: colour bind target validation
+// colour bind target validation
 // ---------------------------------------------------------------------------
 
-describe('Ar4: colour bind target validation in Fusion', () => {
+describe('colour bind target validation in Fusion', () => {
   it('emits a note and skips InstanceInput when bind target tool is missing', () => {
     // Bind to a group layer - the group has no _shape tool emitted
     const template: MotionTemplate = {
@@ -2707,42 +2707,51 @@ describe('group sub-chain scopes transform to children only', () => {
     }
     const text = getSettingText(makeInput(template))
 
-    // The group Transform's Input must NOT source from a merge that
-    // includes root-rect. Walk the chain from root_rect's sRender/shape
-    // to the MainOutput and verify it does NOT pass through g_transform.
+    // Both tool names must appear in the output
     expect(text).toContain('g_transform')
     expect(text).toContain('root_rect')
 
-    // The Transform tool's Input should source from a node that depends
-    // only on the group's children, not root_rect
-    const xfMatch = text.match(/g_transform\s*=\s*Transform\s*\{([\s\S]*?)\n\s{12}\}/)
-    expect(xfMatch).not.toBeNull()
-    const xfBody = xfMatch![1]
-
-    // Extract the Input SourceOp
-    const inputMatch = xfBody.match(/Input\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/)
+    // Extract the g_transform tool's Input SourceOp. The Transform
+    // receives its source image through the "Input" connection.
+    const inputMatch = text.match(
+      /g_transform\s*=\s*Transform\s*\{[\s\S]*?Input\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
+    )
     expect(inputMatch).not.toBeNull()
     const inputSource = inputMatch![1]
 
-    // The input source must NOT contain root_rect
-    function sourceOpsOf(toolName: string, visited = new Set<string>()): Set<string> {
-      if (visited.has(toolName)) return visited
-      visited.add(toolName)
-      const toolRe = new RegExp(
-        toolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
-          '\\s*=\\s*\\w+\\s*\\{([\\s\\S]*?)\\n\\s{12}\\}'
-      )
-      const tm = toolRe.exec(text)
-      if (!tm) return visited
-      const refs = [...tm[1].matchAll(/SourceOp\s*=\s*"([^"]+)"/g)]
-      for (const r of refs) sourceOpsOf(r[1], visited)
+    // Trace all SourceOps reachable from inputSource using brace-depth
+    // matching, so the extraction is robust against indentation.
+    function collectSourceOps(startName: string): Set<string> {
+      const visited = new Set<string>()
+      const queue = [startName]
+      while (queue.length > 0) {
+        const name = queue.pop()!
+        if (visited.has(name)) continue
+        visited.add(name)
+        const toolStart = text.indexOf(`${name} = `)
+        if (toolStart === -1) continue
+        let depth = 0
+        let i = text.indexOf('{', toolStart)
+        if (i === -1) continue
+        const start = i
+        for (; i < text.length; i++) {
+          if (text[i] === '{') depth++
+          else if (text[i] === '}') {
+            depth--
+            if (depth === 0) break
+          }
+        }
+        const toolBody = text.slice(start, i + 1)
+        const refs = [...toolBody.matchAll(/SourceOp\s*=\s*"([^"]+)"/g)]
+        for (const r of refs) queue.push(r[1])
+      }
       return visited
     }
 
-    const deps = sourceOpsOf(inputSource)
-    // root_rect's shape tool should not be in the dependency tree
-    const rootRectShape = [...deps].find(d => d.includes('root_rect'))
-    expect(rootRectShape).toBeUndefined()
+    const deps = collectSourceOps(inputSource)
+    // root_rect's shape tool must NOT be in the dependency tree
+    const hasRootRect = [...deps].some(d => d.includes('root_rect'))
+    expect(hasRootRect).toBe(false)
   })
 
   it('two groups: each transforms only its own children', () => {
