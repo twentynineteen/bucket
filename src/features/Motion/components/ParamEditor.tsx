@@ -11,6 +11,7 @@ import { Input } from '@shared/ui/input'
 import { Label } from '@shared/ui/label'
 import { AlertCircle, ImageIcon, Minus, Plus } from 'lucide-react'
 import React, { useCallback } from 'react'
+import type { ParamError } from '../internal/resolve'
 import type {
   ColourParamDef,
   HoldParamDef,
@@ -31,6 +32,8 @@ export interface ParamEditorProps {
   onChange: (values: ParamValues) => void
   onPickImage?: () => void
   imageError?: string | null
+  /** Validation errors from validateParams (includes line-count errors). */
+  paramErrors?: ParamError[]
 }
 
 // ---------------------------------------------------------------------------
@@ -358,7 +361,8 @@ const ParamEditor: React.FC<ParamEditorProps> = ({
   values,
   onChange,
   onPickImage,
-  imageError
+  imageError,
+  paramErrors
 }) => {
   const handleUpdate = useCallback(
     (paramId: string, val: string | number | NumberListItem[] | ImageValue) => {
@@ -367,21 +371,32 @@ const ParamEditor: React.FC<ParamEditorProps> = ({
     [values, onChange]
   )
 
+  /** Get the first error message for a param, or undefined. */
+  const errorFor = (paramId: string): string | undefined =>
+    paramErrors?.find(e => e.paramId === paramId)?.message
+
   return (
     <div className="space-y-4">
       {Object.entries(template.params).map(([id, def]) => {
         const val = resolveParamValue(def, values, id)
+        const error = errorFor(id)
 
         switch (def.kind) {
           case 'text':
             return (
-              <TextParamField
-                key={id}
-                id={id}
-                def={def}
-                value={val as string}
-                onUpdate={v => handleUpdate(id, v)}
-              />
+              <div key={id} className="space-y-1.5">
+                <TextParamField
+                  id={id}
+                  def={def}
+                  value={val as string}
+                  onUpdate={v => handleUpdate(id, v)}
+                />
+                {error && (
+                  <p className="text-destructive text-xs" role="alert">
+                    {error}
+                  </p>
+                )}
+              </div>
             )
           case 'colour':
             return (

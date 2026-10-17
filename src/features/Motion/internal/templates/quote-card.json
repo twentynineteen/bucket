@@ -190,13 +190,13 @@
       "font": {
         "family": "Cabrito Semi",
         "style": "Norm Bold",
-        "size": 88
+        "size": 80
       },
       "align": "center",
       "lineHeight": 1.4,
       "multiline": true,
       "fill": "#ffffff",
-      "width": 3400,
+      "width": 2400,
       "wrap": true,
       "maxLines": 3
     },
@@ -212,7 +212,7 @@
           "t": 0.3,
           "value": {
             "x": 1920,
-            "y": 1410
+            "y": 1380
           },
           "ease": [0.22, 1, 0.36, 1]
         },
@@ -220,7 +220,7 @@
           "t": 0.8,
           "value": {
             "x": 1920,
-            "y": 1350
+            "y": 1320
           },
           "ease": [0.16, 1, 0.3, 1]
         },
@@ -228,7 +228,7 @@
           "t": 4.2,
           "value": {
             "x": 1920,
-            "y": 1350
+            "y": 1320
           },
           "ease": [0.7, 0, 1, 0.5]
         },
@@ -236,7 +236,7 @@
           "t": 4.55,
           "value": {
             "x": 1920,
-            "y": 1380
+            "y": 1350
           }
         }
       ],
@@ -266,7 +266,7 @@
       "font": {
         "family": "Cabrito Semi",
         "style": "Norm Bold",
-        "size": 64
+        "size": 56
       },
       "align": "center",
       "lineHeight": 1.2,

@@ -21,6 +21,7 @@ import {
 } from '../internal/filters'
 import { toggleFavourite } from '../internal/prefs'
 import { deriveTargets } from '../internal/resolve'
+import { createCanvasMeasurer } from '../internal/textOverflow'
 import type { CatalogueEntry, MotionFormat } from '../types'
 import CatalogueIssuesBanner from './CatalogueIssuesBanner'
 import FilterBar from './FilterBar'
@@ -57,6 +58,13 @@ const MotionMarketplacePage: React.FC = () => {
   const { prefs, updatePrefs } = useMotionPrefs()
   const { entries, issues, rescan } = useMotionCatalogue(prefs.libraryFolder)
   const fontState = useMotionFont()
+
+  // Text measurer for line wrapping. Created once per font state, so the
+  // grid cards re-resolve with canvas measurement when the font arrives.
+  const measurer = useMemo(
+    () => (fontState.status === 'ready' ? createCanvasMeasurer() : undefined),
+    [fontState.status]
+  )
 
   // Filter state
   const [filters, setFilters] = useState<FilterCriteria>(DEFAULT_FILTERS)
@@ -220,6 +228,7 @@ const MotionMarketplacePage: React.FC = () => {
                       handleSelectCard(entry, el)
                     }}
                     time={tickerTime}
+                    measurer={measurer}
                   />
                 </li>
               )

@@ -17,6 +17,7 @@ import { readTestClock } from '../internal/clock'
 import { evaluate } from '../internal/evaluate'
 import { resolveTemplate } from '../internal/resolve'
 import { arcPath, matrixStr } from '../internal/svgGeometry'
+import type { TextMeasurer } from '../internal/textOverflow'
 import type {
   MotionFormat,
   MotionTemplate,
@@ -37,6 +38,8 @@ export interface MotionPreviewProps {
   format: MotionFormat
   time: number | null
   name: string
+  /** When provided, the resolver uses this for line wrapping instead of the approximation. */
+  measurer?: TextMeasurer
 }
 
 // ---------------------------------------------------------------------------
@@ -278,9 +281,10 @@ const MotionPreview: React.FC<MotionPreviewProps> = ({
   values,
   format,
   time,
-  name
+  name,
+  measurer
 }) => {
-  // Resolve the template once when template/values/format change.
+  // Resolve the template once when template/values/format/measurer change.
   // The preview always resolves at the native 3840x2160 space.
   const previewFormat = useMemo<MotionFormat>(
     () => ({ width: 3840, height: 2160, fps: format.fps }),
@@ -288,8 +292,8 @@ const MotionPreview: React.FC<MotionPreviewProps> = ({
   )
 
   const resolved = useMemo(
-    () => resolveTemplate(template, values, previewFormat),
-    [template, values, previewFormat]
+    () => resolveTemplate(template, values, previewFormat, measurer),
+    [template, values, previewFormat, measurer]
   )
 
   // Determine the effective time (test clock overrides prop)
