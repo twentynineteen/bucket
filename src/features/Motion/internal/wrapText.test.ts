@@ -108,6 +108,27 @@ describe('wrapText', () => {
   })
 })
 
+describe('wrapText balancing (W2.9)', () => {
+  it('W2.9 evens out lines instead of leaving a short tail', () => {
+    // Greedy at 140 gives "aaaa bbbb cccc" / "dd". Balanced keeps two lines
+    // at the narrowest width that still fits them (90): "aaaa bbbb" / "cccc dd".
+    const result = wrapText('aaaa bbbb cccc dd', 140, font, charMeasurer())
+    expect(result).toBe('aaaa bbbb\ncccc dd')
+  })
+
+  it('W2.9 never adds a line or splits a word to balance', () => {
+    // Widest word is 10 chars (100); balancing must not go below it.
+    const result = wrapText('aaaaaaaaaa b c', 120, font, charMeasurer())
+    expect(result.split('\n')).toHaveLength(2)
+    expect(result.split('\n')[0]).toBe('aaaaaaaaaa')
+  })
+
+  it('W2.9 balances each typed line on its own', () => {
+    const result = wrapText('aaaa bbbb cccc dd\nee', 140, font, charMeasurer())
+    expect(result).toBe('aaaa bbbb\ncccc dd\nee')
+  })
+})
+
 describe('countLines', () => {
   it('single line', () => {
     expect(countLines('hello')).toBe(1)
