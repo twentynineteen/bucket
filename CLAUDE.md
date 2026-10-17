@@ -17,6 +17,9 @@ React + TypeScript frontend in `src/`.
 - `docs/ARCHITECTURE.md`: module map, each feature's data flow, cross-feature edges, and the
   steps for adding a feature page or Tauri command.
 - `CODING_STANDARDS.md`: read before writing or deleting tests. Also the review rules.
+- `docs/PR_PROCESS.md`: the standard for every pull request: review layers, verifier vote,
+  round cap, risk tiers. Follow it for every PR, and read the nearest `REVIEW.md` before
+  reviewing an area.
 - `docs/agents/`: issue tracker (GitHub), triage labels and domain-doc layout for the
   engineering skills.
 
