@@ -230,6 +230,8 @@ jobs:
       # pushes. One config, no per-spec project list: a spec added under
       # tests/e2e/ runs here with no change to this file (issue #171).
       - name: Run E2E Tests
+        env:
+          E2E_HOST: 127.0.0.1
         run: bunx playwright test --project=e2e
 
       # When a screenshot baseline is missing, Playwright renders it into this

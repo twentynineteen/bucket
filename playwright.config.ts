@@ -7,7 +7,14 @@ import { defineConfig, devices } from '@playwright/test'
  * server started first and silently test someone else's code.
  */
 const port = Number(process.env.E2E_PORT ?? 1422)
-const baseURL = `http://localhost:${port}`
+/**
+ * Host for the e2e dev server. Unset, Vite and the tests both use "localhost".
+ * CI sets E2E_HOST=127.0.0.1: inside the Playwright container Node resolves
+ * "localhost" to ::1 while Vite listens on IPv4, so the warm-up fetch in
+ * global-setup never connects. Pinning both ends to one address avoids that.
+ */
+const host = process.env.E2E_HOST
+const baseURL = `http://${host ?? 'localhost'}:${port}`
 
 /**
  * The only Playwright configuration in this repo. Tests run against the Vite
@@ -100,7 +107,7 @@ export default defineConfig({
   // compile happens after this resolves. `globalSetup` above is what waits for the
   // app to actually render (issue #227).
   webServer: {
-    command: `bun run dev -- --port ${port}`,
+    command: `bun run dev -- --port ${port}${host ? ` --host ${host}` : ''}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000
