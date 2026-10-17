@@ -1741,3 +1741,65 @@ describe('S8 - 1-D ease speed sign is signed for decreasing segments', () => {
     ).toBeGreaterThanOrEqual(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// S6 - Multiline text uses point text, not box text
+// ---------------------------------------------------------------------------
+
+describe('S6 - multiline text uses addText (not addBoxText)', () => {
+  // Layer base without the param field so resolveTemplate does not overwrite the text
+  const s6LayerBase = { ...textLayerBase }
+  delete (s6LayerBase as Record<string, unknown>).param
+
+  it('multiline text with width emits addText, not addBoxText', () => {
+    const fixture: MotionTemplate = {
+      ...textFixture,
+      id: 'fixture-s6-multiline',
+      params: {},
+      layers: [
+        {
+          ...s6LayerBase,
+          multiline: true,
+          width: 800,
+          text: 'Line 1\nLine 2\nLine 3'
+        }
+      ]
+    }
+    const src = getJsxSrc(makeInput(fixture))
+    const stub = runInAEStub(src)
+
+    const tl = stub.comps[0].layers.find(l => l.kind === 'text')
+    expect(tl).toBeDefined()
+
+    // Must NOT be box text - should be point text
+    const tdProp = tl!.properties['ADBE Text Document']
+    expect(tdProp).toBeDefined()
+    const tdoc = tdProp.value as { boxText: boolean; pointText: boolean }
+    expect(tdoc.boxText, 'should not use addBoxText').toBe(false)
+    expect(tdoc.pointText, 'should use addText (point text)').toBe(true)
+  })
+
+  it('multiline text contains line breaks in the source text', () => {
+    const fixture: MotionTemplate = {
+      ...textFixture,
+      id: 'fixture-s6-breaks',
+      params: {},
+      layers: [
+        {
+          ...s6LayerBase,
+          multiline: true,
+          width: 800,
+          text: 'Line 1\nLine 2'
+        }
+      ]
+    }
+    const src = getJsxSrc(makeInput(fixture))
+
+    // The JSX should contain \r line breaks (AE convention), not \n
+    expect(src).toContain('\\r')
+    // Should NOT contain addBoxText
+    expect(src).not.toContain('addBoxText')
+    // Should contain addText
+    expect(src).toContain('addText')
+  })
+})
