@@ -62,7 +62,7 @@ export interface MotionTemplateDialogProps {
 async function decodeImageToRgba(
   pngBytes: Uint8Array
 ): Promise<{ rgba: Uint8ClampedArray; width: number; height: number } | null> {
-  const blob = new Blob([pngBytes], { type: 'image/png' })
+  const blob = new Blob([new Uint8Array(pngBytes)], { type: 'image/png' })
   const url = URL.createObjectURL(blob)
   try {
     const img = new Image()
