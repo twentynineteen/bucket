@@ -5,6 +5,7 @@ mod baker;
 mod build_project;
 mod commands;
 mod kavanagh;
+mod motion;
 mod utils;
 
 // Imports
@@ -18,6 +19,10 @@ use commands::*;
 use kavanagh::{
     kavanagh_cancel_run, kavanagh_detect_ffmpeg, kavanagh_run_check, kavanagh_save_evidence,
     KavanaghRunState,
+};
+use motion::{
+    motion_render_cancel, motion_render_finish, motion_render_frame, motion_render_start,
+    MotionRenderState,
 };
 
 fn main() {
@@ -37,6 +42,7 @@ fn main() {
         .manage(baker::ScanState::new())
         .manage(OperationRegistry::new())
         .manage(KavanaghRunState::new())
+        .manage(MotionRenderState::new())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -118,7 +124,12 @@ fn main() {
             kavanagh_detect_ffmpeg,
             kavanagh_run_check,
             kavanagh_cancel_run,
-            kavanagh_save_evidence
+            kavanagh_save_evidence,
+            // Issue #326: Motion Marketplace video render pipeline
+            motion_render_start,
+            motion_render_frame,
+            motion_render_finish,
+            motion_render_cancel
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");

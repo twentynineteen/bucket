@@ -6,10 +6,11 @@
     "tests/setup/vitest-setup.ts",
     "tests/setup/msw-server.ts",
     "src/**/*.test.{ts,tsx}",
-    "eslint.config.js"
+    "eslint.config.js",
+    "scripts/**/*.ts"
   ],
   "project": ["src/**/*.{ts,tsx}"],
-  "ignore": ["src-tauri/**", "scripts/**"],
+  "ignore": ["src-tauri/**"],
   "ignoreDependencies": [
     "@tauri-apps/cli",
     "@tauri-apps/api",
