@@ -277,15 +277,17 @@ function quantiseStaggerDelays(layers: Layer[], fps: number, inEnd: number): Lay
       const charCount = graphemeCount(layer.text)
       const n = Math.max(1, charCount - 1)
       // Maximum whole frames that keeps (n-1)*delay within the budget
-      const maxFrames = Math.floor((budget * fps) / n)
+      // The epsilon stops float noise (0.4 * 0.7 * 25 / 7 = 0.9999...) from
+      // dropping an exact fit to zero frames
+      const maxFrames = Math.floor((budget * fps) / n + 1e-9)
       if (maxFrames <= 0) {
         // Even one frame per character exceeds the budget - disable stagger
         return { ...layer, stagger: { delay: 0 } }
       }
-      // Authored delay in frames, capped at maxFrames
-      const authoredFrames = Math.floor(layer.stagger.delay * fps)
-      const clampedFrames = Math.min(authoredFrames, maxFrames)
-      const quantised = clampedFrames <= 0 ? 0 : clampedFrames * frameDuration
+      // Authored delay to the nearest whole frame, at least one so a short
+      // authored stagger stays visible, then capped by the budget
+      const authoredFrames = Math.max(1, Math.round(layer.stagger.delay * fps))
+      const quantised = Math.min(authoredFrames, maxFrames) * frameDuration
       if (quantised !== layer.stagger.delay) {
         return { ...layer, stagger: { delay: quantised } }
       }

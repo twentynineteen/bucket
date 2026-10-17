@@ -393,14 +393,14 @@ describe('Resolve (internal/resolve.ts)', () => {
       ]
     }
 
-    it('short name (2 chars) quantises the authored delay to whole frames via floor', () => {
+    it('short name (2 chars) rounds the authored delay to the nearest whole frame', () => {
       // "Jo" = 2 graphemes, n = max(1, 2-1) = 1
       // budget = 0.4 * 0.7 = 0.28, maxFrames = floor(0.28 * 50 / 1) = 14
-      // authoredFrames = floor(0.03 * 50) = floor(1.5) = 1
-      // clampedFrames = min(1, 14) = 1, quantised = 1/50 = 0.02
+      // authoredFrames = max(1, round(0.03 * 50)) = round(1.5) = 2
+      // min(2, 14) = 2 frames, quantised = 2/50 = 0.04
       const resolved = resolveTemplate(staggerFixture, { name: 'Jo' }, FORMAT_4K)
       const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
-      expect(textLayer.stagger!.delay).toBe(0.02)
+      expect(textLayer.stagger!.delay).toBe(0.04)
     })
 
     it('long name (30 chars) disables stagger when one frame per character exceeds budget', () => {
@@ -519,13 +519,13 @@ describe('particle region tints resolve to colours', () => {
         }
       ]
     }
-    // At 50fps, 0.03s = 1.5 frames. Floor to 1 frame = 0.02s.
+    // At 50fps, 0.03s = 1.5 frames, which rounds to 2 frames = 0.04s.
     // "Hello" = 5 chars, n=4, budget = 0.4*1 = 0.4, maxFrames = floor(0.4*50/4) = 5.
-    // authoredFrames = floor(1.5) = 1, clamped = min(1, 5) = 1, result = 0.02.
+    // min(2, 5) = 2 frames, result = 0.04, a whole number of frames.
     const resolved = resolveTemplate(staggerTemplate, {}, FORMAT_4K)
     const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
     expect(textLayer.stagger).toBeDefined()
-    expect(textLayer.stagger!.delay).toBe(0.02)
+    expect(textLayer.stagger!.delay).toBe(0.04)
   })
 
   it('a region tint naming a colour param takes that param value; unknown names fall back to the base fill', () => {
