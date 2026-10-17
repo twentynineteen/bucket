@@ -544,10 +544,10 @@ describe('RES8.3: series expansion into primitives', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S3: colour InstanceInputs bind to shape fills, not Background tools
+// colour InstanceInputs bind to shape fills, not Background tools
 // ---------------------------------------------------------------------------
 
-describe('S3: colour InstanceInputs bind to shape fills', () => {
+describe('colour InstanceInputs bind to shape fills', () => {
   it('does not emit a full-frame colour Background for colour params', () => {
     const template: MotionTemplate = {
       ...colourParamFixture,
@@ -647,10 +647,10 @@ describe('S3: colour InstanceInputs bind to shape fills', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S5: rect/ellipse centre conversion with anchor folded in
+// rect/ellipse centre conversion with anchor folded in
 // ---------------------------------------------------------------------------
 
-describe('S5: rect origin parity with evaluator convention', () => {
+describe('rect origin parity with evaluator convention', () => {
   it('rect centre accounts for anchor offset', () => {
     // quote-card: anchor=(60,40), width=120, height=80, position=(1020,820)
     // evaluator: world_centre = pos - anchor + (w/2, h/2)
@@ -1640,7 +1640,7 @@ describe('stagger scope: position/scale/rotation stay on the layer', () => {
 })
 
 // ===========================================================================
-// S5 pivot: scale and rotation about the anchor
+// pivot: scale and rotation about the anchor
 //
 // The evaluator applies scale and rotation about the layer's anchor:
 //   world = position + R * S * (local - anchor)
@@ -1726,7 +1726,7 @@ function extractPointInput(text: string, key: string): { x: number; y: number } 
   return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : null
 }
 
-describe('S5 pivot: scale and rotation about the anchor', () => {
+describe('pivot: scale and rotation about the anchor', () => {
   it('rect with non-zero anchor: scale+rotation pivots around anchor', () => {
     // Rect: anchor=(100,50), width=400, height=200, position=(500,600)
     // scale=0.5, rotation=30
@@ -1859,14 +1859,14 @@ describe('S5 pivot: scale and rotation about the anchor', () => {
 })
 
 // ===========================================================================
-// R2 fixes: Sk1, Sk2, Sk5, Sk6, Ar4
+// arc, text, group and shape transform fixes
 // ===========================================================================
 
 // ---------------------------------------------------------------------------
-// Sk1: arc position uses position - anchor (not anchor alone)
+// arc position uses position - anchor (not anchor alone)
 // ---------------------------------------------------------------------------
 
-describe('Sk1: arc centre at position - anchor', () => {
+describe('arc centre at position - anchor', () => {
   it('arc with anchor at centre and position offset places the ring correctly', () => {
     // score-ring pattern: anchor=(1920,1080), position=(1920,980)
     // evaluator: world_centre = position - anchor + (0,0) = (0, -100)
@@ -1933,10 +1933,10 @@ describe('Sk1: arc centre at position - anchor', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sk2: text InstanceInputs found for kebab-case layer ids
+// text InstanceInputs found for kebab-case layer ids
 // ---------------------------------------------------------------------------
 
-describe('Sk2: text InstanceInputs with kebab-case ids', () => {
+describe('text InstanceInputs with kebab-case ids', () => {
   it('emits StyledText InstanceInput for a layer with hyphens in its id', () => {
     const template: MotionTemplate = {
       ...animBase('sk2-kebab'),
@@ -1978,10 +1978,10 @@ describe('Sk2: text InstanceInputs with kebab-case ids', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sk5: group opacity wired, group transform applies to text
+// group opacity wired, group transform applies to text
 // ---------------------------------------------------------------------------
 
-describe('Sk5: group opacity and transform wiring', () => {
+describe('group opacity and transform wiring', () => {
   it('final output depends on the group opacity Blend (not dangling)', () => {
     // Group with opacity and a child rect
     const template: MotionTemplate = {
@@ -2200,10 +2200,10 @@ describe('Sk5: group opacity and transform wiring', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sk6: per-shape transforms, animated pivot
+// per-shape transforms, animated pivot
 // ---------------------------------------------------------------------------
 
-describe('Sk6: per-shape transforms', () => {
+describe('per-shape transforms', () => {
   it('two shapes with different transforms each get their own Transform', () => {
     const template: MotionTemplate = {
       ...animBase('sk6-two-transforms'),
@@ -2345,10 +2345,10 @@ describe('Sk6: per-shape transforms', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Ar4: colour bind target validation
+// colour bind target validation
 // ---------------------------------------------------------------------------
 
-describe('Ar4: colour bind target validation in Fusion', () => {
+describe('colour bind target validation in Fusion', () => {
   it('emits a note and skips InstanceInput when bind target tool is missing', () => {
     // Bind to a group layer - the group has no _shape tool emitted
     const template: MotionTemplate = {
@@ -2388,5 +2388,497 @@ describe('Ar4: colour bind target validation in Fusion', () => {
 
     // Should have a note about the missing target
     expect(result.notes.some(n => /skipped|missing/i.test(n))).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// R3 fixes
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Group Transform Centre is the image-centre translation, not toImageCoords(position)
+// ---------------------------------------------------------------------------
+
+describe('group Transform Centre is the image-centre translation', () => {
+  it('group at {0,0} with zero anchor has Centre (0.5, 0.5)', () => {
+    const template: MotionTemplate = {
+      ...animBase('r3-group-centre-origin'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 0, y: 0 } }],
+          scale: [{ t: 0, value: { x: 0.8, y: 0.8 } }],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g-child',
+              anchor: { x: 0, y: 0 },
+              width: 100,
+              height: 100,
+              fill: '#333333',
+              radius: 0
+            }
+          ]
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    const center = extractPointInput(text, 'Center')
+    expect(center).not.toBeNull()
+    expect(center!.x).toBeCloseTo(0.5, 6)
+    expect(center!.y).toBeCloseTo(0.5, 6)
+  })
+
+  it('group at {0,40} with zero anchor has Centre (0.5, 0.5 - 40/2160)', () => {
+    const template: MotionTemplate = {
+      ...animBase('r3-group-centre-offset'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 0, y: 40 } }],
+          scale: [{ t: 0, value: { x: 0.8, y: 0.8 } }],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g-child',
+              anchor: { x: 0, y: 0 },
+              width: 100,
+              height: 100,
+              fill: '#333333',
+              radius: 0
+            }
+          ]
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    const center = extractPointInput(text, 'Center')
+    expect(center).not.toBeNull()
+    expect(center!.x).toBeCloseTo(0.5, 6)
+    expect(center!.y).toBeCloseTo(0.5 - 40 / 2160, 6)
+  })
+
+  it('animated group position XYPath keys use the image-centre formula', () => {
+    const template: MotionTemplate = {
+      ...animBase('r3-group-xypath-centre'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g',
+          anchor: { x: 0, y: 0 },
+          position: [
+            {
+              t: 0,
+              value: { x: 0, y: 0 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 100, y: 40 } }
+          ],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g-child',
+              anchor: { x: 0, y: 0 },
+              width: 100,
+              height: 100,
+              fill: '#333333',
+              radius: 0
+            }
+          ]
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // First keyframe: (0, 0) -> Centre (0.5, 0.5)
+    // Second keyframe: (100, 40) -> Centre (0.5 + 100/3840, 0.5 - 40/2160)
+    // The spline values should contain these
+    const x0 = 0.5
+    const x1 = 0.5 + 100 / 3840
+    const y1 = 0.5 - 40 / 2160
+
+    // Check the spline contains both values
+    expect(text).toContain(x0.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+    expect(text).toContain(x1.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+    expect(text).toContain(y1.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Group opacity fades content through Foreground with transparent Background
+// ---------------------------------------------------------------------------
+
+describe('group opacity fades content through Foreground wiring', () => {
+  it('group content is wired to Foreground, not Background, on the blend Merge', () => {
+    const template: MotionTemplate = {
+      ...animBase('r3-group-opacity-fg'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g',
+          anchor: { x: 0, y: 0 },
+          opacity: [
+            {
+              t: 0,
+              value: 0,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: 1 }
+          ],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g-r',
+              anchor: { x: 0, y: 0 },
+              width: 200,
+              height: 100,
+              fill: '#ff0000',
+              radius: 0
+            }
+          ]
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // The blend Merge must have a Foreground SourceOp
+    const blendSection = text.match(/g_blend\s*=\s*Merge\s*\{([\s\S]*?)\n\s{12}\}/)
+    expect(blendSection).not.toBeNull()
+    const blendBody = blendSection![1]
+
+    // Foreground must be wired (the content)
+    expect(blendBody).toMatch(/Foreground\s*=\s*Input/)
+
+    // Background must also be wired (the transparent base)
+    expect(blendBody).toMatch(/Background\s*=\s*Input/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// No Follower emitted when stagger delay is 0 or stagger is absent
+// ---------------------------------------------------------------------------
+
+describe('no Follower when stagger delay is 0 or absent', () => {
+  it('long text name at 50fps with small budget emits no StyledTextFollower', () => {
+    // 36-character name at 50fps: maxFrames = floor(0.28 * 50 / 35) = 0
+    // So resolve should set delay = 0 (or remove stagger)
+    const baseText = textFixture.layers[0] as TextLayer
+    const longName = 'Abcdefghijklmnopqrstuvwxyz1234567890' // 36 chars
+    const staggerTemplate: MotionTemplate = {
+      ...textFixture,
+      id: 'r3-no-follower-long',
+      inEnd: 0.28,
+      layers: [
+        {
+          ...baseText,
+          text: longName,
+          stagger: { delay: 0.04 }
+        }
+      ]
+    }
+    const fmt50: MotionFormat = { width: 3840, height: 2160, fps: 50 }
+    const text = getSettingText(makeInput(staggerTemplate, {}, fmt50))
+    expect(text).not.toMatch(/StyledTextFollower/)
+  })
+
+  it('explicit delay 0 emits no StyledTextFollower', () => {
+    const baseText = textFixture.layers[0] as TextLayer
+    const staggerTemplate: MotionTemplate = {
+      ...textFixture,
+      id: 'r3-no-follower-zero',
+      layers: [
+        {
+          ...baseText,
+          stagger: { delay: 0 }
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(staggerTemplate))
+    expect(text).not.toMatch(/StyledTextFollower/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Merge order follows resolved layer order, not category grouping
+// ---------------------------------------------------------------------------
+
+describe('merge chain follows resolved layer order', () => {
+  it('[text, rect] fixture: text merges before rect in the chain', () => {
+    const template: MotionTemplate = {
+      ...animBase('r3-layer-order'),
+      params: {},
+      layers: [
+        {
+          kind: 'text',
+          id: 'lbl',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 200, y: 500 } }],
+          text: 'Label',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 48 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff'
+        },
+        {
+          kind: 'rect',
+          id: 'bar',
+          anchor: { x: 0, y: 0 },
+          width: 3840,
+          height: 40,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // In the merge chain, the text must be in the Background (first) and
+    // the rect in the Foreground (second), so the rect paints over the text.
+    // Find the merge node
+    const mergeMatch = text.match(/merge_\d+\s*=\s*Merge\s*\{([\s\S]*?)\n\s{12}\}/)
+    expect(mergeMatch).not.toBeNull()
+    const mergeBody = mergeMatch![1]
+
+    // Background should be the text tool, Foreground should be the sRender
+    const bgMatch = mergeBody.match(/Background[^}]*SourceOp\s*=\s*"([^"]+)"/)
+    const fgMatch = mergeBody.match(/Foreground[^}]*SourceOp\s*=\s*"([^"]+)"/)
+    expect(bgMatch).not.toBeNull()
+    expect(fgMatch).not.toBeNull()
+    // The text should be the background (painted first / below)
+    expect(bgMatch![1]).toContain('lbl')
+    // The shape sRender should be the foreground (painted on top)
+    expect(fgMatch![1]).toContain('srender')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Group sub-chain: only the group's children are transformed
+// ---------------------------------------------------------------------------
+
+describe('group sub-chain scopes transform to children only', () => {
+  it('group with a root sibling: sibling is not transformed by the group', () => {
+    const template: MotionTemplate = {
+      ...animBase('r3-group-sibling'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g',
+          anchor: { x: 0, y: 0 },
+          position: [
+            {
+              t: 0,
+              value: { x: 0, y: 0 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 500, y: 0 } }
+          ],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g-child',
+              anchor: { x: 0, y: 0 },
+              width: 100,
+              height: 100,
+              fill: '#ff0000',
+              radius: 0
+            }
+          ]
+        },
+        {
+          kind: 'rect',
+          id: 'root-rect',
+          anchor: { x: 0, y: 0 },
+          width: 200,
+          height: 50,
+          fill: '#0000ff',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // Both tool names must appear in the output
+    expect(text).toContain('g_transform')
+    expect(text).toContain('root_rect')
+
+    // Extract the g_transform tool's Input SourceOp. The Transform
+    // receives its source image through the "Input" connection.
+    const inputMatch = text.match(
+      /g_transform\s*=\s*Transform\s*\{[\s\S]*?Input\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
+    )
+    expect(inputMatch).not.toBeNull()
+    const inputSource = inputMatch![1]
+
+    // Trace all SourceOps reachable from inputSource using brace-depth
+    // matching, so the extraction is robust against indentation.
+    function collectSourceOps(startName: string): Set<string> {
+      const visited = new Set<string>()
+      const queue = [startName]
+      while (queue.length > 0) {
+        const name = queue.pop()!
+        if (visited.has(name)) continue
+        visited.add(name)
+        const toolStart = text.indexOf(`${name} = `)
+        if (toolStart === -1) continue
+        let depth = 0
+        let i = text.indexOf('{', toolStart)
+        if (i === -1) continue
+        const start = i
+        for (; i < text.length; i++) {
+          if (text[i] === '{') depth++
+          else if (text[i] === '}') {
+            depth--
+            if (depth === 0) break
+          }
+        }
+        const toolBody = text.slice(start, i + 1)
+        const refs = [...toolBody.matchAll(/SourceOp\s*=\s*"([^"]+)"/g)]
+        for (const r of refs) queue.push(r[1])
+      }
+      return visited
+    }
+
+    const deps = collectSourceOps(inputSource)
+    // root_rect's shape tool must NOT be in the dependency tree
+    const hasRootRect = [...deps].some(d => d.includes('root_rect'))
+    expect(hasRootRect).toBe(false)
+  })
+
+  it('two groups: each transforms only its own children', () => {
+    const template: MotionTemplate = {
+      ...animBase('r3-two-groups'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g1',
+          anchor: { x: 0, y: 0 },
+          position: [
+            {
+              t: 0,
+              value: { x: 0, y: 0 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 200, y: 0 } }
+          ],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g1-r',
+              anchor: { x: 0, y: 0 },
+              width: 100,
+              height: 100,
+              fill: '#ff0000',
+              radius: 0
+            }
+          ]
+        },
+        {
+          kind: 'group',
+          id: 'g2',
+          anchor: { x: 0, y: 0 },
+          position: [
+            {
+              t: 0,
+              value: { x: 0, y: 0 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 0, y: 300 } }
+          ],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g2-r',
+              anchor: { x: 0, y: 0 },
+              width: 50,
+              height: 50,
+              fill: '#0000ff',
+              radius: 0
+            }
+          ]
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // Both group transforms must exist
+    expect(text).toContain('g1_transform')
+    expect(text).toContain('g2_transform')
+
+    // g1_transform's Input must not depend on g2's children
+    const g1XfMatch = text.match(/g1_transform\s*=\s*Transform\s*\{([\s\S]*?)\n\s{12}\}/)
+    expect(g1XfMatch).not.toBeNull()
+    const g1Input = g1XfMatch![1].match(
+      /Input\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
+    )
+    expect(g1Input).not.toBeNull()
+
+    // g2_transform's Input must not depend on g1's children
+    const g2XfMatch = text.match(/g2_transform\s*=\s*Transform\s*\{([\s\S]*?)\n\s{12}\}/)
+    expect(g2XfMatch).not.toBeNull()
+    const g2Input = g2XfMatch![1].match(
+      /Input\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
+    )
+    expect(g2Input).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Colour binds resolve through resolveBindPath at any depth
+// ---------------------------------------------------------------------------
+
+describe('colour binds resolve at any depth via resolveBindPath', () => {
+  it('binds at depth 2 (layers[0].children[0].children[0]) resolve', () => {
+    const template: MotionTemplate = {
+      ...animBase('r3-deep-bind'),
+      params: {
+        accent: {
+          kind: 'colour',
+          label: 'Accent',
+          default: '#ff3366',
+          binds: ['layers[0].children[0].children[0]']
+        }
+      },
+      layers: [
+        {
+          kind: 'group',
+          id: 'outer',
+          anchor: { x: 0, y: 0 },
+          children: [
+            {
+              kind: 'group',
+              id: 'inner',
+              anchor: { x: 0, y: 0 },
+              children: [
+                {
+                  kind: 'rect',
+                  id: 'deep-rect',
+                  anchor: { x: 0, y: 0 },
+                  width: 100,
+                  height: 50,
+                  fill: '#ff3366',
+                  radius: 0
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // The colour InstanceInput should target the deeply-nested rect's fill
+    expect(text).toMatch(/InstanceInput[^}]*SourceOp\s*=\s*"deep_rect_shape"/)
+    expect(text).toMatch(/InstanceInput[^}]*Source\s*=\s*"Red"/)
   })
 })
