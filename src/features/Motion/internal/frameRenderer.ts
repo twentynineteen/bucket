@@ -20,6 +20,11 @@ import type {
 } from '../types'
 import { evaluate } from './evaluate'
 
+/** Exhaustiveness check: the compiler proves this is never called. */
+function assertNever(x: never): never {
+  throw new Error(`Unexpected layer kind: ${(x as { kind: string }).kind}`)
+}
+
 export interface FontData {
   family: string
   bytes: Uint8Array
@@ -112,7 +117,7 @@ function renderShapeState(state: ShapeLayerState): string {
     return `<path d="${d}" fill="${fill}" opacity="${state.opacity}" transform="${transform}" />`
   }
 
-  return ''
+  assertNever(state.kind as never)
 }
 
 function alignToAnchor(align: 'left' | 'center' | 'right'): string {
@@ -168,7 +173,7 @@ function renderTextState(state: TextLayerState): string {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Font CSS memoisation (S15)
+// Font CSS memoisation
 // ---------------------------------------------------------------------------
 
 let cachedFontRef: FontData[] | null = null
@@ -207,11 +212,20 @@ export function buildSvgString(
 
   const elements: string[] = []
   for (const state of states) {
-    if (state.kind === 'particles') continue // Particles go on canvas
-    if (state.kind === 'text') {
-      elements.push(renderTextState(state))
-    } else {
-      elements.push(renderShapeState(state))
+    switch (state.kind) {
+      case 'particles':
+        continue // Particles go on canvas
+      case 'text':
+        elements.push(renderTextState(state))
+        break
+      case 'rect':
+      case 'ellipse':
+      case 'path':
+      case 'arc':
+        elements.push(renderShapeState(state))
+        break
+      default:
+        assertNever(state)
     }
   }
 

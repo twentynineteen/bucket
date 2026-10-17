@@ -25,6 +25,11 @@ import type {
   TextLayerState
 } from '../types'
 
+/** Exhaustiveness check: the compiler proves this is never called. */
+function assertNever(x: never): never {
+  throw new Error(`Unexpected layer kind: ${(x as { kind: string }).kind}`)
+}
+
 export interface MotionPreviewProps {
   template: MotionTemplate
   values: ParamValues
@@ -123,7 +128,7 @@ function ShapeElement({ state }: { state: ShapeLayerState }) {
     return <path d={d} fill={state.fill} opacity={state.opacity} transform={transform} />
   }
 
-  return null
+  assertNever(state.kind as never)
 }
 
 function alignToAnchor(align: 'left' | 'center' | 'right'): 'start' | 'middle' | 'end' {
@@ -203,25 +208,43 @@ function TextElement({ state }: { state: TextLayerState }) {
 // Particle canvas
 // ---------------------------------------------------------------------------
 
-function ParticleCanvas({
-  states,
-  width,
-  height
-}: {
-  states: ParticlesLayerState[]
-  width: number
-  height: number
-}) {
+/** Cap the device pixel ratio to avoid giant canvas backing stores. */
+const MAX_DPR = 2
+
+/**
+ * Template-space dimensions the evaluator works in.
+ * The canvas scales its context so drawing code stays in this coordinate space.
+ */
+const TEMPLATE_W = 3840
+const TEMPLATE_H = 2160
+
+function ParticleCanvas({ states }: { states: ParticlesLayerState[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
+    // Size the backing store to the CSS box at a capped device-pixel ratio
+    const rect = canvas.getBoundingClientRect()
+    const dpr = Math.min(window.devicePixelRatio ?? 1, MAX_DPR)
+    const pxW = Math.round(rect.width * dpr)
+    const pxH = Math.round(rect.height * dpr)
+
+    // Only resize when the dimensions change (avoids clearing on every tick)
+    if (canvas.width !== pxW || canvas.height !== pxH) {
+      canvas.width = pxW
+      canvas.height = pxH
+    }
+
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    ctx.clearRect(0, 0, width, height)
+    ctx.clearRect(0, 0, pxW, pxH)
+
+    // Scale from template space (3840x2160) to the canvas backing store
+    ctx.save()
+    ctx.scale(pxW / TEMPLATE_W, pxH / TEMPLATE_H)
 
     for (const state of states) {
       const [a, b, c, d, tx, ty] = state.matrix
@@ -239,13 +262,13 @@ function ParticleCanvas({
 
       ctx.restore()
     }
-  }, [states, width, height])
+
+    ctx.restore()
+  }, [states])
 
   return (
     <canvas
       ref={canvasRef}
-      width={width}
-      height={height}
       style={{
         position: 'absolute',
         top: 0,
@@ -316,15 +339,20 @@ const MotionPreview: React.FC<MotionPreviewProps> = ({
         style={{ width: '100%', height: '100%', display: 'block' }}
       >
         {vectorStates.map(state => {
-          if (state.kind === 'text') {
-            return <TextElement key={state.id} state={state} />
+          switch (state.kind) {
+            case 'text':
+              return <TextElement key={state.id} state={state} />
+            case 'rect':
+            case 'ellipse':
+            case 'path':
+            case 'arc':
+              return <ShapeElement key={state.id} state={state} />
+            default:
+              assertNever(state)
           }
-          return <ShapeElement key={state.id} state={state} />
         })}
       </svg>
-      {hasParticles && (
-        <ParticleCanvas states={particleStates} width={3840} height={2160} />
-      )}
+      {hasParticles && <ParticleCanvas states={particleStates} />}
     </div>
   )
 }

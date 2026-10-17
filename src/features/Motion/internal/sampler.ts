@@ -7,7 +7,7 @@
  *
  * Imported by:
  * - `scripts/motion/sample-points.ts` to pre-sample built-in templates
- * - `MotionTemplateDialog.tsx` for runtime image-param re-sampling (M2.6)
+ * - `MotionTemplateDialog.tsx` for runtime image-param re-sampling
  */
 import { createRng } from './random'
 
@@ -83,7 +83,7 @@ function luminance(img: ImageDesc, px: number, py: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Image alpha validation (M2.6)
+// Image alpha validation
 // ---------------------------------------------------------------------------
 
 export interface AlphaCheckResult {

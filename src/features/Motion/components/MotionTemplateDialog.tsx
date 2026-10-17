@@ -22,6 +22,7 @@ import { useMotionExport } from '../hooks/useMotionExport'
 import { useMotionFont } from '../hooks/useMotionFont'
 import { useMotionPrefs } from '../hooks/useMotionPrefs'
 import { useMotionTicker } from '../hooks/useMotionTicker'
+import { applyImageParam } from '../internal/imageParam'
 import { applyTargetSelection, setDefault, toggleFavourite } from '../internal/prefs'
 import {
   deriveTargets,
@@ -29,7 +30,7 @@ import {
   resolveTemplate,
   validateParams
 } from '../internal/resolve'
-import { checkAlpha, samplePoints } from '../internal/sampler'
+import { checkAlpha } from '../internal/sampler'
 import { checkTextOverflow, createCanvasMeasurer } from '../internal/textOverflow'
 import type {
   CatalogueEntry,
@@ -52,7 +53,7 @@ export interface MotionTemplateDialogProps {
 }
 
 // ---------------------------------------------------------------------------
-// Image decoding and particle re-sampling (M2.6)
+// Image decoding and particle re-sampling
 // ---------------------------------------------------------------------------
 
 /**
@@ -86,49 +87,6 @@ async function decodeImageToRgba(
   }
 }
 
-/**
- * Compute the bounding box of a set of points (used as the re-sampling
- * target box, matching the built-in points' extent).
- */
-function pointsBoundingBox(points: { x: number; y: number }[]): {
-  x: number
-  y: number
-  w: number
-  h: number
-} {
-  if (points.length === 0) return { x: 0, y: 0, w: 3840, h: 2160 }
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-  for (const p of points) {
-    if (p.x < minX) minX = p.x
-    if (p.y < minY) minY = p.y
-    if (p.x > maxX) maxX = p.x
-    if (p.y > maxY) maxY = p.y
-  }
-  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
-}
-
-/**
- * Return a shallow copy of the template with the specified particle layer's
- * points replaced. Does not mutate the original.
- */
-function replaceParticlePoints(
-  template: MotionTemplate,
-  newPoints: { x: number; y: number; region?: string }[]
-): MotionTemplate {
-  return {
-    ...template,
-    layers: template.layers.map(layer => {
-      if (layer.kind === 'particles' && (layer as ParticlesLayer).imageParam) {
-        return { ...layer, points: newPoints }
-      }
-      return layer
-    })
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Default values from template params
 // ---------------------------------------------------------------------------
@@ -159,6 +117,34 @@ function defaultValues(entry: CatalogueEntry): ParamValues {
 }
 
 // ---------------------------------------------------------------------------
+// Alpha validation error message
+// ---------------------------------------------------------------------------
+
+function alphaErrorMessage(alpha: {
+  hasOpaque: boolean
+  hasTransparent: boolean
+}): string | null {
+  if (!alpha.hasTransparent)
+    return 'Image has no transparent pixels - use a cut-out PNG with a transparent background'
+  if (!alpha.hasOpaque) return 'Image has no opaque pixels'
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Re-sampling result check
+// ---------------------------------------------------------------------------
+
+/** True when at least one particle layer with an imageParam produced points. */
+function hasResampledPoints(tmpl: MotionTemplate): boolean {
+  return tmpl.layers.some(
+    l =>
+      l.kind === 'particles' &&
+      (l as ParticlesLayer).imageParam &&
+      (l as ParticlesLayer).points.length > 0
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Reduced motion detection
 // ---------------------------------------------------------------------------
 
@@ -186,9 +172,7 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
   const [imageError, setImageError] = useState<string | null>(null)
   const [folderWarning, setFolderWarning] = useState<string | null>(null)
   const [pickedImagePath, setPickedImagePath] = useState<string | undefined>()
-  const [resampledPoints, setResampledPoints] = useState<
-    { x: number; y: number; region?: string }[] | null
-  >(null)
+  const [imageTemplate, setImageTemplate] = useState<MotionTemplate | null>(null)
 
   // Hooks
   const { prefs, updatePrefs } = useMotionPrefs()
@@ -221,19 +205,14 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     prefs.lastProjectFolder
   )
 
-  // When the user picks an image and re-sampled points are available,
-  // create a copy of the template with replaced particle points. This
-  // feeds the new figure into preview, video and export without changing
-  // resolve.ts (which another agent owns).
-  const effectiveTemplate = useMemo(
-    () => (resampledPoints ? replaceParticlePoints(template, resampledPoints) : template),
-    [template, resampledPoints]
-  )
+  // When the user picks an image, applyImageParam returns a modified
+  // template with re-sampled particle points preserving aspect ratio.
+  const effectiveTemplate = imageTemplate ?? template
 
-  // Effective entry for export (uses re-sampled points when available)
+  // Effective entry for export (uses re-sampled template when available)
   const effectiveEntry = useMemo(
-    () => (resampledPoints ? { ...entry, template: effectiveTemplate } : entry),
-    [entry, effectiveTemplate, resampledPoints]
+    () => ({ ...entry, template: effectiveTemplate }),
+    [entry, effectiveTemplate]
   )
 
   // Resolve the template for the evaluator
@@ -256,7 +235,7 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     setValues(defaultValues(entry))
     setImageError(null)
     setPickedImagePath(undefined)
-    setResampledPoints(null)
+    setImageTemplate(null)
   }
 
   // The time to pass to the preview (null during the gap)
@@ -293,14 +272,15 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
   const ffmpegAvailable = kavanaghAvail.ffmpeg?.status === 'ready'
 
   // Can export: folder set, at least one target, params valid
-  const canExport = projectFolder !== null && targets.length > 0 && !hasParamErrors
-
-  // Can copy prompt: all params valid (no folder or target needed)
+  const canExport = Boolean(projectFolder) && targets.length > 0 && !hasParamErrors
   const canCopyPrompt = !hasParamErrors
 
   // Favourite and default state
   const isFavourite = prefs.favourites.includes(template.id)
   const isDefault = prefs.defaults[template.category] === template.id
+
+  // Show the region notice when a custom image replaces built-in region data
+  const showRegionNotice = Boolean(pickedImagePath) && isParticle
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -317,9 +297,10 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     void updatePrefs({ lastProjectFolder: folder })
 
     // Check if it looks like a Bucket project
-    const hasBreadcrumbs = await pathExists(`${folder}/breadcrumbs.json`)
-    const hasGraphics = await pathExists(`${folder}/Graphics`)
-    setFolderWarning(!hasBreadcrumbs && !hasGraphics ? 'not-bucket' : null)
+    const isBucket =
+      (await pathExists(`${folder}/breadcrumbs.json`)) ||
+      (await pathExists(`${folder}/Graphics`))
+    setFolderWarning(isBucket ? null : 'not-bucket')
   }, [projectFolder, updatePrefs])
 
   const handlePickImage = useCallback(async () => {
@@ -338,50 +319,31 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
 
       // Check the real alpha channel for both opaque and transparent pixels
       const alpha = checkAlpha(decoded.rgba, decoded.width, decoded.height)
-      if (!alpha.hasTransparent || !alpha.hasOpaque) {
-        setImageError(
-          !alpha.hasTransparent
-            ? 'Image has no transparent pixels - use a cut-out PNG with a transparent background'
-            : 'Image has no opaque pixels'
-        )
+      const alphaErr = alphaErrorMessage(alpha)
+      if (alphaErr) {
+        setImageError(alphaErr)
         return
       }
 
-      // Find the particle layer with an imageParam to get its seed and
-      // built-in points (for the target bounding box)
-      const particleLayer = template.layers.find(
-        (l): l is ParticlesLayer =>
-          l.kind === 'particles' && !!(l as ParticlesLayer).imageParam
-      )
-      if (!particleLayer) {
-        setImageError('No particle layer configured for image input')
-        return
-      }
+      // applyImageParam is pure: it derives minDistance from a target point
+      // count, preserves the image's aspect ratio inside the built-in
+      // bounding box, caps the result, and keys the param value by each
+      // layer's imageParam field.
+      const result = applyImageParam(template, values, decoded, path)
 
-      // Re-sample using the layer's seed and the built-in points' bounding box
-      const targetBox = pointsBoundingBox(particleLayer.points)
-      const newPoints = samplePoints({
-        rgba: decoded.rgba,
-        width: decoded.width,
-        height: decoded.height,
-        minDistance: 6,
-        seed: particleLayer.seed,
-        targetBox
-      })
-
-      if (newPoints.length === 0) {
+      if (!hasResampledPoints(result.template)) {
         setImageError('No points could be sampled from the image')
         return
       }
 
       setImageError(null)
       setPickedImagePath(path)
-      setResampledPoints(newPoints)
-      setValues(prev => ({ ...prev, image: { pickedPath: path } }))
+      setImageTemplate(result.template)
+      setValues(prev => ({ ...prev, ...result.values }))
     } catch {
       setImageError('Could not read the image file')
     }
-  }, [template])
+  }, [template, values])
 
   const handleTargetsChange = useCallback(
     (newTargets: MotionTarget[]) => {
@@ -531,6 +493,16 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
             onPickImage={handlePickImage}
             imageError={imageError}
           />
+
+          {/* Notice: custom image replaces built-in region data */}
+          <p
+            className="text-muted-foreground text-xs"
+            role="note"
+            hidden={!showRegionNotice}
+          >
+            Region tints and callouts from the built-in figure are not applied to a custom
+            image.
+          </p>
 
           {/* Export settings (format, folder, targets, progress) */}
           <ExportPanel

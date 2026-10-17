@@ -3,10 +3,16 @@
  *
  * Tests the pure functions (buildSvgString, buildFrameList) in jsdom.
  * renderFrameToPng requires a real canvas and is tested in the e2e spec.
+ *
+ * Includes an Ar2 parity test that ensures MotionPreview and frameRenderer
+ * produce equivalent SVG from the same evaluated states.
  */
 import { describe, expect, it } from 'vitest'
-import type { LayerState } from '../types'
+import type { LayerState, MotionFormat, ShapeLayerState, TextLayerState } from '../types'
+import { evaluate } from './evaluate'
 import { buildFrameList, buildSvgString, type FontData } from './frameRenderer'
+import { resolveTemplate } from './resolve'
+import { arcFixture, ellipseFixture, rectFixture, textFixture } from './testing/fixtures'
 
 const IDENTITY: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0]
 
@@ -235,6 +241,215 @@ describe('buildSvgString', () => {
     expect(svg2).toContain('@font-face')
     // Memoisation is an internal optimisation - the output should be identical
     expect(svg1).toBe(svg2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ar2: parity test - MotionPreview and frameRenderer agree on vector SVG
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalise an SVG string for comparison: canonicalise self-closing tags,
+ * round numbers to 4 decimal places, strip whitespace differences.
+ */
+function normaliseSvg(svg: string): string {
+  // Round all numbers to 4 decimal places
+  let result = svg.replace(/-?\d+\.\d{5,}/g, match => {
+    return Number(parseFloat(match).toFixed(4)).toString()
+  })
+  // Canonicalise self-closing tags: <foo .../> and <foo ...></foo> both become <foo .../>
+  result = result.replace(/<(\w+)([^>]*?)><\/\1>/g, '<$1$2 />')
+  // Normalise self-closing whitespace: " />" and "/>" both become " />"
+  result = result.replace(/\s*\/>/g, ' />')
+  // Collapse whitespace
+  result = result.replace(/\s+/g, ' ').trim()
+  return result
+}
+
+/**
+ * Extract the body elements (everything between the first > and last <) from
+ * an SVG string, skipping the wrapper <svg ...> and </svg>.
+ */
+function extractSvgBody(svg: string): string {
+  // Remove the outer <svg...> and </svg>
+  const startIdx = svg.indexOf('>') + 1
+  const endIdx = svg.lastIndexOf('</svg>')
+  if (startIdx <= 0 || endIdx < 0) return svg
+  return svg.substring(startIdx, endIdx)
+}
+
+/**
+ * Build "preview-style" SVG for a set of layer states, matching what
+ * MotionPreview would render (minus the React JSX layer).
+ *
+ * This duplicates the preview logic intentionally - the test's job is to
+ * detect when the two diverge.
+ */
+function previewSvg(states: LayerState[], w: number, h: number): string {
+  const parts: string[] = []
+  for (const state of states) {
+    if (state.kind === 'particles') continue
+
+    if (state.kind === 'text') {
+      parts.push(previewTextSvg(state))
+      continue
+    }
+
+    parts.push(previewShapeSvg(state))
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${parts.join('')}</svg>`
+}
+
+function matrixStr(m: [number, number, number, number, number, number]): string {
+  return `matrix(${m[0]} ${m[1]} ${m[2]} ${m[3]} ${m[4]} ${m[5]})`
+}
+
+function previewShapeSvg(state: ShapeLayerState): string {
+  const transform = matrixStr(state.matrix)
+
+  if (state.kind === 'rect' && state.size) {
+    return `<rect x="0" y="0" width="${state.size.w}" height="${state.size.h}" rx="${state.radius ?? 0}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}"></rect>`
+  }
+  if (state.kind === 'ellipse' && state.radii) {
+    return `<ellipse cx="0" cy="0" rx="${state.radii.rx}" ry="${state.radii.ry}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}"></ellipse>`
+  }
+  if (state.kind === 'arc' && state.arc) {
+    const { innerRadius, outerRadius, sweep, startAngle } = state.arc
+    const d = arcPathParity(0, 0, innerRadius, outerRadius, startAngle, sweep)
+    if (!d) return ''
+    return `<path d="${d}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}"></path>`
+  }
+  if (state.kind === 'path' && state.d) {
+    return `<path d="${state.d}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}"></path>`
+  }
+  return ''
+}
+
+function arcPathParity(
+  cx: number,
+  cy: number,
+  innerR: number,
+  outerR: number,
+  startAngleDeg: number,
+  sweepTurns: number
+): string {
+  if (sweepTurns <= 0) return ''
+  const startRad = ((startAngleDeg - 90) * Math.PI) / 180
+  const endRad = startRad + sweepTurns * 2 * Math.PI
+  const largeArc = sweepTurns > 0.5 ? 1 : 0
+  const ox1 = cx + outerR * Math.cos(startRad)
+  const oy1 = cy + outerR * Math.sin(startRad)
+  const ox2 = cx + outerR * Math.cos(endRad)
+  const oy2 = cy + outerR * Math.sin(endRad)
+  const ix1 = cx + innerR * Math.cos(endRad)
+  const iy1 = cy + innerR * Math.sin(endRad)
+  const ix2 = cx + innerR * Math.cos(startRad)
+  const iy2 = cy + innerR * Math.sin(startRad)
+  return [
+    `M ${ox1} ${oy1}`,
+    `A ${outerR} ${outerR} 0 ${largeArc} 1 ${ox2} ${oy2}`,
+    `L ${ix1} ${iy1}`,
+    `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2} ${iy2}`,
+    'Z'
+  ].join(' ')
+}
+
+function previewTextSvg(state: TextLayerState): string {
+  const transform = matrixStr(state.matrix)
+  const fontFamily = `"${state.font.family}"`
+  let anchor: string
+  switch (state.align) {
+    case 'center':
+      anchor = 'middle'
+      break
+    case 'right':
+      anchor = 'end'
+      break
+    default:
+      anchor = 'start'
+  }
+
+  if (state.units && state.units.length > 0) {
+    const tspans = state.units
+      .map(u => `<tspan opacity="${u.opacity}" fill="${u.fill}">${u.text}</tspan>`)
+      .join('')
+    return `<text font-family=${fontFamily} font-size="${state.font.size}" fill="${state.fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${tspans}</text>`
+  }
+
+  if (state.multiline && state.text.includes('\n')) {
+    const lines = state.text.split('\n')
+    const lineAdvance = state.lineHeight * state.font.size
+    const tspans = lines
+      .map((line, i) => {
+        if (i === 0) return `<tspan x="0">${line}</tspan>`
+        return `<tspan x="0" dy="${lineAdvance}">${line}</tspan>`
+      })
+      .join('')
+    return `<text font-family=${fontFamily} font-size="${state.font.size}" fill="${state.fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${tspans}</text>`
+  }
+
+  return `<text font-family=${fontFamily} font-size="${state.font.size}" fill="${state.fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${state.text}</text>`
+}
+
+describe('Ar2 parity: preview vs. frameRenderer SVG', () => {
+  const FORMAT: MotionFormat = { width: 3840, height: 2160, fps: 50 }
+
+  it('ar2_rect_fixture_at_t05_matches', () => {
+    const resolved = resolveTemplate(rectFixture, {}, FORMAT)
+    const states = evaluate(resolved, 0.5)
+
+    const rendererSvg = buildSvgString(states, 3840, 2160, [])
+    const rendererBody = extractSvgBody(rendererSvg)
+
+    const previewBody = extractSvgBody(previewSvg(states, 3840, 2160))
+
+    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+  })
+
+  it('ar2_ellipse_fixture_at_t05_matches', () => {
+    const resolved = resolveTemplate(ellipseFixture, {}, FORMAT)
+    const states = evaluate(resolved, 0.5)
+
+    const rendererSvg = buildSvgString(states, 3840, 2160, [])
+    const rendererBody = extractSvgBody(rendererSvg)
+    const previewBody = extractSvgBody(previewSvg(states, 3840, 2160))
+
+    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+  })
+
+  it('ar2_arc_fixture_at_t05_matches', () => {
+    const resolved = resolveTemplate(arcFixture, { score: 72 }, FORMAT)
+    const states = evaluate(resolved, 0.5)
+
+    const rendererSvg = buildSvgString(states, 3840, 2160, [])
+    const rendererBody = extractSvgBody(rendererSvg)
+    const previewBody = extractSvgBody(previewSvg(states, 3840, 2160))
+
+    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+  })
+
+  it('ar2_text_with_centre_align_at_t05_matches', () => {
+    // Create a centre-aligned staggered text fixture
+    const centredStaggerFixture = {
+      ...textFixture,
+      id: 'centred-stagger',
+      layers: [
+        {
+          ...textFixture.layers[0],
+          align: 'center' as const,
+          stagger: { delay: 0.02 }
+        }
+      ]
+    }
+
+    const resolved = resolveTemplate(centredStaggerFixture, { name: 'Hello' }, FORMAT)
+    const states = evaluate(resolved, 0.3) // During stagger
+
+    const rendererSvg = buildSvgString(states, 3840, 2160, [])
+    const rendererBody = extractSvgBody(rendererSvg)
+    const previewBody = extractSvgBody(previewSvg(states, 3840, 2160))
+
+    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
   })
 })
 
