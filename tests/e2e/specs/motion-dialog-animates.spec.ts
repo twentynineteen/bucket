@@ -42,15 +42,15 @@ test.describe('Motion dialog animation', () => {
     const preview = dialog.getByRole('img', { name: /preview/i })
     await expect(preview).toBeVisible()
 
-    // Take two screenshots about 400ms apart
-    const shot1 = await preview.screenshot()
-    await page.waitForTimeout(400)
-    const shot2 = await preview.screenshot()
-
-    // The two screenshots must differ, proving the animation is running.
-    // Compare raw buffers: if they are identical, the preview is static.
-    const buf1 = Buffer.from(shot1)
-    const buf2 = Buffer.from(shot2)
-    expect(buf1.equals(buf2)).toBe(false)
+    // Templates hold still for seconds mid-loop, so two fixed-interval shots
+    // can both land in the hold. Sample across one full loop instead and pass
+    // as soon as any frame differs from the first; a stopped ticker never does.
+    const first = Buffer.from(await preview.screenshot())
+    let changed = false
+    for (let i = 0; i < 25 && !changed; i++) {
+      await page.waitForTimeout(250)
+      changed = !first.equals(Buffer.from(await preview.screenshot()))
+    }
+    expect(changed, 'preview never changed across a full loop').toBe(true)
   })
 })
