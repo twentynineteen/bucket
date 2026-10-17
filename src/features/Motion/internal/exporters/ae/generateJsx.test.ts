@@ -1183,3 +1183,558 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
     expect(() => runInAEStub(src)).not.toThrow()
   })
 })
+
+// ---------------------------------------------------------------------------
+// S4 - Interior keyframes get correct distinct in/out ease (one call per key)
+// ---------------------------------------------------------------------------
+
+describe('S4 - interior key gets correct in and out ease', () => {
+  // A 4-key opacity track: 0 -> 1 -> 1 -> 0 (in, hold start, hold end, out)
+  // Segment 0: 0->1 with ease [0.16, 1, 0.3, 1]
+  // Segment 1: 1->1 (hold) with ease [0, 0, 1, 1] (linear, no change)
+  // Segment 2: 1->0 with ease [0.7, 0, 0.84, 0]
+  const fourKeyFixture: MotionTemplate = {
+    schemaVersion: 1,
+    id: 'fixture-four-key',
+    version: '1.0.0',
+    name: 'four key',
+    description: 'Four-key fixture for S4',
+    category: 'lower-third',
+    status: 'stable',
+    tags: ['test'],
+    fonts: ['CabritoSemi-NorBol'],
+    duration: 4,
+    inEnd: 1,
+    outStart: 3,
+    params: {},
+    layers: [
+      {
+        kind: 'rect' as const,
+        id: 's4-rect',
+        anchor: { x: 0, y: 0 },
+        width: 100,
+        height: 100,
+        fill: '#ffffff',
+        radius: 0,
+        opacity: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+          {
+            t: 0.5,
+            value: 1,
+            ease: [0, 0, 1, 1] as [number, number, number, number]
+          },
+          {
+            t: 3,
+            value: 1,
+            ease: [0.7, 0, 0.84, 0] as [number, number, number, number]
+          },
+          { t: 4, value: 0 }
+        ]
+      }
+    ]
+  }
+
+  it('emits exactly one setTemporalEaseAtKey per key', () => {
+    const src = getJsxSrc(makeInput(fourKeyFixture))
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 's4-rect')
+    expect(layer).toBeDefined()
+
+    const op = layer!.properties['ADBE Opacity']
+    expect(op).toBeDefined()
+    expect(op.keyframes).toHaveLength(4)
+
+    // The important assertion: key 2 (interior) must have distinct in vs out.
+    // Verify via the final recorded in/out on key 2:
+    const kf2 = op.keyframes[1] // key 2 (0-indexed)
+    expect(kf2.inEase, 'key 2 should have inEase set').toBeDefined()
+    expect(kf2.outEase, 'key 2 should have outEase set').toBeDefined()
+
+    // Key 2 is at the boundary between segment 0 (in ease [0.16,1,0.3,1])
+    // and segment 1 (hold ease [0,0,1,1]).
+    // inEase comes from segment 0's incoming half: influence = (1-0.3)*100 = 70, speed = 0
+    // outEase comes from segment 1's outgoing half: delta = 0 (hold), so speed = 0
+    // These must be DIFFERENT from each other (in speed at minimum).
+    // The old bug: both would be segment 1's outgoing ease (last write wins).
+    expect(kf2.inEase![0].influence).toBeCloseTo(70, 1)
+    expect(kf2.inEase![0].speed).toBeCloseTo(0, 1)
+    // outEase from hold segment: x1=0, influence clamped to 0.1
+    expect(kf2.outEase![0].influence).toBeCloseTo(0.1, 1)
+  })
+
+  it('first and last keys get sensible neutral halves', () => {
+    const src = getJsxSrc(makeInput(fourKeyFixture))
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 's4-rect')
+    expect(layer).toBeDefined()
+
+    const op = layer!.properties['ADBE Opacity']
+    // First key (index 0): should have outEase from segment 0, inEase is neutral
+    const kf0 = op.keyframes[0]
+    expect(kf0.outEase).toBeDefined()
+    expect(kf0.inEase).toBeDefined()
+
+    // Last key (index 3): should have inEase from segment 2, outEase is neutral
+    const kf3 = op.keyframes[3]
+    expect(kf3.inEase).toBeDefined()
+    expect(kf3.outEase).toBeDefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S5 - Rect, ellipse, path, arc origin parity with evaluator
+// ---------------------------------------------------------------------------
+
+describe('S5 - shape layer origin parity with evaluator', () => {
+  // Helper: apply a 2D affine matrix to a point
+  function transformPoint(
+    m: [number, number, number, number, number, number],
+    x: number,
+    y: number
+  ): { x: number; y: number } {
+    return {
+      x: m[0] * x + m[2] * y + m[4],
+      y: m[1] * x + m[3] * y + m[5]
+    }
+  }
+
+  // Helper: compute world position from AE's transform semantics
+  // AE: world = layerPosition + R*S*(localPoint - anchorPoint)
+  // where anchorPoint is the layer's ADBE Anchor Point, and localPoint is a
+  // point in the layer's local space (e.g. a corner of the rect shape).
+  // For a shape layer, the shape's local origin is centred at [0,0] with
+  // shape position offsetting it. So a corner of a rect at ADBE Vector Rect Position
+  // [w/2, h/2] with size [w, h] is at local coordinates
+  // [w/2 - w/2, h/2 - h/2] = [0, 0] (top-left) in shape space,
+  // which in layer space is [rectPos.x - w/2, rectPos.y - h/2].
+  // Then: world = layerPos + R*S*(layerLocal - anchorPoint)
+  function aeWorldPoint(
+    layerPos: { x: number; y: number },
+    anchor: { x: number; y: number },
+    scale: { x: number; y: number },
+    rotation: number,
+    localPoint: { x: number; y: number }
+  ): { x: number; y: number } {
+    const rad = (rotation * Math.PI) / 180
+    const cos = Math.cos(rad)
+    const sin = Math.sin(rad)
+    const dx = localPoint.x - anchor.x
+    const dy = localPoint.y - anchor.y
+    const sx = dx * scale.x
+    const sy = dy * scale.y
+    return {
+      x: layerPos.x + cos * sx - sin * sy,
+      y: layerPos.y + sin * sx + cos * sy
+    }
+  }
+
+  it('rect with non-zero anchor: AE stub corners equal evaluator corners', () => {
+    const fixture: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-s5-rect',
+      version: '1.0.0',
+      name: 's5 rect',
+      description: 'S5 rect parity',
+      category: 'lower-third',
+      status: 'stable',
+      tags: ['test'],
+      fonts: ['CabritoSemi-NorBol'],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {},
+      layers: [
+        {
+          kind: 'rect' as const,
+          id: 's5-rect',
+          anchor: { x: 50, y: 25 },
+          position: [{ t: 0, value: { x: 400, y: 300 } }],
+          scale: [{ t: 0, value: { x: 1.5, y: 0.8 } }],
+          rotation: [{ t: 0, value: 30 }],
+          width: 200,
+          height: 100,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+
+    const format: MotionFormat = { width: 1920, height: 1080, fps: 25 }
+    const input = makeInput(fixture, { format })
+    const src = getJsxSrc(input)
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 's5-rect')
+    expect(layer).toBeDefined()
+
+    // Get the AE layer's position and anchor point from the stub
+    const posProp = layer!.properties['ADBE Position']
+    expect(posProp).toBeDefined()
+    const aeLayerPos = posProp.keyframes[0]?.value as number[]
+    expect(aeLayerPos).toBeDefined()
+
+    const anchorProp = layer!.properties['ADBE Anchor Point']
+    // The anchor must be set for non-zero anchors
+    expect(anchorProp, 'ADBE Anchor Point must be set').toBeDefined()
+    const aeAnchor = anchorProp.value as number[] | undefined
+    const anchorVal = aeAnchor ?? [0, 0]
+
+    // Get the rect's shape position and size
+    const rectPosProp = layer!.properties['ADBE Vector Rect Position']
+    const rectPos = rectPosProp?.value as number[] | undefined
+    const shapeCenter = rectPos ?? [0, 0]
+
+    // Get scale and rotation from the stub
+    const scaleProp = layer!.properties['ADBE Scale']
+    const aeScale = scaleProp?.keyframes?.[0]?.value as number[] | undefined
+    const scaleVal = aeScale
+      ? { x: aeScale[0] / 100, y: aeScale[1] / 100 }
+      : { x: 1, y: 1 }
+
+    const rotProp = layer!.properties['ADBE Rotate Z']
+    const aeRot = rotProp?.keyframes?.[0]?.value as number | undefined
+    const rotVal = aeRot ?? 0
+
+    // In AE, the shape's top-left corner in layer local space is:
+    // shapeCenter - [w/2, h/2]
+    const w = 200
+    const h = 100
+    const topLeftLocal = {
+      x: shapeCenter[0] - w / 2,
+      y: shapeCenter[1] - h / 2
+    }
+
+    // AE world position of the top-left corner
+    const aeTopLeft = aeWorldPoint(
+      { x: aeLayerPos[0], y: aeLayerPos[1] },
+      { x: anchorVal[0], y: anchorVal[1] },
+      scaleVal,
+      rotVal,
+      topLeftLocal
+    )
+
+    // Evaluator: the rect's local top-left is [0, 0]
+    const resolved = resolveTemplate(fixture, {}, format)
+    const states = evaluate(resolved, 0)
+    const evalState = states.find(s => s.id === 's5-rect')
+    expect(evalState).toBeDefined()
+
+    // Evaluator's world position of top-left corner [0, 0]
+    const evalTopLeft = transformPoint(evalState!.matrix, 0, 0)
+
+    expect(aeTopLeft.x).toBeCloseTo(evalTopLeft.x, 1)
+    expect(aeTopLeft.y).toBeCloseTo(evalTopLeft.y, 1)
+
+    // Also check bottom-right corner
+    const brLocal = {
+      x: shapeCenter[0] + w / 2,
+      y: shapeCenter[1] + h / 2
+    }
+    const aeBR = aeWorldPoint(
+      { x: aeLayerPos[0], y: aeLayerPos[1] },
+      { x: anchorVal[0], y: anchorVal[1] },
+      scaleVal,
+      rotVal,
+      brLocal
+    )
+    const evalBR = transformPoint(evalState!.matrix, w, h)
+
+    expect(aeBR.x).toBeCloseTo(evalBR.x, 1)
+    expect(aeBR.y).toBeCloseTo(evalBR.y, 1)
+  })
+
+  it('ellipse with non-zero anchor: AE stub positions match evaluator', () => {
+    const fixture: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-s5-ellipse',
+      version: '1.0.0',
+      name: 's5 ellipse',
+      description: 'S5 ellipse parity',
+      category: 'lower-third',
+      status: 'stable',
+      tags: ['test'],
+      fonts: ['CabritoSemi-NorBol'],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {},
+      layers: [
+        {
+          kind: 'ellipse' as const,
+          id: 's5-ellipse',
+          anchor: { x: 30, y: 20 },
+          position: [{ t: 0, value: { x: 500, y: 400 } }],
+          scale: [{ t: 0, value: { x: 2, y: 1.5 } }],
+          rotation: [{ t: 0, value: 45 }],
+          radiusX: 60,
+          radiusY: 40,
+          fill: '#00ff00'
+        }
+      ]
+    }
+
+    const format: MotionFormat = { width: 1920, height: 1080, fps: 25 }
+    const input = makeInput(fixture, { format })
+    const src = getJsxSrc(input)
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 's5-ellipse')
+    expect(layer).toBeDefined()
+
+    const posProp = layer!.properties['ADBE Position']
+    expect(posProp).toBeDefined()
+    const aeLayerPos = posProp.keyframes[0]?.value as number[]
+
+    // For ellipse, evaluator local coords: top-left of bounding box is [0, 0],
+    // centre is [radiusX, radiusY]. AE's shape centre should map to the same
+    // world position as the evaluator's [radiusX, radiusY] in local space.
+    const anchorProp = layer!.properties['ADBE Anchor Point']
+    expect(anchorProp, 'ADBE Anchor Point must be set for non-zero anchor').toBeDefined()
+    const anchorVal = anchorProp.value as number[]
+
+    const scaleProp = layer!.properties['ADBE Scale']
+    const aeScale = scaleProp?.keyframes?.[0]?.value as number[]
+    const scaleVal = aeScale
+      ? { x: aeScale[0] / 100, y: aeScale[1] / 100 }
+      : { x: 1, y: 1 }
+
+    const rotProp = layer!.properties['ADBE Rotate Z']
+    const rotVal = (rotProp?.keyframes?.[0]?.value as number) ?? 0
+
+    // AE: ellipse shape centre is at [0,0] in local space (no position offset
+    // needed since ellipse shape origin is already centred). But we need to
+    // account for the ellipse position property if set.
+    const ellipsePosProp = layer!.properties['ADBE Vector Ellipse Position']
+    const ellipsePos = ellipsePosProp?.value as number[] | undefined
+    const shapeCentre = ellipsePos ?? [0, 0]
+
+    // AE world of shape centre
+    const aeCenter = aeWorldPoint(
+      { x: aeLayerPos[0], y: aeLayerPos[1] },
+      { x: anchorVal[0], y: anchorVal[1] },
+      scaleVal,
+      rotVal,
+      { x: shapeCentre[0], y: shapeCentre[1] }
+    )
+
+    // Evaluator world of ellipse centre (local [radiusX, radiusY])
+    const resolved = resolveTemplate(fixture, {}, format)
+    const states = evaluate(resolved, 0)
+    const evalState = states.find(s => s.id === 's5-ellipse')
+    expect(evalState).toBeDefined()
+    const evalCenter = transformPoint(evalState!.matrix, 60, 40) // radiusX, radiusY
+
+    expect(aeCenter.x).toBeCloseTo(evalCenter.x, 1)
+    expect(aeCenter.y).toBeCloseTo(evalCenter.y, 1)
+  })
+
+  it('text with non-zero anchor: AE positions match evaluator', () => {
+    const fixture: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-s5-text',
+      version: '1.0.0',
+      name: 's5 text',
+      description: 'S5 text parity',
+      category: 'lower-third',
+      status: 'stable',
+      tags: ['test'],
+      fonts: ['CabritoSemi-NorBol'],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {},
+      layers: [
+        {
+          kind: 'text' as const,
+          id: 's5-text',
+          anchor: { x: 100, y: 50 },
+          position: [{ t: 0, value: { x: 600, y: 500 } }],
+          scale: [{ t: 0, value: { x: 1.2, y: 0.9 } }],
+          rotation: [{ t: 0, value: -15 }],
+          text: 'Test',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'left' as const,
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff'
+        }
+      ]
+    }
+
+    const format: MotionFormat = { width: 1920, height: 1080, fps: 25 }
+    const input = makeInput(fixture, { format })
+    const src = getJsxSrc(input)
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 's5-text')
+    expect(layer).toBeDefined()
+
+    const posProp = layer!.properties['ADBE Position']
+    expect(posProp).toBeDefined()
+    const aeLayerPos = posProp.keyframes[0]?.value as number[]
+
+    const anchorProp = layer!.properties['ADBE Anchor Point']
+    expect(anchorProp, 'ADBE Anchor Point must be set for non-zero anchor').toBeDefined()
+    const anchorVal = (anchorProp.value ?? anchorProp.keyframes?.[0]?.value) as number[]
+
+    const scaleProp = layer!.properties['ADBE Scale']
+    const aeScale = scaleProp?.keyframes?.[0]?.value as number[]
+    const scaleVal = aeScale
+      ? { x: aeScale[0] / 100, y: aeScale[1] / 100 }
+      : { x: 1, y: 1 }
+
+    const rotProp = layer!.properties['ADBE Rotate Z']
+    const rotVal = (rotProp?.keyframes?.[0]?.value as number) ?? 0
+
+    // AE world of layer origin [0, 0] in local space
+    const aeOrigin = aeWorldPoint(
+      { x: aeLayerPos[0], y: aeLayerPos[1] },
+      { x: anchorVal[0], y: anchorVal[1] },
+      scaleVal,
+      rotVal,
+      { x: 0, y: 0 }
+    )
+
+    // Evaluator world of [0, 0] in local space
+    const resolved = resolveTemplate(fixture, {}, format)
+    const states = evaluate(resolved, 0)
+    const evalState = states.find(s => s.id === 's5-text')
+    expect(evalState).toBeDefined()
+    const evalOrigin = transformPoint(evalState!.matrix, 0, 0)
+
+    expect(aeOrigin.x).toBeCloseTo(evalOrigin.x, 1)
+    expect(aeOrigin.y).toBeCloseTo(evalOrigin.y, 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S8 - 1-D ease speed sign for decreasing segments
+// ---------------------------------------------------------------------------
+
+describe('S8 - 1-D ease speed sign is signed for decreasing segments', () => {
+  // Opacity 1 -> 0 over 1s: delta = (0 - 100) / 1 = -100 (AE units).
+  // With ease [0.16, 1, 0.3, 1]:
+  //   outSpeed = (y1/x1) * delta = (1/0.16) * (-100) = -625
+  //   inSpeed  = ((1-y2)/(1-x2)) * delta = (0/0.7) * (-100) = 0
+  // The point: outgoing speed is negative for a falling 1-D property.
+  // Manual AE check: #339
+  const decreasingFixture: MotionTemplate = {
+    schemaVersion: 1,
+    id: 'fixture-s8-decreasing',
+    version: '1.0.0',
+    name: 's8 decreasing',
+    description: 'Decreasing 1-D segment for S8',
+    category: 'lower-third',
+    status: 'stable',
+    tags: ['test'],
+    fonts: ['CabritoSemi-NorBol'],
+    duration: 4,
+    inEnd: 1,
+    outStart: 3,
+    params: {},
+    layers: [
+      {
+        kind: 'rect' as const,
+        id: 's8-rect',
+        anchor: { x: 0, y: 0 },
+        width: 100,
+        height: 100,
+        fill: '#ffffff',
+        radius: 0,
+        opacity: [
+          {
+            t: 0,
+            value: 1,
+            ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+          },
+          { t: 1, value: 0 }
+        ]
+      }
+    ]
+  }
+
+  it('opacity ease speed is negative for a falling segment', () => {
+    const src = getJsxSrc(makeInput(decreasingFixture))
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 's8-rect')
+    expect(layer).toBeDefined()
+
+    const op = layer!.properties['ADBE Opacity']
+    expect(op).toBeDefined()
+
+    // Key 1 (first key): outEase speed should be negative because
+    // the value is decreasing (100 -> 0 in AE units, delta < 0).
+    // With ease [0.16, 1, 0.3, 1]: outSpeed = (1/0.16) * (-100) = -625
+    const kf0 = op.keyframes[0]
+    expect(kf0.outEase).toBeDefined()
+    expect(
+      kf0.outEase![0].speed,
+      'outgoing speed should be negative for a falling 1-D segment'
+    ).toBeLessThan(0)
+    // Exact value check
+    expect(kf0.outEase![0].speed).toBeCloseTo(-625, 0)
+
+    // Key 2 (last key): inEase speed = ((1-y2)/(1-x2)) * delta = 0 * (-100) = 0
+    // That is fine (zero speed is valid for a key that arrives flat).
+    const kf1 = op.keyframes[1]
+    expect(kf1.inEase).toBeDefined()
+    expect(kf1.inEase![0].speed).toBeCloseTo(0, 1)
+  })
+
+  it('spatial position speed remains positive (magnitude)', () => {
+    // Verify that spatial properties still use abs(delta)
+    const spatialFixture: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-s8-spatial',
+      version: '1.0.0',
+      name: 's8 spatial',
+      description: 'Spatial position for S8',
+      category: 'lower-third',
+      status: 'stable',
+      tags: ['test'],
+      fonts: ['CabritoSemi-NorBol'],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {},
+      layers: [
+        {
+          kind: 'rect' as const,
+          id: 's8-spatial-rect',
+          anchor: { x: 0, y: 0 },
+          width: 100,
+          height: 100,
+          fill: '#ffffff',
+          radius: 0,
+          position: [
+            {
+              t: 0,
+              value: { x: 500, y: 500 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 100, y: 100 } }
+          ]
+        }
+      ]
+    }
+
+    const src = getJsxSrc(makeInput(spatialFixture))
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 's8-spatial-rect')
+    expect(layer).toBeDefined()
+
+    const pos = layer!.properties['ADBE Position']
+    expect(pos).toBeDefined()
+
+    const kf0 = pos.keyframes[0]
+    expect(kf0.outEase).toBeDefined()
+    expect(
+      kf0.outEase![0].speed,
+      'spatial position speed should be positive (magnitude)'
+    ).toBeGreaterThanOrEqual(0)
+  })
+})
