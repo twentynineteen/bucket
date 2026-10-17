@@ -11,7 +11,11 @@
  *   are removed, so no line starts or ends with a space.
  * - A single word wider than width is broken between graphemes.
  * - Empty text, or text of only spaces, is returned unchanged.
- * - There is no hyphenation and no balancing; wrapping is greedy.
+ * - Lines are balanced: greedy wrapping sets the line count, then the
+ *   narrowest width that keeps that count is used, so a paragraph does not
+ *   end on a short tail (the same idea as CSS `text-wrap: balance`). The
+ *   width never goes below the widest word, so balancing never splits one.
+ * - There is no hyphenation.
  */
 
 import type { TextMeasurer } from './textOverflow'
@@ -151,6 +155,45 @@ function wrapSingleLine(
 }
 
 /**
+ * Wrap one typed line, then narrow the width as far as the greedy line
+ * count allows so the lines come out even.
+ */
+function balanceSingleLine(
+  line: string,
+  width: number,
+  font: { family: string; size: number },
+  measurer: TextMeasurer
+): string[] {
+  const greedy = wrapSingleLine(line, width, font, measurer)
+  if (greedy.length < 2) return greedy
+
+  const widestWord = Math.max(
+    ...tokenise(line)
+      .filter(t => !isSpaceRun(t))
+      .map(t => measurer.measure(t, font))
+  )
+  // A word wider than the box is split by greedy wrapping; balancing below
+  // its width would change those splits, so leave such lines greedy.
+  if (widestWord > width) return greedy
+
+  let lo = widestWord
+  let hi = width
+  let best = greedy
+  for (let i = 0; i < 20 && hi - lo > 0.5; i++) {
+    const mid = (lo + hi) / 2
+    const candidate = wrapSingleLine(line, mid, font, measurer)
+    if (candidate.length === greedy.length) {
+      best = candidate
+      hi = mid
+    } else {
+      lo = mid
+    }
+  }
+  const atFloor = wrapSingleLine(line, lo, font, measurer)
+  return atFloor.length === greedy.length ? atFloor : best
+}
+
+/**
  * Wrap text for a text layer with `wrap: true`.
  *
  * Splits on typed \n first, then wraps each segment independently.
@@ -169,7 +212,7 @@ export function wrapText(
   const typedLines = text.split('\n')
   const outputLines: string[] = []
   for (const typedLine of typedLines) {
-    const wrapped = wrapSingleLine(typedLine, width, font, measurer)
+    const wrapped = balanceSingleLine(typedLine, width, font, measurer)
     outputLines.push(...wrapped)
   }
   return outputLines.join('\n')
