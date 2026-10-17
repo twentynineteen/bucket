@@ -38,7 +38,6 @@ import type {
   MotionTarget,
   MotionTemplate,
   ParamValues,
-  ParticlesLayer,
   TextLayer
 } from '../types'
 import ExportPanel from './ExportPanel'
@@ -136,12 +135,18 @@ function alphaErrorMessage(alpha: {
 
 /** True when at least one particle layer with an imageParam produced points. */
 function hasResampledPoints(tmpl: MotionTemplate): boolean {
-  return tmpl.layers.some(
-    l =>
-      l.kind === 'particles' &&
-      (l as ParticlesLayer).imageParam &&
-      (l as ParticlesLayer).points.length > 0
-  )
+  function check(layers: MotionTemplate['layers']): boolean {
+    return layers.some(l => {
+      if (l.kind === 'particles') {
+        return l.imageParam !== undefined && l.points.length > 0
+      }
+      if (l.kind === 'group') {
+        return check(l.children)
+      }
+      return false
+    })
+  }
+  return check(tmpl.layers)
 }
 
 // ---------------------------------------------------------------------------
