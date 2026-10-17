@@ -109,7 +109,24 @@ function TextElement({ state }: { state: TextLayerState }) {
 
   // Staggered text: each unit is its own tspan.
   // xml:space="preserve" prevents SVG from collapsing a lone space tspan.
+  // When the text contains \n (multiline + stagger), the \n unit becomes a
+  // line break: the next visible tspan gets x="0" and dy to advance the line.
   if (state.units && state.units.length > 0) {
+    const lineAdvance = state.lineHeight * state.font.size
+    // Build the set of indices that follow a \n unit and need line-break attrs
+    const breakAfter = new Set<number>()
+    for (let j = 0; j < state.units.length; j++) {
+      if (state.units[j].text === '\n') {
+        // Mark the next non-\n unit as needing a line break
+        for (let k = j + 1; k < state.units.length; k++) {
+          if (state.units[k].text !== '\n') {
+            breakAfter.add(k)
+            break
+          }
+        }
+      }
+    }
+
     return (
       <text
         fontFamily={fontFamily}
@@ -120,11 +137,20 @@ function TextElement({ state }: { state: TextLayerState }) {
         transform={transform}
         xmlSpace="preserve"
       >
-        {state.units.map((u, i) => (
-          <tspan key={i} opacity={u.opacity} fill={u.fill}>
-            {u.text}
-          </tspan>
-        ))}
+        {state.units.map((u, i) => {
+          if (u.text === '\n') return null
+          return (
+            <tspan
+              key={i}
+              opacity={u.opacity}
+              fill={u.fill}
+              x={breakAfter.has(i) ? '0' : undefined}
+              dy={breakAfter.has(i) ? String(lineAdvance) : undefined}
+            >
+              {u.text}
+            </tspan>
+          )
+        })}
       </text>
     )
   }

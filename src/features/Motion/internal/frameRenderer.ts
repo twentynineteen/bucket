@@ -100,12 +100,24 @@ function renderTextState(state: TextLayerState): string {
 
   // Staggered text: each unit is its own tspan.
   // xml:space="preserve" prevents SVG from collapsing a lone space tspan.
+  // When the text contains \n (multiline + stagger), the \n unit becomes a
+  // line break: the next visible tspan gets x="0" and dy to advance the line.
   if (state.units && state.units.length > 0) {
+    const lineAdvance = state.lineHeight * fontSize
+    let pendingBreak = false
     const tspans = state.units
-      .map(
-        u =>
-          `<tspan opacity="${u.opacity}" fill="${escapeXml(u.fill)}">${escapeXml(u.text)}</tspan>`
-      )
+      .map(u => {
+        if (u.text === '\n') {
+          pendingBreak = true
+          return ''
+        }
+        let extra = ''
+        if (pendingBreak) {
+          extra = ` x="0" dy="${lineAdvance}"`
+          pendingBreak = false
+        }
+        return `<tspan opacity="${u.opacity}" fill="${escapeXml(u.fill)}"${extra}>${escapeXml(u.text)}</tspan>`
+      })
       .join('')
     return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}" xml:space="preserve">${tspans}</text>`
   }
