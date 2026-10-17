@@ -612,6 +612,11 @@ function addGroupTransformAnimations(
     inputs.push(...keep)
     inputs.push(sourceEntry)
 
+    // Remove the static Pivot before pushing the animated one
+    const keepPivot = inputs.filter(e => e.key !== 'Pivot')
+    inputs.length = 0
+    inputs.push(...keepPivot)
+
     // Animated Pivot follows the anchor's world position
     const pivXKfs = group.position.map(kf => ({
       t: kf.t,
