@@ -8,6 +8,7 @@
  */
 import { z } from 'zod'
 import type { MotionTemplate } from '../types'
+import { hasParticles } from './layers'
 
 // ---------------------------------------------------------------------------
 // Primitives
@@ -361,14 +362,6 @@ function animatedFillPaths(layers: unknown[]): Set<string> {
   return paths
 }
 
-/** Check whether the template contains a particles layer at any depth. */
-function hasParticlesLayer(layers: unknown[]): boolean {
-  for (const { layer } of walkLayers(layers)) {
-    if (layer.kind === 'particles') return true
-  }
-  return false
-}
-
 /** Check whether a path uses only the supported absolute commands (M, L, Z). */
 function isSupportedPath(d: string): boolean {
   const trimmed = d.trim()
@@ -568,7 +561,7 @@ function validateHoldRange(data: MotionTemplate): string[] {
 /** Validate image params have a particles layer. */
 function validateImageParamRequiresParticles(data: MotionTemplate): string[] {
   const hasImageParam = Object.values(data.params).some(p => p.kind === 'image')
-  if (hasImageParam && !hasParticlesLayer(data.layers as unknown as unknown[])) {
+  if (hasImageParam && !hasParticles(data.layers)) {
     return ['image param requires at least one particles layer']
   }
   return []

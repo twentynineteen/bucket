@@ -35,6 +35,8 @@ import type {
   RectLayer,
   TextLayer
 } from '../../../types'
+import { parseHexColour } from '../../colour'
+import { hasParticles } from '../../layers'
 import { toFusionKeyframes, type FusionKeyframe } from './bezierSpline'
 import {
   toFusionRotation,
@@ -627,12 +629,8 @@ function addGroupTransformAnimations(
 // ---------------------------------------------------------------------------
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const clean = hex.replace('#', '')
-  return {
-    r: parseInt(clean.slice(0, 2), 16) / 255,
-    g: parseInt(clean.slice(2, 4), 16) / 255,
-    b: parseInt(clean.slice(4, 6), 16) / 255
-  }
+  const [r, g, b] = parseHexColour(hex)
+  return { r: r / 255, g: g / 255, b: b / 255 }
 }
 
 // ---------------------------------------------------------------------------
@@ -1935,22 +1933,6 @@ function buildMergeChain(processed: ProcessedLayers): FusionTool[] {
 }
 
 // ---------------------------------------------------------------------------
-// Check for particles
-// ---------------------------------------------------------------------------
-
-function hasParticlesLayer(layers: PrimitiveLayer[]): boolean {
-  for (const layer of layers) {
-    if (layer.kind === 'particles') return true
-    if (layer.kind === 'group') {
-      if (hasParticlesLayer((layer as GroupLayer).children as PrimitiveLayer[])) {
-        return true
-      }
-    }
-  }
-  return false
-}
-
-// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -1966,7 +1948,7 @@ export function generateSetting(input: ExportInput): ExportResult {
   const notes: string[] = []
 
   // Reject particle templates
-  if (hasParticlesLayer(resolved.layers)) {
+  if (hasParticles(resolved.layers)) {
     throw new Error(
       'Particle templates export only Video and Claude prompt, not Resolve .setting'
     )

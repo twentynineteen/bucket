@@ -21,6 +21,7 @@ import type {
   ParamValues,
   ParticlesLayer
 } from '../../types'
+import { hasParticles } from '../layers'
 import { deriveTargets } from '../resolve'
 import { fence } from './fence'
 
@@ -212,21 +213,6 @@ function describeImageSource(
 }
 
 // ---------------------------------------------------------------------------
-// Template has particles
-// ---------------------------------------------------------------------------
-
-function templateHasParticles(template: MotionTemplate): boolean {
-  function check(layers: Layer[]): boolean {
-    for (const layer of layers) {
-      if (layer.kind === 'particles') return true
-      if (layer.kind === 'group' && check(layer.children)) return true
-    }
-    return false
-  }
-  return check(template.layers)
-}
-
-// ---------------------------------------------------------------------------
 // Sections
 // ---------------------------------------------------------------------------
 
@@ -333,7 +319,7 @@ function constraintsSection(template: MotionTemplate): string {
   lines.push(`## Target constraints`)
   lines.push('')
 
-  const isParticle = templateHasParticles(template)
+  const isParticle = hasParticles(template.layers)
   const targets = deriveTargets(template)
 
   if (!isParticle && targets.includes('ae')) {

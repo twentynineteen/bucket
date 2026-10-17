@@ -33,6 +33,7 @@ import type {
   RectLayer,
   TextLayer
 } from '../../../types'
+import { parseHexColour } from '../../colour'
 import { EASE_DIMENSIONS, mapEase } from './aeEase'
 import { jsStringLiteral } from './jsString'
 
@@ -63,17 +64,13 @@ interface GenContext {
 // ---------------------------------------------------------------------------
 
 function hexToAE4(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16) / 255
-  const g = parseInt(hex.slice(3, 5), 16) / 255
-  const b = parseInt(hex.slice(5, 7), 16) / 255
-  return '[' + r + ', ' + g + ', ' + b + ', 1]'
+  const [r, g, b] = parseHexColour(hex)
+  return '[' + r / 255 + ', ' + g / 255 + ', ' + b / 255 + ', 1]'
 }
 
 function hexToAE3(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16) / 255
-  const g = parseInt(hex.slice(3, 5), 16) / 255
-  const b = parseInt(hex.slice(5, 7), 16) / 255
-  return '[' + r + ', ' + g + ', ' + b + ']'
+  const [r, g, b] = parseHexColour(hex)
+  return '[' + r / 255 + ', ' + g / 255 + ', ' + b / 255 + ']'
 }
 
 function emitVerts(arr: number[][]): string {
@@ -185,15 +182,10 @@ function posD(
 function colD(kfs: Array<{ t: number; value: string }>, i: number): number {
   const dt = kfs[i + 1].t - kfs[i].t
   if (dt === 0) return 0
-  function p(h: string): [number, number, number] {
-    return [
-      parseInt(h.slice(1, 3), 16) / 255,
-      parseInt(h.slice(3, 5), 16) / 255,
-      parseInt(h.slice(5, 7), 16) / 255
-    ]
-  }
-  const a = p(kfs[i].value)
-  const b = p(kfs[i + 1].value)
+  const aRaw = parseHexColour(kfs[i].value)
+  const bRaw = parseHexColour(kfs[i + 1].value)
+  const a: [number, number, number] = [aRaw[0] / 255, aRaw[1] / 255, aRaw[2] / 255]
+  const b: [number, number, number] = [bRaw[0] / 255, bRaw[1] / 255, bRaw[2] / 255]
   return Math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2) / dt
 }
 
