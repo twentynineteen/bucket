@@ -101,6 +101,54 @@ function extractFrameNumbers(text: string): number[] {
   return frames
 }
 
+/** Minimal tool call info extracted from the Lua AST. */
+interface ToolCallInfo {
+  name: string
+  type: string
+}
+
+/** Walk the luaparse AST to extract tool-type calls (name = Type { ... }). */
+function extractAllToolCalls(ast: luaparse.Chunk): ToolCallInfo[] {
+  const calls: ToolCallInfo[] = []
+
+  function visit(expr: luaparse.Expression, parentKey?: string): void {
+    if (expr.type === 'TableConstructorExpression') {
+      for (const field of expr.fields) {
+        if (field.type === 'TableKeyString') visit(field.value, field.key.name)
+        else if (field.type === 'TableValue') visit(field.value)
+        else if (field.type === 'TableKey') visit(field.value)
+      }
+    } else if (
+      expr.type === 'CallExpression' ||
+      expr.type === 'TableCallExpression' ||
+      expr.type === 'StringCallExpression'
+    ) {
+      const base =
+        expr.type === 'CallExpression' || expr.type === 'TableCallExpression'
+          ? expr.base
+          : expr.base
+      if (base.type === 'Identifier') {
+        calls.push({ name: parentKey ?? '', type: base.name })
+      }
+      const args =
+        expr.type === 'CallExpression'
+          ? expr.arguments
+          : expr.type === 'TableCallExpression'
+            ? [expr.arguments]
+            : [expr.argument]
+      for (const arg of args) visit(arg)
+    }
+  }
+
+  for (const stmt of ast.body) {
+    if (stmt.type === 'ReturnStatement') {
+      for (const arg of stmt.arguments) visit(arg)
+    }
+  }
+
+  return calls
+}
+
 // ---------------------------------------------------------------------------
 // RES1.1: output validity
 // ---------------------------------------------------------------------------
@@ -533,5 +581,236 @@ describe('RES8.3: series expansion into primitives', () => {
   it('contains hatch paths as Background with Polygon mask', () => {
     const text = getSettingText(makeInput(seriesFixture))
     expect(hasToolType(text, 'Background')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S3: colour InstanceInputs bind to shape fills, not Background tools
+// ---------------------------------------------------------------------------
+
+describe('S3: colour InstanceInputs bind to shape fills', () => {
+  it('does not emit a full-frame colour Background for colour params', () => {
+    const template: MotionTemplate = {
+      ...colourParamFixture,
+      id: 's3-no-bg'
+    }
+    const text = getSettingText(makeInput(template))
+    const ast = parseSetting(text)
+    const calls = extractAllToolCalls(ast)
+    // Background tools should only appear for hatch/bezier fallbacks, not colour params
+    const bgTools = calls.filter(
+      c => c.type === 'Background' && c.name.includes('colour_bg')
+    )
+    expect(bgTools).toEqual([])
+  })
+
+  it('colour InstanceInput SourceOp targets the bound shape tool', () => {
+    // colourParamFixture binds accent to layers[0] which is rect 'bar'
+    const template: MotionTemplate = {
+      ...colourParamFixture,
+      id: 's3-source-op'
+    }
+    const text = getSettingText(makeInput(template))
+    // The InstanceInput's SourceOp should be the shape tool for layer 'bar',
+    // not a Background tool
+    expect(text).toMatch(/SourceOp\s*=\s*"bar_shape"/)
+    // And it should target the fill inputs Red, Green, Blue (not TopLeftRed etc.)
+    expect(text).toMatch(/Source\s*=\s*"Red"/)
+    expect(text).toMatch(/Source\s*=\s*"Green"/)
+    expect(text).toMatch(/Source\s*=\s*"Blue"/)
+  })
+
+  it('colour InstanceInput targets Text+ Red1/Green1/Blue1 for text layers', () => {
+    const template: MotionTemplate = {
+      ...textFixture,
+      id: 's3-text-colour',
+      params: {
+        name: {
+          kind: 'text',
+          label: 'Name',
+          maxLength: 40,
+          default: 'Jane Doe',
+          required: true
+        },
+        textColour: {
+          kind: 'colour',
+          label: 'Text Colour',
+          default: '#ffffff',
+          binds: ['layers[0]']
+        }
+      }
+    }
+    const text = getSettingText(makeInput(template))
+    // InstanceInput for colour should target the text tool's Red1/Green1/Blue1
+    expect(text).toMatch(/SourceOp\s*=\s*"title_text"/)
+    expect(text).toMatch(/Source\s*=\s*"Red1"/)
+    expect(text).toMatch(/Source\s*=\s*"Green1"/)
+    expect(text).toMatch(/Source\s*=\s*"Blue1"/)
+  })
+
+  it('multi-bind: second bound tool expression-links to the first', () => {
+    const template: MotionTemplate = {
+      ...rectFixture,
+      id: 's3-multi-bind',
+      params: {
+        accent: {
+          kind: 'colour',
+          label: 'Accent',
+          default: '#ff3366',
+          binds: ['layers[0]', 'layers[1]']
+        }
+      },
+      layers: [
+        {
+          kind: 'rect',
+          id: 'bar1',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 0, y: 900 } }],
+          width: 3840,
+          height: 40,
+          fill: '#ff3366',
+          radius: 0
+        },
+        {
+          kind: 'rect',
+          id: 'bar2',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 0, y: 1900 } }],
+          width: 3840,
+          height: 40,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    // InstanceInput should target bar1_shape (the first bound tool)
+    expect(text).toMatch(/SourceOp\s*=\s*"bar1_shape"/)
+    // bar2_shape should expression-link its fill to bar1_shape
+    expect(text).toMatch(/bar1_shape/)
+    expect(text).toMatch(/Expression/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S5: rect/ellipse centre conversion with anchor folded in
+// ---------------------------------------------------------------------------
+
+describe('S5: rect origin parity with evaluator convention', () => {
+  it('rect centre accounts for anchor offset', () => {
+    // quote-card: anchor=(60,40), width=120, height=80, position=(1020,820)
+    // evaluator: world_centre = pos - anchor + (w/2, h/2)
+    //   = (1020-60+60, 820-40+40) = (1020, 820)
+    // Fusion shape coords: x = (1020 - 1920) / 3840 = -0.234375
+    //                       y = (1080 - 820) / 3840 = 0.0677083...
+    const template: MotionTemplate = {
+      ...rectFixture,
+      id: 's5-anchor-offset',
+      layers: [
+        {
+          kind: 'rect',
+          id: 'mark',
+          anchor: { x: 60, y: 40 },
+          position: [{ t: 0, value: { x: 1020, y: 820 } }],
+          width: 120,
+          height: 80,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    // Expected centre: (1020, 820) in template coords
+    // toShapeCoords(1020, 820, 3840, 2160):
+    //   x = (1020 - 1920) / 3840 = -0.234375
+    //   y = (1080 - 820) / 3840 = 0.0677083...
+    expect(text).toMatch(/-0\.234375/)
+  })
+
+  it('rect with zero anchor adds half-size offset', () => {
+    // bar-reveal bg-bar: anchor=(0,0), width=2000, height=180, position=(192,1700)
+    // evaluator: world_centre = (192-0+1000, 1700-0+90) = (1192, 1790)
+    // toShapeCoords(1192, 1790, 3840, 2160):
+    //   x = (1192 - 1920) / 3840 = -0.1895833...
+    //   y = (1080 - 1790) / 3840 = -0.1848958...
+    const template: MotionTemplate = {
+      ...rectFixture,
+      id: 's5-zero-anchor',
+      layers: [
+        {
+          kind: 'rect',
+          id: 'bg',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 192, y: 1700 } }],
+          width: 2000,
+          height: 180,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    // Expected x offset: (1192 - 1920) / 3840 = -728/3840 = -0.1895833...
+    // The raw position would give (192-1920)/3840 = -0.4505208..., which is wrong
+    expect(text).not.toMatch(/-0\.450/)
+    // Should contain the corrected offset
+    const xOffset = (1192 - 1920) / 3840
+    expect(text).toContain(xOffset.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+  })
+
+  it('ellipse centre accounts for zero anchor', () => {
+    // ellipse at position (1920, 1080), anchor (0,0), radiusX=50, radiusY=50
+    // evaluator: world_centre = (1920-0+50, 1080-0+50) = (1970, 1130)
+    // toShapeCoords(1970, 1130, 3840, 2160):
+    //   x = (1970 - 1920) / 3840 = 0.01302...
+    //   y = (1080 - 1130) / 3840 = -0.01302...
+    const template: MotionTemplate = {
+      ...ellipseFixture,
+      id: 's5-ellipse-zero-anchor'
+    }
+    const text = getSettingText(makeInput(template))
+    // With zero anchor, centre should NOT be at position (1920, 1080) directly
+    // but at (1970, 1130)
+    const expectedX = (1970 - 1920) / 3840
+    expect(text).toContain(expectedX.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+  })
+
+  it('animated position keyframes include anchor-to-centre offset', () => {
+    // Rect with animated position and non-zero anchor
+    const template: MotionTemplate = {
+      ...rectFixture,
+      id: 's5-animated-anchor',
+      layers: [
+        {
+          kind: 'rect',
+          id: 'slide',
+          anchor: { x: 100, y: 50 },
+          position: [
+            {
+              t: 0,
+              value: { x: 200, y: 300 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 800, y: 300 } }
+          ],
+          width: 400,
+          height: 200,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    // Static centre for first keyframe: (200-100+200, 300-50+100) = (300, 350)
+    // toShapeCoords(300, 350, 3840, 2160):
+    //   x = (300 - 1920) / 3840 = -0.421875
+    // Animated centre for second keyframe: (800-100+200, 300-50+100) = (900, 350)
+    // toShapeCoords(900, 350, 3840, 2160):
+    //   x = (900 - 1920) / 3840 = -0.265625
+    // Both offsets should appear in BezierSpline keyframes
+    const x1 = (300 - 1920) / 3840
+    const x2 = (900 - 1920) / 3840
+    expect(text).toContain(x1.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+    expect(text).toContain(x2.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
   })
 })
