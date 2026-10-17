@@ -22,11 +22,11 @@ handles the rest.
 | #   | Layer                     | What it means here                                                                                                                                                                                                                                                                                                |
 | --- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | Before the PR             | The author (or agent) runs `bun run test:run`, `bun run typecheck`, `bun run prettier`, `bun run eslint`, and for Rust `cargo test` and `cargo clippy`, and **shows the output** rather than claiming success. A subagent reviews the diff in a fresh context. Run `/code-review` and `/security-review` locally. |
-| 2   | Required CI               | The `master` ruleset requires `lint` and `test` to pass. `rust-test` and `e2e-tests` also run on every PR (`.github/workflows/ci.yml`) but are not yet required, so treat a red one as blocking by hand.                                                                                                          |
+| 2   | Required CI               | The `master` ruleset requires `lint`, `test`, `rust-test` and `e2e-tests` (`.github/workflows/ci.yml`). Red blocks the merge.                                                                                                                                                                                     |
 | 3   | AI code review            | Parallel finders, then a verifier vote on each finding. See below.                                                                                                                                                                                                                                                |
 | 4   | Security review           | A separate pass. Any open finding blocks the merge.                                                                                                                                                                                                                                                               |
 | 5   | Risk-based human approval | The tier comes from the change, not the author. See the risk tiers below.                                                                                                                                                                                                                                         |
-| 6   | Up to date with `master`  | Checks rerun on latest `master` with the change applied. **Not yet in place**: GitHub's merge queue is not available for repositories owned by a personal account. Until the ruleset requires branches to be up to date, merge latest `master` into the branch and rerun CI before merging.                       |
+| 6   | Up to date with `master`  | The ruleset requires a branch to contain the latest `master`, with checks passing on that combination, before it can merge. This is the stand-in for GitHub's merge queue, which personally owned repositories cannot use.                                                                                        |
 | 7   | After merge               | Reversible by default: small changes, one-step revert, releases through `release` (see `docs/BRANCHING_STRATEGY.md`). **Not yet in place**: feature flags. Until they exist, new features ship behind a route or setting that can be hidden, and large changes are split.                                         |
 
 ## AI code review
@@ -89,8 +89,9 @@ The tier comes from what the change touches, not from who wrote it.
 - **An approval covers one commit.** New commits need a new approval.
 
 **Already in place**: the `master` ruleset requires a pull request with one approval and every
-review thread resolved, and blocks force-pushes and deletion. Repository admins can bypass it,
-which is how a single maintainer merges their own PRs.
+review thread resolved, and blocks force-pushes and deletion. Admins can bypass it only through a
+pull request, which is how a single maintainer merges their own PRs; nobody, and no agent using
+the maintainer's token, can push straight to `master`.
 
 **Not yet in place**: an automatic tier classifier, CODEOWNERS, and dismissing approvals when new
 commits are pushed. Until they exist, the author states the tier in the PR's Risk section, and the
