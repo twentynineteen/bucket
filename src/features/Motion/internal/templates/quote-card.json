@@ -3,7 +3,7 @@
   "id": "quote-card",
   "version": "1.0.0",
   "name": "Quote card",
-  "description": "Centred quote slides up with character-stagger fade, decorative accent marks scale in, attribution follows with overlapping action.",
+  "description": "Centred quote slides up with fade, decorative accent marks scale in, attribution follows with overlapping action.",
   "category": "title-card",
   "status": "stable",
   "tags": ["title-card", "quote", "attribution"],
@@ -16,8 +16,8 @@
     "quote": {
       "kind": "text",
       "label": "Quote",
-      "maxLength": 64,
-      "default": "Design is not just what it looks like.\nDesign is how it works.",
+      "maxLength": 120,
+      "default": "Design is not just what it looks like. Design is how it works.",
       "required": true
     },
     "attribution": {
@@ -112,7 +112,7 @@
           "value": 0
         }
       ],
-      "text": "“",
+      "text": "\u201c",
       "font": {
         "family": "Cabrito Semi",
         "style": "Norm Bold",
@@ -196,10 +196,9 @@
       "lineHeight": 1.4,
       "multiline": true,
       "fill": "#ffffff",
-      "stagger": {
-        "delay": 0.005
-      },
-      "width": 3400
+      "width": 3400,
+      "wrap": true,
+      "maxLines": 3
     },
     {
       "kind": "text",
@@ -213,7 +212,7 @@
           "t": 0.3,
           "value": {
             "x": 1920,
-            "y": 1350
+            "y": 1410
           },
           "ease": [0.22, 1, 0.36, 1]
         },
@@ -221,7 +220,7 @@
           "t": 0.8,
           "value": {
             "x": 1920,
-            "y": 1290
+            "y": 1350
           },
           "ease": [0.16, 1, 0.3, 1]
         },
@@ -229,7 +228,7 @@
           "t": 4.2,
           "value": {
             "x": 1920,
-            "y": 1290
+            "y": 1350
           },
           "ease": [0.7, 0, 1, 0.5]
         },
@@ -237,7 +236,7 @@
           "t": 4.55,
           "value": {
             "x": 1920,
-            "y": 1320
+            "y": 1380
           }
         }
       ],

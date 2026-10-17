@@ -338,6 +338,65 @@ export function checkTitleSafe(t: MotionTemplate): TimingViolation[] {
   // Check all other layers from template position data
   violations.push(...checkLayerPositionsSafe(t.layers, t.inEnd, t.outStart, t.id))
 
+  // Vertical title-safe for wrapped text layers: the worst-case block
+  // runs from the first baseline down (maxLines - 1) x lineHeight x fontSize
+  // plus one descent of 0.25 x fontSize. Through every position keyframe,
+  // this block must stay inside the title-safe area.
+  violations.push(...checkWrapVerticalTitleSafe(t))
+
+  return violations
+}
+
+// ---------------------------------------------------------------------------
+// Vertical title-safe for wrapped text layers
+// ---------------------------------------------------------------------------
+
+/**
+ * For text layers with `wrap` and `maxLines`, check that the worst-case
+ * text block stays inside the title-safe area vertically at every position
+ * keyframe. The block extends from the first baseline down
+ * `(maxLines - 1) x lineHeight x fontSize + 0.25 x fontSize` (descent).
+ */
+function checkWrapVerticalTitleSafe(t: MotionTemplate): TimingViolation[] {
+  const violations: TimingViolation[] = []
+
+  function walk(layers: Layer[], parentOffset: { x: number; y: number }): void {
+    for (const layer of layers) {
+      if (layer.kind === 'group') {
+        const off = groupOffset(layer, t.inEnd, parentOffset)
+        walk(layer.children, off)
+        continue
+      }
+      if (layer.kind !== 'text' || !layer.wrap || layer.maxLines == null) {
+        continue
+      }
+
+      const blockHeight =
+        (layer.maxLines - 1) * layer.lineHeight * layer.font.size + 0.25 * layer.font.size
+      const positions = layer.position ?? []
+
+      for (const kf of positions) {
+        const y = parentOffset.y + kf.value.y - layer.anchor.y
+        const bottom = y + blockHeight
+        if (bottom > TITLE_SAFE.bottom) {
+          violations.push({
+            templateId: t.id,
+            rule: 'S3.4',
+            message: `layer "${layer.id}" vertical title-safe: maxLines block bottom ${bottom.toFixed(0)} > ${TITLE_SAFE.bottom} at t=${kf.t}`
+          })
+        }
+        if (y < TITLE_SAFE.top) {
+          violations.push({
+            templateId: t.id,
+            rule: 'S3.4',
+            message: `layer "${layer.id}" vertical title-safe: baseline ${y.toFixed(0)} < ${TITLE_SAFE.top} at t=${kf.t}`
+          })
+        }
+      }
+    }
+  }
+
+  walk(t.layers, { x: 0, y: 0 })
   return violations
 }
 
@@ -361,14 +420,30 @@ export function checkTextBoxWidth(t: MotionTemplate): TimingViolation[] {
     const paramDef = t.params[layer.param]
     if (!paramDef || paramDef.kind !== 'text') continue
     const maxLen = paramDef.maxLength
-    const minWidth = maxLen * layer.font.size * 0.6
     const layerWidth = layer.width ?? Infinity
-    if (layerWidth < minWidth) {
-      violations.push({
-        templateId: t.id,
-        rule: 'S3.5',
-        message: `layer "${layer.id}": width ${layerWidth} < maxLength(${maxLen}) x fontSize(${layer.font.size}) x 0.6 = ${minWidth}`
-      })
+
+    if (layer.wrap && layer.maxLines) {
+      // Wrapped formula: the box must hold maxLength with slack for ragged breaks.
+      // 0.9 x width x maxLines >= maxLength x fontSize x 0.6
+      const available = 0.9 * layerWidth * layer.maxLines
+      const required = maxLen * layer.font.size * 0.6
+      if (available < required) {
+        violations.push({
+          templateId: t.id,
+          rule: 'S3.5',
+          message: `layer "${layer.id}": 0.9 x width(${layerWidth}) x maxLines(${layer.maxLines}) = ${available} < maxLength(${maxLen}) x fontSize(${layer.font.size}) x 0.6 = ${required}`
+        })
+      }
+    } else {
+      // Unwrapped: single-line formula
+      const minWidth = maxLen * layer.font.size * 0.6
+      if (layerWidth < minWidth) {
+        violations.push({
+          templateId: t.id,
+          rule: 'S3.5',
+          message: `layer "${layer.id}": width ${layerWidth} < maxLength(${maxLen}) x fontSize(${layer.font.size}) x 0.6 = ${minWidth}`
+        })
+      }
     }
   }
   return violations
