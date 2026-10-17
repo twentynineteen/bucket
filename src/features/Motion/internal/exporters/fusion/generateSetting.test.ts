@@ -2508,6 +2508,14 @@ describe('group Transform Centre is the image-centre translation', () => {
     expect(text).toContain(x0.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
     expect(text).toContain(x1.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
     expect(text).toContain(y1.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+
+    // Exactly one Pivot key in the g_transform tool (not two)
+    const transformMatch = text.match(
+      /g_transform\s*=\s*Transform\s*\{([\s\S]*?)\n {16}\}/
+    )
+    expect(transformMatch).not.toBeNull()
+    const pivotMatches = transformMatch![1].match(/Pivot\s*=/g) ?? []
+    expect(pivotMatches).toHaveLength(1)
   })
 })
 
