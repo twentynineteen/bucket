@@ -149,10 +149,12 @@ function toolToEntry(tool: FusionTool): LuaEntry {
 
 let splineCounter = 0
 let shapeBatchCounter = 0
+let mergeCounter = 0
 
 function resetCounters(): void {
   splineCounter = 0
   shapeBatchCounter = 0
+  mergeCounter = 0
 }
 
 function nextSplineName(baseName: string, property: string): string {
@@ -1944,12 +1946,11 @@ function buildShapeMergeChain(
   if (shapeTools.length === 0) return null
 
   const batchId = shapeBatchCounter++
-  const suffix = batchId === 0 ? '' : `_${batchId}`
 
-  // Build sMerge chain
+  // Build sMerge chain - always use batch-qualified names to prevent collisions
   let prevOutput = shapeTools[0].name
   for (let i = 1; i < shapeTools.length; i++) {
-    const smergeName = `shape_smerge${suffix}_${i}`
+    const smergeName = `shape_smerge_${batchId}_${i}`
     const inputs: LuaEntry[] = [
       sourceOpInput('Background', prevOutput),
       sourceOpInput('Foreground', shapeTools[i].name)
@@ -1964,7 +1965,7 @@ function buildShapeMergeChain(
 
   // Single shape still needs sMerge for the sRender chain
   if (shapeTools.length === 1) {
-    const smergeName = `shape_smerge${suffix}`
+    const smergeName = `shape_smerge_${batchId}_0`
     mergeTools.push({
       name: smergeName,
       type: 'sMerge',
@@ -1974,7 +1975,7 @@ function buildShapeMergeChain(
   }
 
   // sRender
-  const sRenderName = `shape_srender${suffix}`
+  const sRenderName = `shape_srender_${batchId}`
   mergeTools.push({
     name: sRenderName,
     type: 'sRender',
@@ -1988,7 +1989,7 @@ function buildImageMergeChain(outputs: string[], mergeTools: FusionTool[]): void
   if (outputs.length <= 1) return
   let prevOutput = outputs[0]
   for (let i = 1; i < outputs.length; i++) {
-    const mergeName = `merge_${i}`
+    const mergeName = `merge_${++mergeCounter}`
     mergeTools.push({
       name: mergeName,
       type: 'Merge',
@@ -2149,14 +2150,18 @@ function collectAllLeafTools(processed: ProcessedLayers): {
   return { shapeTools, textTools, fallbackTools }
 }
 
-/** Collect leaf tools from the top-level outputs only (for the internal tools list). */
+/**
+ * Collect leaf tools from the top-level outputs only (for the internal tools list).
+ * Excludes fallback tools: those are pushed into mergeTools by collectImageOutputs,
+ * so including them here would duplicate them in the final internalTools array.
+ */
 function collectTopLevelLeafTools(processed: ProcessedLayers): FusionTool[] {
   const tools: FusionTool[] = []
   for (const entry of processed.outputs) {
     if (entry.type === 'untransformedShape') tools.push(entry.tool)
     else if (entry.type === 'transformedShape') tools.push(entry.ts.shapeTool)
     else if (entry.type === 'text') tools.push(entry.tool)
-    else if (entry.type === 'fallback') tools.push(...entry.tools)
+    // fallback tools are already added by collectImageOutputs into mergeTools
   }
   return tools
 }
