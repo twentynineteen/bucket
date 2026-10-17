@@ -1397,10 +1397,14 @@ describe('S5 - shape layer origin parity with evaluator', () => {
     const aeRot = rotProp?.keyframes?.[0]?.value as number | undefined
     const rotVal = aeRot ?? 0
 
+    // Resolve scales layer dimensions by format.width / 3840.
+    const resolved = resolveTemplate(fixture, {}, format)
+    const rl = resolved.layers[0] as import('../../../types').RectLayer
+    const w = rl.width
+    const h = rl.height
+
     // In AE, the shape's top-left corner in layer local space is:
     // shapeCenter - [w/2, h/2]
-    const w = 200
-    const h = 100
     const topLeftLocal = {
       x: shapeCenter[0] - w / 2,
       y: shapeCenter[1] - h / 2
@@ -1416,7 +1420,6 @@ describe('S5 - shape layer origin parity with evaluator', () => {
     )
 
     // Evaluator: the rect's local top-left is [0, 0]
-    const resolved = resolveTemplate(fixture, {}, format)
     const states = evaluate(resolved, 0)
     const evalState = states.find(s => s.id === 's5-rect')
     expect(evalState).toBeDefined()
@@ -1519,12 +1522,12 @@ describe('S5 - shape layer origin parity with evaluator', () => {
       { x: shapeCentre[0], y: shapeCentre[1] }
     )
 
-    // Evaluator world of ellipse centre (local [radiusX, radiusY])
+    // Evaluator: the ellipse centre is at local [0, 0] (cx="0" cy="0")
     const resolved = resolveTemplate(fixture, {}, format)
     const states = evaluate(resolved, 0)
     const evalState = states.find(s => s.id === 's5-ellipse')
     expect(evalState).toBeDefined()
-    const evalCenter = transformPoint(evalState!.matrix, 60, 40) // radiusX, radiusY
+    const evalCenter = transformPoint(evalState!.matrix, 0, 0)
 
     expect(aeCenter.x).toBeCloseTo(evalCenter.x, 1)
     expect(aeCenter.y).toBeCloseTo(evalCenter.y, 1)

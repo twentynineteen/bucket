@@ -89,6 +89,28 @@ function uid(): string {
 // Ease
 // ---------------------------------------------------------------------------
 
+/** Neutral ease: speed 0, influence 33.33 (AE default for endpoints). */
+function neutralEaseStr(dims: number): string {
+  const entries: string[] = []
+  for (let d = 0; d < dims; d++) {
+    entries.push('new KeyframeEase(0, 33.33)')
+  }
+  return entries.join(', ')
+}
+
+/**
+ * Emit exactly one setTemporalEaseAtKey per key.
+ *
+ * For key k (1-indexed):
+ *   - inEase comes from segment k-2 (the segment ending at this key)
+ *   - outEase comes from segment k-1 (the segment starting at this key)
+ * First key has no incoming segment; last key has no outgoing segment.
+ * Both use a neutral default for the missing half.
+ *
+ * S8: delta is passed through as-is - callers that compute magnitudes
+ * (posD, colD, scaleD) return positive values; callers that use numD
+ * return signed values, which is correct for 1-D AE properties.
+ */
 function emitEase(
   pe: string,
   kfs: Array<{
@@ -100,24 +122,41 @@ function emitEase(
   delta: (i: number) => number,
   lines: string[]
 ): void {
+  if (kfs.length < 2) return
   const dims = EASE_DIMENSIONS[mn] ?? 1
+
+  // Collect per-key in/out strings. Index 0 = key 1 in AE terms.
+  const inStrs: (string | null)[] = new Array(kfs.length).fill(null)
+  const outStrs: (string | null)[] = new Array(kfs.length).fill(null)
+
   for (let i = 0; i < kfs.length - 1; i++) {
     const e = kfs[i].ease
     if (!e) continue
     const d = delta(i)
-    const pair = mapEase(e, Math.abs(d), dims)
-    const out = pair.outgoing
+    const pair = mapEase(e, d, dims)
+
+    // Outgoing half goes to key i (the start of this segment)
+    outStrs[i] = pair.outgoing
       .map(x => 'new KeyframeEase(' + x.speed + ', ' + x.influence + ')')
       .join(', ')
-    const inc = pair.incoming
+
+    // Incoming half goes to key i+1 (the end of this segment)
+    inStrs[i + 1] = pair.incoming
       .map(x => 'new KeyframeEase(' + x.speed + ', ' + x.influence + ')')
       .join(', ')
-    lines.push(
-      pe + '.setTemporalEaseAtKey(' + (i + 1) + ', [' + out + '], [' + out + ']);'
-    )
-    lines.push(
-      pe + '.setTemporalEaseAtKey(' + (i + 2) + ', [' + inc + '], [' + inc + ']);'
-    )
+  }
+
+  // Emit one call per key
+  const neutral = neutralEaseStr(dims)
+  for (let k = 0; k < kfs.length; k++) {
+    const inStr = inStrs[k] ?? neutral
+    const outStr = outStrs[k] ?? neutral
+    // Only emit if this key has at least one eased segment adjacent
+    if (inStrs[k] !== null || outStrs[k] !== null) {
+      lines.push(
+        pe + '.setTemporalEaseAtKey(' + (k + 1) + ', [' + inStr + '], [' + outStr + ']);'
+      )
+    }
   }
 }
 
@@ -169,6 +208,15 @@ function scaleD(
 
 function emitTransform(layer: PrimitiveLayer, le: string, lines: string[]): void {
   const tg = le + '.property("ADBE Transform Group")'
+
+  // S5: set the layer anchor point from the template's anchor.
+  // The evaluator convention: world = T(position) * R(rotation) * S(scale) * T(-anchor).
+  // AE convention: world = T(position) * R(rotation) * S(scale) * T(-anchorPoint).
+  // So we set ADBE Anchor Point to the layer's anchor.
+  if (layer.anchor && (layer.anchor.x !== 0 || layer.anchor.y !== 0)) {
+    const ap = tg + '.property("ADBE Anchor Point")'
+    lines.push(ap + '.setValue([' + layer.anchor.x + ', ' + layer.anchor.y + ']);')
+  }
 
   if (layer.position && layer.position.length > 0) {
     const pp = tg + '.property("ADBE Position")'
@@ -637,6 +685,16 @@ function emitRect(layer: RectLayer, cnt: string, lines: string[]): void {
         ']);'
     )
   }
+  // S5: offset the rect shape so its top-left is at local [0, 0].
+  // AE centres the rect on the shape position, so we shift it by [w/2, h/2].
+  lines.push(
+    r +
+      '.property("ADBE Vector Rect Position").setValue([' +
+      layer.width / 2 +
+      ', ' +
+      layer.height / 2 +
+      ']);'
+  )
   lines.push(
     r + '.property("ADBE Vector Rect Roundness").setValue(' + layer.radius + ');'
   )
@@ -708,6 +766,9 @@ function emitEllipseS(layer: EllipseLayer, cnt: string, lines: string[]): void {
       layer.radiusY * 2 +
       ']);'
   )
+  // S5: ellipse - the evaluator draws <ellipse cx="0" cy="0"> centred at
+  // local [0, 0], which matches AE's default. No shape position offset needed.
+  // The anchor point is set in emitTransform.
   const f = uid()
   lines.push('var ' + f + ' = ' + cnt + '.addProperty("ADBE Vector Graphic - Fill");')
   lines.push(
