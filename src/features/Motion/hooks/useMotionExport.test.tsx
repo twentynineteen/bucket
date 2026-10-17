@@ -36,6 +36,11 @@ vi.mock('../api', () => ({
   onRenderProgress: vi.fn(async () => () => {})
 }))
 
+vi.mock('../internal/frameRenderer', () => ({
+  buildFrameList: vi.fn(() => [0, 0.04, 0.08]),
+  renderFrameToPng: vi.fn(async () => new Uint8Array([0x89, 0x50, 0x4e, 0x47]))
+}))
+
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
@@ -130,6 +135,62 @@ describe('useMotionExport', () => {
     // The toast should have an action for "Reveal in Finder"
     expect(toastCall[1]).toBeDefined()
     expect(toastCall[1]).toHaveProperty('action')
+  })
+
+  it('S1 - video target renders video into bundle temp folder, not directly to Graphics/Motion', async () => {
+    // Need to track what path renderVideo.render receives
+    const api = await import('../api')
+    const { result } = renderHook(() => useMotionExport(), { wrapper })
+
+    // Track the render call's outputPath
+    const startRenderMock = api.startRender as Mock
+    startRenderMock.mockClear()
+
+    await act(async () => {
+      await result.current.exportToProject({
+        entry: makeEntry(),
+        values,
+        format,
+        resolved: makeResolved(),
+        targets: ['ae', 'prompt', 'video'],
+        projectFolder: '/p',
+        ffmpegDirectory: '/usr/local/bin'
+      })
+    })
+
+    // startRender should have been called
+    expect(startRenderMock).toHaveBeenCalledTimes(1)
+    const renderRequest = startRenderMock.mock.calls[0][0]
+    // The video output path must be inside the bundle's temp folder,
+    // not directly under Graphics/Motion/
+    expect(renderRequest.outputPath).toMatch(/\.tmp-lower-third-glide-/)
+    // And it must NOT be directly /p/Graphics/Motion/<id>.mov
+    expect(renderRequest.outputPath).not.toBe('/p/Graphics/Motion/lower-third-glide.mov')
+  })
+
+  it('S1 - render error surfaces via toast.error', async () => {
+    // Make the frame renderer fail on the second frame
+    const frameRenderer = await import('../internal/frameRenderer')
+    ;(frameRenderer.renderFrameToPng as Mock)
+      .mockResolvedValueOnce(new Uint8Array([0x89]))
+      .mockRejectedValueOnce(new Error('SVG render failed'))
+
+    const { result } = renderHook(() => useMotionExport(), { wrapper })
+
+    await act(async () => {
+      await result.current.exportToProject({
+        entry: makeEntry(),
+        values,
+        format,
+        resolved: makeResolved(),
+        targets: ['video'],
+        projectFolder: '/p',
+        ffmpegDirectory: null
+      })
+    })
+
+    // toast.error should have been called with the error message
+    expect(toast.error).toHaveBeenCalled()
   })
 
   it('M5.7 - copyPrompt calls copyToClipboard synchronously in the click handler', async () => {

@@ -9,6 +9,8 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  beginBundle,
+  commitBundle,
   exportBundle,
   type ExportBundleApi,
   type ExportBundleInput
@@ -159,6 +161,57 @@ describe('exportBundle', () => {
     // The image value in params.json should reference source.png, not an absolute path
     expect(JSON.stringify(paramsJson)).not.toContain('/Users/e/runner.png')
     expect(JSON.stringify(paramsJson.values)).toContain('source.png')
+  })
+
+  it('S1 - beginBundle creates temp dir and returns its path', async () => {
+    const api = mockApi()
+
+    const { tmpDir } = await beginBundle(baseInput(), api)
+
+    // Graphics/Motion should be created
+    expect(api.makeDir).toHaveBeenCalledWith('/p/Graphics/Motion')
+    // Temp dir should be inside Graphics/Motion with the template id
+    expect(tmpDir).toMatch(/\/p\/Graphics\/Motion\/\.tmp-lower-third-glide-/)
+    // Temp dir itself should also be created
+    const makeDirCalls = (api.makeDir as ReturnType<typeof vi.fn>).mock.calls
+    const tmpDirCreated = makeDirCalls.some(([path]: [string]) => path === tmpDir)
+    expect(tmpDirCreated).toBe(true)
+  })
+
+  it('S1 - commitBundle writes files and renames from provided tmpDir', async () => {
+    const api = mockApi()
+    const tmpDir = '/p/Graphics/Motion/.tmp-lower-third-glide-abc123'
+
+    const result = await commitBundle(baseInput(), api, tmpDir)
+
+    // Files should be written to the provided temp dir
+    const writeCalls = (api.writeText as ReturnType<typeof vi.fn>).mock.calls
+    for (const [path] of writeCalls) {
+      expect(path).toContain(tmpDir)
+    }
+
+    // Rename from tmpDir to final
+    expect(api.renamePath).toHaveBeenCalledTimes(1)
+    const [from, to] = (api.renamePath as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(from).toBe(tmpDir)
+    expect(to).toBe('/p/Graphics/Motion/lower-third-glide-jane-doe')
+
+    expect(result.finalFolder).toBe('/p/Graphics/Motion/lower-third-glide-jane-doe')
+  })
+
+  it('S1 - commitBundle removes tmpDir on error', async () => {
+    let writeCount = 0
+    const api = mockApi({
+      writeText: vi.fn(async () => {
+        writeCount++
+        if (writeCount === 2) throw new Error('disk full')
+      })
+    })
+    const tmpDir = '/p/Graphics/Motion/.tmp-lower-third-glide-abc123'
+
+    await expect(commitBundle(baseInput(), api, tmpDir)).rejects.toThrow('disk full')
+
+    expect(api.removeDirRecursive).toHaveBeenCalledWith(tmpDir)
   })
 
   it('M5.4 - writes binary files correctly', async () => {

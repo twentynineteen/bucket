@@ -50,15 +50,17 @@ pub fn build_args(
     if output_path.exists() {
         return Err(MotionError {
             kind: "spawnFailed".to_string(),
-            message: format!(
-                "output file already exists: {}",
-                output_path.display()
-            ),
+            message: format!("output file already exists: {}", output_path.display()),
         });
     }
 
     let size = format!("{}x{}", width, height);
     let args = vec![
+        // S9: suppress stats and per-frame chatter so stderr stays small
+        // even when the drain thread is present.
+        "-nostats".to_string(),
+        "-loglevel".to_string(),
+        "error".to_string(),
         "-f".to_string(),
         "image2pipe".to_string(),
         "-framerate".to_string(),
@@ -87,11 +89,7 @@ pub fn build_args(
 /// Trait abstracting process spawning so unit tests can inject a fake.
 pub trait Spawner: Send + Sync + 'static {
     type Process: ChildProcess;
-    fn spawn(
-        &self,
-        program: &str,
-        args: &[String],
-    ) -> Result<Self::Process, std::io::Error>;
+    fn spawn(&self, program: &str, args: &[String]) -> Result<Self::Process, std::io::Error>;
 }
 
 /// Trait abstracting a child process.
@@ -111,25 +109,59 @@ pub struct RealSpawner;
 
 impl Spawner for RealSpawner {
     type Process = RealChild;
-    fn spawn(
-        &self,
-        program: &str,
-        args: &[String],
-    ) -> Result<Self::Process, std::io::Error> {
+    fn spawn(&self, program: &str, args: &[String]) -> Result<Self::Process, std::io::Error> {
+        use std::collections::VecDeque;
         use std::process::{Command, Stdio};
-        let child = Command::new(program)
+
+        let mut child = Command::new(program)
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .stderr(Stdio::piped())
             .spawn()?;
-        Ok(RealChild { child })
+
+        // S9 fix: drain stderr continuously on a background thread so
+        // ffmpeg never blocks on a full pipe buffer. Keep the last 20
+        // lines for error reporting.
+        let stderr = child.stderr.take();
+        let stderr_tail = std::sync::Arc::new(std::sync::Mutex::new(VecDeque::<String>::new()));
+        let tail_clone = std::sync::Arc::clone(&stderr_tail);
+        let stderr_thread = if let Some(pipe) = stderr {
+            Some(std::thread::spawn(move || {
+                use std::io::BufRead;
+                let reader = std::io::BufReader::new(pipe);
+                for line in reader.lines() {
+                    match line {
+                        Ok(l) => {
+                            let mut buf = tail_clone.lock().unwrap();
+                            if buf.len() >= 20 {
+                                buf.pop_front();
+                            }
+                            buf.push_back(l);
+                        }
+                        Err(_) => break,
+                    }
+                }
+            }))
+        } else {
+            None
+        };
+
+        Ok(RealChild {
+            child,
+            stderr_tail,
+            stderr_thread,
+        })
     }
 }
 
-/// Wraps a real `std::process::Child`.
+/// Wraps a real `std::process::Child` with a stderr drain thread.
 pub struct RealChild {
     child: std::process::Child,
+    /// Last 20 lines of stderr, filled by the drain thread.
+    stderr_tail: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<String>>>,
+    /// Handle for the stderr drain thread.
+    stderr_thread: Option<std::thread::JoinHandle<()>>,
 }
 
 impl ChildProcess for RealChild {
@@ -151,17 +183,18 @@ impl ChildProcess for RealChild {
         // Drop stdin to signal EOF to ffmpeg
         drop(self.child.stdin.take());
 
-        let output = self.child.wait_with_output()?;
-        let stderr = String::from_utf8_lossy(&output.stderr)
-            .lines()
-            .rev()
-            .take(20)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect::<Vec<_>>()
-            .join("\n");
-        let code = output.status.code().unwrap_or(-1);
+        // Wait for the process to exit
+        let status = self.child.wait()?;
+
+        // Join the drain thread (it will exit once the pipe EOF's)
+        if let Some(handle) = self.stderr_thread.take() {
+            let _ = handle.join();
+        }
+
+        // Collect the stderr tail
+        let tail = self.stderr_tail.lock().unwrap();
+        let stderr = tail.iter().cloned().collect::<Vec<_>>().join("\n");
+        let code = status.code().unwrap_or(-1);
         Ok((code, stderr))
     }
 
@@ -170,6 +203,10 @@ impl ChildProcess for RealChild {
         drop(self.child.stdin.take());
         self.child.kill()?;
         let _ = self.child.wait();
+        // Join the drain thread
+        if let Some(handle) = self.stderr_thread.take() {
+            let _ = handle.join();
+        }
         Ok(())
     }
 
@@ -198,10 +235,7 @@ impl<P: ChildProcess> ActiveRender<P> {
                 let _ = std::fs::remove_file(&self.output_path);
                 return Err(MotionError {
                     kind: "encodeFailed".to_string(),
-                    message: format!(
-                        "ffmpeg exited with code {} while writing frames",
-                        code
-                    ),
+                    message: format!("ffmpeg exited with code {} while writing frames", code),
                 });
             }
             Ok(None) => {} // Still running - good
@@ -234,10 +268,7 @@ impl<P: ChildProcess> ActiveRender<P> {
                 let _ = std::fs::remove_file(&output_path);
                 Err(MotionError {
                     kind: "encodeFailed".to_string(),
-                    message: format!(
-                        "ffmpeg exited with code {}:\n{}",
-                        code, stderr
-                    ),
+                    message: format!("ffmpeg exited with code {}:\n{}", code, stderr),
                 })
             }
             Err(e) => {
@@ -334,6 +365,39 @@ pub mod tests {
         fn try_wait(&mut self) -> Result<Option<i32>, std::io::Error> {
             Ok(*self.dead.lock().unwrap())
         }
+    }
+
+    // ---------------------------------------------------------------
+    // S9 - ffmpeg args include -nostats -loglevel error
+    // ---------------------------------------------------------------
+    #[test]
+    fn s9_ffmpeg_args_include_nostats_loglevel_error() {
+        let avail = resolve_ffmpeg_tools(None, probe_binary_path);
+        if !matches!(avail, FfmpegAvailability::Ready { .. }) {
+            eprintln!("skipping s9: ffmpeg not installed");
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("out.mov");
+        let result = build_args(None, 1920, 1080, 25, &out).unwrap();
+        let args = &result.args;
+        assert!(
+            args.contains(&"-nostats".to_string()),
+            "expected -nostats in ffmpeg args, got: {:?}",
+            args
+        );
+        assert!(
+            args.contains(&"-loglevel".to_string()),
+            "expected -loglevel in ffmpeg args, got: {:?}",
+            args
+        );
+        let ll_idx = args.iter().position(|a| a == "-loglevel").unwrap();
+        assert_eq!(
+            args[ll_idx + 1],
+            "error",
+            "expected -loglevel error, got: {}",
+            args[ll_idx + 1]
+        );
     }
 
     // ---------------------------------------------------------------

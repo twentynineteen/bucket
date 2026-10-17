@@ -295,16 +295,46 @@ describe('useRenderVideo', () => {
     expect(mockSendRenderFrame).toHaveBeenCalledTimes(1)
   })
 
-  // P6.4: error handling
-  it('p6_4_encode_error_stops_render', async () => {
-    mockSendRenderFrame
-      .mockResolvedValueOnce(undefined) // frame 0 OK
-      .mockRejectedValueOnce({ kind: 'encodeFailed' }) // frame 1 fails
+  // S7: JS failure after startRender must call cancelRender
+  it('s7_render_frame_rejection_calls_cancel_render', async () => {
+    mockRenderFrameToPng
+      .mockResolvedValueOnce(new Uint8Array([0x89])) // frame 0 OK
+      .mockRejectedValueOnce(new Error('SVG render failed')) // frame 1 fails
 
     const { result } = renderHook(() => useRenderVideo())
 
     await act(async () => {
-      await result.current.render({
+      try {
+        await result.current.render({
+          resolved: makeResolved(),
+          format: FORMAT,
+          outputPath: '/output/test.mov',
+          fonts: FONT_DATA,
+          ffmpegDirectory: null
+        })
+      } catch {
+        // Expected - render now throws on error so the caller can surface it
+      }
+    })
+
+    // cancelRender must be called to clean up the ffmpeg process
+    expect(mockCancelRender).toHaveBeenCalledWith('render-123')
+  })
+
+  // S7: cancel before startRender resolves must still cancel
+  it('s7_cancel_before_start_render_resolves_still_cancels', async () => {
+    let resolveStart: (id: string) => void
+    const startPromise = new Promise<string>(r => {
+      resolveStart = r
+    })
+    mockStartRender.mockReturnValue(startPromise)
+
+    const { result } = renderHook(() => useRenderVideo())
+
+    // Start the render (startRender is pending)
+    let renderPromise: Promise<string | null> | undefined
+    act(() => {
+      renderPromise = result.current.render({
         resolved: makeResolved(),
         format: FORMAT,
         outputPath: '/output/test.mov',
@@ -313,11 +343,52 @@ describe('useRenderVideo', () => {
       })
     })
 
+    // Cancel while startRender is still pending
+    await act(async () => {
+      result.current.cancel()
+    })
+
+    // Now resolve startRender - the render ID becomes available
+    await act(async () => {
+      resolveStart!('render-456')
+      await renderPromise
+    })
+
+    // cancelRender should have been called with the new render id
+    expect(mockCancelRender).toHaveBeenCalledWith('render-456')
+  })
+
+  // P6.4: error handling - render now throws on error so the caller
+  // can surface it (S1 requires toast.error in the export hook).
+  it('p6_4_encode_error_stops_render', async () => {
+    mockSendRenderFrame
+      .mockResolvedValueOnce(undefined) // frame 0 OK
+      .mockRejectedValueOnce({ kind: 'encodeFailed' }) // frame 1 fails
+
+    const { result } = renderHook(() => useRenderVideo())
+
+    await act(async () => {
+      try {
+        await result.current.render({
+          resolved: makeResolved(),
+          format: FORMAT,
+          outputPath: '/output/test.mov',
+          fonts: FONT_DATA,
+          ffmpegDirectory: null
+        })
+      } catch {
+        // Expected - render now throws on error
+      }
+    })
+
     expect(result.current.state).toBe('error')
     expect(result.current.error).toContain('encodeFailed')
 
     // No further frames after the error
     expect(mockSendRenderFrame).toHaveBeenCalledTimes(2) // frame 0 + frame 1 (failed)
     expect(mockFinishRender).not.toHaveBeenCalled()
+
+    // S7: cancelRender must be called to clean up the ffmpeg process
+    expect(mockCancelRender).toHaveBeenCalledWith('render-123')
   })
 })

@@ -33,7 +33,7 @@ pub struct MotionRenderRequest {
 ///
 /// Serialises as `{ kind, message }` on the wire.
 /// `kind` is one of: `ffmpegMissing`, `spawnFailed`, `encodeFailed`,
-/// `unknownRender`, `busy`.
+/// `unknownRender`, `busy`, `cancelled`.
 #[derive(Debug, Serialize)]
 pub struct MotionError {
     pub kind: String,
@@ -69,35 +69,23 @@ pub trait ProgressSink: Send {
 
 /// Writes one frame and emits a progress event through the given sink.
 ///
-/// This is the function the Tauri command delegates to; the only line it
-/// does not cover is the `AppHandle::emit` adapter.
+/// S9 fix: uses `registry.write_frame` which does not hold the registry
+/// lock during the blocking stdin write. Cancel can proceed immediately.
 pub fn write_frame_with_progress(
-    registry: &super::state::RenderRegistry,
+    registry: &RenderRegistry,
     render_id: &str,
     png_data: &[u8],
     sink: &dyn ProgressSink,
 ) -> Result<(), MotionError> {
-    let progress = registry.with_render_mut(render_id, |render| {
-        render.write_frame(png_data)?;
-        Ok(RenderProgress {
-            render_id: render_id.to_string(),
-            frames_written: render.frames_written(),
-            total_frames: render.total_frames(),
-        })
+    let result = registry.write_frame(render_id, png_data)?;
+
+    sink.emit(&RenderProgress {
+        render_id: render_id.to_string(),
+        frames_written: result.frames_written,
+        total_frames: result.total_frames,
     });
 
-    match progress {
-        Ok(p) => {
-            sink.emit(&p);
-            Ok(())
-        }
-        Err(e) => {
-            if e.kind == "encodeFailed" {
-                let _ = registry.remove(render_id);
-            }
-            Err(e)
-        }
-    }
+    Ok(())
 }
 
 /// Adapter that emits progress events through a Tauri `AppHandle`.
@@ -145,12 +133,12 @@ pub async fn motion_render_start(
     )?;
 
     let spawner = RealSpawner;
-    let child = spawner.spawn(&ffmpeg_args.ffmpeg_path, &ffmpeg_args.args).map_err(|e| {
-        MotionError {
+    let child = spawner
+        .spawn(&ffmpeg_args.ffmpeg_path, &ffmpeg_args.args)
+        .map_err(|e| MotionError {
             kind: "spawnFailed".to_string(),
             message: format!("failed to spawn ffmpeg: {}", e),
-        }
-    })?;
+        })?;
 
     let render = ActiveRender {
         process: child,
@@ -185,8 +173,10 @@ pub async fn motion_render_frame(
         });
     }
 
+    // S15 fix: borrow the body instead of cloning it. The request lives
+    // for the duration of this function, so the borrow is safe.
     let png_data = match request.body() {
-        tauri::ipc::InvokeBody::Raw(bytes) => bytes.clone(),
+        tauri::ipc::InvokeBody::Raw(bytes) => bytes.as_slice(),
         _ => {
             return Err(MotionError {
                 kind: "encodeFailed".to_string(),
@@ -196,7 +186,7 @@ pub async fn motion_render_frame(
     };
 
     let sink = TauriProgressSink { app };
-    write_frame_with_progress(&state.registry, &render_id, &png_data, &sink)
+    write_frame_with_progress(&state.registry, &render_id, png_data, &sink)
 }
 
 #[tauri::command]
@@ -213,8 +203,12 @@ pub async fn motion_render_cancel(
     state: State<'_, MotionRenderState>,
     render_id: String,
 ) -> Result<(), MotionError> {
-    let render = state.registry.remove(&render_id)?;
-    render.cancel()
+    // S9 fix: use cancel_render which handles the case where a frame
+    // write is in progress (sets a flag instead of blocking).
+    match state.registry.cancel_render(&render_id)? {
+        Some(render) => render.cancel(),
+        None => Ok(()), // Cancel flag was set; the write thread handles it
+    }
 }
 
 #[cfg(test)]
@@ -270,13 +264,7 @@ mod tests {
 
         // Send three frames
         for _ in 0..3 {
-            write_frame_with_progress(
-                &registry,
-                "test-render",
-                &[0x89, 0x50],
-                &sink,
-            )
-            .unwrap();
+            write_frame_with_progress(&registry, "test-render", &[0x89, 0x50], &sink).unwrap();
         }
 
         let events = sink.into_events();
