@@ -36,11 +36,10 @@ export interface ExportBundleApi {
   pathExists: (path: string) => Promise<boolean>
   copyFileTo: (from: string, to: string) => Promise<void>
   /** List a folder's entries. Required for the stale .tmp-* sweep. */
-  listFolder?: (path: string) => Promise<{ name: string; isFile: boolean }[]>
+  listFolder: (path: string) => Promise<{ name: string; isFile: boolean }[]>
   /** Get a path's modified time in epoch milliseconds.
-   *  Required for the stale .tmp-* sweep. api.ts does not wrap this yet -
-   *  the sweep is inactive until a stat wrapper is added there. */
-  modifiedTimeMs?: (path: string) => Promise<number>
+   *  Required for the stale .tmp-* sweep. */
+  modifiedTimeMs: (path: string) => Promise<number>
 }
 
 // ---------------------------------------------------------------------------
@@ -106,8 +105,6 @@ async function sweepStaleTmpFolders(
   motionDir: string,
   api: ExportBundleApi
 ): Promise<void> {
-  if (!api.listFolder || !api.modifiedTimeMs) return
-
   try {
     const entries = await api.listFolder(motionDir)
     const now = Date.now()
@@ -116,11 +113,16 @@ async function sweepStaleTmpFolders(
       if (entry.isFile) continue
       if (!entry.name.startsWith('.tmp-')) continue
 
-      const folderPath = await api.joinPath(motionDir, entry.name)
-      const mtime = await api.modifiedTimeMs(folderPath)
+      try {
+        const folderPath = await api.joinPath(motionDir, entry.name)
+        const mtime = await api.modifiedTimeMs(folderPath)
 
-      if (now - mtime > ONE_DAY_MS) {
-        await api.removeDirRecursive(folderPath)
+        if (now - mtime > ONE_DAY_MS) {
+          await api.removeDirRecursive(folderPath)
+        }
+      } catch {
+        // Per-entry best-effort: one failing stat or remove must not
+        // prevent cleanup of the remaining stale folders.
       }
     }
   } catch {

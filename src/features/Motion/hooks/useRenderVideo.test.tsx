@@ -295,8 +295,8 @@ describe('useRenderVideo', () => {
     expect(mockSendRenderFrame).toHaveBeenCalledTimes(1)
   })
 
-  // S7: JS failure after startRender must call cancelRender
-  it('s7_render_frame_rejection_calls_cancel_render', async () => {
+  // JS failure after startRender must call cancelRender
+  it('render_frame_rejection_calls_cancel_render', async () => {
     mockRenderFrameToPng
       .mockResolvedValueOnce(new Uint8Array([0x89])) // frame 0 OK
       .mockRejectedValueOnce(new Error('SVG render failed')) // frame 1 fails
@@ -321,8 +321,8 @@ describe('useRenderVideo', () => {
     expect(mockCancelRender).toHaveBeenCalledWith('render-123')
   })
 
-  // S7: cancel before startRender resolves must still cancel
-  it('s7_cancel_before_start_render_resolves_still_cancels', async () => {
+  // Cancel before startRender resolves must still cancel
+  it('cancel_before_start_render_resolves_still_cancels', async () => {
     let resolveStart: (id: string) => void
     const startPromise = new Promise<string>(r => {
       resolveStart = r
@@ -358,8 +358,8 @@ describe('useRenderVideo', () => {
     expect(mockCancelRender).toHaveBeenCalledWith('render-456')
   })
 
-  // P6.4: error handling - render now throws on error so the caller
-  // can surface it (S1 requires toast.error in the export hook).
+  // Error handling - render now throws on error so the caller
+  // can surface it via toast.error in the export hook.
   it('p6_4_encode_error_stops_render', async () => {
     mockSendRenderFrame
       .mockResolvedValueOnce(undefined) // frame 0 OK
@@ -388,12 +388,12 @@ describe('useRenderVideo', () => {
     expect(mockSendRenderFrame).toHaveBeenCalledTimes(2) // frame 0 + frame 1 (failed)
     expect(mockFinishRender).not.toHaveBeenCalled()
 
-    // S7: cancelRender must be called to clean up the ffmpeg process
+    // cancelRender must be called to clean up the ffmpeg process
     expect(mockCancelRender).toHaveBeenCalledWith('render-123')
   })
 
-  // Sk9: Rust errors carry { kind, message } - prefer the message field
-  it('sk9_rust_error_message_reaches_hook_error_state', async () => {
+  // Rust errors carry { kind, message } - prefer the message field
+  it('rust_error_message_reaches_hook_error_state', async () => {
     mockSendRenderFrame.mockRejectedValueOnce({
       kind: 'encodeFailed',
       message: 'ffmpeg exited with code 1: ...stderr tail'
@@ -420,8 +420,8 @@ describe('useRenderVideo', () => {
     expect(result.current.error).toContain('ffmpeg exited with code 1')
   })
 
-  // Sk9: cancel() wraps the fire-and-forget cancelRender in safeCancelRender
-  it('sk9_cancel_uses_safe_cancel_to_swallow_rejection', async () => {
+  // cancel() wraps the fire-and-forget cancelRender in safeCancelRender
+  it('cancel_uses_safe_cancel_to_swallow_rejection', async () => {
     // Make cancelRender reject (e.g. unknownRender after the registry took it)
     mockCancelRender.mockRejectedValue({ kind: 'unknownRender', message: 'not found' })
 
@@ -464,9 +464,9 @@ describe('useRenderVideo', () => {
     expect(mockCancelRender).toHaveBeenCalled()
   })
 
-  // Sk9: cancel that arrives after the last frame is sent treats render
+  // Cancel that arrives after the last frame is sent treats render
   // as "finishing" rather than reporting it as cancelled
-  it('sk9_late_cancel_after_finish_does_not_report_cancelled', async () => {
+  it('late_cancel_after_finish_does_not_report_cancelled', async () => {
     const { result } = renderHook(() => useRenderVideo())
 
     // Complete a full render

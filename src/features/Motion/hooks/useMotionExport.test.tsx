@@ -1,8 +1,9 @@
 /**
  * useMotionExport tests (issue #337)
  *
- * M5.5: Success toast with "Reveal in Finder" action.
- * M5.7: "Copy Claude prompt" calls copyToClipboard synchronously.
+ * Covers export orchestration, success/error toasts, the stale .tmp-*
+ * sweep integration, video render into the bundle temp folder, Rust
+ * error extraction and the synchronous clipboard copy.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
@@ -147,7 +148,7 @@ describe('useMotionExport', () => {
     expect(removed).not.toContain('/p/Graphics/Motion/keep-me')
   })
 
-  it('M5.5 - success toast with Reveal in Finder action', async () => {
+  it('success toast with Reveal in Finder action', async () => {
     const { result } = renderHook(() => useMotionExport(), { wrapper })
 
     await act(async () => {
@@ -170,7 +171,7 @@ describe('useMotionExport', () => {
     expect(toastCall[1]).toHaveProperty('action')
   })
 
-  it('S1 - video target renders video into bundle temp folder, not directly to Graphics/Motion', async () => {
+  it('video target renders video into bundle temp folder, not directly to Graphics/Motion', async () => {
     // Need to track what path renderVideo.render receives
     const api = await import('../api')
     const { result } = renderHook(() => useMotionExport(), { wrapper })
@@ -201,7 +202,7 @@ describe('useMotionExport', () => {
     expect(renderRequest.outputPath).not.toBe('/p/Graphics/Motion/lower-third-glide.mov')
   })
 
-  it('S1 - render error surfaces via toast.error', async () => {
+  it('render error surfaces via toast.error', async () => {
     // Make the frame renderer fail on the second frame
     const frameRenderer = await import('../internal/frameRenderer')
     ;(frameRenderer.renderFrameToPng as Mock)
@@ -226,7 +227,7 @@ describe('useMotionExport', () => {
     expect(toast.error).toHaveBeenCalled()
   })
 
-  it('Sk9 - Rust {kind, message} error shows message text in the export toast', async () => {
+  it('Rust {kind, message} error shows message text in the export toast', async () => {
     // Rust rejects with { kind, message }, not an Error instance
     const api = await import('../api')
     ;(api.startRender as Mock).mockRejectedValueOnce({
@@ -254,7 +255,7 @@ describe('useMotionExport', () => {
     expect(toastMessage).toContain('ffmpeg exited with code 1')
   })
 
-  it('Sk9 - Rust {kind} without message falls back to kind in the export toast', async () => {
+  it('Rust {kind} without message falls back to kind in the export toast', async () => {
     const api = await import('../api')
     ;(api.startRender as Mock).mockRejectedValueOnce({
       kind: 'encodeFailed'
@@ -279,7 +280,7 @@ describe('useMotionExport', () => {
     expect(toastMessage).toContain('encodeFailed')
   })
 
-  it('M5.7 - copyPrompt calls copyToClipboard synchronously in the click handler', async () => {
+  it('copyPrompt calls copyToClipboard synchronously in the click handler', async () => {
     const api = await import('../api')
     const { result } = renderHook(() => useMotionExport(), { wrapper })
 
