@@ -1,6 +1,22 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
+ * Port for the e2e dev server. Defaults to 1422 (the Tauri port). Set E2E_PORT
+ * to run from a second checkout or worktree at the same time: with
+ * reuseExistingServer on, every checkout would otherwise share whichever
+ * server started first and silently test someone else's code.
+ */
+const port = Number(process.env.E2E_PORT ?? 1422)
+/**
+ * Host for the e2e dev server. Unset, Vite and the tests both use "localhost".
+ * CI sets E2E_HOST=127.0.0.1: inside the Playwright container Node resolves
+ * "localhost" to ::1 while Vite listens on IPv4, so the warm-up fetch in
+ * global-setup never connects. Pinning both ends to one address avoids that.
+ */
+const host = process.env.E2E_HOST
+const baseURL = `http://${host ?? 'localhost'}:${port}`
+
+/**
  * The only Playwright configuration in this repo. Tests run against the Vite
  * dev server (localhost:1422).
  *
@@ -39,7 +55,7 @@ export default defineConfig({
   reporter: [['html', { open: 'never' }], ['list']],
 
   use: {
-    baseURL: 'http://localhost:1422',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -91,8 +107,8 @@ export default defineConfig({
   // compile happens after this resolves. `globalSetup` above is what waits for the
   // app to actually render (issue #227).
   webServer: {
-    command: 'bun run dev',
-    url: 'http://localhost:1422',
+    command: `bun run dev -- --port ${port}${host ? ` --host ${host}` : ''}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000
   }

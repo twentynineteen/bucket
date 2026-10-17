@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "id": "end-card-cta",
+  "version": "1.0.0",
+  "name": "End card/CTA",
+  "description": "Heading scales up from the centre with an accent underline that wipes in, subheading slides up with overlapping action.",
+  "category": "title-card",
+  "status": "stable",
+  "tags": ["title-card", "end-card", "cta", "thank-you"],
+  "fonts": ["CabritoSemi-NorBol"],
+  "primaryTextParam": "heading",
+  "duration": 3.99,
+  "inEnd": 0.7,
+  "outStart": 3.5,
+  "params": {
+    "heading": {
+      "kind": "text",
+      "label": "Heading",
+      "maxLength": 30,
+      "default": "Thank you",
+      "required": true
+    },
+    "subheading": {
+      "kind": "text",
+      "label": "Subheading",
+      "maxLength": 60,
+      "default": "For more information visit our website",
+      "required": false
+    },
+    "accent": {
+      "kind": "colour",
+      "label": "Accent",
+      "default": "#C8E64A",
+      "binds": ["layers[1]"]
+    },
+    "hold": {
+      "kind": "hold",
+      "label": "Hold duration",
+      "min": 1,
+      "max": 10,
+      "default": 3
+    }
+  },
+  "layers": [
+    {
+      "kind": "text",
+      "id": "heading-text",
+      "anchor": {
+        "x": 0,
+        "y": 0
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1920,
+            "y": 1020
+          }
+        }
+      ],
+      "scale": [
+        {
+          "t": 0,
+          "value": {
+            "x": 0.85,
+            "y": 0.85
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.6,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.5,
+          "value": {
+            "x": 1,
+            "y": 1
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.99,
+          "value": {
+            "x": 0.9,
+            "y": 0.9
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.45,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.5,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.99,
+          "value": 0
+        }
+      ],
+      "text": "Thank you",
+      "param": "heading",
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 160
+      },
+      "align": "center",
+      "lineHeight": 1,
+      "multiline": false,
+      "fill": "#ffffff",
+      "width": 3000
+    },
+    {
+      "kind": "rect",
+      "id": "accent-underline",
+      "anchor": {
+        "x": 0,
+        "y": 0
+      },
+      "position": [
+        {
+          "t": 0,
+          "value": {
+            "x": 1320,
+            "y": 1100
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0.15,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.4,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.5,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.9,
+          "value": 0
+        }
+      ],
+      "widthAnimation": [
+        {
+          "t": 0.15,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.6,
+          "value": 1200,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.5,
+          "value": 1200,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.9,
+          "value": 0
+        }
+      ],
+      "width": 1200,
+      "height": 4,
+      "fill": "#C8E64A",
+      "radius": 2
+    },
+    {
+      "kind": "text",
+      "id": "subheading-text",
+      "anchor": {
+        "x": 0,
+        "y": 0
+      },
+      "position": [
+        {
+          "t": 0.15,
+          "value": {
+            "x": 1920,
+            "y": 1275
+          },
+          "ease": [0.22, 1, 0.36, 1]
+        },
+        {
+          "t": 0.65,
+          "value": {
+            "x": 1920,
+            "y": 1215
+          },
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.5,
+          "value": {
+            "x": 1920,
+            "y": 1215
+          },
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.9,
+          "value": {
+            "x": 1920,
+            "y": 1245
+          }
+        }
+      ],
+      "opacity": [
+        {
+          "t": 0.2,
+          "value": 0,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 0.6,
+          "value": 1,
+          "ease": [0.16, 1, 0.3, 1]
+        },
+        {
+          "t": 3.5,
+          "value": 1,
+          "ease": [0.7, 0, 1, 0.5]
+        },
+        {
+          "t": 3.85,
+          "value": 0
+        }
+      ],
+      "text": "For more information visit our website",
+      "param": "subheading",
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 80
+      },
+      "align": "center",
+      "lineHeight": 1.2,
+      "multiline": false,
+      "fill": "#999999",
+      "stagger": {
+        "delay": 0.006
+      },
+      "width": 3000
+    }
+  ]
+}

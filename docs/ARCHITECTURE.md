@@ -129,6 +129,15 @@ bucket/
 │   │   │   ├── hooks/
 │   │   │   └── internal/
 │   │   │
+│   │   ├── Motion/                 # Reusable motion graphics templates
+│   │   │   ├── api.ts
+│   │   │   ├── types.ts
+│   │   │   ├── index.ts
+│   │   │   ├── __contracts__/
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   └── internal/           # Schema, evaluator, exporters, sampler, templates
+│   │   │
 │   │   ├── Settings/               # App configuration with per-domain tabs
 │   │   │   ├── api.ts
 │   │   │   ├── types.ts
@@ -378,6 +387,66 @@ The page composes the workflow through `useKavanaghCheck`. `Kavanagh/api.ts` wra
 backend commands (`kavanagh_detect_ffmpeg`, `kavanagh_run_check`, `kavanagh_cancel_run`,
 `kavanagh_save_evidence`). Settings exposes the ffmpeg directory and reference pool; Upload runs
 Kavanagh as an optional post-upload QC step through `useKavanaghForUpload`.
+
+### Motion Marketplace Data Flow
+
+Template JSON goes through a five-stage pipeline before it reaches any output:
+
+```
+schema.ts          Parse and validate template JSON (Zod)
+    |
+resolve.ts         Apply param values, expand macros, hold shift,
+    |              format scale, stagger quantise, frame snap
+    |              -> ResolvedTemplate
+    |
+evaluate.ts        Pure function: (resolved, t) -> LayerState[]
+    |              Single source of truth for what every layer
+    |              looks like at any time t
+    |
+    +---> MotionPreview     SVG-based React preview (via evaluate)
+    +---> frameRenderer     Serialised SVG for the video renderer
+    +---> ae/generateJsx    After Effects ExtendScript (.jsx)
+    +---> fusion/           DaVinci Resolve Fusion macro (.setting)
+    +---> prompt.ts         Human-readable prompt description
+    |
+exportBundle.ts    Assemble files into a collision-safe folder
+    |
+src-tauri/         motion/encoder.rs: ffmpeg stdin pipe for .mov
+```
+
+**How to add a layer kind:**
+
+1. Add the interface in `types.ts` and the union member in `Layer`.
+2. Add the Zod branch in `schema.ts` (the discriminatedUnion).
+3. If the kind carries animated fields, add them to `KEYFRAME_TRACK_FIELDS`
+   in `schema.ts` (the `satisfies` will not compile until you do).
+4. If the kind carries a bindable `fill`, add it to `FILL_BEARING_KINDS`
+   in `schema.ts`.
+5. Handle it in `resolve.ts` (`scaleLayer`, `snapLayer`, `applyHoldShift`,
+   `checkCollapsingKeyframes`).
+6. Add a case in `evaluate.ts` `walkLayers` (the `assertNever` default will
+   not compile until you do).
+7. Add it to each exporter (`ae/generateJsx.ts`, `fusion/generateSetting.ts`,
+   `prompt.ts`, `frameRenderer.ts`, `MotionPreview.tsx`).
+8. If it uses colour binds, ensure `bindPath.ts` can resolve paths to it.
+9. If it is not a particles layer, ensure it does not paint after a
+   particles layer (the `validateParticlesLast` check walks the flattened
+   tree; see `layers.ts` for the `hasParticles` walker).
+10. Add a fixture in `testing/fixtures.ts` and a test in `evaluate.test.ts`.
+
+**How to add a param type:**
+
+1. Add the interface in `types.ts` and the union member in `ParamDef`.
+2. Add the Zod branch in `schema.ts` (`paramDefSchema`).
+3. Handle it in `resolve.ts` (`resolveValues`, `validateParams`).
+4. Add a `ParamEditor` case and export-flow handling if the param appears
+   in the modal.
+
+**Cross-feature dependencies:**
+
+- Motion reads `ffmpeg` from `Kavanagh/useKavanaghAvailability` (the hook's
+  return shape was widened for this).
+- Motion reads `posterFrameFontPath` from `Upload` (exported solely for Motion).
 
 ### AI Script Formatting Flow (RAG Pipeline)
 
@@ -692,7 +761,16 @@ Upload -------> Baker (VideoLink type), Kavanagh (QC hooks)
 Settings -----> Trello (TrelloBoardSelector), Upload (SproutFolderPicker), Kavanagh (availability)
 AITools ------> Settings (useAIProvider)
 BuildProject -> Trello (TrelloCardsManager)
+Settings -----> Motion (MotionSection)
+Motion -------> Kavanagh (useKavanaghAvailability: ffmpeg)
+Motion -------> Upload (posterFrameFontPath)
 ```
+
+**Motion integration points outside the feature module:**
+
+- `shared/lib/query-keys.ts` - the `motion` domain and its `validDomains` entry
+- `src/AppRouter.tsx` - lazy route via `loadMotionMarketplacePage()`
+- `src/shared/ui/layout/app-sidebar.tsx` - sidebar navigation item
 
 ### External Dependencies (Key Packages)
 
@@ -1059,6 +1137,6 @@ Currently no telemetry/metrics collection (privacy-focused desktop app).
 
 ---
 
-**Document Version:** 2.1.0
-**Last Updated:** August 2026
-**Applies to:** Bucket v0.19.0
+**Document Version:** 2.2.0
+**Last Updated:** October 2026
+**Applies to:** Bucket v0.19.2

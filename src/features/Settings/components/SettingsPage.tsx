@@ -21,6 +21,10 @@ import KavanaghSection from './KavanaghSection'
 import SproutVideoSection from './SproutVideoSection'
 import TrelloSection from './TrelloSection'
 
+const MotionSection = React.lazy(() =>
+  import('@features/Motion').then(m => ({ default: m.MotionSection }))
+)
+
 const SettingsPageContent: React.FC = () => {
   useSettingsScroll()
 
@@ -91,6 +95,11 @@ const SettingsPageContent: React.FC = () => {
           />
           <TrelloSection apiKeys={apiKeys} settingsUnavailable={settingsUnavailable} />
           <KavanaghSection apiKeys={apiKeys} settingsUnavailable={settingsUnavailable} />
+          <React.Suspense
+            fallback={<div className="bg-muted h-24 animate-pulse rounded-lg" />}
+          >
+            <MotionSection />
+          </React.Suspense>
         </div>
       </div>
     </div>
