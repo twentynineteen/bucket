@@ -756,3 +756,15 @@ describe('Ar8 getHoldParam', () => {
     expect(result!.def.kind).toBe('hold')
   })
 })
+
+describe('stagger stays visible when the budget allows a frame', () => {
+  it('a sub-frame authored delay rounds to at least one frame when the budget has room (Glide name at 25 fps)', () => {
+    // 25 ms at 25 fps is 0.625 of a frame. Flooring it to 0 would switch the
+    // stagger off at the UK house rate even though "Jane Doe" fits one frame
+    // per character inside 40% of a 0.7 s entrance (7 x 0.04 = 0.28 s).
+    const glide = loadBuiltins().templates.find(t => t.id === 'lower-third-glide')!
+    const resolved = resolveTemplate(glide, {}, { width: 3840, height: 2160, fps: 25 })
+    const name = resolved.layers.find(l => l.id === 'name-text')
+    expect(name?.kind === 'text' && name.stagger?.delay).toBeCloseTo(0.04, 10)
+  })
+})
