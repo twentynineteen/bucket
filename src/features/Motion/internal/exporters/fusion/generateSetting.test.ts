@@ -11,7 +11,7 @@
  * RES5.5: Text+ tool with font, size, tracking, line spacing, alignment, multiline
  * RES5.6: animated rect size and fill colour
  * RES6.1: Follower modifier for stagger
- * RES6.2: fractional delay rounding
+ * RES6.2: stagger delay arrives in whole frames
  * RES7.1: particle template rejection
  * RES8.1: arc -> sEllipse with WriteLength
  * RES8.2: counter -> Text+ expression
@@ -436,7 +436,7 @@ describe('RES6.1: Follower modifier for stagger', () => {
 })
 
 // ---------------------------------------------------------------------------
-// RES6.2: fractional delay rounding
+// RES6.2: stagger delay arrives in whole frames
 // ---------------------------------------------------------------------------
 
 describe('RES6.2: stagger delay arrives in whole frames', () => {
