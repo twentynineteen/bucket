@@ -107,54 +107,6 @@ function extractFrameNumbers(text: string): number[] {
   return frames
 }
 
-/** Minimal tool call info extracted from the Lua AST. */
-interface ToolCallInfo {
-  name: string
-  type: string
-}
-
-/** Walk the luaparse AST to extract tool-type calls (name = Type { ... }). */
-function extractAllToolCalls(ast: luaparse.Chunk): ToolCallInfo[] {
-  const calls: ToolCallInfo[] = []
-
-  function visit(expr: luaparse.Expression, parentKey?: string): void {
-    if (expr.type === 'TableConstructorExpression') {
-      for (const field of expr.fields) {
-        if (field.type === 'TableKeyString') visit(field.value, field.key.name)
-        else if (field.type === 'TableValue') visit(field.value)
-        else if (field.type === 'TableKey') visit(field.value)
-      }
-    } else if (
-      expr.type === 'CallExpression' ||
-      expr.type === 'TableCallExpression' ||
-      expr.type === 'StringCallExpression'
-    ) {
-      const base =
-        expr.type === 'CallExpression' || expr.type === 'TableCallExpression'
-          ? expr.base
-          : expr.base
-      if (base.type === 'Identifier') {
-        calls.push({ name: parentKey ?? '', type: base.name })
-      }
-      const args =
-        expr.type === 'CallExpression'
-          ? expr.arguments
-          : expr.type === 'TableCallExpression'
-            ? [expr.arguments]
-            : [expr.argument]
-      for (const arg of args) visit(arg)
-    }
-  }
-
-  for (const stmt of ast.body) {
-    if (stmt.type === 'ReturnStatement') {
-      for (const arg of stmt.arguments) visit(arg)
-    }
-  }
-
-  return calls
-}
-
 // ---------------------------------------------------------------------------
 // RES1.1: output validity
 // ---------------------------------------------------------------------------
@@ -601,13 +553,8 @@ describe('S3: colour InstanceInputs bind to shape fills', () => {
       id: 's3-no-bg'
     }
     const text = getSettingText(makeInput(template))
-    const ast = parseSetting(text)
-    const calls = extractAllToolCalls(ast)
-    // Background tools should only appear for hatch/bezier fallbacks, not colour params
-    const bgTools = calls.filter(
-      c => c.type === 'Background' && c.name.includes('colour_bg')
-    )
-    expect(bgTools).toEqual([])
+    // Background tools for colour params used colour_bg naming; none should exist
+    expect(text).not.toMatch(/colour_bg\s*=\s*Background/)
   })
 
   it('colour InstanceInput SourceOp targets the bound shape tool', () => {
