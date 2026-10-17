@@ -45,6 +45,22 @@ function renderPreview(
 // ---------------------------------------------------------------------------
 
 describe('MotionPreview', () => {
+  it('asks for exact glyph advances on the preview svg', () => {
+    render(
+      <MotionPreview
+        template={textFixture}
+        values={{}}
+        format={{ width: 3840, height: 2160, fps: 50 }}
+        time={0.5}
+        name="Spacing"
+      />
+    )
+    const svg =
+      screen.getByRole('img', { name: /Spacing/ }).querySelector('svg') ??
+      document.querySelector('svg')
+    expect(svg?.getAttribute('text-rendering')).toBe('geometricPrecision')
+  })
+
   it('has img role, accessible name and 16:9 SVG viewBox', () => {
     renderPreview(textFixture, { name: 'Jane Doe' }, 0.5, 'Lower third Glide')
 

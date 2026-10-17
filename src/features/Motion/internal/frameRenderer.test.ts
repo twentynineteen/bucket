@@ -22,6 +22,11 @@ import { layerKindFixtures, textFixture } from './testing/fixtures'
 const IDENTITY: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0]
 
 describe('buildSvgString', () => {
+  it('asks for exact glyph advances, so text scaled down by the viewBox keeps its spacing', () => {
+    const svg = buildSvgString([], 3840, 2160, [])
+    expect(svg).toMatch(/^<svg[^>]*text-rendering="geometricPrecision"/)
+  })
+
   it('draws an ellipse at its own radii, not a 1px dot', () => {
     const states: LayerState[] = [
       {
