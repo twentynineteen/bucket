@@ -182,6 +182,7 @@ vi.mock('../api', () => ({
   motionFontAvailable: vi.fn(() => Promise.resolve(mockFontAvailable)),
   readMotionFont: vi.fn().mockResolvedValue(new Uint8Array()),
   listFolder: vi.fn().mockResolvedValue([]),
+  modifiedTimeMs: vi.fn().mockResolvedValue(Date.now()),
   readText: vi.fn().mockResolvedValue('{}'),
   pickFolder: vi.fn().mockResolvedValue(null),
   pickPngImage: vi.fn().mockResolvedValue(null),

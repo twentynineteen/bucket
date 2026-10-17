@@ -19,6 +19,7 @@ import {
   readTextFile,
   remove,
   rename,
+  stat,
   writeFile,
   writeTextFile
 } from '@tauri-apps/plugin-fs'
@@ -107,6 +108,16 @@ export async function readBytes(path: string): Promise<Uint8Array> {
 /** Whether a path exists on disk. */
 export async function pathExists(path: string): Promise<boolean> {
   return exists(path)
+}
+
+/**
+ * Last-modified time of a path in milliseconds. When the platform reports no
+ * modified time, returns now, so callers treating old entries as stale never
+ * delete something whose age they cannot know.
+ */
+export async function modifiedTimeMs(path: string): Promise<number> {
+  const info = await stat(path)
+  return info.mtime ? info.mtime.getTime() : Date.now()
 }
 
 /** Create a directory (recursive). */

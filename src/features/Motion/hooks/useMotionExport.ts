@@ -12,6 +12,7 @@ import {
   joinPath,
   listFolder,
   makeDir,
+  modifiedTimeMs,
   pathExists,
   removeDirRecursive,
   renamePath,
@@ -76,8 +77,8 @@ const bundleApi: ExportBundleApi = {
   removeDirRecursive,
   pathExists,
   copyFileTo,
-  listFolder
-  // modifiedTimeMs is not wired - api.ts does not wrap stat() yet.
+  listFolder,
+  modifiedTimeMs
   // The stale .tmp-* sweep is structurally ready but inactive until
   // a stat wrapper is added to api.ts.
 }

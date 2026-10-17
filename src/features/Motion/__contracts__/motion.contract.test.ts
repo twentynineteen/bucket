@@ -168,6 +168,9 @@ describe('Motion prefs file target', () => {
 
   it('modifiedTimeMs reads the modified time through plugin-fs stat', async () => {
     const { stat } = await import('@tauri-apps/plugin-fs')
+    vi.mocked(stat).mockResolvedValueOnce({
+      mtime: new Date(1_700_000_000_000)
+    } as Awaited<ReturnType<typeof stat>>)
     const api = await import('../api')
     await expect(api.modifiedTimeMs('/p/Graphics/Motion/.tmp-x')).resolves.toBe(
       1_700_000_000_000

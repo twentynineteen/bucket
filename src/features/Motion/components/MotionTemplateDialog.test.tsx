@@ -60,6 +60,7 @@ vi.mock('../api', () => ({
   pathExists: vi.fn(async () => false),
   copyFileTo: vi.fn(async () => {}),
   listFolder: vi.fn(async () => []),
+  modifiedTimeMs: vi.fn(async () => Date.now()),
   motionFontAvailable: vi.fn(async () => true),
   readMotionFont: vi.fn(async () => new Uint8Array(8)),
   readBytes: vi.fn(async () => new Uint8Array(8)),
