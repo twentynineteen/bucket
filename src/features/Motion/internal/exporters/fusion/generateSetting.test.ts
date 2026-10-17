@@ -2884,6 +2884,179 @@ describe('colour binds resolve at any depth via resolveBindPath', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Tool name uniqueness across all generated names
+// ---------------------------------------------------------------------------
+
+describe('tool name uniqueness in the Tools table', () => {
+  /** Extract all tool key names from the internal Tools table of the macro. */
+  function extractToolKeys(text: string): string[] {
+    // Tool entries are at depth 4 (16 spaces):
+    // depth 0: { Tools = { ... } }
+    // depth 1: Tools entry
+    // depth 2: macro_name = MacroOperator { ... }
+    // depth 3: macro entries (Inputs, Outputs, Tools)
+    // depth 4: internal tool entries: name = ToolType { ... }
+    const keys: string[] = []
+    const re =
+      /^ {16}(\w+)\s*=\s*(?:Merge|sMerge|sRender|sRectangle|sEllipse|sPolygon|TextPlus|Transform|Background|BezierSpline|XYPath|StyledTextFollower)\s*\{/gm
+    let m: RegExpExecArray | null
+    while ((m = re.exec(text)) !== null) {
+      keys.push(m[1])
+    }
+    return keys
+  }
+
+  it('[group{rect, text}, rect, text] has unique tool keys', () => {
+    const template: MotionTemplate = {
+      ...animBase('uniq-group-root-mix'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g',
+          anchor: { x: 0, y: 0 },
+          position: [
+            {
+              t: 0,
+              value: { x: 0, y: 0 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 500, y: 0 } }
+          ],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g-r',
+              anchor: { x: 0, y: 0 },
+              width: 100,
+              height: 50,
+              fill: '#ff0000',
+              radius: 0
+            },
+            {
+              kind: 'text',
+              id: 'g-t',
+              anchor: { x: 0, y: 0 },
+              position: [{ t: 0, value: { x: 50, y: 20 } }],
+              text: 'hi',
+              font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 24 },
+              align: 'left',
+              lineHeight: 1.2,
+              multiline: false,
+              fill: '#fff'
+            }
+          ]
+        },
+        {
+          kind: 'rect',
+          id: 'root-r',
+          anchor: { x: 0, y: 0 },
+          width: 200,
+          height: 100,
+          fill: '#0000ff',
+          radius: 0
+        },
+        {
+          kind: 'text',
+          id: 'root-t',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 300, y: 200 } }],
+          text: 'world',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 36 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#fff'
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    const keys = extractToolKeys(text)
+    expect(keys.length).toBeGreaterThan(0)
+    // Assert by counting duplicates, not by creating a Set
+    const counts = new Map<string, number>()
+    for (const k of keys) {
+      counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    const duplicates = [...counts.entries()].filter(([, c]) => c > 1)
+    expect(duplicates).toEqual([])
+  })
+
+  it('[rect, rect, text, rect] has unique tool keys (shape batch collision)', () => {
+    const template: MotionTemplate = {
+      ...animBase('uniq-shape-batch'),
+      params: {},
+      layers: [
+        {
+          kind: 'rect',
+          id: 'r1',
+          anchor: { x: 0, y: 0 },
+          width: 100,
+          height: 50,
+          fill: '#ff0000',
+          radius: 0
+        },
+        {
+          kind: 'rect',
+          id: 'r2',
+          anchor: { x: 0, y: 0 },
+          width: 200,
+          height: 100,
+          fill: '#00ff00',
+          radius: 0
+        },
+        {
+          kind: 'text',
+          id: 't1',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 100, y: 100 } }],
+          text: 'hello',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 24 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#fff'
+        },
+        {
+          kind: 'rect',
+          id: 'r3',
+          anchor: { x: 0, y: 0 },
+          width: 300,
+          height: 150,
+          fill: '#0000ff',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    const keys = extractToolKeys(text)
+    expect(keys.length).toBeGreaterThan(0)
+    const counts = new Map<string, number>()
+    for (const k of keys) {
+      counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    const duplicates = [...counts.entries()].filter(([, c]) => c > 1)
+    expect(duplicates).toEqual([])
+  })
+
+  it('every built-in template has unique tool keys', () => {
+    const nonParticleFixtures = layerKindFixtures.filter(
+      f => !f.layers.some(l => l.kind === 'particles')
+    )
+    for (const fixture of nonParticleFixtures) {
+      const text = getSettingText(makeInput(fixture))
+      const keys = extractToolKeys(text)
+      const counts = new Map<string, number>()
+      for (const k of keys) {
+        counts.set(k, (counts.get(k) ?? 0) + 1)
+      }
+      const duplicates = [...counts.entries()].filter(([, c]) => c > 1)
+      expect(duplicates, `duplicate keys in ${fixture.id}`).toEqual([])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Security: Lua injection through param ids
 // ---------------------------------------------------------------------------
 
