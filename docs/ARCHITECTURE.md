@@ -757,6 +757,12 @@ Motion -------> Kavanagh (useKavanaghAvailability: ffmpeg)
 Motion -------> Upload (posterFrameFontPath)
 ```
 
+**Motion integration points outside the feature module:**
+
+- `shared/lib/query-keys.ts` - the `motion` domain and its `validDomains` entry
+- `src/AppRouter.tsx` - lazy route via `loadMotionMarketplacePage()`
+- `src/shared/ui/layout/app-sidebar.tsx` - sidebar navigation item
+
 ### External Dependencies (Key Packages)
 
 | Package                   | Version  | Used For                 | Notes                                            |

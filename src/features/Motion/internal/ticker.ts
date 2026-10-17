@@ -29,25 +29,6 @@ let isHidden = false
 const MIN_INTERVAL_MS = 1000 / 30 - 0.01
 
 // ---------------------------------------------------------------------------
-// Internal reset for tests
-// ---------------------------------------------------------------------------
-
-/** Reset all module state. Exported for tests only. */
-export function _reset(): void {
-  for (const cb of [...subscribers]) {
-    subscribers.delete(cb)
-  }
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
-  lastNotifyTimestamp = 0
-  startTimestamp = -1
-  elapsedAtPause = 0
-  isHidden = false
-}
-
-// ---------------------------------------------------------------------------
 // Frame loop
 // ---------------------------------------------------------------------------
 

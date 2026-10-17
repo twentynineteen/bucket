@@ -7,11 +7,9 @@ import { expect, test, type Page } from '@playwright/test'
 import { setupTauriMocks } from '../fixtures/mocks.fixture'
 import {
   getMotionClipboard,
-  getMotionRemoves,
   getMotionRenames,
   getMotionWrites,
-  installMotionMocks,
-  resetMotionState
+  installMotionMocks
 } from '../fixtures/motion.fixture'
 
 // ---------------------------------------------------------------------------

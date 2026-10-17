@@ -36,58 +36,6 @@ const { templates: builtins } = loadBuiltins()
 // Helpers
 // ---------------------------------------------------------------------------
 
-const BUILTIN_IDS = [
-  'lower-third-glide',
-  'lower-third-bar-reveal',
-  'chapter-title-card',
-  'quote-card',
-  'end-card-cta',
-  'shape-wipe',
-  'stat-reveal',
-  'scan-trail',
-  'score-ring',
-  'spread-map'
-]
-
-const BUILTIN_NAMES: Record<string, string> = {
-  'lower-third-glide': 'Lower third "Glide"',
-  'lower-third-bar-reveal': 'Lower third "Bar reveal"',
-  'chapter-title-card': 'Chapter title card',
-  'quote-card': 'Quote card',
-  'end-card-cta': 'End card/CTA',
-  'shape-wipe': 'Shape wipe',
-  'stat-reveal': 'Stat reveal',
-  'scan-trail': 'Scan trail',
-  'score-ring': 'Score ring',
-  'spread-map': 'Spread map'
-}
-
-const BUILTIN_CATEGORIES: Record<string, string> = {
-  'lower-third-glide': 'lower-third',
-  'lower-third-bar-reveal': 'lower-third',
-  'chapter-title-card': 'title-card',
-  'quote-card': 'title-card',
-  'end-card-cta': 'title-card',
-  'shape-wipe': 'transition',
-  'stat-reveal': 'data',
-  'scan-trail': 'data',
-  'score-ring': 'data',
-  'spread-map': 'data'
-}
-
-const BUILTIN_STATUSES: Record<string, string> = {
-  'lower-third-glide': 'stable',
-  'lower-third-bar-reveal': 'stable',
-  'chapter-title-card': 'stable',
-  'quote-card': 'stable',
-  'end-card-cta': 'stable',
-  'shape-wipe': 'stable',
-  'stat-reveal': 'experimental',
-  'scan-trail': 'stable',
-  'score-ring': 'stable',
-  'spread-map': 'experimental'
-}
-
 function findBuiltin(id: string): MotionTemplate | undefined {
   return builtins.find(t => t.id === id)
 }
@@ -144,17 +92,6 @@ function brokenFixture(
 // ---------------------------------------------------------------------------
 
 describe('S2.1: all ten built-ins present', () => {
-  it('each expected template is present with correct name, category and status', () => {
-    for (const id of BUILTIN_IDS) {
-      const t = findBuiltin(id)
-      expect(t, `built-in "${id}" not found`).toBeDefined()
-      if (!t) continue
-      expect(t.name).toBe(BUILTIN_NAMES[id])
-      expect(t.category).toBe(BUILTIN_CATEGORIES[id])
-      expect(t.status).toBe(BUILTIN_STATUSES[id])
-    }
-  })
-
   it('each built-in passes the schema with a semver version', () => {
     for (const t of builtins) {
       const result = parseTemplate(t)

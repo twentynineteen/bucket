@@ -10,6 +10,7 @@ import { loadBuiltins } from './builtins'
 import {
   deriveTargets,
   exportFolderName,
+  getHoldParam,
   resolveTemplate,
   slugify,
   validateParams,
@@ -392,25 +393,24 @@ describe('Resolve (internal/resolve.ts)', () => {
       ]
     }
 
-    it('short name (2 chars) keeps the template delay unclamped but quantises to frames', () => {
-      // "Jo" = 2 graphemes, budget = 0.4 * 0.7 / max(1, 2-1) = 0.28
-      // Template delay 0.03 < 0.28, so it stays before quantisation
-      // At 50fps: 0.03 * 50 = 1.5 frames -> round to 2 -> 2/50 = 0.04
+    it('short name (2 chars) quantises the authored delay to whole frames via floor', () => {
+      // "Jo" = 2 graphemes, n = max(1, 2-1) = 1
+      // budget = 0.4 * 0.7 = 0.28, maxFrames = floor(0.28 * 50 / 1) = 14
+      // authoredFrames = floor(0.03 * 50) = floor(1.5) = 1
+      // clampedFrames = min(1, 14) = 1, quantised = 1/50 = 0.02
       const resolved = resolveTemplate(staggerFixture, { name: 'Jo' }, FORMAT_4K)
       const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
-      expect(textLayer.stagger!.delay).toBe(0.04)
+      expect(textLayer.stagger!.delay).toBe(0.02)
     })
 
-    it('long name (30 chars) clamps the delay to fit the budget then quantises', () => {
-      // "A very long name that is exact" = 30 graphemes
-      // budget = 0.4 * 0.7 / max(1, 30-1) = 0.28 / 29 ~= 0.00966
-      // Template delay 0.03 > 0.00966, so it clamps to ~0.00966
-      // At 50fps: 0.00966 * 50 = 0.483 frames -> round to 1 -> 1/50 = 0.02
+    it('long name (30 chars) disables stagger when one frame per character exceeds budget', () => {
+      // "A very long name that is exact" = 30 graphemes, n = 29
+      // budget = 0.4 * 0.7 = 0.28, maxFrames = floor(0.28 * 50 / 29) = floor(0.483) = 0
+      // maxFrames is 0, so stagger is disabled (delay 0)
       const longName = 'A very long name that is exact'
       const resolved = resolveTemplate(staggerFixture, { name: longName }, FORMAT_4K)
       const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
-      expect(textLayer.stagger!.delay).toBe(0.02)
-      expect(textLayer.stagger!.delay).toBeLessThan(0.03)
+      expect(textLayer.stagger!.delay).toBe(0)
     })
   })
 })
@@ -519,12 +519,13 @@ describe('particle region tints resolve to colours', () => {
         }
       ]
     }
-    // At 50fps, 0.03s = 1.5 frames. Should round to 2 frames = 0.04s
+    // At 50fps, 0.03s = 1.5 frames. Floor to 1 frame = 0.02s.
+    // "Hello" = 5 chars, n=4, budget = 0.4*1 = 0.4, maxFrames = floor(0.4*50/4) = 5.
+    // authoredFrames = floor(1.5) = 1, clamped = min(1, 5) = 1, result = 0.02.
     const resolved = resolveTemplate(staggerTemplate, {}, FORMAT_4K)
     const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
     expect(textLayer.stagger).toBeDefined()
-    // 0.03 * 50 = 1.5 => round to 2 => 2/50 = 0.04
-    expect(textLayer.stagger!.delay).toBe(0.04)
+    expect(textLayer.stagger!.delay).toBe(0.02)
   })
 
   it('a region tint naming a colour param takes that param value; unknown names fall back to the base fill', () => {
@@ -739,4 +740,19 @@ describe('Ar5 explicit position track', () => {
   })
 })
 
-// Ar8 getHoldParam tests are added in the green commit alongside the implementation
+// ---------------------------------------------------------------------------
+// Ar8: getHoldParam helper
+// ---------------------------------------------------------------------------
+
+describe('Ar8 getHoldParam', () => {
+  it('returns null when no hold param exists', () => {
+    expect(getHoldParam(textFixture)).toBeNull()
+  })
+
+  it('returns the hold param entry when one exists', () => {
+    const result = getHoldParam(holdParamFixture)
+    expect(result).not.toBeNull()
+    expect(result!.id).toBe('hold')
+    expect(result!.def.kind).toBe('hold')
+  })
+})

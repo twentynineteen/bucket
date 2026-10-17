@@ -29,6 +29,11 @@ import type {
 } from '../types'
 import { expandTemplate } from './expand'
 
+/** Exhaustiveness check: the compiler proves this is never called. */
+function assertNever(x: never): never {
+  throw new Error(`Unexpected layer kind: ${(x as { kind: string }).kind}`)
+}
+
 // ---------------------------------------------------------------------------
 // Param validation
 // ---------------------------------------------------------------------------
@@ -243,27 +248,44 @@ function clampStaggerDelays(layers: Layer[], inEnd: number): Layer[] {
 }
 
 // ---------------------------------------------------------------------------
-// Stagger delay quantisation (A1)
+// Stagger delay quantisation
 // ---------------------------------------------------------------------------
 
 /**
- * Quantise stagger delays to whole frames at the chosen fps.
+ * Quantise stagger delays to whole frames at the chosen fps, clamped so the
+ * total stagger never exceeds 40% of `inEnd`.
  *
- * Fusion rounds stagger to whole frames; the preview and AE do not. Quantising
- * here in `resolveTemplate` ensures all three targets agree on the delay.
+ * The approach: compute the maximum number of whole frames that keeps the
+ * stagger budget, then cap the authored delay at that frame count. When even
+ * one frame per character would exceed the budget, stagger is disabled (delay 0).
+ *
+ * This replaces the earlier two-step approach (continuous clamp then round up)
+ * which broke the budget when a sub-frame delay rounded up to a full frame.
  */
-function quantiseStaggerDelays(layers: Layer[], fps: number): Layer[] {
+function quantiseStaggerDelays(layers: Layer[], fps: number, inEnd: number): Layer[] {
   const frameDuration = 1 / fps
+  const budget = inEnd * 0.4
+
   return layers.map(layer => {
     if (layer.kind === 'group') {
       return {
         ...layer,
-        children: quantiseStaggerDelays(layer.children, fps)
+        children: quantiseStaggerDelays(layer.children, fps, inEnd)
       }
     }
     if (layer.kind === 'text' && layer.stagger && layer.stagger.delay > 0) {
-      const frames = Math.round(layer.stagger.delay * fps)
-      const quantised = Math.max(1, frames) * frameDuration
+      const charCount = graphemeCount(layer.text)
+      const n = Math.max(1, charCount - 1)
+      // Maximum whole frames that keeps (n-1)*delay within the budget
+      const maxFrames = Math.floor((budget * fps) / n)
+      if (maxFrames <= 0) {
+        // Even one frame per character exceeds the budget - disable stagger
+        return { ...layer, stagger: { delay: 0 } }
+      }
+      // Authored delay in frames, capped at maxFrames
+      const authoredFrames = Math.floor(layer.stagger.delay * fps)
+      const clampedFrames = Math.min(authoredFrames, maxFrames)
+      const quantised = clampedFrames <= 0 ? 0 : clampedFrames * frameDuration
       if (quantised !== layer.stagger.delay) {
         return { ...layer, stagger: { delay: quantised } }
       }
@@ -421,7 +443,7 @@ function applyHoldShift(layers: Layer[], outStart: number, delta: number): Layer
       case 'series':
         return base as SeriesLayer
       default:
-        return base as Layer
+        return assertNever(layer)
     }
   }
 
@@ -522,15 +544,19 @@ function scaleLayer(layer: Layer, factor: number): Layer {
         })),
         pointRadius: layer.pointRadius * factor
       } as ParticlesLayer
+    case 'series':
+      // Series layers are expanded before scaling, but the type union
+      // still includes them. Pass through (should not be reached).
+      return base as SeriesLayer
     default:
-      return base as Layer
+      return assertNever(layer)
   }
 }
 
 /**
  * Scale numeric coordinates in an SVG path d string.
  *
- * The schema restricts `d` to absolute M, L, H, V and Z commands. Every
+ * The schema restricts `d` to absolute M, L and Z commands. Every
  * numeric token in that grammar is a coordinate, so a blanket replacement
  * is correct (unlike the old version which would also scale arc flags).
  */
@@ -624,8 +650,10 @@ function snapLayer(layer: Layer, fps: number): Layer {
       }
     case 'particles':
       return base as ParticlesLayer
+    case 'series':
+      return base as SeriesLayer
     default:
-      return base as Layer
+      return assertNever(layer)
   }
 }
 
@@ -665,15 +693,19 @@ function checkCollapsingKeyframes(layers: Layer[], fps: number): string | null {
   const ptEq = (a: { x: number; y: number }, b: { x: number; y: number }) =>
     a.x === b.x && a.y === b.y
 
+  function checkTextTracks(layer: TextLayer): boolean {
+    return (
+      checkTrack(layer.fillAnimation, strEq) &&
+      checkTrack(layer.tracking, numEq) &&
+      (!layer.counter || checkTrack(layer.counter.progress, numEq))
+    )
+  }
+
   /** Check kind-specific animated tracks for a single layer. */
   function checkKindTracks(layer: Layer): boolean {
     switch (layer.kind) {
       case 'text':
-        return (
-          checkTrack(layer.fillAnimation, strEq) &&
-          checkTrack(layer.tracking, numEq) &&
-          (!layer.counter || checkTrack(layer.counter.progress, numEq))
-        )
+        return checkTextTracks(layer)
       case 'rect':
         return (
           checkTrack(layer.fillAnimation, strEq) &&
@@ -691,8 +723,11 @@ function checkCollapsingKeyframes(layers: Layer[], fps: number): string | null {
         )
       case 'group':
         return layer.children.every(checkLayer)
-      default:
+      case 'particles':
+      case 'series':
         return true
+      default:
+        return assertNever(layer)
     }
   }
 
@@ -771,6 +806,46 @@ export function deriveTargets(template: MotionTemplate): MotionTarget[] {
 }
 
 // ---------------------------------------------------------------------------
+// Hold param helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Return the single hold param entry, or null. The schema enforces at most one.
+ */
+export function getHoldParam(
+  template: MotionTemplate
+): { id: string; def: Extract<ParamDef, { kind: 'hold' }> } | null {
+  for (const [id, def] of Object.entries(template.params)) {
+    if (def.kind === 'hold') return { id, def }
+  }
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Shared structure resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply values, text, colour, expand macros and fill default positions.
+ *
+ * Both `validFormats` and `resolveTemplate` call this, so the two pipelines
+ * cannot drift in the steps that precede hold-shift and scaling.
+ */
+function resolveStructure(
+  template: MotionTemplate,
+  values: ParamValues
+): { layers: Layer[]; resolvedValues: ParamValues } {
+  const resolvedValues = resolveValues(template, values)
+  let layers = applyTextValues(template.layers, template.params, resolvedValues)
+  layers = clampStaggerDelays(layers, template.inEnd)
+  layers = applyColourBindings(layers, template.params, resolvedValues)
+  layers = resolveRegionFills(layers, template.params, resolvedValues)
+  layers = expandTemplate(layers, template.params, resolvedValues)
+  layers = fillDefaultPositions(layers)
+  return { layers, resolvedValues }
+}
+
+// ---------------------------------------------------------------------------
 // Valid formats
 // ---------------------------------------------------------------------------
 
@@ -780,26 +855,17 @@ const ALL_FPS = [24, 25, 30, 50, 60] as const
 /**
  * Return every format at which this template's keyframes do not collapse.
  *
- * S11: the check runs on expanded, hold-shifted layers (at the hold param's
+ * The check runs on expanded, hold-shifted layers (at the hold param's
  * default value) so that series marker keys and shifted out-keys are covered.
  */
 export function validFormats(template: MotionTemplate): MotionFormat[] {
-  // Resolve values to defaults, apply text/colour, expand macros and hold-shift
-  // at the default hold value, so the expanded layers include series marker keys.
-  const resolvedValues = resolveValues(template, {})
-  let layers = applyTextValues(template.layers, template.params, resolvedValues)
-  layers = applyColourBindings(layers, template.params, resolvedValues)
-  layers = resolveRegionFills(layers, template.params, resolvedValues)
-  layers = expandTemplate(layers, template.params, resolvedValues)
+  const { layers } = resolveStructure(template, {})
 
-  // Apply hold shift at default value (delta = 0, no shift)
-  // Also check at the extremes of the hold range
-  const holdEntry = Object.entries(template.params).find(([, def]) => def.kind === 'hold')
+  // Check at the default hold and at the extremes of the hold range
+  const hold = getHoldParam(template)
   const holdDeltas = [0]
-  if (holdEntry) {
-    const [, holdDef] = holdEntry
-    const def = holdDef as Extract<ParamDef, { kind: 'hold' }>
-    holdDeltas.push(def.min - def.default, def.max - def.default)
+  if (hold) {
+    holdDeltas.push(hold.def.min - hold.def.default, hold.def.max - hold.def.default)
   }
 
   const formats: MotionFormat[] = []
@@ -829,6 +895,34 @@ export function validFormats(template: MotionTemplate): MotionFormat[] {
 }
 
 // ---------------------------------------------------------------------------
+// Default position fill
+// ---------------------------------------------------------------------------
+
+/**
+ * Ensure every layer has an explicit position track. When position is absent,
+ * the evaluator defaults to the origin. Making that explicit means no exporter
+ * needs its own default, and the Fusion/AE/preview pipelines cannot disagree.
+ */
+function fillDefaultPositions(layers: Layer[]): Layer[] {
+  return layers.map(layer => {
+    if (layer.kind === 'group') {
+      const patched = {
+        ...layer,
+        children: fillDefaultPositions(layer.children)
+      }
+      if (!patched.position) {
+        return { ...patched, position: [{ t: 0, value: { x: 0, y: 0 } }] }
+      }
+      return patched
+    }
+    if (!layer.position) {
+      return { ...layer, position: [{ t: 0, value: { x: 0, y: 0 } }] }
+    }
+    return layer
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Full resolve pipeline
 // ---------------------------------------------------------------------------
 
@@ -844,36 +938,22 @@ export function resolveTemplate(
   values: ParamValues,
   format: MotionFormat
 ): ResolvedTemplate {
-  // 1. Resolve values (apply defaults)
-  const resolvedValues = resolveValues(template, values)
+  // Steps 1-4b: shared with validFormats via resolveStructure
+  const structure = resolveStructure(template, values)
+  const { resolvedValues } = structure
+  let { layers } = structure
 
-  // 2. Apply text param values to layers
-  let layers = applyTextValues(template.layers, template.params, resolvedValues)
-
-  // 2b. Clamp stagger delays so the total fits the 40% entrance budget
-  layers = clampStaggerDelays(layers, template.inEnd)
-
-  // 3. Apply colour bindings
-  layers = applyColourBindings(layers, template.params, resolvedValues)
-  layers = resolveRegionFills(layers, template.params, resolvedValues)
-
-  // 4. Expand macros (series, sweepFromParam)
-  layers = expandTemplate(layers, template.params, resolvedValues)
-
-  // 5. Hold shift (the hold param is the single source - S13)
-  const holdEntry = Object.entries(template.params).find(([, def]) => def.kind === 'hold')
-  let holdDelta = 0
+  // 5. Hold shift (the hold param is the single source)
+  const hold = getHoldParam(template)
   let outStart = template.outStart
   let duration = template.duration
 
-  if (holdEntry) {
-    const [holdId, holdDef] = holdEntry
-    const def = holdDef as Extract<ParamDef, { kind: 'hold' }>
+  if (hold) {
     const holdValue =
-      typeof resolvedValues[holdId] === 'number'
-        ? (resolvedValues[holdId] as number)
-        : def.default
-    holdDelta = holdValue - def.default
+      typeof resolvedValues[hold.id] === 'number'
+        ? (resolvedValues[hold.id] as number)
+        : hold.def.default
+    const holdDelta = holdValue - hold.def.default
     layers = applyHoldShift(layers, template.outStart, holdDelta)
     outStart = template.outStart + holdDelta
     duration = template.duration + holdDelta
@@ -882,8 +962,8 @@ export function resolveTemplate(
   // 6. Scale to format
   layers = scaleLayers(layers, format)
 
-  // 7. Quantise stagger delays to whole frames (A1)
-  layers = quantiseStaggerDelays(layers, format.fps)
+  // 7. Quantise stagger delays to whole frames, clamped to the 40% budget
+  layers = quantiseStaggerDelays(layers, format.fps, template.inEnd)
 
   // 8. Snap keyframes to frame grid
   layers = snapAllKeyframes(layers, format.fps)
@@ -903,7 +983,7 @@ export function resolveTemplate(
     duration: snappedDuration,
     inEnd,
     outStart: snappedOutStart,
-    hasHold: !!holdEntry,
+    hasHold: !!hold,
     layers: asPrimitiveLayers(layers),
     originalTemplate: template,
     values: resolvedValues

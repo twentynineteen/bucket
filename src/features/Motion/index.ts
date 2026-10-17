@@ -1,7 +1,7 @@
 /**
  * Loader for the marketplace page. Returns { default: MotionMarketplacePage }
  * so React.lazy can use it directly without pulling the evaluator, exporters
- * or template JSON into the Settings chunk (A2).
+ * or template JSON into the Settings chunk.
  */
 export const loadMotionMarketplacePage = () =>
   import('./components/MotionMarketplacePage')

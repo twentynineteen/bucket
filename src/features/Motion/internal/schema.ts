@@ -369,15 +369,15 @@ function hasParticlesLayer(layers: unknown[]): boolean {
   return false
 }
 
-/** Check whether a path uses only the supported absolute commands. */
+/** Check whether a path uses only the supported absolute commands (M, L, Z). */
 function isSupportedPath(d: string): boolean {
   const trimmed = d.trim()
   // Must end with Z
   if (!/Z\s*$/i.test(trimmed)) return false
-  // Must only contain M, L, H, V, Z commands (uppercase only) plus numbers
-  // Extract just the command letters
+  // Only M, L and Z are supported - both exporters parse these three commands.
+  // H and V are excluded because neither exporter handles them.
   const commands = trimmed.replace(/[^a-zA-Z]/g, '')
-  return /^[MLHVZ]+$/.test(commands)
+  return /^[MLZ]+$/.test(commands)
 }
 
 /** Collect all keyframe tracks in a layer for ease validation. */
@@ -479,7 +479,41 @@ function validatePrimaryTextParam(data: MotionTemplate): string[] {
   return []
 }
 
-/** Validate colour params are not bound to animated fills. */
+/** Layer kinds that carry a fill and can be bound to a colour param. */
+const FILL_BEARING_KINDS = new Set(['rect', 'ellipse', 'path', 'arc', 'text'])
+
+/**
+ * Resolve a bind path (e.g. "layers[1]" or "layers[0].children[2]") against the
+ * layer tree and return the target layer, or null if the path is invalid.
+ */
+function resolveBindPath(
+  layers: unknown[],
+  bindPath: string
+): Record<string, unknown> | null {
+  // Parse "layers[i]" or "layers[i].children[j].children[k]" etc.
+  const indexRe = /\[(\d+)\]/g
+  const parts = bindPath.split('.')
+  if (parts.length === 0 || !parts[0].startsWith('layers')) return null
+  let current: unknown[] = layers
+  for (const part of parts) {
+    const match = indexRe.exec(part)
+    indexRe.lastIndex = 0
+    if (!match) return null
+    const idx = parseInt(match[1], 10)
+    if (idx < 0 || idx >= current.length) return null
+    const node = current[idx] as Record<string, unknown>
+    // If this is not the last part, descend into children
+    if (part !== parts[parts.length - 1]) {
+      if (!Array.isArray(node.children)) return null
+      current = node.children as unknown[]
+    } else {
+      return node
+    }
+  }
+  return null
+}
+
+/** Validate colour params are not bound to animated fills and that bind targets exist and are fill-bearing. */
 function validateColourBindings(data: MotionTemplate): string[] {
   const errors: string[] = []
   const animFills = animatedFillPaths(data.layers as unknown as unknown[])
@@ -489,6 +523,21 @@ function validateColourBindings(data: MotionTemplate): string[] {
         if (animFills.has(bindPath)) {
           errors.push(
             `params.${paramId}: colour param bound to an animated fill at ${bindPath}`
+          )
+          continue
+        }
+        // Validate that the bind path resolves to a fill-bearing primitive
+        const target = resolveBindPath(data.layers as unknown as unknown[], bindPath)
+        if (!target) {
+          errors.push(
+            `params.${paramId}: bind path "${bindPath}" does not resolve to a layer`
+          )
+          continue
+        }
+        const kind = target.kind as string
+        if (!FILL_BEARING_KINDS.has(kind)) {
+          errors.push(
+            `params.${paramId}: bind path "${bindPath}" targets a ${kind} layer, which is not a fill-bearing primitive`
           )
         }
       }
@@ -525,6 +574,68 @@ function validateImageParamRequiresParticles(data: MotionTemplate): string[] {
   return []
 }
 
+/**
+ * Validate that particle layers come after all vector layers (last in paint order).
+ *
+ * Both the preview and the video renderer draw all vector layers first, then all
+ * particle layers. A particle layer placed before a vector layer would appear
+ * above it in AE/Resolve but below it in the preview and video. Requiring
+ * particles-last avoids the discrepancy.
+ */
+function validateParticlesLast(data: MotionTemplate): string[] {
+  let seenParticle = false
+  for (const layer of data.layers as unknown as Record<string, unknown>[]) {
+    if (layer.kind === 'particles') {
+      seenParticle = true
+    } else if (seenParticle) {
+      return [
+        'particle layers must come after all vector layers (last in paint order), ' +
+          'because the preview and video renderer draw particles on top of vectors'
+      ]
+    }
+  }
+  return []
+}
+
+/** Validate at most one hold param, and that min <= default <= max. */
+function validateHoldParamConstraints(data: MotionTemplate): string[] {
+  const errors: string[] = []
+  const holdParams = Object.entries(data.params).filter(([, def]) => def.kind === 'hold')
+  if (holdParams.length > 1) {
+    errors.push(
+      `at most one hold param is allowed, found ${holdParams.length}: ${holdParams.map(([id]) => id).join(', ')}`
+    )
+  }
+  for (const [id, def] of holdParams) {
+    if (def.kind !== 'hold') continue
+    if (def.min > def.default || def.default > def.max) {
+      errors.push(
+        `params.${id}: hold param must satisfy min <= default <= max (got min=${def.min}, default=${def.default}, max=${def.max})`
+      )
+    }
+  }
+  return errors
+}
+
+/** Validate that stagger is not combined with fillAnimation on a text layer. */
+function validateStaggerFillAnimation(data: MotionTemplate): string[] {
+  const errors: string[] = []
+  for (const { layer, path } of walkLayers(data.layers as unknown as unknown[])) {
+    if (
+      layer.kind === 'text' &&
+      layer.stagger &&
+      typeof layer.stagger === 'object' &&
+      Array.isArray(layer.fillAnimation) &&
+      (layer.fillAnimation as unknown[]).length > 0
+    ) {
+      errors.push(
+        `${path}: stagger and fillAnimation cannot be combined on a text layer (stagger is per-character in the preview but uniform in AE)`
+      )
+    }
+  }
+  return errors
+}
+
 /** Validate that a param reference points to a param of the expected kind. */
 function validateParamRef(
   params: MotionTemplate['params'],
@@ -551,9 +662,7 @@ function validateLayerCrossFields(
   const errors: string[] = []
 
   if (layer.kind === 'path' && typeof layer.d === 'string' && !isSupportedPath(layer.d)) {
-    errors.push(
-      `${path}.d: path must use only absolute M, L, H, V commands and end with Z`
-    )
+    errors.push(`${path}.d: path must use only absolute M, L commands and end with Z`)
   }
   if (layer.stagger && layer.kind !== 'text') {
     errors.push(`${path}.stagger: stagger is only allowed on text layers`)
@@ -632,7 +741,10 @@ export function parseTemplate(json: unknown): ParseResult {
     ...validatePrimaryTextParam(data),
     ...validateColourBindings(data),
     ...validateImageParamRequiresParticles(data),
-    ...validateHoldRange(data)
+    ...validateHoldParamConstraints(data),
+    ...validateHoldRange(data),
+    ...validateParticlesLast(data),
+    ...validateStaggerFillAnimation(data)
   ]
 
   // Per-layer checks

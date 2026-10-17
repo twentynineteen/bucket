@@ -9,20 +9,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { subscribe } from '../internal/ticker'
 import { useMotionTicker } from './useMotionTicker'
 
-// Mock the ticker module
+// Mock only the ticker boundary - loopTime and clock are pure helpers
+// that should run through the real implementation
 vi.mock('../internal/ticker', () => ({
   subscribe: vi.fn(() => vi.fn())
-}))
-
-// Mock the loopTime module
-vi.mock('../internal/loopTime', () => ({
-  loopTime: vi.fn((elapsed: number) => elapsed),
-  LOOP_GAP: 0.5
-}))
-
-// Mock the clock module
-vi.mock('../internal/clock', () => ({
-  readTestClock: vi.fn(() => null)
 }))
 
 const mockSubscribe = vi.mocked(subscribe)
