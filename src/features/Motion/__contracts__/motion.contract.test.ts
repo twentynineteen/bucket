@@ -92,7 +92,8 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   mkdir: vi.fn().mockResolvedValue(undefined),
   rename: vi.fn().mockResolvedValue(undefined),
   remove: vi.fn().mockResolvedValue(undefined),
-  copyFile: vi.fn().mockResolvedValue(undefined)
+  copyFile: vi.fn().mockResolvedValue(undefined),
+  stat: vi.fn().mockResolvedValue({ mtime: new Date(1_700_000_000_000) })
 }))
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({
@@ -163,6 +164,15 @@ describe('Motion IPC contracts', () => {
 describe('Motion prefs file target', () => {
   afterEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('modifiedTimeMs reads the modified time through plugin-fs stat', async () => {
+    const { stat } = await import('@tauri-apps/plugin-fs')
+    const api = await import('../api')
+    await expect(api.modifiedTimeMs('/p/Graphics/Motion/.tmp-x')).resolves.toBe(
+      1_700_000_000_000
+    )
+    expect(stat).toHaveBeenCalledWith('/p/Graphics/Motion/.tmp-x')
   })
 
   it('F4.4 writeMotionPrefsText writes to motion_prefs.json, not api_keys.json', async () => {

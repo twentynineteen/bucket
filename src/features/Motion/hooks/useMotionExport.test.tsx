@@ -30,6 +30,7 @@ vi.mock('../api', () => ({
   pathExists: vi.fn(async () => false),
   copyFileTo: vi.fn(async () => {}),
   listFolder: vi.fn(async () => []),
+  modifiedTimeMs: vi.fn(async () => Date.now()),
   startRender: vi.fn(async () => 'render-1'),
   sendRenderFrame: vi.fn(async () => {}),
   finishRender: vi.fn(async () => '/p/Graphics/Motion/test.mov'),
@@ -113,6 +114,37 @@ const values: ParamValues = { name: 'Jane Doe' }
 describe('useMotionExport', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('an export sweeps .tmp- folders older than a day from Graphics/Motion, and keeps fresh ones', async () => {
+    const api = await import('../api')
+    const day = 24 * 60 * 60 * 1000
+    vi.mocked(api.listFolder).mockResolvedValueOnce([
+      { name: '.tmp-old-abc', isFile: false },
+      { name: '.tmp-new-def', isFile: false },
+      { name: 'keep-me', isFile: false }
+    ])
+    vi.mocked(api.modifiedTimeMs).mockImplementation(async (path: string) =>
+      path.endsWith('.tmp-old-abc') ? Date.now() - 2 * day : Date.now()
+    )
+    const { result } = renderHook(() => useMotionExport(), { wrapper })
+
+    await act(async () => {
+      await result.current.exportToProject({
+        entry: makeEntry(),
+        values,
+        format,
+        resolved: makeResolved(),
+        targets: ['ae', 'prompt'],
+        projectFolder: '/p',
+        ffmpegDirectory: null
+      })
+    })
+
+    const removed = vi.mocked(api.removeDirRecursive).mock.calls.map(c => c[0])
+    expect(removed).toContain('/p/Graphics/Motion/.tmp-old-abc')
+    expect(removed).not.toContain('/p/Graphics/Motion/.tmp-new-def')
+    expect(removed).not.toContain('/p/Graphics/Motion/keep-me')
   })
 
   it('M5.5 - success toast with Reveal in Finder action', async () => {
