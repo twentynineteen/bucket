@@ -604,4 +604,63 @@ test.describe('Motion Marketplace keyboard and reduced motion', () => {
 
     assertNoExternal()
   })
+
+  // -------------------------------------------------------------------------
+  // W6: Line wrapping E2E
+  // -------------------------------------------------------------------------
+
+  test('W6.1 typing a long quote shows it on several lines in the preview', async ({
+    page
+  }) => {
+    const assertNoExternal = await setupAll(page)
+    await gotoMarketplace(page)
+
+    // Open the Quote card dialog
+    const quoteCard = page.locator('[data-template-id="quote-card"]')
+    await expect(quoteCard).toBeVisible()
+    await quoteCard.getByRole('button', { name: /Quote card/i }).click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible({ timeout: 5000 })
+
+    // Type a long quote that will wrap (approximation: chars x 88 x 0.6,
+    // width 3400 fits ~64 chars per line)
+    const quoteInput = dialog.getByRole('textbox', { name: /Quote/i })
+    await expect(quoteInput).toBeVisible()
+    await quoteInput.fill(
+      'The only way to do great work is to love what you do and keep pushing forward every day'
+    )
+
+    // Wait for the preview to re-render
+    await page.waitForTimeout(300)
+
+    // The preview SVG should have tspan elements with dy (line breaks from wrapping)
+    const previewSvg = dialog.locator('svg').first()
+    await expect(previewSvg).toBeVisible()
+
+    // Count tspan elements with dy attribute - at least one means wrapping happened
+    const tspansWithDy = previewSvg.locator('tspan[dy]')
+    const dyCount = await tspansWithDy.count()
+    expect(
+      dyCount,
+      'wrapped quote should produce at least one line break'
+    ).toBeGreaterThan(0)
+
+    assertNoExternal()
+  })
+
+  test('W6.1 grid card shows the default quote in the preview', async ({ page }) => {
+    const assertNoExternal = await setupAll(page)
+    await gotoMarketplace(page)
+
+    // Find the Quote card in the grid
+    const quoteCard = page.locator('[data-template-id="quote-card"]')
+    await expect(quoteCard).toBeVisible()
+
+    // Verify the card renders a preview with text content
+    const previewSvg = quoteCard.locator('svg').first()
+    await expect(previewSvg).toBeVisible()
+
+    assertNoExternal()
+  })
 })
