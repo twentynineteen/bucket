@@ -561,7 +561,7 @@ describe('AE4.4 - multiline vs point text', () => {
     expect(tdProp).toBeDefined()
   })
 
-  it('uses point text for multiline true with a box width (S6: no word-wrapping)', () => {
+  it('uses point text for multiline true with a box width (no AE word-wrapping)', () => {
     const fixture: MotionTemplate = {
       ...textFixture,
       id: 'fixture-box-text',
@@ -578,7 +578,7 @@ describe('AE4.4 - multiline vs point text', () => {
 
     const tl = stub.comps[0].layers.find(l => l.kind === 'text')
     expect(tl).toBeDefined()
-    // S6: multiline text uses point text (addText), not box text (addBoxText),
+    // Multiline text uses point text (addText), not box text (addBoxText),
     // so word-wrapping matches the SVG preview (explicit \n only).
     const tdProp = tl!.properties['ADBE Text Document']
     expect(tdProp).toBeDefined()
@@ -1190,10 +1190,10 @@ describe('Property coverage - all animatable properties on all layer kinds', () 
 })
 
 // ---------------------------------------------------------------------------
-// S4 - Interior keyframes get correct distinct in/out ease (one call per key)
+// Interior keyframes get correct distinct in/out ease (one call per key)
 // ---------------------------------------------------------------------------
 
-describe('S4 - interior key gets correct in and out ease', () => {
+describe('interior key gets correct in and out ease', () => {
   // A 4-key opacity track: 0 -> 1 -> 1 -> 0 (in, hold start, hold end, out)
   // Segment 0: 0->1 with ease [0.16, 1, 0.3, 1]
   // Segment 1: 1->1 (hold) with ease [0, 0, 1, 1] (linear, no change)
@@ -1203,7 +1203,7 @@ describe('S4 - interior key gets correct in and out ease', () => {
     id: 'fixture-four-key',
     version: '1.0.0',
     name: 'four key',
-    description: 'Four-key fixture for S4',
+    description: 'Four-key fixture for interior ease test',
     category: 'lower-third',
     status: 'stable',
     tags: ['test'],
@@ -1289,10 +1289,10 @@ describe('S4 - interior key gets correct in and out ease', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S5 - Rect, ellipse, path, arc origin parity with evaluator
+// Rect, ellipse, path, arc origin parity with evaluator
 // ---------------------------------------------------------------------------
 
-describe('S5 - shape layer origin parity with evaluator', () => {
+describe('shape layer origin parity with evaluator', () => {
   // Helper: apply a 2D affine matrix to a point
   function transformPoint(
     m: [number, number, number, number, number, number],
@@ -1341,7 +1341,7 @@ describe('S5 - shape layer origin parity with evaluator', () => {
       id: 'fixture-s5-rect',
       version: '1.0.0',
       name: 's5 rect',
-      description: 'S5 rect parity',
+      description: 'Rect origin parity',
       category: 'lower-third',
       status: 'stable',
       tags: ['test'],
@@ -1459,7 +1459,7 @@ describe('S5 - shape layer origin parity with evaluator', () => {
       id: 'fixture-s5-ellipse',
       version: '1.0.0',
       name: 's5 ellipse',
-      description: 'S5 ellipse parity',
+      description: 'Ellipse origin parity',
       category: 'lower-third',
       status: 'stable',
       tags: ['test'],
@@ -1544,7 +1544,7 @@ describe('S5 - shape layer origin parity with evaluator', () => {
       id: 'fixture-s5-text',
       version: '1.0.0',
       name: 's5 text',
-      description: 'S5 text parity',
+      description: 'Text origin parity',
       category: 'lower-third',
       status: 'stable',
       tags: ['test'],
@@ -1618,10 +1618,10 @@ describe('S5 - shape layer origin parity with evaluator', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S8 - 1-D ease speed sign for decreasing segments
+// 1-D ease speed sign for decreasing segments
 // ---------------------------------------------------------------------------
 
-describe('S8 - 1-D ease speed sign is signed for decreasing segments', () => {
+describe('1-D ease speed sign is signed for decreasing segments', () => {
   // Opacity 1 -> 0 over 1s: delta = (0 - 100) / 1 = -100 (AE units).
   // With ease [0.16, 1, 0.3, 1]:
   //   outSpeed = (y1/x1) * delta = (1/0.16) * (-100) = -625
@@ -1633,7 +1633,7 @@ describe('S8 - 1-D ease speed sign is signed for decreasing segments', () => {
     id: 'fixture-s8-decreasing',
     version: '1.0.0',
     name: 's8 decreasing',
-    description: 'Decreasing 1-D segment for S8',
+    description: 'Decreasing 1-D segment',
     category: 'lower-third',
     status: 'stable',
     tags: ['test'],
@@ -1699,7 +1699,7 @@ describe('S8 - 1-D ease speed sign is signed for decreasing segments', () => {
       id: 'fixture-s8-spatial',
       version: '1.0.0',
       name: 's8 spatial',
-      description: 'Spatial position for S8',
+      description: 'Spatial position speed check',
       category: 'lower-third',
       status: 'stable',
       tags: ['test'],
@@ -1748,13 +1748,13 @@ describe('S8 - 1-D ease speed sign is signed for decreasing segments', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sk4 - Precomp layers must have their anchor set explicitly
+// Precomp layers must have their anchor set explicitly
 // AE doc: layers.add(compItem) creates a layer whose Anchor Point defaults
 // to the source comp's centre ([w/2, h/2]).
 // ae-scripting.docsforadobe.dev/layer/layercollection/ - add(item)
 // ---------------------------------------------------------------------------
 
-describe('Sk4 - precomp anchor is always set explicitly', () => {
+describe('precomp anchor is always set explicitly', () => {
   // Helper: apply a 2D affine matrix to a point
   function transformPoint(
     m: [number, number, number, number, number, number],
@@ -1885,10 +1885,10 @@ describe('Sk4 - precomp anchor is always set explicitly', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sk7 - Scale and Rect Size use per-dimension signed speed
+// Scale and Rect Size use per-dimension signed speed
 // ---------------------------------------------------------------------------
 
-describe('Sk7 - non-spatial multi-dim ease uses per-dimension signed speed', () => {
+describe('non-spatial multi-dim ease uses per-dimension signed speed', () => {
   it('scale-down gets negative speed per dimension, z gets zero', () => {
     // score-ring exit: scale 1 -> 0.85 over 0.48s
     // Per-dimension delta in AE units: (0.85-1)*100 / 0.48 = -31.25 for x and y, 0 for z
@@ -1897,7 +1897,7 @@ describe('Sk7 - non-spatial multi-dim ease uses per-dimension signed speed', () 
       id: 'fixture-sk7-scale-down',
       version: '1.0.0',
       name: 'sk7 scale down',
-      description: 'Scale-down for Sk7',
+      description: 'Scale-down ease test',
       category: 'lower-third',
       status: 'stable',
       tags: ['test'],
@@ -1962,7 +1962,7 @@ describe('Sk7 - non-spatial multi-dim ease uses per-dimension signed speed', () 
       id: 'fixture-sk7-asym',
       version: '1.0.0',
       name: 'sk7 asymmetric',
-      description: 'Asymmetric scale for Sk7',
+      description: 'Asymmetric scale ease test',
       category: 'lower-third',
       status: 'stable',
       tags: ['test'],
@@ -2019,7 +2019,7 @@ describe('Sk7 - non-spatial multi-dim ease uses per-dimension signed speed', () 
       id: 'fixture-sk7-rect-size',
       version: '1.0.0',
       name: 'sk7 rect size',
-      description: 'Rect size for Sk7',
+      description: 'Rect size ease test',
       category: 'lower-third',
       status: 'stable',
       tags: ['test'],
@@ -2081,13 +2081,182 @@ describe('Sk7 - non-spatial multi-dim ease uses per-dimension signed speed', () 
       'height speed should be positive (growing)'
     ).toBeGreaterThan(0)
   })
+
+  it('misaligned width/height times: merged keys get correct per-key ease', () => {
+    // Width keys at t=0, t=1; height keys at t=0, t=0.5, t=1.
+    // Merged key list should have 3 keys at t=0, t=0.5, t=1.
+    // Ease on each key must reflect the segment it belongs to in each track.
+    const misalignedFixture: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-misaligned-rect-size',
+      version: '1.0.0',
+      name: 'misaligned rect size',
+      description: 'Misaligned width/height keyframe times',
+      category: 'lower-third',
+      status: 'stable',
+      tags: ['test'],
+      fonts: ['CabritoSemi-NorBol'],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {},
+      layers: [
+        {
+          kind: 'rect' as const,
+          id: 'misaligned-rect',
+          anchor: { x: 0, y: 0 },
+          width: 400,
+          height: 200,
+          fill: '#ffffff',
+          radius: 0,
+          widthAnimation: [
+            {
+              t: 0,
+              value: 400,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: 200 }
+          ],
+          heightAnimation: [
+            {
+              t: 0,
+              value: 200,
+              ease: [0.4, 0, 0.2, 1] as [number, number, number, number]
+            },
+            {
+              t: 0.5,
+              value: 300,
+              ease: [0.7, 0, 0.84, 0] as [number, number, number, number]
+            },
+            { t: 1, value: 250 }
+          ]
+        }
+      ]
+    }
+
+    const src = getJsxSrc(makeInput(misalignedFixture))
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 'misaligned-rect')
+    expect(layer).toBeDefined()
+
+    const sizeProp = layer!.properties['ADBE Vector Rect Size']
+    expect(sizeProp).toBeDefined()
+
+    // Must have 3 keys (union of width times {0,1} and height times {0,~0.5,1}).
+    // resolve snaps 0.5 to the nearest frame at 25 fps (= 0.52).
+    expect(sizeProp.keyframes).toHaveLength(3)
+
+    // Verify key times (frame-snapped)
+    const snapped05 = Math.round(0.5 * 25) / 25
+    expect(sizeProp.keyframes[0].time).toBe(0)
+    expect(sizeProp.keyframes[1].time).toBeCloseTo(snapped05, 5)
+    expect(sizeProp.keyframes[2].time).toBeCloseTo(1, 5)
+
+    // resolve scales dimensions by format.width/3840 = 0.5, so:
+    // widthAnimation: 200 at t=0, 100 at t=1
+    // heightAnimation: 100 at t=0, 150 at snapped05, 125 at t=1
+    // Merged keys:
+    //   key 0 (t=0):  w=200, h=100 - ease from width [0.16, 1, 0.3, 1]
+    //   key 1 (t=snapped05): w=200 (held), h=150 - ease from height [0.7, 0, 0.84, 0]
+    //   key 2 (t=1):  w=100, h=125 - no outgoing ease
+    //
+    // Segment 0 (0 -> snapped05): dw=0 (width held), dh=50
+    // Key 0 outgoing: width speed = (1/0.16)*0 = 0
+    const kf0 = sizeProp.keyframes[0]
+    expect(kf0.outEase).toBeDefined()
+    expect(kf0.outEase).toHaveLength(2)
+    expect(
+      kf0.outEase![0].speed,
+      'width speed is 0 (width unchanged in segment 0->snapped05)'
+    ).toBeCloseTo(0, 1)
+
+    // Key 1 (snapped05): only height has a key here.
+    // Must still receive ease (incoming from segment 0 + outgoing from segment 1).
+    const kf1 = sizeProp.keyframes[1]
+    expect(kf1.outEase, 'key at mid-point should have outEase').toBeDefined()
+    expect(kf1.inEase, 'key at mid-point should have inEase').toBeDefined()
+
+    // Key 2 (t=1): inEase from segment 1.
+    // Segment 1 (snapped05 -> 1): dw=-100, dh=-25
+    const kf2 = sizeProp.keyframes[2]
+    expect(kf2.inEase, 'key at t=1 should have inEase').toBeDefined()
+    expect(kf2.inEase).toHaveLength(2)
+    // Width incoming speed should be negative (width shrinks in segment 1)
+    expect(
+      kf2.inEase![0].speed,
+      'width incoming speed at t=1 should be negative (shrinking)'
+    ).toBeLessThan(0)
+  })
+
+  it('height-only animation gets eases', () => {
+    // Only heightAnimation with 2 keys, no widthAnimation.
+    // The merged key list has 2 keys, both from height. Ease must be emitted.
+    const heightOnlyFixture: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-height-only-rect',
+      version: '1.0.0',
+      name: 'height only rect',
+      description: 'Height-only animation gets eases',
+      category: 'lower-third',
+      status: 'stable',
+      tags: ['test'],
+      fonts: ['CabritoSemi-NorBol'],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {},
+      layers: [
+        {
+          kind: 'rect' as const,
+          id: 'height-only-rect',
+          anchor: { x: 0, y: 0 },
+          width: 400,
+          height: 200,
+          fill: '#ffffff',
+          radius: 0,
+          heightAnimation: [
+            {
+              t: 0,
+              value: 200,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: 400 }
+          ]
+        }
+      ]
+    }
+
+    const src = getJsxSrc(makeInput(heightOnlyFixture))
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 'height-only-rect')
+    expect(layer).toBeDefined()
+
+    const sizeProp = layer!.properties['ADBE Vector Rect Size']
+    expect(sizeProp).toBeDefined()
+    expect(sizeProp.keyframes).toHaveLength(2)
+
+    // resolve scales by 0.5, so: height 100 at t=0, 200 at t=1
+    // Static width = 200 (400*0.5)
+    // dh = (200-100)/1 = 100, dw = 0
+    // With ease [0.16, 1, 0.3, 1]: outSpeed_h = (1/0.16) * 100 = 625
+    const kf0 = sizeProp.keyframes[0]
+    expect(kf0.outEase, 'height-only must get ease').toBeDefined()
+    expect(kf0.outEase).toHaveLength(2) // Rect Size is 2-dimensional
+    expect(kf0.outEase![0].speed, 'width speed should be 0 (static)').toBeCloseTo(0, 1)
+    expect(
+      kf0.outEase![1].speed,
+      'height speed should be positive (growing)'
+    ).toBeCloseTo(625, 0)
+  })
 })
 
 // ---------------------------------------------------------------------------
-// Ar9 - assertNever in layer-kind switches
+// Exhaustive layer-kind switches
 // ---------------------------------------------------------------------------
 
-describe('Ar9 - exhaustive layer-kind switches', () => {
+describe('exhaustive layer-kind switches', () => {
   it('emitLayerDispatch handles all PrimitiveLayer kinds or falls to assertNever', () => {
     // Verify by checking that the source contains a default case with assertNever
     // This is a structural test - we check the generated JSX still works for every
@@ -2103,10 +2272,10 @@ describe('Ar9 - exhaustive layer-kind switches', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S6 - Multiline text uses point text, not box text
+// Multiline text uses point text, not box text
 // ---------------------------------------------------------------------------
 
-describe('S6 - multiline text uses addText (not addBoxText)', () => {
+describe('multiline text uses addText (not addBoxText)', () => {
   // Layer base without the param field so resolveTemplate does not overwrite the text
   const s6LayerBase = { ...textLayerBase }
   delete (s6LayerBase as Record<string, unknown>).param

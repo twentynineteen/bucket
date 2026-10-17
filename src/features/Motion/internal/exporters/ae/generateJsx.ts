@@ -37,7 +37,7 @@ import { parseHexColour } from '../../colour'
 import { EASE_DIMENSIONS, mapEase } from './aeEase'
 import { jsStringLiteral } from './jsString'
 
-/** Ar9: exhaustiveness check - the compiler proves this is never called. */
+/** Exhaustiveness check - the compiler proves this is never called. */
 function assertNever(x: never): never {
   throw new Error(`Unexpected layer kind: ${(x as { kind: string }).kind}`)
 }
@@ -109,7 +109,7 @@ function neutralEaseStr(dims: number): string {
  * First key has no incoming segment; last key has no outgoing segment.
  * Both use a neutral default for the missing half.
  *
- * S8/Sk7: delta is passed through to mapEase. 1-D properties (opacity,
+ * Delta is passed through to mapEase. 1-D properties (opacity,
  * rotation) use a signed scalar. Spatial Position uses an unsigned magnitude.
  * Non-spatial multi-dim properties (Scale, Rect Size) use a per-dimension
  * signed array so each axis gets its own speed and direction.
@@ -190,7 +190,7 @@ function colD(kfs: Array<{ t: number; value: string }>, i: number): number {
 }
 
 /**
- * Sk7: per-dimension signed speed for Scale (3-D: x, y, z).
+ * Per-dimension signed speed for Scale (3-D: x, y, z).
  * AE Scale is a non-spatial multi-dimensional property, so each dimension
  * needs its own signed speed. z is always 0 (2D templates).
  */
@@ -210,7 +210,7 @@ function scaleD(
 // ---------------------------------------------------------------------------
 
 /**
- * S5/Sk4: set the layer anchor point from the template's anchor.
+ * Set the layer anchor point from the template's anchor.
  * The evaluator convention: world = T(position) * R(rotation) * S(scale) * T(-anchor).
  * AE convention: world = T(position) * R(rotation) * S(scale) * T(-anchorPoint).
  * So we set ADBE Anchor Point to the layer's anchor.
@@ -362,7 +362,7 @@ function emitText(layer: TextLayer, compExpr: string, ctx: GenContext): string {
     jsStringLiteral(ps) +
     ')'
 
-  // S6: always use point text (addText). The SVG preview only breaks at
+  // Always use point text (addText). The SVG preview only breaks at
   // explicit \n, so addBoxText would enable AE word-wrapping that the
   // preview does not match. Line breaks come from \r in the text content.
   L.push('var ' + v + ' = ' + compExpr + '.layers.addText();')
@@ -708,7 +708,7 @@ function emitRect(layer: RectLayer, cnt: string, lines: string[]): void {
         ']);'
     )
   }
-  // S5: offset the rect shape so its top-left is at local [0, 0].
+  // Offset the rect shape so its top-left is at local [0, 0].
   // AE centres the rect on the shape position, so we shift it by [w/2, h/2].
   lines.push(
     r +
@@ -736,6 +736,7 @@ function emitRectSizeAnim(layer: RectLayer, re: string, lines: string[]): void {
   for (const h of hKfs) times.add(h.t)
   const sorted = Array.from(times).sort((a, b) => a - b)
 
+  /** Look up the held value at time t from a keyframe track. */
   function gv(kfs: Array<{ t: number; value: number }>, t: number): number {
     for (let k = kfs.length - 1; k >= 0; k--) {
       if (kfs[k].t <= t) return kfs[k].value
@@ -743,35 +744,51 @@ function emitRectSizeAnim(layer: RectLayer, re: string, lines: string[]): void {
     return kfs[0].value
   }
 
+  // Build a merged key list at the union of both tracks' times.
+  // Each merged key carries the ease from whichever track owns that time,
+  // preferring width when both do. Per-key (w, h) values are held values.
+  type MergedKf = {
+    t: number
+    value: { w: number; h: number }
+    ease?: [number, number, number, number]
+  }
+  const merged: MergedKf[] = sorted.map(t => {
+    // Pick the ease from the track that has a key at this exact time.
+    // If both tracks have a key at t, use the width track's ease (it controls
+    // the outgoing segment for the width dimension; height dimension gets its
+    // speed from the delta alone).
+    const wHit = wKfs.find(k => k.t === t)
+    const hHit = hKfs.find(k => k.t === t)
+    const ease =
+      (wHit as { ease?: [number, number, number, number] } | undefined)?.ease ??
+      (hHit as { ease?: [number, number, number, number] } | undefined)?.ease
+    return { t, value: { w: gv(wKfs, t), h: gv(hKfs, t) }, ease }
+  })
+
   const pe = re + '.property("ADBE Vector Rect Size")'
-  for (const t of sorted) {
+  for (const kf of merged) {
     lines.push(
-      pe + '.setValueAtTime(' + t + ', [' + gv(wKfs, t) + ', ' + gv(hKfs, t) + ']);'
+      pe + '.setValueAtTime(' + kf.t + ', [' + kf.value.w + ', ' + kf.value.h + ']);'
     )
   }
 
-  if (layer.widthAnimation && layer.widthAnimation.length > 1) {
+  if (merged.length > 1) {
     emitEase(
       pe,
-      layer.widthAnimation as Array<{
+      merged as Array<{
         t: number
         value: unknown
         ease?: [number, number, number, number]
       }>,
       'ADBE Vector Rect Size',
-      // Sk7: per-dimension signed speed for Rect Size (2-D: width, height)
+      // Per-dimension signed speed for Rect Size (2-D: width, height).
+      // Each dimension's delta comes from the merged key values, not from the
+      // original track indices, so misaligned track times are handled correctly.
       i => {
-        const dt = layer.widthAnimation![i + 1].t - layer.widthAnimation![i].t
+        const dt = merged[i + 1].t - merged[i].t
         if (dt === 0) return [0, 0]
-        const dw = layer.widthAnimation![i + 1].value - layer.widthAnimation![i].value
-        let dh = 0
-        if (
-          layer.heightAnimation &&
-          layer.heightAnimation[i] &&
-          layer.heightAnimation[i + 1]
-        ) {
-          dh = layer.heightAnimation[i + 1].value - layer.heightAnimation[i].value
-        }
+        const dw = merged[i + 1].value.w - merged[i].value.w
+        const dh = merged[i + 1].value.h - merged[i].value.h
         return [dw / dt, dh / dt]
       },
       lines
@@ -790,7 +807,7 @@ function emitEllipseS(layer: EllipseLayer, cnt: string, lines: string[]): void {
       layer.radiusY * 2 +
       ']);'
   )
-  // S5: ellipse - the evaluator draws <ellipse cx="0" cy="0"> centred at
+  // Ellipse - the evaluator draws <ellipse cx="0" cy="0"> centred at
   // local [0, 0], which matches AE's default. No shape position offset needed.
   // The anchor point is set in emitTransform.
   const f = uid()
@@ -964,7 +981,7 @@ function emitGroup(
   ctx.lines.push('var ' + lyr + ' = ' + compExpr + '.layers.add(' + pc + ');')
   ctx.lines.push(lyr + '.name = ' + jsStringLiteral(layer.id) + ';')
 
-  // Sk4: layers.add(compItem) defaults Anchor Point to comp centre, not [0,0].
+  // layers.add(compItem) defaults Anchor Point to comp centre, not [0,0].
   // Always set it explicitly, even for zero anchors.
   emitTransform(layer, lyr, ctx.lines, true)
   return lyr

@@ -825,7 +825,7 @@ function __makeCompItem(name, width, height, pixelAspect, duration, frameRate) {
         var layer = __makeLayer("precomp");
         layer.source = item;
         layer.name = item.name;
-        // Default Anchor Point to source comp centre (Sk4)
+        // Default Anchor Point to source comp centre
         var ap = layer.property("ADBE Transform Group").property("ADBE Anchor Point");
         ap.setValue([item.width / 2, item.height / 2]);
         layerList.push(layer);
