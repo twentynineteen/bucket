@@ -54,7 +54,7 @@
           "t": 0,
           "value": {
             "x": 1920,
-            "y": 940
+            "y": 975
           }
         }
       ],
@@ -117,13 +117,13 @@
       "font": {
         "family": "Cabrito Semi",
         "style": "Norm Bold",
-        "size": 140
+        "size": 320
       },
       "align": "center",
       "lineHeight": 1,
       "multiline": false,
       "fill": "#ffffff",
-      "width": 1200
+      "width": 2400
     },
     {
       "kind": "rect",
@@ -136,8 +136,8 @@
         {
           "t": 0,
           "value": {
-            "x": 1620,
-            "y": 988
+            "x": 1560,
+            "y": 1070
           }
         }
       ],
@@ -183,7 +183,7 @@
           "value": 0
         }
       ],
-      "width": 600,
+      "width": 720,
       "height": 4,
       "fill": "#C8E64A",
       "radius": 2
@@ -200,7 +200,7 @@
           "t": 0.15,
           "value": {
             "x": 1920,
-            "y": 1120
+            "y": 1330
           },
           "ease": [0.22, 1, 0.36, 1]
         },
@@ -208,7 +208,7 @@
           "t": 0.75,
           "value": {
             "x": 1920,
-            "y": 1050
+            "y": 1225
           },
           "ease": [0.16, 1, 0.3, 1]
         },
@@ -216,7 +216,7 @@
           "t": 3.2,
           "value": {
             "x": 1920,
-            "y": 1050
+            "y": 1225
           },
           "ease": [0.7, 0, 1, 0.5]
         },
@@ -224,7 +224,7 @@
           "t": 3.7,
           "value": {
             "x": 1920,
-            "y": 1080
+            "y": 1270
           }
         }
       ],
@@ -254,7 +254,7 @@
       "font": {
         "family": "Cabrito Semi",
         "style": "Norm Bold",
-        "size": 60
+        "size": 120
       },
       "align": "center",
       "lineHeight": 1.2,
@@ -263,7 +263,7 @@
       "stagger": {
         "delay": 0.02
       },
-      "width": 1800
+      "width": 3000
     }
   ]
 }
