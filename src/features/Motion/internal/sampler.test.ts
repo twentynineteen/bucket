@@ -1,10 +1,10 @@
 /**
  * Sampler tests (issue #332)
  *
- * Behaviours S1.1 - S1.5
+ * Behaviours S1.1 - S1.5, plus checkAlpha (M2.6) and luminance-weighted density
  */
 import { describe, expect, it } from 'vitest'
-import { samplePoints } from './sampler'
+import { checkAlpha, samplePoints } from './sampler'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -185,5 +185,92 @@ describe('S1.5: fully transparent image', () => {
       targetBox: TARGET_BOX
     })
     expect(pts).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// checkAlpha (M2.6)
+// ---------------------------------------------------------------------------
+
+describe('checkAlpha', () => {
+  it('detects both opaque and transparent pixels', () => {
+    const img = makeAlphaImage(10, 10, x => (x < 5 ? 0 : 255))
+    const result = checkAlpha(img, 10, 10)
+    expect(result.hasOpaque).toBe(true)
+    expect(result.hasTransparent).toBe(true)
+  })
+
+  it('fully opaque image has no transparent pixels', () => {
+    const img = makeAlphaImage(10, 10, () => 255)
+    const result = checkAlpha(img, 10, 10)
+    expect(result.hasOpaque).toBe(true)
+    expect(result.hasTransparent).toBe(false)
+  })
+
+  it('fully transparent image has no opaque pixels', () => {
+    const img = makeAlphaImage(10, 10, () => 0)
+    const result = checkAlpha(img, 10, 10)
+    expect(result.hasOpaque).toBe(false)
+    expect(result.hasTransparent).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Luminance-weighted sampling
+// ---------------------------------------------------------------------------
+
+describe('luminance-weighted sampling', () => {
+  it('produces deterministic output', () => {
+    const img = makeAlphaImage(100, 100, () => 255)
+    // Set some luminance variation via R channel
+    for (let y = 0; y < 100; y++) {
+      for (let x = 0; x < 100; x++) {
+        img[(y * 100 + x) * 4] = Math.floor((x / 100) * 255)
+      }
+    }
+    const a = samplePoints({
+      rgba: img,
+      width: 100,
+      height: 100,
+      minDistance: 4,
+      seed: 42,
+      targetBox: TARGET_BOX,
+      luminanceWeighted: { maxDistance: 12 }
+    })
+    const b = samplePoints({
+      rgba: img,
+      width: 100,
+      height: 100,
+      minDistance: 4,
+      seed: 42,
+      targetBox: TARGET_BOX,
+      luminanceWeighted: { maxDistance: 12 }
+    })
+    expect(a).toEqual(b)
+    expect(a.length).toBeGreaterThan(0)
+  })
+
+  it('dark areas get denser points than bright areas', () => {
+    // Left half dark (R=0), right half bright (R=255), all opaque
+    const img = makeAlphaImage(200, 100, () => 255)
+    for (let y = 0; y < 100; y++) {
+      for (let x = 0; x < 200; x++) {
+        img[(y * 200 + x) * 4] = x < 100 ? 0 : 255
+      }
+    }
+    const pts = samplePoints({
+      rgba: img,
+      width: 200,
+      height: 100,
+      minDistance: 3,
+      seed: 42,
+      targetBox: { x: 0, y: 0, w: 2000, h: 1000 },
+      luminanceWeighted: { maxDistance: 10 }
+    })
+    const midX = 1000
+    const leftCount = pts.filter(p => p.x < midX).length
+    const rightCount = pts.filter(p => p.x >= midX).length
+    // Dark (left) half should have more points than bright (right) half
+    expect(leftCount).toBeGreaterThan(rightCount)
   })
 })

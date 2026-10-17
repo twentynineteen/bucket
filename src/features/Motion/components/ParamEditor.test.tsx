@@ -298,10 +298,22 @@ describe('ParamEditor', () => {
         template={imageTemplate()}
         initialValues={{}}
         onPickImage={vi.fn()}
-        imageError="Image has no transparent pixels"
+        imageError="Image has no transparent pixels - use a cut-out PNG with a transparent background"
       />
     )
 
     expect(screen.getByText(/no transparent pixels/i)).toBeInTheDocument()
+  })
+
+  it('M2.6 - image param shows picked file name', () => {
+    render(
+      <Wrapper
+        template={imageTemplate()}
+        initialValues={{ image: { pickedPath: '/photos/runner.png' } }}
+        onPickImage={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('runner.png')).toBeInTheDocument()
   })
 })

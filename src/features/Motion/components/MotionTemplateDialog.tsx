@@ -29,12 +29,15 @@ import {
   resolveTemplate,
   validateParams
 } from '../internal/resolve'
+import { checkAlpha, samplePoints } from '../internal/sampler'
 import { checkTextOverflow, createCanvasMeasurer } from '../internal/textOverflow'
 import type {
   CatalogueEntry,
   MotionFormat,
   MotionTarget,
+  MotionTemplate,
   ParamValues,
+  ParticlesLayer,
   TextLayer
 } from '../types'
 import ExportPanel from './ExportPanel'
@@ -46,6 +49,84 @@ export interface MotionTemplateDialogProps {
   template: CatalogueEntry
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+// ---------------------------------------------------------------------------
+// Image decoding and particle re-sampling (M2.6)
+// ---------------------------------------------------------------------------
+
+/**
+ * Decode a PNG file's bytes into RGBA ImageData using a canvas element.
+ * Returns null if decoding fails (e.g. invalid PNG).
+ */
+async function decodeImageToRgba(
+  pngBytes: Uint8Array
+): Promise<{ rgba: Uint8ClampedArray; width: number; height: number } | null> {
+  const blob = new Blob([pngBytes], { type: 'image/png' })
+  const url = URL.createObjectURL(blob)
+  try {
+    const img = new Image()
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve()
+      img.onerror = () => reject(new Error('Image decode failed'))
+      img.src = url
+    })
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(img, 0, 0)
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    return { rgba: imageData.data, width: canvas.width, height: canvas.height }
+  } catch {
+    return null
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+/**
+ * Compute the bounding box of a set of points (used as the re-sampling
+ * target box, matching the built-in points' extent).
+ */
+function pointsBoundingBox(points: { x: number; y: number }[]): {
+  x: number
+  y: number
+  w: number
+  h: number
+} {
+  if (points.length === 0) return { x: 0, y: 0, w: 3840, h: 2160 }
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const p of points) {
+    if (p.x < minX) minX = p.x
+    if (p.y < minY) minY = p.y
+    if (p.x > maxX) maxX = p.x
+    if (p.y > maxY) maxY = p.y
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
+/**
+ * Return a shallow copy of the template with the specified particle layer's
+ * points replaced. Does not mutate the original.
+ */
+function replaceParticlePoints(
+  template: MotionTemplate,
+  newPoints: { x: number; y: number; region?: string }[]
+): MotionTemplate {
+  return {
+    ...template,
+    layers: template.layers.map(layer => {
+      if (layer.kind === 'particles' && (layer as ParticlesLayer).imageParam) {
+        return { ...layer, points: newPoints }
+      }
+      return layer
+    })
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +186,9 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
   const [imageError, setImageError] = useState<string | null>(null)
   const [folderWarning, setFolderWarning] = useState<string | null>(null)
   const [pickedImagePath, setPickedImagePath] = useState<string | undefined>()
+  const [resampledPoints, setResampledPoints] = useState<
+    { x: number; y: number; region?: string }[] | null
+  >(null)
 
   // Hooks
   const { prefs, updatePrefs } = useMotionPrefs()
@@ -137,10 +221,25 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     prefs.lastProjectFolder
   )
 
+  // When the user picks an image and re-sampled points are available,
+  // create a copy of the template with replaced particle points. This
+  // feeds the new figure into preview, video and export without changing
+  // resolve.ts (which another agent owns).
+  const effectiveTemplate = useMemo(
+    () => (resampledPoints ? replaceParticlePoints(template, resampledPoints) : template),
+    [template, resampledPoints]
+  )
+
+  // Effective entry for export (uses re-sampled points when available)
+  const effectiveEntry = useMemo(
+    () => (resampledPoints ? { ...entry, template: effectiveTemplate } : entry),
+    [entry, effectiveTemplate, resampledPoints]
+  )
+
   // Resolve the template for the evaluator
   const resolved = useMemo(
-    () => resolveTemplate(template, values, format),
-    [template, values, format]
+    () => resolveTemplate(effectiveTemplate, values, format),
+    [effectiveTemplate, values, format]
   )
 
   // Ticker drives the preview animation
@@ -157,6 +256,7 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     setValues(defaultValues(entry))
     setImageError(null)
     setPickedImagePath(undefined)
+    setResampledPoints(null)
   }
 
   // The time to pass to the preview (null during the gap)
@@ -229,30 +329,59 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     try {
       const bytes = await readBytes(path)
 
-      // Check the image has transparent and opaque pixels
-      // Simple check: look for any alpha < 255 and any alpha > 0
-      // PNG bytes are complex; for now just accept it
-      // A proper check would decode the PNG, but that's beyond jsdom.
-      // The sampler will catch issues.
-      const hasTransparent = bytes.some((b, i) => i % 4 === 3 && b < 255)
-      const hasOpaque = bytes.some((b, i) => i % 4 === 3 && b > 0)
+      // Decode the PNG to real RGBA pixel data via a canvas
+      const decoded = await decodeImageToRgba(bytes)
+      if (!decoded) {
+        setImageError('Could not decode the image')
+        return
+      }
 
-      if (!hasTransparent || !hasOpaque) {
+      // Check the real alpha channel for both opaque and transparent pixels
+      const alpha = checkAlpha(decoded.rgba, decoded.width, decoded.height)
+      if (!alpha.hasTransparent || !alpha.hasOpaque) {
         setImageError(
-          !hasTransparent
-            ? 'Image has no transparent pixels'
+          !alpha.hasTransparent
+            ? 'Image has no transparent pixels - use a cut-out PNG with a transparent background'
             : 'Image has no opaque pixels'
         )
         return
       }
 
+      // Find the particle layer with an imageParam to get its seed and
+      // built-in points (for the target bounding box)
+      const particleLayer = template.layers.find(
+        (l): l is ParticlesLayer =>
+          l.kind === 'particles' && !!(l as ParticlesLayer).imageParam
+      )
+      if (!particleLayer) {
+        setImageError('No particle layer configured for image input')
+        return
+      }
+
+      // Re-sample using the layer's seed and the built-in points' bounding box
+      const targetBox = pointsBoundingBox(particleLayer.points)
+      const newPoints = samplePoints({
+        rgba: decoded.rgba,
+        width: decoded.width,
+        height: decoded.height,
+        minDistance: 6,
+        seed: particleLayer.seed,
+        targetBox
+      })
+
+      if (newPoints.length === 0) {
+        setImageError('No points could be sampled from the image')
+        return
+      }
+
       setImageError(null)
       setPickedImagePath(path)
+      setResampledPoints(newPoints)
       setValues(prev => ({ ...prev, image: { pickedPath: path } }))
     } catch {
       setImageError('Could not read the image file')
     }
-  }, [])
+  }, [template])
 
   const handleTargetsChange = useCallback(
     (newTargets: MotionTarget[]) => {
@@ -275,7 +404,7 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     if (!projectFolder) return
 
     await motionExport.exportToProject({
-      entry,
+      entry: effectiveEntry,
       values,
       format,
       resolved,
@@ -286,7 +415,7 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
       pickedImagePath
     })
   }, [
-    entry,
+    effectiveEntry,
     values,
     format,
     resolved,
@@ -299,8 +428,8 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
   ])
 
   const handleCopyPrompt = useCallback(() => {
-    motionExport.copyPrompt({ entry, values, format, resolved })
-  }, [entry, values, format, resolved, motionExport])
+    motionExport.copyPrompt({ entry: effectiveEntry, values, format, resolved })
+  }, [effectiveEntry, values, format, resolved, motionExport])
 
   const handlePlayPause = useCallback(() => {
     setPlaying(prev => !prev)
@@ -359,7 +488,7 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
           {/* Preview in a block-level wrapper so it takes 16:9 space */}
           <PreviewStage containerRef={ticker.containerRef}>
             <MotionPreview
-              template={template}
+              template={effectiveTemplate}
               values={values}
               format={format}
               time={time}
