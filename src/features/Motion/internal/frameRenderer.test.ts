@@ -13,6 +13,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import MotionPreview from '../components/MotionPreview'
 import type { LayerState, MotionFormat, MotionTemplate, ParamValues } from '../types'
+import { loadBuiltins } from './builtins'
 import { evaluate } from './evaluate'
 import { buildFrameList, buildSvgString, type FontData } from './frameRenderer'
 import { resolveTemplate } from './resolve'
@@ -370,8 +371,12 @@ describe('preview vs. frameRenderer parity', () => {
     clearTestClock()
   })
 
-  // Test every layer-kind fixture that has vector content
-  const vectorFixtures = layerKindFixtures.filter(f => !isParticleOnly(f))
+  // Every layer-kind fixture, plus every shipped template: the built-ins
+  // combine stagger, counters, series, groups and arcs in ways the
+  // one-kind fixtures do not
+  const vectorFixtures = [...layerKindFixtures, ...loadBuiltins().templates].filter(
+    f => !isParticleOnly(f)
+  )
 
   for (const fixture of vectorFixtures) {
     for (const t of TIMES) {
