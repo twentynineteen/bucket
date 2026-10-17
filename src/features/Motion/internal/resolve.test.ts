@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { MotionFormat, MotionTemplate, RectLayer, TextLayer } from '../types'
+import { loadBuiltins } from './builtins'
 import {
   deriveTargets,
   exportFolderName,
@@ -578,3 +579,164 @@ describe('particle region tints resolve to colours', () => {
     expect(layerOf({ bodyTint: '#FF0000' }).regionFills.hips).toBe('#FF0000')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Sk3/Ar1: stagger budget holds at every fps for every built-in
+// ---------------------------------------------------------------------------
+
+describe('Sk3/Ar1 stagger budget after quantisation', () => {
+  it('quantised delay never exceeds 40% of inEnd for a 30-char name at 50 fps', () => {
+    const staggerFixture: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-stagger-budget',
+      version: '1.0.0',
+      name: 'Stagger budget',
+      description: 'Test fixture',
+      category: 'lower-third',
+      status: 'stable',
+      tags: [],
+      fonts: ['CabritoSemi-NorBol'],
+      duration: 4,
+      inEnd: 0.7,
+      outStart: 3.4,
+      params: {
+        name: {
+          kind: 'text' as const,
+          label: 'Name',
+          maxLength: 40,
+          default: 'A very long name that is exact!',
+          required: true
+        }
+      },
+      layers: [
+        {
+          kind: 'text' as const,
+          id: 'title',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 300, y: 500 } }],
+          text: 'A very long name that is exact!',
+          param: 'name',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 60 },
+          align: 'left' as const,
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff',
+          stagger: { delay: 0.03 },
+          width: 1500
+        }
+      ]
+    }
+    const format50: MotionFormat = { width: 3840, height: 2160, fps: 50 }
+    const resolved = resolveTemplate(staggerFixture, {}, format50)
+    const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
+    const charCount = 30 // "A very long name that is exact!"
+    const totalStagger = (charCount - 1) * textLayer.stagger!.delay
+    expect(totalStagger).toBeLessThanOrEqual(0.4 * 0.7 + 1e-9)
+  })
+
+  it('every built-in satisfies budget at 24, 25 and 50 fps with default text', () => {
+    const { templates: builtins } = loadBuiltins()
+    const fpsValues = [24, 25, 50] as const
+
+    for (const template of builtins as MotionTemplate[]) {
+      for (const fps of fpsValues) {
+        const format: MotionFormat = { width: 3840, height: 2160, fps }
+        const resolved = resolveTemplate(template, {}, format)
+
+        // Check every text layer with stagger
+        const checkLayers = (layers: typeof resolved.layers) => {
+          for (const layer of layers) {
+            if (layer.kind === 'group') {
+              checkLayers(layer.children as typeof resolved.layers)
+              continue
+            }
+            if (layer.kind === 'text' && layer.stagger && layer.stagger.delay > 0) {
+              const text = layer.text
+              const charCount = Array.from(text).length
+              const n = Math.max(1, charCount - 1)
+              const totalStagger = n * layer.stagger.delay
+              expect(
+                totalStagger,
+                `${template.id} at ${fps}fps: layer "${layer.id}" stagger total ${totalStagger.toFixed(4)}s > 40% of inEnd (${(0.4 * template.inEnd).toFixed(4)}s)`
+              ).toBeLessThanOrEqual(0.4 * template.inEnd + 1e-9)
+            }
+          }
+        }
+        checkLayers(resolved.layers)
+      }
+    }
+  })
+
+  it('every built-in satisfies budget at 24, 25 and 50 fps with maxLength text', () => {
+    const { templates: builtins2 } = loadBuiltins()
+    const fpsValues = [24, 25, 50] as const
+
+    for (const template of builtins2 as MotionTemplate[]) {
+      // Find text params and set them to maxLength
+      const maxValues: Record<string, string> = {}
+      for (const [id, def] of Object.entries(template.params)) {
+        if (def.kind === 'text') {
+          maxValues[id] = 'X'.repeat(def.maxLength)
+        }
+      }
+      if (Object.keys(maxValues).length === 0) continue
+
+      for (const fps of fpsValues) {
+        const format: MotionFormat = { width: 3840, height: 2160, fps }
+        const resolved = resolveTemplate(template, maxValues, format)
+
+        const checkLayers = (layers: typeof resolved.layers) => {
+          for (const layer of layers) {
+            if (layer.kind === 'group') {
+              checkLayers(layer.children as typeof resolved.layers)
+              continue
+            }
+            if (layer.kind === 'text' && layer.stagger && layer.stagger.delay > 0) {
+              const text = layer.text
+              const charCount = Array.from(text).length
+              const n = Math.max(1, charCount - 1)
+              const totalStagger = n * layer.stagger.delay
+              expect(
+                totalStagger,
+                `${template.id} at ${fps}fps maxLength: layer "${layer.id}" stagger total ${totalStagger.toFixed(4)}s > 40% of inEnd (${(0.4 * template.inEnd).toFixed(4)}s)`
+              ).toBeLessThanOrEqual(0.4 * template.inEnd + 1e-9)
+            }
+          }
+        }
+        checkLayers(resolved.layers)
+      }
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ar5: resolveTemplate fills an explicit position track when absent
+// ---------------------------------------------------------------------------
+
+describe('Ar5 explicit position track', () => {
+  it('layer without position gets a single key at the origin after resolve', () => {
+    const template: MotionTemplate = {
+      ...textFixture,
+      params: {},
+      layers: [
+        {
+          kind: 'rect',
+          id: 'no-pos',
+          anchor: { x: 100, y: 50 },
+          // no position field
+          width: 200,
+          height: 100,
+          fill: '#000000',
+          radius: 0
+        }
+      ]
+    }
+    const resolved = resolveTemplate(template, {}, FORMAT_4K)
+    const layer = resolved.layers[0]
+    expect(layer.position).toBeDefined()
+    expect(layer.position!.length).toBe(1)
+    expect(layer.position![0].value).toEqual({ x: 0, y: 0 })
+  })
+})
+
+// Ar8 getHoldParam tests are added in the green commit alongside the implementation
