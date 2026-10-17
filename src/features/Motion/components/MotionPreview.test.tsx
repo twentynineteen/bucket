@@ -45,8 +45,7 @@ function renderPreview(
 // ---------------------------------------------------------------------------
 
 describe('MotionPreview', () => {
-  // P1.1: accessible name and SVG viewBox
-  it('p1_1_img_role_and_accessible_name_and_svg_viewbox', () => {
+  it('has img role, accessible name and 16:9 SVG viewBox', () => {
     renderPreview(textFixture, { name: 'Jane Doe' }, 0.5, 'Lower third Glide')
 
     const img = screen.getByRole('img', {
@@ -59,8 +58,7 @@ describe('MotionPreview', () => {
     expect(svg!.getAttribute('viewBox')).toBe('0 0 3840 2160')
   })
 
-  // P1.2: shapes and text rendering (real evaluate)
-  it('p1_2_renders_rect_with_correct_attributes', () => {
+  it('renders rect with correct fill, radius and opacity', () => {
     // At t=0.5, the rect opacity is interpolated from 0 to 1 over 0-1s
     const { container } = renderPreview(rectFixture, {}, 0.5)
 
@@ -71,7 +69,7 @@ describe('MotionPreview', () => {
     expect(rect!.getAttribute('fill')).toBe('#ff3366')
   })
 
-  it('p1_2_renders_ellipse_at_its_radii', () => {
+  it('renders ellipse at its radii', () => {
     const { container } = renderPreview(ellipseFixture, {}, 0.5)
 
     const svg = container.querySelector('svg')!
@@ -84,7 +82,7 @@ describe('MotionPreview', () => {
     expect(ry).toBeGreaterThan(0)
   })
 
-  it('p1_2_renders_text_with_font_family', () => {
+  it('renders text with font family', () => {
     const { container } = renderPreview(textFixture, { name: 'Jane Doe' }, 0.5)
 
     const svg = container.querySelector('svg')!
@@ -93,8 +91,7 @@ describe('MotionPreview', () => {
     expect(text!.getAttribute('font-family')).toMatch(/Cabrito Semi/)
   })
 
-  // P1.4: arc layer
-  it('p1_4_arc_renders_ring_segment', () => {
+  it('renders arc as a ring-segment path without stroke', () => {
     // At t=0.5, the arc sweep is interpolated between 0 and 1
     const { container } = renderPreview(arcFixture, { score: 72 }, 0.5)
 
@@ -106,8 +103,7 @@ describe('MotionPreview', () => {
     expect(arcPath!.getAttribute('stroke')).toBeNull()
   })
 
-  // P1.5: particles use canvas overlay
-  it('p1_5_particles_render_on_canvas_not_svg', () => {
+  it('particles render on canvas, not in SVG', () => {
     const { container } = renderPreview(particlesFixture, {}, 0.5)
 
     const canvas = container.querySelector('canvas')
@@ -118,8 +114,7 @@ describe('MotionPreview', () => {
     expect(circles.length).toBe(0)
   })
 
-  // P1.6: test clock override
-  it('p1_6_test_clock_overrides_time', () => {
+  it('test clock overrides the time prop', () => {
     ;(globalThis as Record<string, unknown>).__BUCKET_MOTION_CLOCK__ = 0.75
 
     const { container } = renderPreview(textFixture, { name: 'Jane Doe' }, 2.0)
@@ -132,8 +127,7 @@ describe('MotionPreview', () => {
     delete (globalThis as Record<string, unknown>).__BUCKET_MOTION_CLOCK__
   })
 
-  // S6: text-anchor from align
-  it('s6_center_align_emits_text_anchor_middle', () => {
+  it('center align emits text-anchor middle', () => {
     // The arcFixture has a label-text with align: 'center' but the textFixture
     // has align: 'left'. We need a template with centre align. Use the arc
     // fixture's text layer which has align: 'center' in score-ring.
@@ -156,7 +150,7 @@ describe('MotionPreview', () => {
     expect(text!.getAttribute('text-anchor')).toBe('middle')
   })
 
-  it('s6_right_align_emits_text_anchor_end', () => {
+  it('right align emits text-anchor end', () => {
     const textLayer = textFixture.layers[0] as TextLayer
     const rightTemplate: MotionTemplate = {
       ...textFixture,
@@ -175,8 +169,7 @@ describe('MotionPreview', () => {
     expect(text!.getAttribute('text-anchor')).toBe('end')
   })
 
-  // P1.7: param changes re-render without remount
-  it('p1_7_param_change_updates_without_remount', () => {
+  it('param change updates without remount', () => {
     const { container, rerender } = render(
       <MotionPreview
         template={textFixture}

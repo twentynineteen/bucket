@@ -1,12 +1,8 @@
 /**
  * ParamEditor tests (issue #337)
  *
- * M2.1: Text param with maxLength counter.
- * M2.2: Colour param.
- * M2.3: Hold slider.
- * M2.4: NumberList with add/remove/validation.
- * M2.5: Number param with validation.
- * M2.6: Image param (picking).
+ * Text param with maxLength counter, colour param, hold slider,
+ * numberList with add/remove/validation, number param, image param.
  */
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -159,7 +155,7 @@ function imageTemplate(): MotionTemplate {
 // ---------------------------------------------------------------------------
 
 describe('ParamEditor', () => {
-  it('M2.1 - text param shows input with maxLength counter', async () => {
+  it('text param shows input with maxLength counter', async () => {
     const user = userEvent.setup()
 
     render(<Wrapper template={textTemplate()} initialValues={{ name: '' }} />)
@@ -173,14 +169,14 @@ describe('ParamEditor', () => {
     expect(screen.getByText(/8\/40/)).toBeInTheDocument()
   })
 
-  it('M2.1 - text param refuses characters beyond maxLength', () => {
+  it('text param refuses characters beyond maxLength', () => {
     render(<Wrapper template={textTemplate()} initialValues={{ name: '' }} />)
 
     const input = screen.getByRole('textbox', { name: /Name/i })
     expect(input).toHaveAttribute('maxLength', '40')
   })
 
-  it('M2.2 - colour param shows colour input', () => {
+  it('colour param shows colour input', () => {
     render(<Wrapper template={colourTemplate()} initialValues={{ accent: '#ff3366' }} />)
 
     const input = screen.getByLabelText(/Accent/i)
@@ -188,7 +184,7 @@ describe('ParamEditor', () => {
     expect(input).toHaveValue('#ff3366')
   })
 
-  it('M2.3 - hold slider appears when template has hold param', () => {
+  it('hold slider appears when template has hold param', () => {
     render(<Wrapper template={holdTemplate()} initialValues={{ hold: 2 }} />)
 
     const slider = screen.getByRole('slider', { name: /Hold/i })
@@ -197,13 +193,13 @@ describe('ParamEditor', () => {
     expect(slider).toHaveAttribute('aria-valuemax', '10')
   })
 
-  it('M2.3 - no hold slider when template lacks hold param', () => {
+  it('no hold slider when template lacks hold param', () => {
     render(<Wrapper template={textTemplate()} initialValues={{ name: 'Jane Doe' }} />)
 
     expect(screen.queryByRole('slider', { name: /Hold/i })).not.toBeInTheDocument()
   })
 
-  it('M2.4 - numberList shows rows and supports add/remove', async () => {
+  it('numberList shows rows and supports add/remove', async () => {
     const user = userEvent.setup()
 
     render(
@@ -237,7 +233,7 @@ describe('ParamEditor', () => {
     await user.click(removeButton)
   })
 
-  it('M2.4 - numberList shows error for out-of-range value', async () => {
+  it('numberList shows error for out-of-range value', async () => {
     const user = userEvent.setup()
 
     render(
@@ -262,7 +258,7 @@ describe('ParamEditor', () => {
     expect(screen.getByText(/outside/i)).toBeInTheDocument()
   })
 
-  it('M2.5 - number param shows spinbutton and validates range', async () => {
+  it('number param shows spinbutton and validates range', async () => {
     const user = userEvent.setup()
 
     render(<Wrapper template={numberTemplate()} initialValues={{ score: 72 }} />)
@@ -278,7 +274,7 @@ describe('ParamEditor', () => {
     expect(screen.getByText(/outside/i)).toBeInTheDocument()
   })
 
-  it('M2.6 - image param shows Choose image button', async () => {
+  it('image param shows Choose image button', async () => {
     const onPickImage = vi.fn()
     const user = userEvent.setup()
 
@@ -291,7 +287,7 @@ describe('ParamEditor', () => {
     expect(onPickImage).toHaveBeenCalled()
   })
 
-  it('M2.6 - image param shows error message', () => {
+  it('image param shows error message', () => {
     render(
       <Wrapper
         template={imageTemplate()}
@@ -304,7 +300,7 @@ describe('ParamEditor', () => {
     expect(screen.getByText(/no transparent pixels/i)).toBeInTheDocument()
   })
 
-  it('M2.6 - image param shows picked file name', () => {
+  it('image param shows picked file name', () => {
     render(
       <Wrapper
         template={imageTemplate()}

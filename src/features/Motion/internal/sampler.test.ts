@@ -1,7 +1,8 @@
 /**
  * Sampler tests (issue #332)
  *
- * Behaviours S1.1 - S1.5, plus checkAlpha and luminance-weighted density
+ * Determinism, alpha masking, Poisson-disc distance, target box mapping,
+ * edge cases, checkAlpha and luminance-weighted density.
  */
 import { describe, expect, it } from 'vitest'
 import { checkAlpha, samplePoints } from './sampler'
@@ -32,10 +33,10 @@ function makeAlphaImage(
 const TARGET_BOX = { x: 500, y: 300, w: 2000, h: 1600 }
 
 // ---------------------------------------------------------------------------
-// S1.1: determinism
+// Determinism
 // ---------------------------------------------------------------------------
 
-describe('S1.1: sampler determinism', () => {
+describe('sampler determinism', () => {
   const fullAlpha = makeAlphaImage(200, 200, () => 255)
 
   it('same seed produces identical points', () => {
@@ -84,10 +85,10 @@ describe('S1.1: sampler determinism', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S1.2: alpha masking
+// Alpha masking
 // ---------------------------------------------------------------------------
 
-describe('S1.2: alpha masking', () => {
+describe('alpha masking', () => {
   it('points only in the opaque (right) half', () => {
     const halfAlpha = makeAlphaImage(200, 200, x => (x >= 100 ? 255 : 0))
     const pts = samplePoints({
@@ -109,10 +110,10 @@ describe('S1.2: alpha masking', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S1.3: Poisson-disc minimum distance
+// Poisson-disc minimum distance
 // ---------------------------------------------------------------------------
 
-describe('S1.3: Poisson-disc minimum distance', () => {
+describe('Poisson-disc minimum distance', () => {
   it('no two points closer than minDistance', () => {
     const fullAlpha = makeAlphaImage(200, 200, () => 255)
     const minDist = 10
@@ -144,10 +145,10 @@ describe('S1.3: Poisson-disc minimum distance', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S1.4: target box mapping
+// Target box mapping
 // ---------------------------------------------------------------------------
 
-describe('S1.4: target box mapping', () => {
+describe('target box mapping', () => {
   it('all points lie inside the target box', () => {
     const fullAlpha = makeAlphaImage(200, 200, () => 255)
     const box = { x: 800, y: 400, w: 1600, h: 1200 }
@@ -170,10 +171,10 @@ describe('S1.4: target box mapping', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S1.5: fully transparent image
+// Fully transparent image
 // ---------------------------------------------------------------------------
 
-describe('S1.5: fully transparent image', () => {
+describe('fully transparent image', () => {
   it('returns empty array without throwing', () => {
     const transparent = makeAlphaImage(200, 200, () => 0)
     const pts = samplePoints({

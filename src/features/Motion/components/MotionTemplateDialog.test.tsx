@@ -1,18 +1,12 @@
 /**
  * MotionTemplateDialog tests (issue #337)
  *
- * M1.1: Dialog role, preview, play/pause/restart.
- * M1.2: Set as category default toggle.
- * M3.1: Overflow warning shown in dialog.
- * M4.1: Format combobox options.
- * M4.2: Project folder warning.
- * M4.3: Folder preselected from prefs.
- * M4.4: Target checkboxes, defaults, remembered selection.
- * M4.5: Video disabled when ffmpeg unavailable.
- * M4.6: Video disabled when font missing.
- * M4.7: Invalid fps options disabled.
- * M4.8: Export disabled when folder/target/param missing.
- * M5.6: Video render progress and cancel.
+ * Dialog role, preview, play/pause/restart.
+ * Category default toggle.
+ * Overflow warning shown in dialog.
+ * Format combobox options, project folder, target checkboxes.
+ * Video disabled when ffmpeg unavailable or font missing.
+ * Invalid fps disabled, export disabled conditions.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -283,7 +277,7 @@ describe('MotionTemplateDialog', () => {
     vi.clearAllMocks()
   })
 
-  describe('M1.1 - Dialog and preview', () => {
+  describe('Dialog and preview', () => {
     it('has role dialog named after the template', () => {
       renderDialog(makeEntry())
 
@@ -316,7 +310,7 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
-  describe('M1.2 - Category default toggle', () => {
+  describe('Category default toggle', () => {
     it('shows the "Set as category default" button', () => {
       renderDialog(makeEntry(barRevealTemplate()))
 
@@ -327,7 +321,7 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
-  describe('M4.1 - Format combobox', () => {
+  describe('Format combobox', () => {
     it('shows the format combobox with expected options', async () => {
       const user = userEvent.setup()
       renderDialog(makeEntry())
@@ -344,7 +338,7 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
-  describe('M4.2 - Project folder', () => {
+  describe('Project folder', () => {
     it('picks a folder, shows the path, shows a warning for a non-Bucket folder, and enables Export', async () => {
       const api = await import('../api')
       renderDialog(makeEntry())
@@ -384,7 +378,7 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
-  describe('M4.4 - Target checkboxes', () => {
+  describe('Target checkboxes', () => {
     it('non-particle: shows five target checkboxes', () => {
       renderDialog(makeEntry())
 
@@ -417,7 +411,7 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
-  describe('M4.5 - Video disabled when ffmpeg unavailable', () => {
+  describe('Video disabled when ffmpeg unavailable', () => {
     it('ffmpeg ready and pools missing: Video stays enabled', async () => {
       const { useKavanaghAvailability } = await import('@features/Kavanagh')
       ;(useKavanaghAvailability as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -530,7 +524,7 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
-  describe('M4.6 - Video disabled when font missing', () => {
+  describe('Video disabled when font missing', () => {
     it('disables Video with reason text about the font', async () => {
       const fontHook = await import('../hooks/useMotionFont')
       ;(fontHook.useMotionFont as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -554,7 +548,7 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
-  describe('M4.7 - Invalid fps disabled', () => {
+  describe('Invalid fps disabled', () => {
     it('valid formats exclude collapsed fps options', async () => {
       const resolveModule = await import('../internal/resolve')
       const { validFormats } = resolveModule
@@ -595,7 +589,7 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
-  describe('M4.8 - Export disabled conditions', () => {
+  describe('Export disabled conditions', () => {
     it('disabled when no folder is chosen', () => {
       renderDialog(makeEntry())
 
@@ -611,7 +605,7 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
-  describe('M5.6 - Video render progress', () => {
+  describe('Video render progress', () => {
     it('dialog renders with export controls', () => {
       renderDialog(makeEntry())
 
@@ -624,7 +618,7 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
-  describe('S2 - dialog preview animates with real ticker', () => {
+  describe('dialog preview animates with real ticker', () => {
     it('containerRef is attached and SVG gains layers after a tick', async () => {
       // Get the real (unmocked) ticker hook via importActual
       const realTickerModule = await vi.importActual<
