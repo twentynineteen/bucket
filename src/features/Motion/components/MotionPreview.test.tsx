@@ -13,7 +13,7 @@ import {
   rectFixture,
   textFixture
 } from '../internal/testing/fixtures'
-import type { MotionFormat, MotionTemplate, ParamValues } from '../types'
+import type { MotionFormat, MotionTemplate, ParamValues, TextLayer } from '../types'
 import MotionPreview from './MotionPreview'
 
 // ---------------------------------------------------------------------------
@@ -138,12 +138,13 @@ describe('MotionPreview', () => {
     // has align: 'left'. We need a template with centre align. Use the arc
     // fixture's text layer which has align: 'center' in score-ring.
     // Actually, let's make a template with centre-aligned text.
+    const textLayer = textFixture.layers[0] as TextLayer
     const centredTemplate: MotionTemplate = {
       ...textFixture,
       id: 'centred-text',
       layers: [
         {
-          ...textFixture.layers[0],
+          ...textLayer,
           align: 'center'
         }
       ]
@@ -156,12 +157,13 @@ describe('MotionPreview', () => {
   })
 
   it('s6_right_align_emits_text_anchor_end', () => {
+    const textLayer = textFixture.layers[0] as TextLayer
     const rightTemplate: MotionTemplate = {
       ...textFixture,
       id: 'right-text',
       layers: [
         {
-          ...textFixture.layers[0],
+          ...textLayer,
           align: 'right'
         }
       ]
