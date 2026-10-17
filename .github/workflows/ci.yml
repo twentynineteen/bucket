@@ -212,6 +212,11 @@ jobs:
 
       # The Playwright image ships browsers but not unzip, which setup-bun
       # needs to unpack Bun.
+      # In the container the checkout is owned by another user, so git refuses
+      # it ("dubious ownership") and lefthook's prepare script fails.
+      - name: Trust the workspace for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Install unzip
         run: apt-get update && apt-get install -y --no-install-recommends unzip
 
