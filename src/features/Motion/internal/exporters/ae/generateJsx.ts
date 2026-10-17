@@ -36,6 +36,11 @@ import type {
 import { EASE_DIMENSIONS, mapEase } from './aeEase'
 import { jsStringLiteral } from './jsString'
 
+/** Ar9: exhaustiveness check - the compiler proves this is never called. */
+function assertNever(x: never): never {
+  throw new Error(`Unexpected layer kind: ${(x as { kind: string }).kind}`)
+}
+
 // ---------------------------------------------------------------------------
 // Context
 // ---------------------------------------------------------------------------
@@ -107,9 +112,10 @@ function neutralEaseStr(dims: number): string {
  * First key has no incoming segment; last key has no outgoing segment.
  * Both use a neutral default for the missing half.
  *
- * S8: delta is passed through as-is - callers that compute magnitudes
- * (posD, colD, scaleD) return positive values; callers that use numD
- * return signed values, which is correct for 1-D AE properties.
+ * S8/Sk7: delta is passed through to mapEase. 1-D properties (opacity,
+ * rotation) use a signed scalar. Spatial Position uses an unsigned magnitude.
+ * Non-spatial multi-dim properties (Scale, Rect Size) use a per-dimension
+ * signed array so each axis gets its own speed and direction.
  */
 function emitEase(
   pe: string,
@@ -119,7 +125,7 @@ function emitEase(
     ease?: [number, number, number, number]
   }>,
   mn: string,
-  delta: (i: number) => number,
+  delta: (i: number) => number | number[],
   lines: string[]
 ): void {
   if (kfs.length < 2) return
@@ -191,15 +197,20 @@ function colD(kfs: Array<{ t: number; value: string }>, i: number): number {
   return Math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2) / dt
 }
 
+/**
+ * Sk7: per-dimension signed speed for Scale (3-D: x, y, z).
+ * AE Scale is a non-spatial multi-dimensional property, so each dimension
+ * needs its own signed speed. z is always 0 (2D templates).
+ */
 function scaleD(
   kfs: Array<{ t: number; value: { x: number; y: number } }>,
   i: number
-): number {
+): number[] {
   const dt = kfs[i + 1].t - kfs[i].t
-  if (dt === 0) return 0
+  if (dt === 0) return [0, 0, 0]
   const dx = (kfs[i + 1].value.x - kfs[i].value.x) * 100
   const dy = (kfs[i + 1].value.y - kfs[i].value.y) * 100
-  return Math.sqrt(dx * dx + dy * dy) / dt
+  return [dx / dt, dy / dt, 0]
 }
 
 // ---------------------------------------------------------------------------
@@ -207,15 +218,30 @@ function scaleD(
 // ---------------------------------------------------------------------------
 
 /**
- * S5: set the layer anchor point from the template's anchor.
+ * S5/Sk4: set the layer anchor point from the template's anchor.
  * The evaluator convention: world = T(position) * R(rotation) * S(scale) * T(-anchor).
  * AE convention: world = T(position) * R(rotation) * S(scale) * T(-anchorPoint).
  * So we set ADBE Anchor Point to the layer's anchor.
+ *
+ * For shape and text layers, AE defaults Anchor Point to [0,0], so skipping the
+ * call for a zero anchor is safe.
+ *
+ * For precomp layers (created by layers.add(compItem)), AE defaults Anchor Point
+ * to the source comp's centre ([w/2, h/2]) - see ae-scripting.docsforadobe.dev
+ * /layer/layercollection/ . That means we MUST always set it, even for (0,0).
+ * The `forceSet` flag controls this.
  */
-function emitAnchor(layer: PrimitiveLayer, tg: string, lines: string[]): void {
-  if (layer.anchor && (layer.anchor.x !== 0 || layer.anchor.y !== 0)) {
+function emitAnchor(
+  layer: PrimitiveLayer,
+  tg: string,
+  lines: string[],
+  forceSet?: boolean
+): void {
+  const ax = layer.anchor?.x ?? 0
+  const ay = layer.anchor?.y ?? 0
+  if (forceSet || ax !== 0 || ay !== 0) {
     const ap = tg + '.property("ADBE Anchor Point")'
-    lines.push(ap + '.setValue([' + layer.anchor.x + ', ' + layer.anchor.y + ']);')
+    lines.push(ap + '.setValue([' + ax + ', ' + ay + ']);')
   }
 }
 
@@ -271,10 +297,15 @@ function emitScaleTrack(layer: PrimitiveLayer, tg: string, lines: string[]): voi
   )
 }
 
-function emitTransform(layer: PrimitiveLayer, le: string, lines: string[]): void {
+function emitTransform(
+  layer: PrimitiveLayer,
+  le: string,
+  lines: string[],
+  forceAnchor?: boolean
+): void {
   const tg = le + '.property("ADBE Transform Group")'
 
-  emitAnchor(layer, tg, lines)
+  emitAnchor(layer, tg, lines, forceAnchor)
   emitPositionTrack(layer, tg, lines)
   emitScaleTrack(layer, tg, lines)
 
@@ -659,6 +690,8 @@ function emitShape(
     case 'arc':
       emitArcS(layer, cnt, lines)
       break
+    default:
+      assertNever(layer)
   }
 
   emitTransform(layer, v, lines)
@@ -734,9 +767,10 @@ function emitRectSizeAnim(layer: RectLayer, re: string, lines: string[]): void {
         ease?: [number, number, number, number]
       }>,
       'ADBE Vector Rect Size',
+      // Sk7: per-dimension signed speed for Rect Size (2-D: width, height)
       i => {
         const dt = layer.widthAnimation![i + 1].t - layer.widthAnimation![i].t
-        if (dt === 0) return 0
+        if (dt === 0) return [0, 0]
         const dw = layer.widthAnimation![i + 1].value - layer.widthAnimation![i].value
         let dh = 0
         if (
@@ -746,7 +780,7 @@ function emitRectSizeAnim(layer: RectLayer, re: string, lines: string[]): void {
         ) {
           dh = layer.heightAnimation[i + 1].value - layer.heightAnimation[i].value
         }
-        return Math.sqrt(dw * dw + dh * dh) / dt
+        return [dw / dt, dh / dt]
       },
       lines
     )
@@ -938,7 +972,9 @@ function emitGroup(
   ctx.lines.push('var ' + lyr + ' = ' + compExpr + '.layers.add(' + pc + ');')
   ctx.lines.push(lyr + '.name = ' + jsStringLiteral(layer.id) + ';')
 
-  emitTransform(layer, lyr, ctx.lines)
+  // Sk4: layers.add(compItem) defaults Anchor Point to comp centre, not [0,0].
+  // Always set it explicitly, even for zero anchors.
+  emitTransform(layer, lyr, ctx.lines, true)
   return lyr
 }
 
@@ -964,6 +1000,10 @@ function emitLayerDispatch(
     case 'group':
       emitGroup(layer, compExpr, ctx)
       break
+    case 'particles':
+      throw new Error('Particle layers must be filtered before AE export')
+    default:
+      assertNever(layer)
   }
 }
 
