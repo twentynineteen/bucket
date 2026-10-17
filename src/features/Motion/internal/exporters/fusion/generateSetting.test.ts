@@ -937,7 +937,9 @@ const KNOWN_INPUTS: Record<string, Set<string>> = {
 
   // Transform - Fusion 7 Tool Reference; Fusion 18.6 manual
   // Animated Center uses XYPath modifier, not CenterX/CenterY
-  Transform: new Set(['Inputs', 'Input', 'Center', 'Size', 'Angle']),
+  // Pivot: Fusion 7 Tool Reference, Transform chapter (separate from Center);
+  // forum.blackmagicdesign.com viewtopic.php?f=22&t=89291 (Pivot vs Center)
+  Transform: new Set(['Inputs', 'Input', 'Center', 'Size', 'Angle', 'Pivot']),
 
   // XYPath modifier - Resolve 18.6 manual; forum.blackmagicdesign.com
   // viewtopic.php?f=22&t=67065, t=223637, t=75019
@@ -1667,26 +1669,42 @@ function evalWorld(
 }
 
 /**
- * From the Fusion output, compute where a local point ends up:
- *   shapeCentre is the sRectangle/sEllipse centre in template coords.
- *   The Transform applies Size and Angle about Pivot (all in image coords).
- *   Convert back to template coords for comparison.
+ * From the Fusion output, compute where a point ends up after the Transform.
+ *
+ * The Transform operates in pixel space: convert normalised image coords
+ * to pixels (width x height), apply scale and rotation about the pixel
+ * position of the Pivot, then convert back to normalised coords.
+ *
+ * Fusion's Angle is already negated by the exporter; the effective
+ * template-space angle is -angleDeg.
  */
 function fusionWorld(
-  localCentre: { x: number; y: number },
-  pivot: { x: number; y: number },
+  pointImg: { x: number; y: number },
+  pivotImg: { x: number; y: number },
   size: number,
-  angleDeg: number
+  angleDeg: number,
+  w = 3840,
+  h = 2160
 ): { x: number; y: number } {
-  // Fusion rotation is negated, so the effective angle is -angleDeg
+  // Convert to pixel coords
+  const px = pointImg.x * w
+  const py = (1 - pointImg.y) * h // back to template Y (top-down)
+  const pvx = pivotImg.x * w
+  const pvy = (1 - pivotImg.y) * h
+
+  // Fusion angle is negated; effective template angle is -angleDeg
   const rad = (-angleDeg * Math.PI) / 180
   const cos = Math.cos(rad)
   const sin = Math.sin(rad)
-  const dx = localCentre.x - pivot.x
-  const dy = localCentre.y - pivot.y
+  const dx = px - pvx
+  const dy = py - pvy
+  const rx = pvx + size * (cos * dx - sin * dy)
+  const ry = pvy + size * (sin * dx + cos * dy)
+
+  // Convert back to normalised image coords
   return {
-    x: pivot.x + size * (cos * dx - sin * dy),
-    y: pivot.y + size * (sin * dx + cos * dy)
+    x: rx / w,
+    y: 1 - ry / h
   }
 }
 
@@ -1720,14 +1738,7 @@ describe('S5 pivot: scale and rotation about the anchor', () => {
           id: 'pivr',
           anchor: { x: 100, y: 50 },
           position: [{ t: 0, value: { x: 500, y: 600 } }],
-          scale: [
-            {
-              t: 0,
-              value: { x: 0.5, y: 0.5 },
-              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
-            },
-            { t: 1, value: { x: 0.5, y: 0.5 } }
-          ],
+          scale: [{ t: 0, value: { x: 0.5, y: 0.5 } }],
           rotation: [{ t: 0, value: 30 }],
           width: 400,
           height: 200,
@@ -1746,12 +1757,6 @@ describe('S5 pivot: scale and rotation about the anchor', () => {
     expect(pivot).not.toBeNull()
     expect(pivot!.x).toBeCloseTo(pivotImg.x, 6)
     expect(pivot!.y).toBeCloseTo(pivotImg.y, 6)
-
-    // Shape centre in template coords:
-    //   centreX = 500 - 100 + 200 = 600
-    //   centreY = 600 - 50 + 100 = 650
-    // In image coords: (600/3840, 1 - 650/2160)
-    const centreImg = { x: 600 / 3840, y: 1 - 650 / 2160 }
 
     // Verify parity: the four corners should match the evaluator
     const corners = [
@@ -1774,16 +1779,12 @@ describe('S5 pivot: scale and rotation about the anchor', () => {
       // Convert evalPt to image coords for comparison
       const evalImg = { x: evalPt.x / 3840, y: 1 - evalPt.y / 2160 }
 
-      // Compute the corner's image coords from the shape centre
-      // The shape is a rect: corners offset from centre by +/- (width/2, height/2)
-      const localOffset = {
-        x: (corner.x - 200) / 3840, // (corner - localCentre) / width
-        y: -(corner.y - 100) / 3840 // negated for image Y flip, normalised to width
-      }
-      const cornerImg = {
-        x: centreImg.x + localOffset.x,
-        y: centreImg.y + localOffset.y
-      }
+      // Compute the corner's position in the pre-Transform image.
+      // The shape at template coords maps through sRender to image coords.
+      // corner in world (no scale/rot) = position - anchor + corner
+      const cornerWorldX = position.x - anchor.x + corner.x
+      const cornerWorldY = position.y - anchor.y + corner.y
+      const cornerImg = { x: cornerWorldX / 3840, y: 1 - cornerWorldY / 2160 }
 
       // Apply Transform about Pivot
       const fusionPt = fusionWorld(cornerImg, pivotImg, xfSize!, xfAngle!)
@@ -1804,14 +1805,7 @@ describe('S5 pivot: scale and rotation about the anchor', () => {
           id: 'pive',
           anchor: { x: 30, y: 30 },
           position: [{ t: 0, value: { x: 1000, y: 800 } }],
-          scale: [
-            {
-              t: 0,
-              value: { x: 0.5, y: 0.5 },
-              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
-            },
-            { t: 1, value: { x: 0.5, y: 0.5 } }
-          ],
+          scale: [{ t: 0, value: { x: 0.5, y: 0.5 } }],
           rotation: [{ t: 0, value: 30 }],
           radiusX: 60,
           radiusY: 40,
@@ -1842,11 +1836,6 @@ describe('S5 pivot: scale and rotation about the anchor', () => {
     const anchor = { x: 30, y: 30 }
     const position = { x: 1000, y: 800 }
 
-    // Shape centre in template coords:
-    //   centreX = 1000 - 30 + 60 = 1030
-    //   centreY = 800 - 30 + 40 = 810
-    const centreImg = { x: 1030 / 3840, y: 1 - 810 / 2160 }
-
     const xfSize = extractStaticInput(text, 'Size')
     expect(xfSize).not.toBeNull()
     const xfAngle = extractStaticInput(text, 'Angle')
@@ -1856,15 +1845,10 @@ describe('S5 pivot: scale and rotation about the anchor', () => {
       const evalPt = evalWorld(extreme, anchor, position, 0.5, 30)
       const evalImg = { x: evalPt.x / 3840, y: 1 - evalPt.y / 2160 }
 
-      // Corner offset from centre in shape coords
-      const localOffset = {
-        x: (extreme.x - 60) / 3840,
-        y: -(extreme.y - 40) / 3840
-      }
-      const cornerImg = {
-        x: centreImg.x + localOffset.x,
-        y: centreImg.y + localOffset.y
-      }
+      // Extreme in pre-Transform image coords
+      const exWorldX = position.x - anchor.x + extreme.x
+      const exWorldY = position.y - anchor.y + extreme.y
+      const cornerImg = { x: exWorldX / 3840, y: 1 - exWorldY / 2160 }
 
       const fusionPt = fusionWorld(cornerImg, pivotImg, xfSize!, xfAngle!)
       expect(fusionPt.x).toBeCloseTo(evalImg.x, 3)

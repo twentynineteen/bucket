@@ -259,45 +259,82 @@ function addShapePositionAnimation(
 }
 
 /**
- * Add animated scale for a shape tool via a per-layer image Transform.
- * Returns the Transform tool (caller adds it to the appropriate list).
+ * Build an image Transform for a shape's scale and/or rotation.
+ *
+ * The evaluator applies scale and rotation about the layer's anchor:
+ *   world = position + R * S * (local - anchor)
+ *
+ * The Fusion Transform's Pivot is set to the anchor's world position
+ * (= position) in image coords, so the scaling/rotation pivot matches
+ * the evaluator's convention.
+ *
+ * Returns null when the layer has no scale or rotation.
  */
-function buildShapeScaleTransform(
+function buildShapeTransform(
   layer: PrimitiveLayer,
-  fps: number,
+  format: { w: number; h: number; fps: number },
   tools: FusionTool[]
 ): FusionTool | null {
-  if (!layer.scale || layer.scale.length < 2) return null
-  const name = toolName(layer.id, 'scale_xf')
-  const sizeKfs = layer.scale.map(kf => ({
-    t: kf.t,
-    value: kf.value.x,
-    ease: kf.ease
-  }))
-  const xfInputs: LuaEntry[] = [animatedNumberInput(name, 'Size', sizeKfs, fps, tools)]
+  const hasScale = layer.scale && (layer.scale.length > 1 || layer.scale[0].value.x !== 1)
+  const hasRotation =
+    layer.rotation && (layer.rotation.length > 1 || layer.rotation[0].value !== 0)
+  if (!hasScale && !hasRotation) return null
+
+  const { w, h, fps } = format
+  const name = toolName(layer.id, 'xf')
+
+  // Anchor's world position = position (evaluator convention)
+  const posX = layer.position?.[0]?.value.x ?? layer.anchor.x
+  const posY = layer.position?.[0]?.value.y ?? layer.anchor.y
+  const pivot = toImageCoords(posX, posY, w, h)
+
+  const xfInputs: LuaEntry[] = [
+    {
+      key: 'Pivot',
+      value: {
+        call: 'Input',
+        arg: [
+          {
+            key: 'Value',
+            value: [
+              { key: null, value: pivot.x },
+              { key: null, value: pivot.y }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+
+  // Scale
+  if (layer.scale && layer.scale.length > 1) {
+    const sizeKfs = layer.scale.map(kf => ({
+      t: kf.t,
+      value: kf.value.x,
+      ease: kf.ease
+    }))
+    xfInputs.push(animatedNumberInput(name, 'Size', sizeKfs, fps, tools))
+  } else if (layer.scale && layer.scale.length === 1) {
+    xfInputs.push(staticInput('Size', layer.scale[0].value.x))
+  }
+
+  // Rotation (negated for Fusion)
+  if (layer.rotation && layer.rotation.length > 1) {
+    const rotKfs = layer.rotation.map(kf => ({
+      t: kf.t,
+      value: toFusionRotation(kf.value),
+      ease: kf.ease
+    }))
+    xfInputs.push(animatedNumberInput(name, 'Angle', rotKfs, fps, tools))
+  } else if (layer.rotation && layer.rotation.length === 1) {
+    xfInputs.push(staticInput('Angle', toFusionRotation(layer.rotation[0].value)))
+  }
+
   return {
     name,
     type: 'Transform',
     entries: [{ key: 'Inputs', value: xfInputs }]
   }
-}
-
-/**
- * Add animated rotation for a shape tool (Angle input, negated).
- */
-function addShapeRotationAnimation(
-  inputs: LuaEntry[],
-  layer: PrimitiveLayer,
-  fps: number,
-  tools: FusionTool[]
-): void {
-  if (!layer.rotation || layer.rotation.length < 2) return
-  const rotKfs = layer.rotation.map(kf => ({
-    t: kf.t,
-    value: toFusionRotation(kf.value),
-    ease: kf.ease
-  }))
-  inputs.push(animatedNumberInput(layer.id, 'Angle', rotKfs, fps, tools))
 }
 
 /**
@@ -672,9 +709,8 @@ function buildRectInputs(
     y: -layer.anchor.y + layer.height / 2
   }
 
-  // Base animatable properties
+  // Base animatable properties (rotation handled by per-layer Transform)
   addShapePositionAnimation(inputs, layer, { w, h, fps }, tools, centreOffset)
-  addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
 }
@@ -708,9 +744,8 @@ function buildEllipseInputs(
     y: -layer.anchor.y + layer.radiusY
   }
 
-  // Base animatable properties
+  // Base animatable properties (rotation handled by per-layer Transform)
   addShapePositionAnimation(inputs, layer, { w, h, fps }, tools, centreOffset)
-  addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
 }
@@ -753,9 +788,8 @@ function buildArcInputs(
     inputs.push(staticInput('WritePosition', layer.startAngle[0].value / 360))
   }
 
-  // Base animatable properties
+  // Base animatable properties (rotation handled by per-layer Transform)
   addShapePositionAnimation(inputs, layer, { w, h, fps }, tools)
-  addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
 }
@@ -801,9 +835,8 @@ function buildPolygonInputs(
     }
   ]
 
-  // Base animatable properties
+  // Base animatable properties (rotation handled by per-layer Transform)
   addShapePositionAnimation(inputs, layer, { w, h, fps }, tools)
-  addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
 }
@@ -1245,8 +1278,12 @@ function processShapeLayer(
     entries: [{ key: 'Inputs', value: [...inputs, ...fillInputs] }]
   })
 
-  const scaleXf = buildShapeScaleTransform(layer, fps, result.splineTools)
-  if (scaleXf) result.splineTools.push(scaleXf)
+  const xf = buildShapeTransform(
+    layer,
+    { w: format.width, h: format.height, fps },
+    result.splineTools
+  )
+  if (xf) result.splineTools.push(xf)
 }
 
 /** Process a path layer into sPolygon or Background fallback. */
@@ -1278,8 +1315,12 @@ function processPathLayer(
     entries: [{ key: 'Inputs', value: [...inputs, ...fillInputs] }]
   })
 
-  const scaleXf = buildShapeScaleTransform(layer, fps, result.splineTools)
-  if (scaleXf) result.splineTools.push(scaleXf)
+  const xf = buildShapeTransform(
+    layer,
+    { w: format.width, h: format.height, fps },
+    result.splineTools
+  )
+  if (xf) result.splineTools.push(xf)
 }
 
 function processLayer(
