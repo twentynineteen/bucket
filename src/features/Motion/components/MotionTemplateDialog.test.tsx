@@ -123,7 +123,6 @@ function scoreRingTemplate(): MotionTemplate {
     duration: 3.28,
     inEnd: 0.8,
     outStart: 2.8,
-    hold: { min: 1, max: 8, default: 2 },
     params: {
       score: {
         kind: 'number',

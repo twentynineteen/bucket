@@ -204,7 +204,10 @@ vi.mock('../api', () => ({
 
 // Override builtins to use our test fixtures
 vi.mock('../internal/builtins', () => ({
-  loadBuiltins: () => mockEntries.filter(e => e.source === 'builtin').map(e => e.template)
+  loadBuiltins: () => ({
+    templates: mockEntries.filter(e => e.source === 'builtin').map(e => e.template),
+    issues: []
+  })
 }))
 
 // Override the Upload barrel to avoid Tauri calls

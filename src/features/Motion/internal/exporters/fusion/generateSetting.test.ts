@@ -433,9 +433,11 @@ describe('RES6.1: Follower modifier for stagger', () => {
 // RES6.2: fractional delay rounding
 // ---------------------------------------------------------------------------
 
-describe('RES6.2: fractional delay rounding', () => {
-  it('rounds 0.75 frame to 1 frame and adds a note', () => {
-    // 0.03s at 25fps = 0.75 frames -> round to 1
+describe('RES6.2: stagger delay arrives in whole frames', () => {
+  it('a 0.03s delay at 25fps reaches the Follower as exactly 1 frame, with no rounding note', () => {
+    // resolveTemplate quantises stagger to whole frames (review finding A1),
+    // so the preview, AE and Fusion all use the same delay and Fusion has
+    // nothing left to round.
     const baseText = textFixture.layers[0] as TextLayer
     const staggerTemplate: MotionTemplate = {
       ...textFixture,
@@ -445,8 +447,7 @@ describe('RES6.2: fractional delay rounding', () => {
     const result = generateSetting(makeInput(staggerTemplate))
     const text = (result.files[0] as { contents: string }).contents
     expect(text).toMatch(/Delay\s*=\s*Input\s*\{\s*Value\s*=\s*1\s*[,}]/)
-    expect(result.notes.length).toBeGreaterThan(0)
-    expect(result.notes.some(n => /stagger.*round/i.test(n))).toBe(true)
+    expect(result.notes.some(n => /stagger.*round/i.test(n))).toBe(false)
   })
 })
 

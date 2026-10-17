@@ -80,7 +80,7 @@ describe('AE1.1 - ES3 parse validity', () => {
   )
 
   it('built-in non-particle templates parse as ES3', () => {
-    const builtins = loadBuiltins()
+    const { templates: builtins } = loadBuiltins()
     const nonParticle = builtins.filter(b => !b.layers.some(l => l.kind === 'particles'))
     for (const template of nonParticle) {
       const src = getJsxSrc(makeInput(template))
