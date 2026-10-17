@@ -83,4 +83,30 @@ describe('checkTextOverflow', () => {
     const results = checkTextOverflow(layers, measurer)
     expect(results).toHaveLength(0)
   })
+
+  it('W4.3 multiline text: overflow measures the widest line, not the whole string', () => {
+    const layers = [
+      {
+        kind: 'text' as const,
+        id: 'multi',
+        text: 'Short\nA very long line here',
+        font: { family: 'Cabrito Semi', size: 80 },
+        width: 1200
+      }
+    ]
+    // Measurer returns different widths per line vs the whole string
+    const measurer: TextMeasurer = {
+      measure(text: string): number {
+        if (text === 'Short') return 400
+        if (text === 'A very long line here') return 1600
+        return 2000 // whole string - old code would use this
+      }
+    }
+
+    const results = checkTextOverflow(layers, measurer)
+    expect(results).toHaveLength(1)
+    // Should report the widest LINE (1600), not the whole string (2000)
+    expect(results[0].measuredWidth).toBe(1600)
+    expect(results[0].overflowing).toBe(true)
+  })
 })

@@ -825,6 +825,154 @@ describe('depth-2 colour bind resolved to the correct layer', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// W2, W3, W4: wrap wiring through the resolve pipeline
+// ---------------------------------------------------------------------------
+
+describe('W2 wrap in resolver', () => {
+  /** A template with a wrap-enabled text layer. */
+  const wrapFixture: MotionTemplate = {
+    schemaVersion: 1,
+    id: 'fixture-wrap',
+    version: '1.0.0',
+    name: 'Wrap test',
+    description: 'Test fixture for wrapping',
+    category: 'title-card',
+    status: 'stable',
+    tags: ['test'],
+    fonts: ['CabritoSemi-NorBol'],
+    duration: 4,
+    inEnd: 1,
+    outStart: 3,
+    params: {
+      quote: {
+        kind: 'text',
+        label: 'Quote',
+        maxLength: 120,
+        default: 'Short text that fits',
+        required: true
+      }
+    },
+    layers: [
+      {
+        kind: 'text',
+        id: 'quote-text',
+        anchor: { x: 0, y: 0 },
+        position: [{ t: 0, value: { x: 1920, y: 1000 } }],
+        opacity: [
+          { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] },
+          { t: 0.6, value: 1 }
+        ],
+        text: 'Short text that fits',
+        param: 'quote',
+        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 88 },
+        align: 'center',
+        lineHeight: 1.4,
+        multiline: true,
+        fill: '#ffffff',
+        width: 3400,
+        wrap: true,
+        maxLines: 3
+      }
+    ]
+  }
+
+  it('W2.7 break positions are identical at 3840x2160 and 1920x1080', () => {
+    // A text that wraps: 20 chars x 88 x 0.6 = 1056, fits in 3400.
+    // Use a text that triggers wrapping: chars x size x 0.6 > width
+    // 3400 / (88 * 0.6) = ~64 chars per line
+    const longText = 'The quick brown fox jumps over the lazy dog and then runs away fast'
+    const r4k = resolveTemplate(wrapFixture, { quote: longText }, FORMAT_4K)
+    const rHd = resolveTemplate(wrapFixture, { quote: longText }, FORMAT_HD)
+    const text4k = (r4k.layers.find(l => l.id === 'quote-text') as TextLayer).text
+    const textHd = (rHd.layers.find(l => l.id === 'quote-text') as TextLayer).text
+    expect(text4k).toBe(textHd)
+  })
+
+  it('W2.8 ResolvedTemplate.values keeps the typed value, not the wrapped text', () => {
+    const longText = 'The quick brown fox jumps over the lazy dog and then runs away fast'
+    const resolved = resolveTemplate(wrapFixture, { quote: longText }, FORMAT_4K)
+    expect(resolved.values.quote).toBe(longText)
+  })
+
+  it('W2.6 layer without wrap is never changed, even when it overflows', () => {
+    const noWrap: MotionTemplate = {
+      ...wrapFixture,
+      id: 'fixture-no-wrap',
+      layers: [
+        {
+          ...wrapFixture.layers[0],
+          wrap: undefined,
+          maxLines: undefined
+        } as TextLayer
+      ]
+    }
+    const longText = 'x'.repeat(200)
+    const resolved = resolveTemplate(noWrap, { quote: longText }, FORMAT_4K)
+    const text = (resolved.layers.find(l => l.id === 'quote-text') as TextLayer).text
+    expect(text).toBe(longText)
+  })
+})
+
+describe('W4 validateParams line-count errors', () => {
+  const wrapTemplate: MotionTemplate = {
+    schemaVersion: 1,
+    id: 'wrap-validate',
+    version: '1.0.0',
+    name: 'Wrap validate',
+    description: 'Test',
+    category: 'title-card',
+    status: 'stable',
+    tags: [],
+    fonts: [],
+    duration: 4,
+    inEnd: 1,
+    outStart: 3,
+    params: {
+      quote: {
+        kind: 'text',
+        label: 'Quote',
+        maxLength: 120,
+        default: 'Test',
+        required: true
+      }
+    },
+    layers: [
+      {
+        kind: 'text',
+        id: 'txt',
+        anchor: { x: 0, y: 0 },
+        text: 'Test',
+        param: 'quote',
+        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 88 },
+        align: 'center',
+        lineHeight: 1.4,
+        multiline: true,
+        fill: '#ffffff',
+        width: 3400,
+        wrap: true,
+        maxLines: 3
+      }
+    ]
+  }
+
+  it('W4.1 value that wraps to maxLines + 1 produces a line-count error', () => {
+    // At the approximation (chars * 88 * 0.6 = chars * 52.8), width 3400
+    // fits ~64 chars per line. 3 lines = ~192 chars, so 200 chars = 4 lines
+    const longText = 'word '.repeat(40).trim() // 40 words, ~200 chars
+    const errors = validateParams(wrapTemplate, { quote: longText })
+    const lineError = errors.find(e => e.paramId === 'quote' && e.message.includes('lines'))
+    expect(lineError).toBeDefined()
+  })
+
+  it('W4.2 value shortened to fit clears the error', () => {
+    const shortText = 'Short text'
+    const errors = validateParams(wrapTemplate, { quote: shortText })
+    const lineError = errors.find(e => e.paramId === 'quote' && e.message.includes('lines'))
+    expect(lineError).toBeUndefined()
+  })
+})
+
 describe('stagger stays visible when the budget allows a frame', () => {
   it('a sub-frame authored delay rounds to at least one frame when the budget has room (Glide name at 25 fps)', () => {
     // 25 ms at 25 fps is 0.625 of a frame. Flooring it to 0 would switch the
