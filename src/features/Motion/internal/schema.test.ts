@@ -107,7 +107,7 @@ describe('Schema (internal/schema.ts)', () => {
               id: 'p1',
               anchor: { x: 0, y: 0 },
               d: 'M 0 0 L 100 0 L 100 100',
-              fill: '#000'
+              fill: '#000000'
             }
           ]
         }
@@ -124,7 +124,7 @@ describe('Schema (internal/schema.ts)', () => {
               anchor: { x: 0, y: 0 },
               width: 100,
               height: 100,
-              fill: '#000',
+              fill: '#000000',
               radius: 0,
               stagger: { delay: 0.1 }
             }
@@ -190,7 +190,7 @@ describe('Schema (internal/schema.ts)', () => {
               align: 'center',
               lineHeight: 1.2,
               multiline: false,
-              fill: '#fff',
+              fill: '#ffffff',
               opacity: [
                 { t: 0, value: 0, ease: [-0.1, 1, 0.3, 1] },
                 { t: 1, value: 1 }
@@ -249,7 +249,7 @@ describe('Schema (internal/schema.ts)', () => {
               anchor: { x: 0, y: 0 },
               innerRadius: 400,
               outerRadius: 480,
-              fill: '#fff',
+              fill: '#ffffff',
               sweep: [
                 { t: 0, value: 0, ease: [0, 0, 1, 1] },
                 { t: 1, value: 1 }
@@ -447,7 +447,7 @@ describe('Schema (internal/schema.ts)', () => {
             align: 'center',
             lineHeight: 1.2,
             multiline: false,
-            fill: '#fff',
+            fill: '#ffffff',
             opacity: [
               { t: 0, value: 0 }, // MISSING ease on non-last
               { t: 0.5, value: 0.5, ease: [0, 0, 1, 1] },

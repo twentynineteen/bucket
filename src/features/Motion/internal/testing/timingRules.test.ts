@@ -11,11 +11,11 @@ import { readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import type { MotionFormat, MotionTemplate } from '../types'
-import { loadBuiltins } from './builtins'
-import { expandTemplate } from './expand'
-import { validFormats } from './resolve'
-import { parseTemplate } from './schema'
+import type { MotionFormat, MotionTemplate } from '../../types'
+import { loadBuiltins } from '../builtins'
+import { expandTemplate } from '../expand'
+import { validFormats } from '../resolve'
+import { parseTemplate } from '../schema'
 import {
   checkEaseDirection,
   checkEntranceQuality,
@@ -30,7 +30,7 @@ import {
 // Load built-ins
 // ---------------------------------------------------------------------------
 
-const builtins = loadBuiltins()
+const { templates: builtins } = loadBuiltins()
 
 // ---------------------------------------------------------------------------
 // Helpers

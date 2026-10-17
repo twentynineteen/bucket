@@ -1,6 +1,15 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
+ * Port for the e2e dev server. Defaults to 1422 (the Tauri port). Set E2E_PORT
+ * to run from a second checkout or worktree at the same time: with
+ * reuseExistingServer on, every checkout would otherwise share whichever
+ * server started first and silently test someone else's code.
+ */
+const port = Number(process.env.E2E_PORT ?? 1422)
+const baseURL = `http://localhost:${port}`
+
+/**
  * The only Playwright configuration in this repo. Tests run against the Vite
  * dev server (localhost:1422).
  *
@@ -26,15 +35,6 @@ import { defineConfig, devices } from '@playwright/test'
  * Their union is the whole suite, so tagging a spec moves it between CI jobs
  * and can never drop it from both.
  */
-/**
- * Port for the e2e dev server. Defaults to 1422 (the Tauri port). Set E2E_PORT
- * to run from a second checkout or worktree at the same time: with
- * reuseExistingServer on, every checkout would otherwise share whichever
- * server started first and silently test someone else's code.
- */
-const port = Number(process.env.E2E_PORT ?? 1422)
-const baseURL = `http://localhost:${port}`
-
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,

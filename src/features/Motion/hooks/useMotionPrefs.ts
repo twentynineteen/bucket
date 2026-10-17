@@ -7,7 +7,12 @@
 import { queryKeys } from '@shared/lib'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { readMotionPrefsText, writeMotionPrefsText } from '../api'
-import { parsePrefs, serialisePrefs, type MotionPrefs } from '../internal/prefs'
+import {
+  parsePrefs,
+  prunePrefs,
+  serialisePrefs,
+  type MotionPrefs
+} from '../internal/prefs'
 
 export function useMotionPrefs() {
   const queryClient = useQueryClient()
@@ -42,11 +47,25 @@ export function useMotionPrefs() {
     await saveMutation.mutateAsync(updated)
   }
 
+  /**
+   * Prune stale favourites and defaults, then save (spec D6).
+   *
+   * Called from the marketplace context where the catalogue is loaded. Pass
+   * the set of template IDs currently in the catalogue so that references
+   * to removed templates are cleaned up.
+   */
+  const saveWithPrune = async (catalogueIds: Set<string>) => {
+    const current = prefs ?? parsePrefs(null)
+    const pruned = prunePrefs(current, catalogueIds)
+    await saveMutation.mutateAsync(pruned)
+  }
+
   return {
     prefs: prefs ?? parsePrefs(null),
     isLoading,
     isError,
     updatePrefs,
+    saveWithPrune,
     isSaving: saveMutation.isPending
   }
 }

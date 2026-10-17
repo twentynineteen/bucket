@@ -21,7 +21,7 @@ export function useMotionCatalogue(libraryFolder: string | null) {
       entries: CatalogueEntry[]
       issues: CatalogueIssue[]
     }> => {
-      const builtinTemplates = loadBuiltins()
+      const { templates: builtinTemplates, issues: builtinIssues } = loadBuiltins()
       const builtinEntries: CatalogueEntry[] = builtinTemplates.map(t => ({
         template: t,
         source: 'builtin' as const
@@ -45,7 +45,7 @@ export function useMotionCatalogue(libraryFolder: string | null) {
 
       return {
         entries,
-        issues: [...loadIssues, ...mergeIssues]
+        issues: [...builtinIssues, ...loadIssues, ...mergeIssues]
       }
     },
     retry: false

@@ -12,11 +12,6 @@
   "duration": 4.12,
   "inEnd": 0.7,
   "outStart": 3.7,
-  "hold": {
-    "min": 1,
-    "max": 10,
-    "default": 3
-  },
   "params": {
     "name": {
       "kind": "text",

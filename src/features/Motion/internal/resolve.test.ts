@@ -391,23 +391,24 @@ describe('Resolve (internal/resolve.ts)', () => {
       ]
     }
 
-    it('short name (2 chars) keeps the template delay unclamped', () => {
+    it('short name (2 chars) keeps the template delay unclamped but quantises to frames', () => {
       // "Jo" = 2 graphemes, budget = 0.4 * 0.7 / max(1, 2-1) = 0.28
-      // Template delay 0.03 < 0.28, so it stays
+      // Template delay 0.03 < 0.28, so it stays before quantisation
+      // At 50fps: 0.03 * 50 = 1.5 frames -> round to 2 -> 2/50 = 0.04
       const resolved = resolveTemplate(staggerFixture, { name: 'Jo' }, FORMAT_4K)
       const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
-      expect(textLayer.stagger!.delay).toBeCloseTo(0.03, 5)
+      expect(textLayer.stagger!.delay).toBe(0.04)
     })
 
-    it('long name (30 chars) clamps the delay to fit the budget', () => {
+    it('long name (30 chars) clamps the delay to fit the budget then quantises', () => {
       // "A very long name that is exact" = 30 graphemes
       // budget = 0.4 * 0.7 / max(1, 30-1) = 0.28 / 29 ~= 0.00966
-      // Template delay 0.03 > 0.00966, so it clamps
+      // Template delay 0.03 > 0.00966, so it clamps to ~0.00966
+      // At 50fps: 0.00966 * 50 = 0.483 frames -> round to 1 -> 1/50 = 0.02
       const longName = 'A very long name that is exact'
       const resolved = resolveTemplate(staggerFixture, { name: longName }, FORMAT_4K)
       const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
-      const expected = (0.4 * 0.7) / (longName.length - 1)
-      expect(textLayer.stagger!.delay).toBeCloseTo(expected, 5)
+      expect(textLayer.stagger!.delay).toBe(0.02)
       expect(textLayer.stagger!.delay).toBeLessThan(0.03)
     })
   })

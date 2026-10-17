@@ -388,6 +388,57 @@ backend commands (`kavanagh_detect_ffmpeg`, `kavanagh_run_check`, `kavanagh_canc
 `kavanagh_save_evidence`). Settings exposes the ffmpeg directory and reference pool; Upload runs
 Kavanagh as an optional post-upload QC step through `useKavanaghForUpload`.
 
+### Motion Marketplace Data Flow
+
+Template JSON goes through a five-stage pipeline before it reaches any output:
+
+```
+schema.ts          Parse and validate template JSON (Zod)
+    |
+resolve.ts         Apply param values, expand macros, hold shift,
+    |              format scale, stagger quantise, frame snap
+    |              -> ResolvedTemplate
+    |
+evaluate.ts        Pure function: (resolved, t) -> LayerState[]
+    |              Single source of truth for what every layer
+    |              looks like at any time t
+    |
+    +---> MotionPreview     SVG-based React preview (via evaluate)
+    +---> frameRenderer     Serialised SVG for the video renderer
+    +---> ae/generateJsx    After Effects ExtendScript (.jsx)
+    +---> fusion/           DaVinci Resolve Fusion macro (.setting)
+    +---> prompt.ts         Human-readable prompt description
+    |
+exportBundle.ts    Assemble files into a collision-safe folder
+    |
+src-tauri/         motion/encoder.rs: ffmpeg stdin pipe for .mov
+```
+
+**How to add a layer kind:**
+
+1. Add the interface in `types.ts` and the union member in `Layer`.
+2. Add the Zod branch in `schema.ts` (the discriminatedUnion).
+3. Handle it in `resolve.ts` (`scaleLayer`, `snapLayer`, `applyHoldShift`).
+4. Add a case in `evaluate.ts` `walkLayers` (the `assertNever` default will
+   not compile until you do).
+5. Add it to each exporter (`ae/generateJsx.ts`, `fusion/generateSetting.ts`,
+   `prompt.ts`, `frameRenderer.ts`, `MotionPreview.tsx`).
+6. Add a fixture in `testing/fixtures.ts` and a test in `evaluate.test.ts`.
+
+**How to add a param type:**
+
+1. Add the interface in `types.ts` and the union member in `ParamDef`.
+2. Add the Zod branch in `schema.ts` (`paramDefSchema`).
+3. Handle it in `resolve.ts` (`resolveValues`, `validateParams`).
+4. Add a `ParamEditor` case and export-flow handling if the param appears
+   in the modal.
+
+**Cross-feature dependencies:**
+
+- Motion reads `ffmpeg` from `Kavanagh/useKavanaghAvailability` (the hook's
+  return shape was widened for this).
+- Motion reads `posterFrameFontPath` from `Upload` (exported solely for Motion).
+
 ### AI Script Formatting Flow (RAG Pipeline)
 
 ```
@@ -1071,6 +1122,6 @@ Currently no telemetry/metrics collection (privacy-focused desktop app).
 
 ---
 
-**Document Version:** 2.1.0
-**Last Updated:** August 2026
-**Applies to:** Bucket v0.19.0
+**Document Version:** 2.2.0
+**Last Updated:** October 2026
+**Applies to:** Bucket v0.19.2

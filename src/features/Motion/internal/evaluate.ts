@@ -7,7 +7,7 @@
  * call this function.
  *
  * The input is a `ResolvedTemplate` (values applied, macros expanded, hold
- * shifted, format-scaled, frame-snapped) produced by #327's `resolveTemplate`.
+ * shifted, format-scaled, frame-snapped) produced by `resolveTemplate`.
  */
 import type {
   ArcLayer,
@@ -28,6 +28,11 @@ import type {
 import { solveCubicBezier } from './bezier'
 import { formatCounter } from './expand'
 import { computeParticleState } from './particleState'
+
+/** Exhaustiveness check: the compiler proves this is never called. */
+function assertNever(x: never): never {
+  throw new Error(`Unexpected layer kind: ${(x as { kind: string }).kind}`)
+}
 
 // ---------------------------------------------------------------------------
 // Matrix helpers (2D affine: [a, b, c, d, tx, ty])
@@ -454,6 +459,8 @@ function walkLayers(
       case 'particles':
         out.push(evaluateParticlesLayer(layer, worldMatrix, ancestorOpacity, t, rt))
         break
+      default:
+        assertNever(layer)
     }
   }
 }

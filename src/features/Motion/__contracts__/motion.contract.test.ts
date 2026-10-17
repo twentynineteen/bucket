@@ -15,9 +15,10 @@ const FEATURE_DIR = path.resolve(__dirname, '..')
 // ---------------------------------------------------------------------------
 
 describe('Motion barrel shape', () => {
-  it('F4.1 exports MotionMarketplacePage', async () => {
+  it('F4.1 exports loadMotionMarketplacePage (lazy loader)', async () => {
     const barrel = await import('../index')
-    expect(barrel.MotionMarketplacePage).toBeDefined()
+    expect(barrel.loadMotionMarketplacePage).toBeDefined()
+    expect(typeof barrel.loadMotionMarketplacePage).toBe('function')
   })
 
   it('F4.1 exports MotionSection', async () => {

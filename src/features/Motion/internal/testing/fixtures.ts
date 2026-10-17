@@ -343,10 +343,9 @@ export const colourParamFixture: MotionTemplate = {
   ]
 }
 
-/** Template with a hold param. */
+/** Template with a hold param. The hold param is the single source (S13). */
 export const holdParamFixture: MotionTemplate = {
   ...base('fixture-hold'),
-  hold: { min: 1, max: 10, default: 2 },
   params: {
     hold: { kind: 'hold', label: 'Hold', min: 1, max: 10, default: 2 }
   },
