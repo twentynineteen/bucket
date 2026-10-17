@@ -618,7 +618,7 @@ test.describe('Motion Marketplace keyboard and reduced motion', () => {
     // Open the Quote card dialog
     const quoteCard = page.locator('[data-template-id="quote-card"]')
     await expect(quoteCard).toBeVisible()
-    await quoteCard.getByRole('button', { name: /Quote card/i }).click()
+    await quoteCard.getByRole('button', { name: 'Quote card', exact: true }).click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 5000 })
@@ -631,20 +631,20 @@ test.describe('Motion Marketplace keyboard and reduced motion', () => {
       'The only way to do great work is to love what you do and keep pushing forward every day'
     )
 
-    // Wait for the preview to re-render
-    await page.waitForTimeout(300)
+    // Wait for the preview to re-render with the wrapped text.
+    // The multiline rendering creates tspan elements with x="0" and dy.
+    const previewImg = dialog.getByRole('img', { name: /Quote card.*preview/i })
+    await expect(previewImg).toBeVisible()
 
-    // The preview SVG should have tspan elements with dy (line breaks from wrapping)
-    const previewSvg = dialog.locator('svg').first()
-    await expect(previewSvg).toBeVisible()
-
-    // Count tspan elements with dy attribute - at least one means wrapping happened
-    const tspansWithDy = previewSvg.locator('tspan[dy]')
-    const dyCount = await tspansWithDy.count()
+    // The wrapped text produces multiple tspan elements (one per line).
+    // Wait for at least two tspans to appear (meaning the text wrapped).
+    const tspans = previewImg.locator('tspan')
+    await expect(tspans.first()).toBeVisible({ timeout: 3000 })
+    const tspanCount = await tspans.count()
     expect(
-      dyCount,
-      'wrapped quote should produce at least one line break'
-    ).toBeGreaterThan(0)
+      tspanCount,
+      'wrapped quote should produce at least two tspans (one per line)'
+    ).toBeGreaterThanOrEqual(2)
 
     assertNoExternal()
   })
