@@ -3180,7 +3180,8 @@ describe('Lua injection defence in serialised .setting', () => {
           kind: 'text',
           label: 'Injected',
           maxLength: 40,
-          default: 'test'
+          default: 'test',
+          required: false
         }
       },
       layers: [
@@ -3251,7 +3252,8 @@ describe('Lua injection defence in serialised .setting', () => {
           kind: 'text',
           label: 'Injected',
           maxLength: 40,
-          default: 'test'
+          default: 'test',
+          required: false
         }
       },
       layers: [

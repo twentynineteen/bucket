@@ -440,7 +440,7 @@ describe('thinEvenly', () => {
     const indices = thinned as number[]
 
     // Check spacing is uniform: differences between consecutive selected indices
-    const diffs = []
+    const diffs: number[] = []
     for (let i = 1; i < indices.length; i++) {
       diffs.push(indices[i] - indices[i - 1])
     }
