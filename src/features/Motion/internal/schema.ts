@@ -7,8 +7,16 @@
  * schema parse, not via superRefine.
  */
 import { z } from 'zod'
-import type { MotionTemplate } from '../types'
-import { hasParticles } from './layers'
+import type {
+  ArcLayer,
+  EllipseLayer,
+  Layer,
+  MotionTemplate,
+  PathLayer,
+  RectLayer,
+  TextLayer
+} from '../types'
+import { parseBindPath, resolveBindPath } from './bindPath'
 
 // ---------------------------------------------------------------------------
 // Primitives
@@ -373,31 +381,66 @@ function isSupportedPath(d: string): boolean {
   return /^[MLZ]+$/.test(commands)
 }
 
+/**
+ * Every keyframe-track field name across the Layer union.
+ *
+ * This typed mapping uses `satisfies` to ensure that every leaf layer kind
+ * is accounted for. Adding a new layer kind to the Layer union or a new
+ * animated field to an existing kind without updating this map is a
+ * compile error, preventing a silent omission from ease validation.
+ *
+ * Groups, particles and series are not listed because they carry no
+ * kind-specific animated fields (groups recurse, particles have none,
+ * series are expanded before validation).
+ */
+const KEYFRAME_TRACK_FIELDS = {
+  text: ['fillAnimation', 'tracking'] as const,
+  rect: ['fillAnimation', 'widthAnimation', 'heightAnimation'] as const,
+  ellipse: ['fillAnimation'] as const,
+  path: ['fillAnimation'] as const,
+  arc: ['sweep', 'startAngle', 'fillAnimation'] as const
+} satisfies Record<
+  Exclude<Layer['kind'], 'group' | 'particles' | 'series'>,
+  readonly (
+    | keyof TextLayer
+    | keyof RectLayer
+    | keyof EllipseLayer
+    | keyof PathLayer
+    | keyof ArcLayer
+  )[]
+>
+
+/** Fields common to every layer kind. */
+const BASE_TRACK_FIELDS = ['position', 'scale', 'rotation', 'opacity'] as const
+
 /** Collect all keyframe tracks in a layer for ease validation. */
 function collectKeyframeTracks(
   layer: Record<string, unknown>,
   path: string
 ): { keyframes: { t: number; ease?: unknown }[]; fieldPath: string }[] {
   const tracks: { keyframes: { t: number; ease?: unknown }[]; fieldPath: string }[] = []
-  const trackFields = [
-    'position',
-    'scale',
-    'rotation',
-    'opacity',
-    'fillAnimation',
-    'tracking',
-    'widthAnimation',
-    'heightAnimation',
-    'sweep',
-    'startAngle'
-  ]
-  for (const field of trackFields) {
+
+  // Base fields present on every layer kind
+  for (const field of BASE_TRACK_FIELDS) {
     const val = layer[field]
     if (Array.isArray(val) && val.length > 0) {
       tracks.push({ keyframes: val, fieldPath: `${path}.${field}` })
     }
   }
-  // Counter progress
+
+  // Kind-specific fields
+  const kind = layer.kind as string
+  if (kind in KEYFRAME_TRACK_FIELDS) {
+    const fields = KEYFRAME_TRACK_FIELDS[kind as keyof typeof KEYFRAME_TRACK_FIELDS]
+    for (const field of fields) {
+      const val = layer[field as string]
+      if (Array.isArray(val) && val.length > 0) {
+        tracks.push({ keyframes: val, fieldPath: `${path}.${field}` })
+      }
+    }
+  }
+
+  // Counter progress (text layers only)
   if (
     layer.counter &&
     typeof layer.counter === 'object' &&
@@ -472,39 +515,22 @@ function validatePrimaryTextParam(data: MotionTemplate): string[] {
   return []
 }
 
-/** Layer kinds that carry a fill and can be bound to a colour param. */
-const FILL_BEARING_KINDS = new Set(['rect', 'ellipse', 'path', 'arc', 'text'])
-
 /**
- * Resolve a bind path (e.g. "layers[1]" or "layers[0].children[2]") against the
- * layer tree and return the target layer, or null if the path is invalid.
+ * Layer kinds that carry a fill and can be bound to a colour param.
+ *
+ * Typed as a const satisfies so that adding a fill-bearing layer kind to
+ * the Layer union without listing it here is a compile error only if you
+ * also update the type guard that feeds it. The set is intentionally
+ * smaller than the full kind union - group, particles and series do not
+ * carry a bindable fill.
  */
-function resolveBindPath(
-  layers: unknown[],
-  bindPath: string
-): Record<string, unknown> | null {
-  // Parse "layers[i]" or "layers[i].children[j].children[k]" etc.
-  const indexRe = /\[(\d+)\]/g
-  const parts = bindPath.split('.')
-  if (parts.length === 0 || !parts[0].startsWith('layers')) return null
-  let current: unknown[] = layers
-  for (const part of parts) {
-    const match = indexRe.exec(part)
-    indexRe.lastIndex = 0
-    if (!match) return null
-    const idx = parseInt(match[1], 10)
-    if (idx < 0 || idx >= current.length) return null
-    const node = current[idx] as Record<string, unknown>
-    // If this is not the last part, descend into children
-    if (part !== parts[parts.length - 1]) {
-      if (!Array.isArray(node.children)) return null
-      current = node.children as unknown[]
-    } else {
-      return node
-    }
-  }
-  return null
-}
+const FILL_BEARING_KINDS: ReadonlySet<string> = new Set<string>([
+  'rect',
+  'ellipse',
+  'path',
+  'arc',
+  'text'
+])
 
 /** Validate colour params are not bound to animated fills and that bind targets exist and are fill-bearing. */
 function validateColourBindings(data: MotionTemplate): string[] {
@@ -513,6 +539,13 @@ function validateColourBindings(data: MotionTemplate): string[] {
   for (const [paramId, paramDef] of Object.entries(data.params)) {
     if (paramDef.kind === 'colour') {
       for (const bindPath of paramDef.binds) {
+        // Validate the path grammar before checking anything else
+        if (!parseBindPath(bindPath)) {
+          errors.push(
+            `params.${paramId}: bind path "${bindPath}" does not resolve to a layer`
+          )
+          continue
+        }
         if (animFills.has(bindPath)) {
           errors.push(
             `params.${paramId}: colour param bound to an animated fill at ${bindPath}`
@@ -520,14 +553,17 @@ function validateColourBindings(data: MotionTemplate): string[] {
           continue
         }
         // Validate that the bind path resolves to a fill-bearing primitive
-        const target = resolveBindPath(data.layers as unknown as unknown[], bindPath)
+        const target = resolveBindPath(
+          data.layers as unknown as { children?: unknown }[],
+          bindPath
+        )
         if (!target) {
           errors.push(
             `params.${paramId}: bind path "${bindPath}" does not resolve to a layer`
           )
           continue
         }
-        const kind = target.kind as string
+        const kind = (target as Record<string, unknown>).kind as string
         if (!FILL_BEARING_KINDS.has(kind)) {
           errors.push(
             `params.${paramId}: bind path "${bindPath}" targets a ${kind} layer, which is not a fill-bearing primitive`
@@ -558,36 +594,81 @@ function validateHoldRange(data: MotionTemplate): string[] {
   return []
 }
 
-/** Validate image params have a particles layer. */
-function validateImageParamRequiresParticles(data: MotionTemplate): string[] {
-  const hasImageParam = Object.values(data.params).some(p => p.kind === 'image')
-  if (hasImageParam && !hasParticles(data.layers)) {
-    return ['image param requires at least one particles layer']
+/**
+ * Validate image param cross-references:
+ * - Every particles layer's `imageParam` must name an existing param of kind `image`.
+ * - Every image param must be referenced by exactly one particles layer.
+ * - An image param without a particles layer is rejected.
+ */
+function validateImageParamRefs(data: MotionTemplate): string[] {
+  const errors: string[] = []
+  const imageParamIds = new Set(
+    Object.entries(data.params)
+      .filter(([, p]) => p.kind === 'image')
+      .map(([id]) => id)
+  )
+
+  // Collect which image params are referenced and validate each reference
+  const referenced = new Map<string, number>()
+  for (const { layer, path } of walkLayers(data.layers as unknown as unknown[])) {
+    if (layer.kind === 'particles' && typeof layer.imageParam === 'string') {
+      const ref = layer.imageParam as string
+      errors.push(...validateParamRef(data.params, ref, 'image', `${path}.imageParam`))
+      referenced.set(ref, (referenced.get(ref) ?? 0) + 1)
+    }
   }
-  return []
+
+  // Every image param must be referenced by exactly one particles layer
+  for (const id of imageParamIds) {
+    const count = referenced.get(id) ?? 0
+    if (count === 0) {
+      errors.push(
+        `params.${id}: image param is not referenced by any particles layer's imageParam`
+      )
+    } else if (count > 1) {
+      errors.push(
+        `params.${id}: image param is referenced by ${count} particles layers (expected exactly one)`
+      )
+    }
+  }
+
+  return errors
 }
 
 /**
- * Validate that particle layers come after all vector layers (last in paint order).
+ * Validate that particle layers come after all vector layers in flattened
+ * paint order (walking into groups).
  *
- * Both the preview and the video renderer draw all vector layers first, then all
- * particle layers. A particle layer placed before a vector layer would appear
- * above it in AE/Resolve but below it in the preview and video. Requiring
- * particles-last avoids the discrepancy.
+ * Both the preview and the video renderer draw all vector layers first, then
+ * all particle layers. A particle layer placed before a vector layer - even
+ * when the particle is inside a group - would appear above the vector in
+ * AE/Resolve but below it in the preview and video. Requiring particles-last
+ * in the flattened order avoids the discrepancy.
  */
 function validateParticlesLast(data: MotionTemplate): string[] {
+  // Flatten the tree into paint order: groups contribute their children
+  // in order, recursively, so a particles layer nested in a group still
+  // counts as appearing at that position in the sequence.
   let seenParticle = false
-  for (const layer of data.layers as unknown as Record<string, unknown>[]) {
-    if (layer.kind === 'particles') {
-      seenParticle = true
-    } else if (seenParticle) {
-      return [
-        'particle layers must come after all vector layers (last in paint order), ' +
+  function walk(layers: unknown[]): string | null {
+    for (const raw of layers) {
+      const layer = raw as Record<string, unknown>
+      if (layer.kind === 'group' && Array.isArray(layer.children)) {
+        const err = walk(layer.children as unknown[])
+        if (err) return err
+      } else if (layer.kind === 'particles') {
+        seenParticle = true
+      } else if (seenParticle) {
+        return (
+          'particle layers must come after all vector layers (last in paint order), ' +
           'because the preview and video renderer draw particles on top of vectors'
-      ]
+        )
+      }
     }
+    return null
   }
-  return []
+  const err = walk(data.layers as unknown as unknown[])
+  return err ? [err] : []
 }
 
 /** Validate at most one hold param, and that min <= default <= max. */
@@ -733,7 +814,7 @@ export function parseTemplate(json: unknown): ParseResult {
     ...validateTiming(data),
     ...validatePrimaryTextParam(data),
     ...validateColourBindings(data),
-    ...validateImageParamRequiresParticles(data),
+    ...validateImageParamRefs(data),
     ...validateHoldParamConstraints(data),
     ...validateHoldRange(data),
     ...validateParticlesLast(data),

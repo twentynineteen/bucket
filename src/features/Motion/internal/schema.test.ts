@@ -265,7 +265,6 @@ describe('Schema (internal/schema.ts)', () => {
       expect(result.success).toBe(false)
     })
 
-    // S12 - path d restricted to M/L/H/V/Z
     it('rejects path d with curve commands (C, A, Q, S, T)', () => {
       const bad = {
         ...rectFixture,
@@ -286,7 +285,6 @@ describe('Schema (internal/schema.ts)', () => {
       }
     })
 
-    // S12 - path d with relative commands rejected
     it('rejects path d with relative commands (m, l)', () => {
       const bad = {
         ...rectFixture,
@@ -307,7 +305,6 @@ describe('Schema (internal/schema.ts)', () => {
       }
     })
 
-    // S14 - fill fields validated as hex
     it('rejects non-hex fill on a rect layer', () => {
       const bad = {
         ...rectFixture,
@@ -327,7 +324,6 @@ describe('Schema (internal/schema.ts)', () => {
       expect(result.success).toBe(false)
     })
 
-    // S14 - fillAnimation values validated as hex
     it('rejects non-hex fillAnimation values', () => {
       const bad = {
         ...rectFixture,
@@ -351,7 +347,6 @@ describe('Schema (internal/schema.ts)', () => {
       expect(result.success).toBe(false)
     })
 
-    // S14 - baseFill validated as hex
     it('rejects non-hex baseFill on particles layer', () => {
       const bad = {
         ...rectFixture,
@@ -377,7 +372,6 @@ describe('Schema (internal/schema.ts)', () => {
       expect(result.success).toBe(false)
     })
 
-    // S13 - hold param is the single source (no template.hold)
     it('accepts a template with a hold param but no top-level hold block', () => {
       const template = {
         ...rectFixture,
@@ -395,7 +389,6 @@ describe('Schema (internal/schema.ts)', () => {
       expect(result.success).toBe(true)
     })
 
-    // S13 - hold range refinement: hold delta must not push outStart before inEnd
     it('rejects hold param whose min pushes outStart before inEnd', () => {
       // inEnd=1, outStart=3, hold default=3
       // With hold min=0, delta = 0 - 3 = -3, outStart = 3 + (-3) = 0 < inEnd=1
@@ -461,8 +454,8 @@ describe('Schema (internal/schema.ts)', () => {
     })
   })
 
-  // Sk8/Mi1 - restrict path d to M/L/Z only (no H/V)
-  describe('Sk8 path d restricted to M/L/Z', () => {
+  // path d restricted to M/L/Z only (no H/V)
+  describe('path d restricted to M/L/Z', () => {
     it('rejects path d with H command', () => {
       const bad = {
         ...rectFixture,
@@ -521,8 +514,8 @@ describe('Schema (internal/schema.ts)', () => {
     })
   })
 
-  // Ar4 - validate bind targets against the layer tree
-  describe('Ar4 colour bind target validation', () => {
+  // validate bind targets against the layer tree
+  describe('colour bind target validation', () => {
     it('rejects a bind path that does not resolve to a layer', () => {
       const bad = {
         ...rectFixture,
@@ -602,7 +595,8 @@ describe('Schema (internal/schema.ts)', () => {
             assembleEnd: 1,
             baseFill: '#888888',
             regionFills: {},
-            pointRadius: 4
+            pointRadius: 4,
+            imageParam: 'image'
           }
         ]
       }
@@ -619,8 +613,8 @@ describe('Schema (internal/schema.ts)', () => {
     })
   })
 
-  // Ar6 - particle layers must come after all vector layers
-  describe('Ar6 particles last in paint order', () => {
+  // particles must come after all vector layers in flattened paint order
+  describe('particles last in paint order', () => {
     it('rejects particles layer before a vector layer', () => {
       const bad = {
         ...rectFixture,
@@ -638,7 +632,8 @@ describe('Schema (internal/schema.ts)', () => {
             assembleEnd: 1,
             baseFill: '#888888',
             regionFills: {},
-            pointRadius: 4
+            pointRadius: 4,
+            imageParam: 'image'
           },
           {
             kind: 'rect',
@@ -684,7 +679,95 @@ describe('Schema (internal/schema.ts)', () => {
             assembleEnd: 1,
             baseFill: '#888888',
             regionFills: {},
-            pointRadius: 4
+            pointRadius: 4,
+            imageParam: 'image'
+          }
+        ]
+      }
+      const result = parseTemplate(good)
+      expect(result.success).toBe(true)
+    })
+
+    it('rejects [group{particles}, rect] in flattened paint order', () => {
+      const bad = {
+        ...rectFixture,
+        params: {
+          image: { kind: 'image', label: 'Source' }
+        },
+        layers: [
+          {
+            kind: 'group',
+            id: 'grp',
+            anchor: { x: 0, y: 0 },
+            children: [
+              {
+                kind: 'particles',
+                id: 'scatter',
+                anchor: { x: 0, y: 0 },
+                points: [{ x: 10, y: 10 }],
+                seed: 1,
+                assembleStart: 0,
+                assembleEnd: 1,
+                baseFill: '#888888',
+                regionFills: {},
+                pointRadius: 4,
+                imageParam: 'image'
+              }
+            ]
+          },
+          {
+            kind: 'rect',
+            id: 'overlay',
+            anchor: { x: 0, y: 0 },
+            width: 100,
+            height: 100,
+            fill: '#000000',
+            radius: 0
+          }
+        ]
+      }
+      const result = parseTemplate(bad)
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toContain('particle layers must come after')
+      }
+    })
+
+    it('accepts [rect, group{particles}] in flattened paint order', () => {
+      const good = {
+        ...rectFixture,
+        params: {
+          image: { kind: 'image', label: 'Source' }
+        },
+        layers: [
+          {
+            kind: 'rect',
+            id: 'bg',
+            anchor: { x: 0, y: 0 },
+            width: 100,
+            height: 100,
+            fill: '#000000',
+            radius: 0
+          },
+          {
+            kind: 'group',
+            id: 'grp',
+            anchor: { x: 0, y: 0 },
+            children: [
+              {
+                kind: 'particles',
+                id: 'scatter',
+                anchor: { x: 0, y: 0 },
+                points: [{ x: 10, y: 10 }],
+                seed: 1,
+                assembleStart: 0,
+                assembleEnd: 1,
+                baseFill: '#888888',
+                regionFills: {},
+                pointRadius: 4,
+                imageParam: 'image'
+              }
+            ]
           }
         ]
       }
@@ -693,8 +776,192 @@ describe('Schema (internal/schema.ts)', () => {
     })
   })
 
-  // Ar8 - at most one hold param, min <= default <= max
-  describe('Ar8 hold param constraints', () => {
+  // depth-2 bind path accepted by the schema and resolved in colours
+  describe('depth-2 colour bind', () => {
+    it('accepts a depth-2 bind path to a nested rect and colours the right layer', () => {
+      const template = {
+        ...rectFixture,
+        params: {
+          accent: {
+            kind: 'colour',
+            label: 'Accent',
+            default: '#ff3366',
+            binds: ['layers[0].children[0].children[0]']
+          }
+        },
+        layers: [
+          {
+            kind: 'group',
+            id: 'outer',
+            anchor: { x: 0, y: 0 },
+            children: [
+              {
+                kind: 'group',
+                id: 'inner',
+                anchor: { x: 0, y: 0 },
+                children: [
+                  {
+                    kind: 'rect',
+                    id: 'leaf',
+                    anchor: { x: 0, y: 0 },
+                    width: 100,
+                    height: 100,
+                    fill: '#000000',
+                    radius: 0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+      const result = parseTemplate(template)
+      expect(result.success).toBe(true)
+    })
+
+    it('rejects a depth-2 bind path that points out of range', () => {
+      const template = {
+        ...rectFixture,
+        params: {
+          accent: {
+            kind: 'colour',
+            label: 'Accent',
+            default: '#ff3366',
+            binds: ['layers[0].children[0].children[5]']
+          }
+        },
+        layers: [
+          {
+            kind: 'group',
+            id: 'outer',
+            anchor: { x: 0, y: 0 },
+            children: [
+              {
+                kind: 'group',
+                id: 'inner',
+                anchor: { x: 0, y: 0 },
+                children: [
+                  {
+                    kind: 'rect',
+                    id: 'leaf',
+                    anchor: { x: 0, y: 0 },
+                    width: 100,
+                    height: 100,
+                    fill: '#000000',
+                    radius: 0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+      const result = parseTemplate(template)
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toContain('does not resolve')
+      }
+    })
+  })
+
+  // imageParam cross-validation
+  describe('imageParam cross-validation', () => {
+    it('rejects a particles layer whose imageParam names a non-existent param', () => {
+      const bad = {
+        ...rectFixture,
+        params: {
+          image: { kind: 'image', label: 'Source' }
+        },
+        layers: [
+          {
+            kind: 'particles',
+            id: 'scatter',
+            anchor: { x: 0, y: 0 },
+            points: [{ x: 10, y: 10 }],
+            seed: 1,
+            assembleStart: 0,
+            assembleEnd: 1,
+            baseFill: '#888888',
+            regionFills: {},
+            pointRadius: 4,
+            imageParam: 'nonexistent'
+          }
+        ]
+      }
+      const result = parseTemplate(bad)
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toContain('does not exist')
+      }
+    })
+
+    it('rejects a particles layer whose imageParam names a non-image param', () => {
+      const bad = {
+        ...rectFixture,
+        params: {
+          score: { kind: 'number', label: 'Score', default: 50, min: 0, max: 100 }
+        },
+        layers: [
+          {
+            kind: 'particles',
+            id: 'scatter',
+            anchor: { x: 0, y: 0 },
+            points: [{ x: 10, y: 10 }],
+            seed: 1,
+            assembleStart: 0,
+            assembleEnd: 1,
+            baseFill: '#888888',
+            regionFills: {},
+            pointRadius: 4,
+            imageParam: 'score'
+          }
+        ]
+      }
+      const result = parseTemplate(bad)
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toContain('must be a image param')
+      }
+    })
+
+    it('rejects an image param not referenced by any particles layer', () => {
+      const bad = {
+        ...rectFixture,
+        params: {
+          ...rectFixture.params,
+          img: { kind: 'image', label: 'Unused image' }
+        },
+        layers: [
+          {
+            kind: 'particles',
+            id: 'scatter',
+            anchor: { x: 0, y: 0 },
+            points: [{ x: 10, y: 10 }],
+            seed: 1,
+            assembleStart: 0,
+            assembleEnd: 1,
+            baseFill: '#888888',
+            regionFills: {},
+            pointRadius: 4
+            // no imageParam
+          }
+        ]
+      }
+      const result = parseTemplate(bad)
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toContain('not referenced')
+      }
+    })
+
+    it('accepts a particles layer whose imageParam correctly references an image param', () => {
+      const result = parseTemplate(particlesFixture)
+      expect(result.success).toBe(true)
+    })
+  })
+
+  // at most one hold param, min <= default <= max
+  describe('hold param constraints', () => {
     it('rejects two hold params', () => {
       const bad = {
         ...rectFixture,
@@ -741,8 +1008,8 @@ describe('Schema (internal/schema.ts)', () => {
     })
   })
 
-  // Ar10 - stagger + fillAnimation on text layer rejected
-  describe('Ar10 stagger + fillAnimation rejected', () => {
+  // stagger + fillAnimation on text layer rejected
+  describe('stagger + fillAnimation rejected', () => {
     it('rejects text layer with both stagger and fillAnimation', () => {
       const bad = {
         ...rectFixture,

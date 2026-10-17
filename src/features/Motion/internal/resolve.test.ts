@@ -343,8 +343,7 @@ describe('Resolve (internal/resolve.ts)', () => {
     })
   })
 
-  // S3.3 stagger clamp (added by #332)
-  describe('stagger delay clamping', () => {
+  describe('stagger delay quantisation', () => {
     const staggerFixture: MotionTemplate = {
       schemaVersion: 1,
       id: 'fixture-stagger-clamp',
@@ -403,21 +402,21 @@ describe('Resolve (internal/resolve.ts)', () => {
       expect(textLayer.stagger!.delay).toBe(0.04)
     })
 
-    it('long name (30 chars) disables stagger when one frame per character exceeds budget', () => {
+    it('long name (30 chars) drops stagger entirely when one frame per character exceeds budget', () => {
       // "A very long name that is exact" = 30 graphemes, n = 29
       // budget = 0.4 * 0.7 = 0.28, maxFrames = floor(0.28 * 50 / 29) = floor(0.483) = 0
-      // maxFrames is 0, so stagger is disabled (delay 0)
+      // maxFrames is 0, so stagger is dropped (undefined, not delay 0)
+      // so exporters do not emit a follower with delay 0
       const longName = 'A very long name that is exact'
       const resolved = resolveTemplate(staggerFixture, { name: longName }, FORMAT_4K)
       const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
-      expect(textLayer.stagger!.delay).toBe(0)
+      expect(textLayer.stagger).toBeUndefined()
     })
   })
 })
 
 describe('particle region tints resolve to colours', () => {
-  // S11 - validFormats must check expanded, hold-shifted layers
-  it('S11 series marker keys that collapse at low fps are rejected after expansion', () => {
+  it('series marker keys that collapse at low fps are rejected after expansion', () => {
     // A series with segmentDuration=0.03 at 24fps: 0.03*24=0.72
     // keys at t=0, 0.03, 0.06 => frames 0, 0.72, 1.44 => snapped 1, 1, 1
     // Different values on the same frame should invalidate 24fps
@@ -479,8 +478,7 @@ describe('particle region tints resolve to colours', () => {
     expect(has24).toBe(false)
   })
 
-  // A1 - stagger delays quantised to whole frames
-  it('A1 stagger delay is quantised to whole frames at the chosen fps', () => {
+  it('stagger delay is quantised to whole frames at the chosen fps', () => {
     const staggerTemplate: MotionTemplate = {
       schemaVersion: 1,
       id: 'fixture-stagger-quant',
@@ -582,11 +580,11 @@ describe('particle region tints resolve to colours', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sk3/Ar1: stagger budget holds at every fps for every built-in
+// stagger budget holds at every fps for every built-in
 // ---------------------------------------------------------------------------
 
-describe('Sk3/Ar1 stagger budget after quantisation', () => {
-  it('quantised delay never exceeds 40% of inEnd for a 30-char name at 50 fps', () => {
+describe('stagger budget after quantisation', () => {
+  it('stagger is dropped for a 31-char name at 50 fps (budget exceeded)', () => {
     const staggerFixture: MotionTemplate = {
       schemaVersion: 1,
       id: 'fixture-stagger-budget',
@@ -630,9 +628,10 @@ describe('Sk3/Ar1 stagger budget after quantisation', () => {
     const format50: MotionFormat = { width: 3840, height: 2160, fps: 50 }
     const resolved = resolveTemplate(staggerFixture, {}, format50)
     const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
-    const charCount = 30 // "A very long name that is exact!"
-    const totalStagger = (charCount - 1) * textLayer.stagger!.delay
-    expect(totalStagger).toBeLessThanOrEqual(0.4 * 0.7 + 1e-9)
+    // 31 chars, n = 30, budget = 0.4 * 0.7 = 0.28
+    // maxFrames = floor(0.28 * 50 / 30 + 1e-9) = floor(0.467) = 0
+    // Stagger is dropped entirely
+    expect(textLayer.stagger).toBeUndefined()
   })
 
   it('every built-in satisfies budget at 24, 25 and 50 fps with default text', () => {
@@ -711,10 +710,10 @@ describe('Sk3/Ar1 stagger budget after quantisation', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Ar5: resolveTemplate fills an explicit position track when absent
+// resolveTemplate fills an explicit position track when absent
 // ---------------------------------------------------------------------------
 
-describe('Ar5 explicit position track', () => {
+describe('explicit position track', () => {
   it('layer without position gets a single key at the origin after resolve', () => {
     const template: MotionTemplate = {
       ...textFixture,
@@ -741,10 +740,10 @@ describe('Ar5 explicit position track', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Ar8: getHoldParam helper
+// getHoldParam helper
 // ---------------------------------------------------------------------------
 
-describe('Ar8 getHoldParam', () => {
+describe('getHoldParam', () => {
   it('returns null when no hold param exists', () => {
     expect(getHoldParam(textFixture)).toBeNull()
   })
@@ -754,6 +753,75 @@ describe('Ar8 getHoldParam', () => {
     expect(result).not.toBeNull()
     expect(result!.id).toBe('hold')
     expect(result!.def.kind).toBe('hold')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// depth-2 colour bind: resolve colours the right nested layer
+// ---------------------------------------------------------------------------
+
+describe('depth-2 colour bind resolved to the correct layer', () => {
+  it('a colour param bound to layers[0].children[0].children[0] colours the leaf', () => {
+    const template: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-depth-2-bind',
+      version: '1.0.0',
+      name: 'Depth 2 bind',
+      description: '',
+      category: 'lower-third',
+      status: 'stable',
+      tags: [],
+      fonts: [],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {
+        accent: {
+          kind: 'colour' as const,
+          label: 'Accent',
+          default: '#ff3366',
+          binds: ['layers[0].children[0].children[0]']
+        }
+      },
+      layers: [
+        {
+          kind: 'group' as const,
+          id: 'outer',
+          anchor: { x: 0, y: 0 },
+          children: [
+            {
+              kind: 'group' as const,
+              id: 'inner',
+              anchor: { x: 0, y: 0 },
+              children: [
+                {
+                  kind: 'rect' as const,
+                  id: 'leaf',
+                  anchor: { x: 0, y: 0 },
+                  width: 100,
+                  height: 100,
+                  fill: '#000000',
+                  radius: 0
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    const resolved = resolveTemplate(template, { accent: '#00ff00' }, FORMAT_4K)
+    // Walk into the nested structure
+    const outer = resolved.layers[0]
+    expect(outer.kind).toBe('group')
+    if (outer.kind !== 'group') return
+    const inner = outer.children[0]
+    expect(inner.kind).toBe('group')
+    if (inner.kind !== 'group') return
+    const leaf = inner.children[0]
+    expect(leaf.kind).toBe('rect')
+    if (leaf.kind === 'rect') {
+      expect(leaf.fill).toBe('#00ff00')
+    }
   })
 })
 
