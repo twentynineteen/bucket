@@ -171,7 +171,7 @@ describe('RES2.1: instance inputs', () => {
       layers: [
         {
           kind: 'text',
-          id: 'title',
+          id: 'name-text',
           anchor: { x: 0, y: 0 },
           position: [{ t: 0, value: { x: 200, y: 500 } }],
           text: 'Jane Doe',
@@ -184,7 +184,7 @@ describe('RES2.1: instance inputs', () => {
         },
         {
           kind: 'text',
-          id: 'sub',
+          id: 'subtitle-text',
           anchor: { x: 0, y: 0 },
           position: [{ t: 0, value: { x: 200, y: 620 } }],
           text: 'CEO',
@@ -1855,5 +1855,538 @@ describe('S5 pivot: scale and rotation about the anchor', () => {
       expect(fusionPt.x).toBeCloseTo(evalImg.x, 3)
       expect(fusionPt.y).toBeCloseTo(evalImg.y, 3)
     }
+  })
+})
+
+// ===========================================================================
+// R2 fixes: Sk1, Sk2, Sk5, Sk6, Ar4
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Sk1: arc position uses position - anchor (not anchor alone)
+// ---------------------------------------------------------------------------
+
+describe('Sk1: arc centre at position - anchor', () => {
+  it('arc with anchor at centre and position offset places the ring correctly', () => {
+    // score-ring pattern: anchor=(1920,1080), position=(1920,980)
+    // evaluator: world_centre = position - anchor + (0,0) = (0, -100)
+    // Fusion shape coords for (0, -100): x = (0-1920)/3840 = -0.5
+    //                                    y = (1080-(-100))/3840 = 0.307291...
+    // Bug: original used toShapeCoords(anchor.x, anchor.y) = toShapeCoords(1920, 1080) = (0, 0)
+    const template: MotionTemplate = {
+      ...animBase('sk1-arc-pos', { category: 'data' }),
+      params: {},
+      layers: [
+        {
+          kind: 'arc',
+          id: 'ring',
+          anchor: { x: 1920, y: 1080 },
+          position: [{ t: 0, value: { x: 1920, y: 980 } }],
+          innerRadius: 400,
+          outerRadius: 480,
+          sweep: [{ t: 0, value: 0.72 }],
+          startAngle: [{ t: 0, value: 0 }],
+          fill: '#ff3366'
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // Expected centre: position - anchor = (0, -100)
+    // toShapeCoords(0, -100, 3840, 2160):
+    //   x = (0 - 1920) / 3840 = -0.5
+    //   y = (1080 - (-100)) / 3840 = 1180/3840 = 0.307291...
+    const expectedX = (0 - 1920) / 3840 // -0.5
+    const expectedY = (1080 - -100) / 3840
+
+    expect(text).toContain(expectedX.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+    expect(text).toContain(expectedY.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+  })
+
+  it('arc with zero anchor uses position directly', () => {
+    // arc at position (960, 540), anchor (0, 0)
+    // evaluator: world_centre = (960, 540) - (0, 0) = (960, 540)
+    const template: MotionTemplate = {
+      ...animBase('sk1-arc-zero-anchor', { category: 'data' }),
+      params: {},
+      layers: [
+        {
+          kind: 'arc',
+          id: 'ring',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 960, y: 540 } }],
+          innerRadius: 100,
+          outerRadius: 120,
+          sweep: [{ t: 0, value: 1 }],
+          startAngle: [{ t: 0, value: 0 }],
+          fill: '#00ff00'
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // toShapeCoords(960, 540):
+    //   x = (960 - 1920) / 3840 = -0.25
+    const expectedX = (960 - 1920) / 3840
+    expect(text).toContain(expectedX.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Sk2: text InstanceInputs found for kebab-case layer ids
+// ---------------------------------------------------------------------------
+
+describe('Sk2: text InstanceInputs with kebab-case ids', () => {
+  it('emits StyledText InstanceInput for a layer with hyphens in its id', () => {
+    const template: MotionTemplate = {
+      ...animBase('sk2-kebab'),
+      params: {
+        title: {
+          kind: 'text',
+          label: 'Title',
+          maxLength: 40,
+          default: 'Hello',
+          required: true
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'name-text',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 200, y: 500 } }],
+          text: 'Hello',
+          param: 'title',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff'
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // Must have an InstanceInput for StyledText
+    const styledTextMatches = text.match(/Source\s*=\s*"StyledText"/g)
+    expect(styledTextMatches).not.toBeNull()
+    expect(styledTextMatches!.length).toBeGreaterThanOrEqual(1)
+
+    // The SourceOp must be the sanitised tool name (hyphens become underscores)
+    expect(text).toMatch(/SourceOp\s*=\s*"name_text_text"/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Sk5: group opacity wired, group transform applies to text
+// ---------------------------------------------------------------------------
+
+describe('Sk5: group opacity and transform wiring', () => {
+  it('final output depends on the group opacity Blend (not dangling)', () => {
+    // Group with opacity and a child rect
+    const template: MotionTemplate = {
+      ...animBase('sk5-opacity-wired'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g',
+          anchor: { x: 0, y: 0 },
+          opacity: [
+            {
+              t: 0,
+              value: 0,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: 1 }
+          ],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g-r',
+              anchor: { x: 0, y: 0 },
+              width: 200,
+              height: 100,
+              fill: '#ff0000',
+              radius: 0
+            }
+          ]
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // The Blend merge must exist
+    expect(text).toContain('g_blend')
+
+    // The final output (MainOutput1 SourceOp) must be or depend on the
+    // blend tool - if the blend is dangling, the output goes to sRender instead
+    const outputMatch = text.match(/MainOutput1[^}]*SourceOp\s*=\s*"([^"]+)"/)
+    expect(outputMatch).not.toBeNull()
+    const finalOutput = outputMatch![1]
+
+    // The final output must be g_blend itself, or a tool that
+    // sources g_blend. Walk the chain.
+    function reachesBlend(name: string, visited: Set<string>): boolean {
+      if (name === 'g_blend') return true
+      if (visited.has(name)) return false
+      visited.add(name)
+      // Find all SourceOps that this tool references
+      const toolRe = new RegExp(
+        name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+          '\\s*=\\s*\\w+\\s*\\{([\\s\\S]*?)\\n\\s{8}\\}'
+      )
+      const toolMatch = toolRe.exec(text)
+      if (!toolMatch) return false
+      const refs = [...toolMatch[1].matchAll(/SourceOp\s*=\s*"([^"]+)"/g)]
+      return refs.some(r => reachesBlend(r[1], visited))
+    }
+
+    expect(reachesBlend(finalOutput, new Set())).toBe(true)
+  })
+
+  it('group transform applies to text children (not just shapes)', () => {
+    // Group with position transform and a text child
+    const template: MotionTemplate = {
+      ...animBase('sk5-text-under-transform'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g',
+          anchor: { x: 0, y: 0 },
+          position: [
+            {
+              t: 0,
+              value: { x: 0, y: 0 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 500, y: 0 } }
+          ],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g-r',
+              anchor: { x: 0, y: 0 },
+              width: 200,
+              height: 100,
+              fill: '#ff0000',
+              radius: 0
+            },
+            {
+              kind: 'text',
+              id: 'g-t',
+              anchor: { x: 0, y: 0 },
+              position: [{ t: 0, value: { x: 100, y: 50 } }],
+              text: 'Label',
+              font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 48 },
+              align: 'left',
+              lineHeight: 1.2,
+              multiline: false,
+              fill: '#ffffff'
+            }
+          ]
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // The Transform tool must have an Input SourceOp that depends on a
+    // Merge containing the text tool (i.e. the text is merged BEFORE
+    // the group transform, not after it)
+    expect(text).toMatch(/Transform/)
+
+    // The Transform's Input must source from a merge that includes
+    // both the sRender and the text tool. In the original buggy code,
+    // the transform's Input goes to shape_srender and text is merged
+    // AFTER the transform, so the text escapes the group transform.
+    const toolDefMatch = text.match(
+      /g_transform\s*=\s*Transform\s*\{([\s\S]*?)\n\s{12}\}/
+    )
+    expect(toolDefMatch).not.toBeNull()
+    const toolDef = toolDefMatch![1]
+
+    // Extract the Input SourceOp
+    const inputMatch = toolDef.match(
+      /Input\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
+    )
+    expect(inputMatch).not.toBeNull()
+    const inputSource = inputMatch![1]
+
+    // The input source should be a merge (not shape_srender directly)
+    // because the text must be included before the transform
+    expect(inputSource).toMatch(/merge/i)
+  })
+
+  it('every non-spline tool is referenced by a SourceOp or the output', () => {
+    const template: MotionTemplate = {
+      ...animBase('sk5-no-dangling'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g',
+          anchor: { x: 0, y: 0 },
+          opacity: [
+            {
+              t: 0,
+              value: 0,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: 1 }
+          ],
+          scale: [{ t: 0, value: { x: 0.8, y: 0.8 } }],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g-r',
+              anchor: { x: 0, y: 0 },
+              width: 200,
+              height: 100,
+              fill: '#ff0000',
+              radius: 0
+            },
+            {
+              kind: 'text',
+              id: 'g-t',
+              anchor: { x: 0, y: 0 },
+              position: [{ t: 0, value: { x: 100, y: 50 } }],
+              text: 'Label',
+              font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 48 },
+              align: 'left',
+              lineHeight: 1.2,
+              multiline: false,
+              fill: '#ffffff'
+            }
+          ]
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // Extract all tool names (non-spline tools: Merge, Transform, etc.)
+    const toolTypes =
+      'sRectangle|sEllipse|sPolygon|sMerge|sRender|TextPlus|Merge|Transform|Background|Polygon'
+    const toolRe = new RegExp(`(\\w+)\\s*=\\s*(?:${toolTypes})\\s*\\{`, 'g')
+    const toolNames = new Set([...text.matchAll(toolRe)].map(m => m[1]))
+
+    // Extract all SourceOp references
+    const sourceOps = new Set(
+      [...text.matchAll(/SourceOp\s*=\s*"([^"]+)"/g)].map(m => m[1])
+    )
+
+    // Every SourceOp must resolve to an emitted tool
+    for (const op of sourceOps) {
+      expect(
+        toolNames.has(op) ||
+          text.includes(`${op} = BezierSpline`) ||
+          text.includes(`${op} = XYPath`),
+        `SourceOp "${op}" does not resolve to any emitted tool`
+      ).toBe(true)
+    }
+
+    // Every non-spline tool must be referenced by a SourceOp or the MainOutput1
+    for (const name of toolNames) {
+      const isReferenced =
+        sourceOps.has(name) ||
+        (text.includes(`MainOutput1`) &&
+          new RegExp(`MainOutput1[^}]*SourceOp\\s*=\\s*"${name}"`).test(text))
+      expect(
+        isReferenced,
+        `Tool "${name}" is dangling: emitted but never referenced by any SourceOp or output`
+      ).toBe(true)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Sk6: per-shape transforms, animated pivot
+// ---------------------------------------------------------------------------
+
+describe('Sk6: per-shape transforms', () => {
+  it('two shapes with different transforms each get their own Transform', () => {
+    const template: MotionTemplate = {
+      ...animBase('sk6-two-transforms'),
+      params: {},
+      layers: [
+        {
+          kind: 'rect',
+          id: 'a',
+          anchor: { x: 50, y: 50 },
+          position: [{ t: 0, value: { x: 500, y: 500 } }],
+          scale: [{ t: 0, value: { x: 2, y: 2 } }],
+          width: 100,
+          height: 100,
+          fill: '#ff0000',
+          radius: 0
+        },
+        {
+          kind: 'rect',
+          id: 'b',
+          anchor: { x: 25, y: 25 },
+          position: [{ t: 0, value: { x: 1000, y: 1000 } }],
+          rotation: [{ t: 0, value: 45 }],
+          width: 50,
+          height: 50,
+          fill: '#0000ff',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // Both shapes must have their own Transform tool
+    expect(text).toContain('a_xf')
+    expect(text).toContain('b_xf')
+
+    // Each Transform must have its own Pivot at the correct position
+    // Shape A pivot at (500, 500), Shape B pivot at (1000, 1000)
+    const pivotA = { x: 500 / 3840, y: 1 - 500 / 2160 }
+
+    // Extract Pivot values near each transform
+    const aXfIdx = text.indexOf('a_xf')
+    const bXfIdx = text.indexOf('b_xf')
+    expect(aXfIdx).toBeGreaterThan(-1)
+    expect(bXfIdx).toBeGreaterThan(-1)
+
+    // Verify corners against evaluator for shape A (scale 2x)
+    const cornersA = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+      { x: 0, y: 100 }
+    ]
+    const anchorA = { x: 50, y: 50 }
+    const posA = { x: 500, y: 500 }
+    for (const corner of cornersA) {
+      const evalPt = evalWorld(corner, anchorA, posA, 2, 0)
+      const evalImg = { x: evalPt.x / 3840, y: 1 - evalPt.y / 2160 }
+      const cornerWorldX = posA.x - anchorA.x + corner.x
+      const cornerWorldY = posA.y - anchorA.y + corner.y
+      const cornerImg = { x: cornerWorldX / 3840, y: 1 - cornerWorldY / 2160 }
+      const fusionPt = fusionWorld(cornerImg, pivotA, 2, 0)
+      expect(fusionPt.x).toBeCloseTo(evalImg.x, 3)
+      expect(fusionPt.y).toBeCloseTo(evalImg.y, 3)
+    }
+  })
+
+  it('moving rotated rect: pivot follows animated position', () => {
+    const template: MotionTemplate = {
+      ...animBase('sk6-animated-pivot'),
+      params: {},
+      layers: [
+        {
+          kind: 'rect',
+          id: 'wipe',
+          anchor: { x: 100, y: 50 },
+          position: [
+            {
+              t: 0,
+              value: { x: 200, y: 500 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 1800, y: 500 } }
+          ],
+          rotation: [{ t: 0, value: 15 }],
+          width: 200,
+          height: 100,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // With animated position AND rotation, the Transform's Pivot must
+    // be animated (via XYPath), not static at position[0]
+    expect(text).toContain('wipe_xf')
+
+    // The Pivot should be driven by an XYPath (animated), not a static value
+    // Look for XYPath tool related to the pivot
+    expect(text).toMatch(/wipe_xf_pivot.*XYPath|XYPath.*wipe_xf_pivot/s)
+  })
+
+  it('each transformed shape gets its own sRender', () => {
+    const template: MotionTemplate = {
+      ...animBase('sk6-per-shape-srender'),
+      params: {},
+      layers: [
+        {
+          kind: 'rect',
+          id: 'r1',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 100, y: 100 } }],
+          scale: [{ t: 0, value: { x: 1.5, y: 1.5 } }],
+          width: 100,
+          height: 100,
+          fill: '#ff0000',
+          radius: 0
+        },
+        {
+          kind: 'rect',
+          id: 'r2',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 500, y: 500 } }],
+          rotation: [{ t: 0, value: 30 }],
+          width: 100,
+          height: 100,
+          fill: '#0000ff',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // Each transformed shape needs its own sRender
+    const srenderMatches = text.match(/sRender\s*\{/g)
+    expect(srenderMatches).not.toBeNull()
+    expect(srenderMatches!.length).toBeGreaterThanOrEqual(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ar4: colour bind target validation
+// ---------------------------------------------------------------------------
+
+describe('Ar4: colour bind target validation in Fusion', () => {
+  it('emits a note and skips InstanceInput when bind target tool is missing', () => {
+    // Bind to a group layer - the group has no _shape tool emitted
+    const template: MotionTemplate = {
+      ...animBase('ar4-missing-bind'),
+      params: {
+        accent: {
+          kind: 'colour',
+          label: 'Accent',
+          default: '#ff3366',
+          binds: ['layers[0]'] // layers[0] is a group, no _shape tool
+        }
+      },
+      layers: [
+        {
+          kind: 'group',
+          id: 'grp',
+          anchor: { x: 0, y: 0 },
+          children: [
+            {
+              kind: 'rect',
+              id: 'grp-child',
+              anchor: { x: 0, y: 0 },
+              width: 100,
+              height: 100,
+              fill: '#333333',
+              radius: 0
+            }
+          ]
+        }
+      ]
+    }
+    const result = generateSetting(makeInput(template))
+    const text = (result.files[0] as { contents: string }).contents
+
+    // Should NOT have an InstanceInput with SourceOp "grp_shape" (doesn't exist)
+    expect(text).not.toMatch(/SourceOp\s*=\s*"grp_shape"/)
+
+    // Should have a note about the missing target
+    expect(result.notes.some(n => /skipped|missing/i.test(n))).toBe(true)
   })
 })
