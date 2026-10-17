@@ -16,7 +16,15 @@ describe('bind paths', () => {
   })
 
   it('rejects anything else', () => {
-    for (const bad of ['', 'layers', 'layers[x]', 'children[0]', 'layers[0].kids[1]', 'layers[0]x', 'layers[-1]']) {
+    for (const bad of [
+      '',
+      'layers',
+      'layers[x]',
+      'children[0]',
+      'layers[0].kids[1]',
+      'layers[0]x',
+      'layers[-1]'
+    ]) {
       expect(parseBindPath(bad), bad).toBeNull()
     }
   })
@@ -24,7 +32,9 @@ describe('bind paths', () => {
   it('resolves to the node at any depth, including when sibling indices repeat', () => {
     // layers[1].children[1].children[1]: every index is 1, so a resolver that
     // decides "last part" by comparing strings would stop early.
-    expect(resolveBindPath(tree, 'layers[1].children[1].children[1]')).toEqual({ id: 'd' })
+    expect(resolveBindPath(tree, 'layers[1].children[1].children[1]')).toEqual({
+      id: 'd'
+    })
     expect(resolveBindPath(tree, 'layers[1].children[0]')).toEqual({ id: 'b' })
     expect(resolveBindPath(tree, 'layers[0]')).toEqual({ id: 'a' })
   })
