@@ -823,12 +823,12 @@ describe('W5.3 Quote card template', () => {
     }
   })
 
-  it('has wrap and maxLines 3', () => {
+  it('has wrap and maxLines 4', () => {
     const layer = quote.layers.find(l => l.kind === 'text' && l.id === 'quote-text')
     expect(layer).toBeDefined()
     if (layer?.kind === 'text') {
       expect(layer.wrap).toBe(true)
-      expect(layer.maxLines).toBe(3)
+      expect(layer.maxLines).toBe(4)
     }
   })
 
