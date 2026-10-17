@@ -623,6 +623,87 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
+  describe('S2 - dialog preview animates with real ticker', () => {
+    it('containerRef is attached and SVG gains layers after a tick', async () => {
+      // Get the real (unmocked) ticker hook via importActual
+      const realTickerModule = await vi.importActual<
+        typeof import('../hooks/useMotionTicker')
+      >('../hooks/useMotionTicker')
+
+      // Stub matchMedia for the real ticker's prefersReducedMotion check
+      const originalMatchMedia = window.matchMedia
+      window.matchMedia = vi
+        .fn()
+        .mockReturnValue({ matches: false }) as typeof window.matchMedia
+
+      // Stub IntersectionObserver to immediately report isIntersecting
+      const originalIO = globalThis.IntersectionObserver
+      globalThis.IntersectionObserver = class StubIO {
+        _cb: IntersectionObserverCallback
+        constructor(cb: IntersectionObserverCallback) {
+          this._cb = cb
+        }
+        observe(target: Element) {
+          this._cb(
+            [
+              {
+                target,
+                isIntersecting: true,
+                intersectionRatio: 1,
+                boundingClientRect: target.getBoundingClientRect(),
+                intersectionRect: target.getBoundingClientRect(),
+                rootBounds: null,
+                time: performance.now()
+              } as IntersectionObserverEntry
+            ],
+            this as unknown as IntersectionObserver
+          )
+        }
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return []
+        }
+        root = null
+        rootMargin = '0px'
+        thresholds = [0]
+      } as unknown as typeof IntersectionObserver
+
+      // Point the mock at the real implementation
+      const mockModule = await import('../hooks/useMotionTicker')
+      ;(mockModule.useMotionTicker as ReturnType<typeof vi.fn>).mockImplementation(
+        realTickerModule.useMotionTicker
+      )
+
+      renderDialog(makeEntry())
+
+      // The preview SVG should exist
+      const preview = screen.getByRole('img', { name: /Score ring preview/i })
+      const svg = preview.querySelector('svg')
+      expect(svg).not.toBeNull()
+
+      // After a tick, the SVG should have rendered child elements.
+      // jsdom's requestAnimationFrame fires synchronously or on next
+      // microtask. We wait for the ticker callback to populate layers.
+      await waitFor(
+        () => {
+          const children = svg!.querySelectorAll('rect, ellipse, path, text, circle')
+          expect(children.length).toBeGreaterThan(0)
+        },
+        { timeout: 3000 }
+      )
+
+      // Clean up
+      window.matchMedia = originalMatchMedia
+      globalThis.IntersectionObserver = originalIO
+      ;(mockModule.useMotionTicker as ReturnType<typeof vi.fn>).mockReturnValue({
+        containerRef: vi.fn(),
+        time: 0.5,
+        isPlaying: true
+      })
+    })
+  })
+
   describe('Dialog layout', () => {
     it('preview does not overlay param inputs - Name input is a sibling below the preview, not overlapped', () => {
       renderDialog(makeEntry(barRevealTemplate()))
