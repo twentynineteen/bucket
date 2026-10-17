@@ -294,6 +294,11 @@ test.describe('Motion Marketplace behaviour', () => {
     // Select targets: AE + Claude prompt (default for non-particle)
     // Targets should already be checked by default
 
+    // This spec is about the bundle (temp folder, rename, toast). Rendering a
+    // 4K ProRes video here makes it as slow as the CI machine; the video path
+    // has its own spec (T1.9) and unit tests.
+    await dialog.getByRole('checkbox', { name: 'Video', exact: true }).uncheck()
+
     // Click Export to project
     const exportBtn = dialog.getByRole('button', {
       name: /Export to project/i
@@ -349,6 +354,11 @@ test.describe('Motion Marketplace behaviour', () => {
 
     // Pick project folder
     await dialog.getByRole('button', { name: /Choose project folder/i }).click()
+
+    // This spec is about the bundle (temp folder, rename, toast). Rendering a
+    // 4K ProRes video here makes it as slow as the CI machine; the video path
+    // has its own spec (T1.9) and unit tests.
+    await dialog.getByRole('checkbox', { name: 'Video', exact: true }).uncheck()
 
     // Export
     await dialog.getByRole('button', { name: /Export to project/i }).click()
@@ -580,13 +590,17 @@ test.describe('Motion Marketplace keyboard and reduced motion', () => {
     const capture2 = await preview.screenshot()
     expect(capture1.equals(capture2)).toBe(true)
 
-    // After hovering the card, the preview starts playing
+    // After hovering the card, the preview starts playing. Templates hold
+    // still for seconds mid-loop, so sample across a full loop and pass as
+    // soon as a frame differs; a paused preview never does.
     await firstCard.hover()
-    await page.waitForTimeout(300)
-    const capture3 = await preview.screenshot()
-    await page.waitForTimeout(500)
-    const capture4 = await preview.screenshot()
-    expect(capture3.equals(capture4)).toBe(false)
+    const start = await preview.screenshot()
+    let changed = false
+    for (let i = 0; i < 25 && !changed; i++) {
+      await page.waitForTimeout(250)
+      changed = !start.equals(await preview.screenshot())
+    }
+    expect(changed, 'hovered preview never changed across a full loop').toBe(true)
 
     assertNoExternal()
   })
