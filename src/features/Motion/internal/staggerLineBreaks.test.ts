@@ -5,8 +5,8 @@
  * produce the right number of blank lines and both renderers agree.
  */
 import { describe, expect, it } from 'vitest'
-import { staggerLineBreaks } from './staggerLineBreaks'
 import type { StaggerUnit } from '../types'
+import { staggerLineBreaks } from './staggerLineBreaks'
 
 const IDENTITY: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0]
 

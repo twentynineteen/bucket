@@ -83,9 +83,9 @@ function tokenise(line: string): string[] {
   return tokens
 }
 
-/** Whether a string is only spaces. */
+/** Whether a string is only space characters. Agrees with tokenise on ' '. */
 function isSpaceRun(s: string): boolean {
-  return /^\s+$/.test(s)
+  return s.length > 0 && s.split('').every(c => c === ' ')
 }
 
 /** Handle a word that does not fit on the current line. */
@@ -118,6 +118,9 @@ function wrapSingleLine(
   measurer: TextMeasurer
 ): string[] {
   if (line === '' || isSpaceRun(line)) return [line]
+
+  // If the whole line fits, return it unchanged (preserving spaces).
+  if (measurer.measure(line, font) <= width) return [line]
 
   const tokens = tokenise(line)
   const result: string[] = []

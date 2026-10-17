@@ -30,7 +30,7 @@ import type {
 import { parseBindPath } from './bindPath'
 import { expandTemplate } from './expand'
 import { hasParticles } from './layers'
-import type { TextMeasurer } from './textOverflow'
+import { APPROX_MEASURER, type TextMeasurer } from './textOverflow'
 import { countLines, wrapText } from './wrapText'
 
 /** Exhaustiveness check: the compiler proves this is never called. */
@@ -286,16 +286,6 @@ function applyTextValues(
 // ---------------------------------------------------------------------------
 // Automatic line wrapping
 // ---------------------------------------------------------------------------
-
-/**
- * Default (approximation-based) measurer: chars x size x 0.6.
- * Used by timing rules, unit tests, and when no canvas font is available.
- */
-const APPROX_MEASURER: TextMeasurer = {
-  measure(text: string, font: { family: string; size: number }): number {
-    return text.length * font.size * 0.6
-  }
-}
 
 /**
  * Apply automatic wrapping to text layers that opt in (`wrap: true`).

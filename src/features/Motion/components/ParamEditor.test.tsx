@@ -315,9 +315,7 @@ describe('ParamEditor', () => {
   it('F4: empty required text field shows exactly one error, not two', () => {
     const tmpl = textTemplate()
     // Simulate paramErrors from validateParams: the "required text is empty" error
-    const paramErrors = [
-      { paramId: 'name', message: 'name: required text is empty' }
-    ]
+    const paramErrors = [{ paramId: 'name', message: 'name: required text is empty' }]
 
     render(
       <ParamEditor

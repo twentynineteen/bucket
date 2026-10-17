@@ -2365,9 +2365,7 @@ describe('W3.1 wrapped text in AE export', () => {
       ]
     }
 
-    // Use text that wraps with the approximation: 80 chars x 80 x 0.6 = 3840 > 3400
-    // Actually at 1920 the font size is scaled to 40. The text wraps at native (3840) sizes.
-    // With 80 chars and font size 80: 80 * 80 * 0.6 = 3840 > 3400, so it wraps.
+    // Text that wraps at native (3840) sizes: 80 * 80 * 0.6 = 3840 > 3400.
     const longText =
       'aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp'
     const input = makeInput(wrapFixture, { values: { quote: longText } })
@@ -2376,17 +2374,16 @@ describe('W3.1 wrapped text in AE export', () => {
     const resolvedLayer = input.resolved.layers.find(l => l.id === 'quote-text')
     expect(resolvedLayer?.kind).toBe('text')
     if (resolvedLayer?.kind !== 'text') return
-    expect(resolvedLayer.text).toContain('\n')
+    const resolvedLines = resolvedLayer.text.split('\n')
+    expect(resolvedLines.length).toBeGreaterThan(1)
 
     // Get the JSX source
     const src = getJsxSrc(input)
 
-    // In AE, \n becomes \r. The JSX string literal should contain \r
-    // at exactly the same positions as \n in the resolved text.
-    const resolvedBreaks = resolvedLayer.text.split('\n').length - 1
-    // Count \r occurrences in the JSX source (inside string literals)
-    const crCount = (src.match(/\\r/g) || []).length
-    expect(crCount).toBe(resolvedBreaks)
+    // In AE, \n becomes \r. Build the expected text with \r and verify
+    // it appears in the JSX source as a string literal.
+    const expectedAeText = resolvedLines.join('\\r')
+    expect(src).toContain(expectedAeText)
 
     // The text should use point text (addText), not box text
     expect(src).toContain('addText')

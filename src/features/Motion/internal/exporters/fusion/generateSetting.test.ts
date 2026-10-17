@@ -3322,17 +3322,24 @@ describe('W3.2 wrapped text in Fusion export', () => {
     if (resolvedLayer?.kind !== 'text') return
     expect(resolvedLayer.text).toContain('\n')
 
-    // Get the .setting text
+    // Parse the .setting and extract the StyledText value from the Text+ tool
     const settingText = getSettingText(input)
+    expect(() => parseSetting(settingText)).not.toThrow()
 
-    // The StyledText should contain the same lines. In Fusion, \n appears
-    // literally in the Lua string (escaped as part of the Lua literal).
-    // Check that each resolved line is present in the setting text.
-    const resolvedLines = resolvedLayer.text.split('\n')
-    for (const line of resolvedLines) {
-      if (line.trim()) {
-        expect(settingText).toContain(line)
-      }
-    }
+    // Extract StyledText value: appears as StyledText = Input { Value = "..." }
+    // or StyledText = "..." in the serialised Lua table. Use a regex to find
+    // the value string following StyledText.
+    const styledMatch = settingText.match(
+      /StyledText\s*=\s*(?:Input\s*\{\s*Value\s*=\s*"([^"]*)"|\s*"([^"]*)")/
+    )
+    expect(styledMatch, 'StyledText not found in .setting').toBeDefined()
+    // Lua escapes \n as \010 (decimal 10, three-digit). Decode that back.
+    const styledText = (styledMatch![1] ?? styledMatch![2]).replace(
+      /\\(\d{1,3})/g,
+      (_, digits: string) => String.fromCharCode(parseInt(digits, 10))
+    )
+
+    // The StyledText must equal the resolved layer text exactly
+    expect(styledText).toBe(resolvedLayer.text)
   })
 })

@@ -381,14 +381,14 @@ function checkWrapVerticalTitleSafe(t: MotionTemplate): TimingViolation[] {
         if (bottom > TITLE_SAFE.bottom) {
           violations.push({
             templateId: t.id,
-            rule: 'S3.4',
+            rule: 'S3.8',
             message: `layer "${layer.id}" vertical title-safe: maxLines block bottom ${bottom.toFixed(0)} > ${TITLE_SAFE.bottom} at t=${kf.t}`
           })
         }
         if (y < TITLE_SAFE.top) {
           violations.push({
             templateId: t.id,
-            rule: 'S3.4',
+            rule: 'S3.8',
             message: `layer "${layer.id}" vertical title-safe: baseline ${y.toFixed(0)} < ${TITLE_SAFE.top} at t=${kf.t}`
           })
         }

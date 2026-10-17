@@ -623,71 +623,77 @@ test.describe('Motion Marketplace keyboard and reduced motion', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 5000 })
 
-    // Type a long quote that will wrap (approximation: chars x 88 x 0.6,
-    // width 3400 fits ~64 chars per line)
+    // Type a long quote that will wrap. At the approximation (88 x 0.6),
+    // width 1900 fits ~36 chars per line, so 87 chars wraps to 3 lines.
     const quoteInput = dialog.getByRole('textbox', { name: /Quote/i })
     await expect(quoteInput).toBeVisible()
-    await quoteInput.fill(
+    const longQuote =
       'The only way to do great work is to love what you do and keep pushing forward every day'
-    )
+    await quoteInput.fill(longQuote)
 
-    // Wait for the preview to re-render with the wrapped text.
-    // The multiline rendering creates tspan elements with x="0" and dy.
+    // The preview should show the wrapped text across multiple tspans.
+    // Verify by reading the tspan text content and checking the lines
+    // contain the expected words.
     const previewImg = dialog.getByRole('img', { name: /Quote card.*preview/i })
     await expect(previewImg).toBeVisible()
-
-    // The wrapped text produces multiple tspan elements (one per line).
-    // Wait for at least two tspans to appear (meaning the text wrapped).
     const tspans = previewImg.locator('tspan')
     await expect(tspans.first()).toBeVisible({ timeout: 3000 })
     const tspanCount = await tspans.count()
     expect(
       tspanCount,
-      'wrapped quote should produce at least two tspans (one per line)'
+      'wrapped quote should produce at least two tspans'
+    ).toBeGreaterThanOrEqual(2)
+
+    // Collect the tspan texts and verify they reassemble the original
+    const lineTexts: string[] = []
+    for (let i = 0; i < tspanCount; i++) {
+      const t = await tspans.nth(i).textContent()
+      if (t) lineTexts.push(t)
+    }
+    const reassembled = lineTexts.join(' ').replace(/\s+/g, ' ').trim()
+    expect(reassembled).toBe(longQuote)
+
+    assertNoExternal()
+  })
+
+  test('W6.1 grid card shows the default quote with line tspans', async ({ page }) => {
+    const assertNoExternal = await setupAll(page)
+    await gotoMarketplace(page)
+
+    const quoteCard = page.locator('[data-template-id="quote-card"]')
+    await expect(quoteCard).toBeVisible()
+
+    const svg = quoteCard.locator('svg').first()
+    await expect(svg).toBeVisible()
+
+    // Find the quote text element by its content (not the decorative mark).
+    // The default quote wraps at width 1900 with any measurer, so it has
+    // at least 2 tspans (one per line).
+    const allText = svg.locator('text')
+    await expect(allText.first()).toBeVisible({ timeout: 3000 })
+    const textCount = await allText.count()
+    let quoteTspanCount = 0
+    for (let i = 0; i < textCount; i++) {
+      const content = await allText.nth(i).textContent()
+      if (content && content.includes('Design')) {
+        quoteTspanCount = await allText.nth(i).locator('tspan').count()
+        break
+      }
+    }
+    expect(
+      quoteTspanCount,
+      'default quote text should have at least 2 line tspans'
     ).toBeGreaterThanOrEqual(2)
 
     assertNoExternal()
   })
 
-  test('W6.1 grid card renders the default quote in the preview', async ({ page }) => {
-    const assertNoExternal = await setupAll(page)
-    await gotoMarketplace(page)
-
-    // Find the Quote card in the grid
-    const quoteCard = page.locator('[data-template-id="quote-card"]')
-    await expect(quoteCard).toBeVisible()
-
-    // Verify the SVG renders and has visible text content
-    const svg = quoteCard.locator('svg').first()
-    await expect(svg).toBeVisible()
-
-    // Find the quote text element (not the decorative " mark, which is first).
-    // The quote text contains "Design" in its text content.
-    const allText = svg.locator('text')
-    await expect(allText.first()).toBeVisible({ timeout: 3000 })
-    const textCount = await allText.count()
-    let foundQuote = false
-    for (let i = 0; i < textCount; i++) {
-      const content = await allText.nth(i).textContent()
-      if (content && content.includes('Design')) {
-        foundQuote = true
-        break
-      }
-    }
-    expect(foundQuote, 'Quote text should be visible in the card preview').toBe(true)
-
-    assertNoExternal()
-  })
-
-  test('W6.2 line-count error appears and disables export for long text', async ({
-    page
-  }) => {
+  test('W6.2 line-count error shows and disables export', async ({ page }) => {
     const assertNoExternal = await setupAll(page, {
       projectFolder: { path: '/tmp/test', hasBreadcrumbs: true }
     })
     await gotoMarketplace(page)
 
-    // Open the Quote card dialog
     const quoteCard = page.locator('[data-template-id="quote-card"]')
     await expect(quoteCard).toBeVisible()
     await quoteCard.getByRole('button', { name: 'Quote card', exact: true }).click()
@@ -695,32 +701,32 @@ test.describe('Motion Marketplace keyboard and reduced motion', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 5000 })
 
-    // Type the maxLength of wide characters (all W's - the widest Latin letter).
-    // With the canvas measurer and any reasonable font, 120 W's at size 80
-    // in a 2400-wide box will exceed 3 lines and produce a line-count error.
-    // With the approximation (120 * 80 * 0.6 = 5760, 2400 * 3 = 7200) it
-    // fits, so this test exercises the real font path.
+    // Type text that exceeds maxLines under both the approximation and the
+    // canvas measurer. At 88 x 0.6 per char, width 1900 fits ~36 chars per
+    // line, so maxLines 4 allows ~144 chars. 120 chars / 36 = ~3.3 lines,
+    // which fits in 4. But if we repeat "WWWW " (wide words), the canvas
+    // measurer measures each W wider than 0.6 em, pushing to 5+ lines.
+    //
+    // For the approximation path: 120 * 88 * 0.6 = 6336. At width 1900,
+    // that needs ceil(6336 / 1900) = 4 lines. That equals maxLines, so
+    // it fits. We need a shorter width or longer text - but maxLength is 120.
+    //
+    // Use the approximation: at 120 chars, 6336 / 1900 = 3.3 -> 4 lines
+    // (balanced wrapping may use 4). The canvas measurer measures wider,
+    // so it needs 5+ lines, exceeding maxLines 4. Either way: the canvas
+    // path always triggers the error.
     const quoteInput = dialog.getByRole('textbox', { name: /Quote/i })
     await expect(quoteInput).toBeVisible()
-    const wideText = 'W'.repeat(120)
-    await quoteInput.fill(wideText)
-
-    // Wait for the resolver to re-run
+    await quoteInput.fill('W'.repeat(120))
     await page.waitForTimeout(500)
 
-    // If the canvas measurer is active (font loaded), we should see a
-    // "lines" error. If only the approximation is available, the text
-    // still fits. Check for either state gracefully.
+    // The canvas measurer in the browser measures 'W' wider than 0.6 em,
+    // so 120 W's at size 88 exceeds 4 lines at width 1900.
     const linesError = dialog.getByText(/lines/i)
-    const hasLinesError = (await linesError.count()) > 0
+    await expect(linesError).toBeVisible({ timeout: 3000 })
 
-    if (hasLinesError) {
-      // The error appeared - verify export is disabled
-      const exportBtn = dialog.getByRole('button', { name: /Export to project/i })
-      await expect(exportBtn).toBeDisabled()
-    }
-    // Either way, the test confirms the infrastructure works.
-    // The component test (W4.1) covers the case deterministically.
+    const exportBtn = dialog.getByRole('button', { name: /Export to project/i })
+    await expect(exportBtn).toBeDisabled()
 
     assertNoExternal()
   })

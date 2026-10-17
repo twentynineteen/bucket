@@ -756,9 +756,7 @@ describe('MotionTemplateDialog', () => {
         renderDialog(makeEntry(wrapTmpl))
 
         // The font warning banner should be visible
-        expect(
-          screen.getByText(/Requires Cabrito\.otf/i)
-        ).toBeInTheDocument()
+        expect(screen.getByText(/Requires Cabrito\.otf/i)).toBeInTheDocument()
 
         // The stub measures 100/char. At width 500, "aa bb cc" wraps.
         // If the dialog used the approximation (88*0.6=52.8/char), it
@@ -773,9 +771,7 @@ describe('MotionTemplateDialog', () => {
 
         // "Loading font" should NOT show for 'missing'
         const loadingFont = screen.queryByText('Loading font...')
-        expect(
-          loadingFont === null || loadingFont.hidden
-        ).toBe(true)
+        expect(loadingFont === null || loadingFont.hidden).toBe(true)
       } finally {
         measurerStub.current = null
         ;(fontHook.useMotionFont as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -854,9 +850,11 @@ describe('MotionTemplateDialog', () => {
       await user.clear(input)
       await user.type(input, 'aaa bbb ccc ddd eee fff ggggg')
 
-      // Should show line-count error
+      // Should show the full line-count error: "Needs N lines; this template fits 2."
       await waitFor(() => {
-        expect(screen.getByText(/lines/i)).toBeInTheDocument()
+        expect(
+          screen.getByText(/Needs \d+ lines; this template fits 2/i)
+        ).toBeInTheDocument()
       })
 
       // Copy Claude prompt should be disabled when param errors exist
