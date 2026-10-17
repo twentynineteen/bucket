@@ -413,6 +413,81 @@ describe('MotionPreview', () => {
     delete (globalThis as Record<string, unknown>).__BUCKET_MOTION_CLOCK__
   })
 
+  // S6: text-anchor from align
+  it('s6_center_align_emits_text_anchor_middle', () => {
+    const template = makeTemplate()
+    const states: LayerState[] = [
+      {
+        kind: 'text',
+        id: 'centred',
+        matrix: IDENTITY_MATRIX,
+        opacity: 1,
+        fill: '#ffffff',
+        text: 'Centred text',
+        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+        align: 'center',
+        lineHeight: 1.2,
+        multiline: false,
+        tracking: 0
+      }
+    ]
+
+    const resolved = makeResolved()
+    mockResolveTemplate.mockReturnValue(resolved)
+    mockEvaluate.mockReturnValue(states)
+
+    const { container } = render(
+      <MotionPreview
+        template={template}
+        values={{}}
+        format={DEFAULT_FORMAT}
+        time={0.5}
+        name="Test"
+      />
+    )
+
+    const text = container.querySelector('text')
+    expect(text).not.toBeNull()
+    expect(text!.getAttribute('text-anchor')).toBe('middle')
+  })
+
+  it('s6_right_align_emits_text_anchor_end', () => {
+    const template = makeTemplate()
+    const states: LayerState[] = [
+      {
+        kind: 'text',
+        id: 'right',
+        matrix: IDENTITY_MATRIX,
+        opacity: 1,
+        fill: '#ffffff',
+        text: 'Right text',
+        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+        align: 'right',
+        lineHeight: 1.2,
+        multiline: false,
+        tracking: 0
+      }
+    ]
+
+    const resolved = makeResolved()
+    mockResolveTemplate.mockReturnValue(resolved)
+    mockEvaluate.mockReturnValue(states)
+
+    const { container } = render(
+      <MotionPreview
+        template={template}
+        values={{}}
+        format={DEFAULT_FORMAT}
+        time={0.5}
+        name="Test"
+      />
+    )
+
+    const text = container.querySelector('text')
+    expect(text).not.toBeNull()
+    expect(text!.getAttribute('text-anchor')).toBe('end')
+  })
+
   // P1.7: param changes re-render without remount
   it('p1_7_param_change_updates_without_remount', () => {
     const template = makeTemplate({
