@@ -4,15 +4,19 @@
  * Tests the pure functions (buildSvgString, buildFrameList) in jsdom.
  * renderFrameToPng requires a real canvas and is tested in the e2e spec.
  *
- * Includes an Ar2 parity test that ensures MotionPreview and frameRenderer
- * produce equivalent SVG from the same evaluated states.
+ * Includes a parity test that renders the real MotionPreview component
+ * via renderToStaticMarkup and compares its SVG body against buildSvgString,
+ * so a change in either renderer is caught.
  */
-import { describe, expect, it } from 'vitest'
-import type { LayerState, MotionFormat, ShapeLayerState, TextLayerState } from '../types'
+import React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { afterEach, describe, expect, it } from 'vitest'
+import MotionPreview from '../components/MotionPreview'
+import type { LayerState, MotionFormat, MotionTemplate, ParamValues } from '../types'
 import { evaluate } from './evaluate'
 import { buildFrameList, buildSvgString, type FontData } from './frameRenderer'
 import { resolveTemplate } from './resolve'
-import { arcFixture, ellipseFixture, rectFixture, textFixture } from './testing/fixtures'
+import { layerKindFixtures, textFixture } from './testing/fixtures'
 
 const IDENTITY: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0]
 
@@ -33,8 +37,7 @@ describe('buildSvgString', () => {
     expect(svg).toContain('ry="30"')
   })
 
-  // P5.1: font embedding as data URI
-  it('p5_1_embeds_font_as_data_uri', () => {
+  it('embeds font as data URI', () => {
     const fontBytes = new Uint8Array([0x4f, 0x54, 0x54, 0x4f]) // "OTTO" header
     const fonts: FontData[] = [{ family: 'Cabrito Semi', bytes: fontBytes }]
 
@@ -72,7 +75,7 @@ describe('buildSvgString', () => {
     }
   })
 
-  it('p5_1_no_external_url_references', () => {
+  it('no external url references', () => {
     const states: LayerState[] = []
     const fonts: FontData[] = []
     const svg = buildSvgString(states, 1920, 1080, fonts)
@@ -128,7 +131,7 @@ describe('buildSvgString', () => {
     expect(svg).toContain('fill="#ff3366"')
   })
 
-  it('s14_escapes_xml_special_chars_in_fill_attribute', () => {
+  it('escapes XML special chars in fill attribute', () => {
     const states: LayerState[] = [
       {
         kind: 'rect',
@@ -147,7 +150,7 @@ describe('buildSvgString', () => {
     expect(svg).toContain('&quot;')
   })
 
-  it('s14_escapes_text_fill_attribute', () => {
+  it('escapes text fill attribute', () => {
     const states: LayerState[] = [
       {
         kind: 'text',
@@ -168,7 +171,7 @@ describe('buildSvgString', () => {
     expect(svg).toContain('&quot;')
   })
 
-  it('s6_text_align_center_maps_to_text_anchor_middle', () => {
+  it('center align maps to text-anchor middle', () => {
     const states: LayerState[] = [
       {
         kind: 'text',
@@ -188,7 +191,7 @@ describe('buildSvgString', () => {
     expect(svg).toContain('text-anchor="middle"')
   })
 
-  it('s6_text_align_right_maps_to_text_anchor_end', () => {
+  it('right align maps to text-anchor end', () => {
     const states: LayerState[] = [
       {
         kind: 'text',
@@ -208,7 +211,7 @@ describe('buildSvgString', () => {
     expect(svg).toContain('text-anchor="end"')
   })
 
-  it('s6_text_align_left_maps_to_text_anchor_start', () => {
+  it('left align maps to text-anchor start', () => {
     const states: LayerState[] = [
       {
         kind: 'text',
@@ -228,7 +231,7 @@ describe('buildSvgString', () => {
     expect(svg).toContain('text-anchor="start"')
   })
 
-  it('s15_font_css_is_memoised_across_frames', () => {
+  it('font CSS is memoised across frames', () => {
     const fontBytes = new Uint8Array([0x4f, 0x54, 0x54, 0x4f])
     const fonts: FontData[] = [{ family: 'Cabrito Semi', bytes: fontBytes }]
     const states: LayerState[] = []
@@ -245,21 +248,59 @@ describe('buildSvgString', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Ar2: parity test - MotionPreview and frameRenderer agree on vector SVG
+// Parity test: MotionPreview and frameRenderer agree on vector SVG
+//
+// Renders the real MotionPreview component via renderToStaticMarkup under
+// the test clock and compares its SVG body with buildSvgString, across
+// every built-in fixture template at entrance, hold and exit times.
+// Particle layers are excluded because they draw on canvas, not SVG.
 // ---------------------------------------------------------------------------
 
 /**
- * Normalise an SVG string for comparison: canonicalise self-closing tags,
- * round numbers to 4 decimal places, strip whitespace differences.
+ * Normalise an SVG string for comparison: canonicalise attribute order,
+ * round numbers to 4 decimal places, standardise self-closing tags and
+ * whitespace.
  */
+/** Decode HTML entities in an attribute value. */
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+}
+
 function normaliseSvg(svg: string): string {
+  let result = svg
   // Round all numbers to 4 decimal places
-  let result = svg.replace(/-?\d+\.\d{5,}/g, match => {
+  result = result.replace(/-?\d+\.\d{5,}/g, match => {
     return Number(parseFloat(match).toFixed(4)).toString()
   })
-  // Canonicalise self-closing tags: <foo .../> and <foo ...></foo> both become <foo .../>
-  result = result.replace(/<(\w+)([^>]*?)><\/\1>/g, '<$1$2 />')
-  // Normalise self-closing whitespace: " />" and "/>" both become " />"
+  // Canonicalise self-closing tags: <foo ...></foo> becomes <foo .../>
+  result = result.replace(/<(\w+)([^>]*?)><\/\1>/g, '<$1$2/>')
+  // Sort attributes on each tag (both opening and self-closing).
+  // Decode entities inside values so &quot; and raw " compare equally.
+  result = result.replace(/<(\w+)\s+([^>]*?)(\/?)>/g, (full, tag, attrs, slash) => {
+    const pairs: string[] = []
+    const attrRegex = /([\w-]+)="([^"]*)"/g
+    let m
+    while ((m = attrRegex.exec(attrs)) !== null) {
+      const key = m[1]
+      let val = decodeEntities(m[2])
+      // Strip CSS quotes around font-family names - both renderers
+      // intend the same font; they differ only in HTML escaping of the
+      // CSS-level quotes.
+      if (key === 'font-family') {
+        val = val.replace(/^"+|"+$/g, '')
+      }
+      pairs.push(`${key}="${val}"`)
+    }
+    if (pairs.length === 0) return full
+    pairs.sort()
+    const closing = slash ? ' /' : ''
+    return `<${tag} ${pairs.join(' ')}${closing}>`
+  })
+  // Normalise self-closing whitespace
   result = result.replace(/\s*\/>/g, ' />')
   // Collapse whitespace
   result = result.replace(/\s+/g, ' ').trim()
@@ -269,170 +310,103 @@ function normaliseSvg(svg: string): string {
 /**
  * Extract the body elements (everything between the first > and last <) from
  * an SVG string, skipping the wrapper <svg ...> and </svg>.
+ * Also strips any <defs>...</defs> block (font CSS) so only layer markup is compared.
  */
 function extractSvgBody(svg: string): string {
-  // Remove the outer <svg...> and </svg>
   const startIdx = svg.indexOf('>') + 1
   const endIdx = svg.lastIndexOf('</svg>')
   if (startIdx <= 0 || endIdx < 0) return svg
-  return svg.substring(startIdx, endIdx)
+  let body = svg.substring(startIdx, endIdx)
+  // Remove defs (font CSS in renderer output, absent in preview)
+  body = body.replace(/<defs>[\s\S]*?<\/defs>/g, '')
+  return body
 }
 
 /**
- * Build "preview-style" SVG for a set of layer states, matching what
- * MotionPreview would render (minus the React JSX layer).
- *
- * This duplicates the preview logic intentionally - the test's job is to
- * detect when the two diverge.
+ * Extract the <svg>...</svg> from the full HTML that renderToStaticMarkup
+ * produces (which includes the outer wrapper div and possibly a canvas tag).
  */
-function previewSvg(states: LayerState[], w: number, h: number): string {
-  const parts: string[] = []
-  for (const state of states) {
-    if (state.kind === 'particles') continue
-
-    if (state.kind === 'text') {
-      parts.push(previewTextSvg(state))
-      continue
-    }
-
-    parts.push(previewShapeSvg(state))
-  }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${parts.join('')}</svg>`
+function extractSvgElement(html: string): string {
+  const svgStart = html.indexOf('<svg ')
+  const svgEnd = html.indexOf('</svg>') + '</svg>'.length
+  if (svgStart < 0 || svgEnd <= svgStart) return ''
+  return html.substring(svgStart, svgEnd)
 }
 
-function matrixStr(m: [number, number, number, number, number, number]): string {
-  return `matrix(${m[0]} ${m[1]} ${m[2]} ${m[3]} ${m[4]} ${m[5]})`
+/** Set the global test-clock value that MotionPreview reads. */
+function setTestClock(t: number) {
+  ;(globalThis as Record<string, unknown>).__BUCKET_MOTION_CLOCK__ = t
 }
 
-function previewShapeSvg(state: ShapeLayerState): string {
-  const transform = matrixStr(state.matrix)
-
-  if (state.kind === 'rect' && state.size) {
-    return `<rect x="0" y="0" width="${state.size.w}" height="${state.size.h}" rx="${state.radius ?? 0}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}"></rect>`
-  }
-  if (state.kind === 'ellipse' && state.radii) {
-    return `<ellipse cx="0" cy="0" rx="${state.radii.rx}" ry="${state.radii.ry}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}"></ellipse>`
-  }
-  if (state.kind === 'arc' && state.arc) {
-    const { innerRadius, outerRadius, sweep, startAngle } = state.arc
-    const d = arcPathParity(0, 0, innerRadius, outerRadius, startAngle, sweep)
-    if (!d) return ''
-    return `<path d="${d}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}"></path>`
-  }
-  if (state.kind === 'path' && state.d) {
-    return `<path d="${state.d}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}"></path>`
-  }
-  return ''
+function clearTestClock() {
+  delete (globalThis as Record<string, unknown>).__BUCKET_MOTION_CLOCK__
 }
 
-function arcPathParity(
-  cx: number,
-  cy: number,
-  innerR: number,
-  outerR: number,
-  startAngleDeg: number,
-  sweepTurns: number
-): string {
-  if (sweepTurns <= 0) return ''
-  const startRad = ((startAngleDeg - 90) * Math.PI) / 180
-  const endRad = startRad + sweepTurns * 2 * Math.PI
-  const largeArc = sweepTurns > 0.5 ? 1 : 0
-  const ox1 = cx + outerR * Math.cos(startRad)
-  const oy1 = cy + outerR * Math.sin(startRad)
-  const ox2 = cx + outerR * Math.cos(endRad)
-  const oy2 = cy + outerR * Math.sin(endRad)
-  const ix1 = cx + innerR * Math.cos(endRad)
-  const iy1 = cy + innerR * Math.sin(endRad)
-  const ix2 = cx + innerR * Math.cos(startRad)
-  const iy2 = cy + innerR * Math.sin(startRad)
-  return [
-    `M ${ox1} ${oy1}`,
-    `A ${outerR} ${outerR} 0 ${largeArc} 1 ${ox2} ${oy2}`,
-    `L ${ix1} ${iy1}`,
-    `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2} ${iy2}`,
-    'Z'
-  ].join(' ')
+/** Default param values for fixtures. */
+function defaultValues(tmpl: MotionTemplate): ParamValues {
+  const vals: ParamValues = {}
+  for (const [id, def] of Object.entries(tmpl.params)) {
+    if ('default' in def) vals[id] = def.default
+  }
+  return vals
 }
 
-function previewTextSvg(state: TextLayerState): string {
-  const transform = matrixStr(state.matrix)
-  const fontFamily = `"${state.font.family}"`
-  let anchor: string
-  switch (state.align) {
-    case 'center':
-      anchor = 'middle'
-      break
-    case 'right':
-      anchor = 'end'
-      break
-    default:
-      anchor = 'start'
+/** Whether a template has only particle layers (no vector content to compare). */
+function isParticleOnly(tmpl: MotionTemplate): boolean {
+  function hasVector(layers: MotionTemplate['layers']): boolean {
+    return layers.some(l => {
+      if (l.kind === 'group') return hasVector(l.children)
+      return l.kind !== 'particles'
+    })
   }
-
-  if (state.units && state.units.length > 0) {
-    const tspans = state.units
-      .map(u => `<tspan opacity="${u.opacity}" fill="${u.fill}">${u.text}</tspan>`)
-      .join('')
-    return `<text font-family=${fontFamily} font-size="${state.font.size}" fill="${state.fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${tspans}</text>`
-  }
-
-  if (state.multiline && state.text.includes('\n')) {
-    const lines = state.text.split('\n')
-    const lineAdvance = state.lineHeight * state.font.size
-    const tspans = lines
-      .map((line, i) => {
-        if (i === 0) return `<tspan x="0">${line}</tspan>`
-        return `<tspan x="0" dy="${lineAdvance}">${line}</tspan>`
-      })
-      .join('')
-    return `<text font-family=${fontFamily} font-size="${state.font.size}" fill="${state.fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${tspans}</text>`
-  }
-
-  return `<text font-family=${fontFamily} font-size="${state.font.size}" fill="${state.fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${state.text}</text>`
+  return !hasVector(tmpl.layers)
 }
 
-describe('Ar2 parity: preview vs. frameRenderer SVG', () => {
+describe('preview vs. frameRenderer parity', () => {
   const FORMAT: MotionFormat = { width: 3840, height: 2160, fps: 50 }
+  const TIMES = [0.15, 0.5, 2.0, 3.5] // entrance, hold start, hold end, exit
 
-  it('ar2_rect_fixture_at_t05_matches', () => {
-    const resolved = resolveTemplate(rectFixture, {}, FORMAT)
-    const states = evaluate(resolved, 0.5)
-
-    const rendererSvg = buildSvgString(states, 3840, 2160, [])
-    const rendererBody = extractSvgBody(rendererSvg)
-
-    const previewBody = extractSvgBody(previewSvg(states, 3840, 2160))
-
-    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+  afterEach(() => {
+    clearTestClock()
   })
 
-  it('ar2_ellipse_fixture_at_t05_matches', () => {
-    const resolved = resolveTemplate(ellipseFixture, {}, FORMAT)
-    const states = evaluate(resolved, 0.5)
+  // Test every layer-kind fixture that has vector content
+  const vectorFixtures = layerKindFixtures.filter(f => !isParticleOnly(f))
 
-    const rendererSvg = buildSvgString(states, 3840, 2160, [])
-    const rendererBody = extractSvgBody(rendererSvg)
-    const previewBody = extractSvgBody(previewSvg(states, 3840, 2160))
+  for (const fixture of vectorFixtures) {
+    for (const t of TIMES) {
+      it(`${fixture.id} at t=${t}: preview matches renderer`, () => {
+        const values = defaultValues(fixture)
+        const resolved = resolveTemplate(fixture, values, FORMAT)
+        const states = evaluate(resolved, t)
 
-    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
-  })
+        // Renderer side: build the SVG string (no fonts for comparison)
+        const rendererSvg = buildSvgString(states, 3840, 2160, [])
+        const rendererBody = extractSvgBody(rendererSvg)
 
-  it('ar2_arc_fixture_at_t05_matches', () => {
-    const resolved = resolveTemplate(arcFixture, { score: 72 }, FORMAT)
-    const states = evaluate(resolved, 0.5)
+        // Preview side: render the real MotionPreview under the test clock
+        setTestClock(t)
+        const html = renderToStaticMarkup(
+          React.createElement(MotionPreview, {
+            template: fixture,
+            values,
+            format: FORMAT,
+            time: 999, // overridden by test clock
+            name: fixture.name
+          })
+        )
+        const previewSvg = extractSvgElement(html)
+        const previewBody = extractSvgBody(previewSvg)
 
-    const rendererSvg = buildSvgString(states, 3840, 2160, [])
-    const rendererBody = extractSvgBody(rendererSvg)
-    const previewBody = extractSvgBody(previewSvg(states, 3840, 2160))
+        expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+      })
+    }
+  }
 
-    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
-  })
-
-  it('ar2_text_with_centre_align_at_t05_matches', () => {
-    // Create a centre-aligned staggered text fixture
-    const centredStaggerFixture = {
+  it('staggered text during entrance matches', () => {
+    const staggeredFixture = {
       ...textFixture,
-      id: 'centred-stagger',
+      id: 'stagger-parity',
       layers: [
         {
           ...textFixture.layers[0],
@@ -442,20 +416,33 @@ describe('Ar2 parity: preview vs. frameRenderer SVG', () => {
       ]
     }
 
-    const resolved = resolveTemplate(centredStaggerFixture, { name: 'Hello' }, FORMAT)
-    const states = evaluate(resolved, 0.3) // During stagger
+    const t = 0.3
+    const values = { name: 'Hello' }
+    const resolved = resolveTemplate(staggeredFixture, values, FORMAT)
+    const states = evaluate(resolved, t)
 
     const rendererSvg = buildSvgString(states, 3840, 2160, [])
     const rendererBody = extractSvgBody(rendererSvg)
-    const previewBody = extractSvgBody(previewSvg(states, 3840, 2160))
+
+    setTestClock(t)
+    const html = renderToStaticMarkup(
+      React.createElement(MotionPreview, {
+        template: staggeredFixture,
+        values,
+        format: FORMAT,
+        time: 999,
+        name: 'stagger-parity'
+      })
+    )
+    const previewSvg = extractSvgElement(html)
+    const previewBody = extractSvgBody(previewSvg)
 
     expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
   })
 })
 
 describe('buildFrameList', () => {
-  // P5.2: frame count and timing
-  it('p5_2_correct_frame_count_and_times_for_2s_at_25fps', () => {
+  it('correct frame count and times for 2s at 25fps', () => {
     const frames = buildFrameList(2, 25)
 
     // round(2 * 25) = 50 frames
@@ -468,14 +455,14 @@ describe('buildFrameList', () => {
     expect(frames[49]).toBeCloseTo(49 / 25)
   })
 
-  it('p5_2_correct_frame_count_for_2_03s_at_25fps', () => {
+  it('correct frame count for 2.03s at 25fps', () => {
     const frames = buildFrameList(2.03, 25)
 
     // round(2.03 * 25) = round(50.75) = 51 frames
     expect(frames).toHaveLength(51)
   })
 
-  it('frame_list_1920x1080_format_dimensions', () => {
+  it('correct frame count for 4s at 30fps', () => {
     // This just tests the frame count for a different fps
     const frames = buildFrameList(4, 30)
     // round(4 * 30) = 120
