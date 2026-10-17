@@ -47,6 +47,7 @@ export function useRenderVideo(): UseRenderVideoResult {
 
   const renderIdRef = useRef<string | null>(null)
   const cancelledRef = useRef(false)
+  const finishedRef = useRef(false)
 
   const render = useCallback(async (opts: RenderOptions): Promise<string | null> => {
     const { resolved, format, outputPath: outPath, fonts, ffmpegDirectory } = opts
@@ -56,6 +57,8 @@ export function useRenderVideo(): UseRenderVideoResult {
     setError(null)
     setOutputPath(null)
     cancelledRef.current = false
+    finishedRef.current = false
+    renderIdRef.current = null
 
     const frames = buildFrameList(resolved.duration, format.fps)
     const totalFrames = frames.length
@@ -80,6 +83,18 @@ export function useRenderVideo(): UseRenderVideoResult {
         })
         renderIdRef.current = renderId
 
+        // S7 fix: if cancel arrived while startRender was awaiting,
+        // cancel the newly started render immediately.
+        if (cancelledRef.current) {
+          try {
+            await cancelRender(renderId)
+          } catch {
+            // Ignore cancel errors
+          }
+          renderIdRef.current = null
+          return null
+        }
+
         // Send frames in order, each awaited before the next
         for (const frameTime of frames) {
           if (cancelledRef.current) break
@@ -97,6 +112,7 @@ export function useRenderVideo(): UseRenderVideoResult {
 
         // Finish the render
         const result = await finishRender(renderId)
+        finishedRef.current = true
         setState('done')
         setOutputPath(result)
         setProgress(1)
@@ -105,6 +121,18 @@ export function useRenderVideo(): UseRenderVideoResult {
         unsubProgress()
       }
     } catch (err: unknown) {
+      // S7 fix: always cancel the render on error to clean up ffmpeg.
+      // If finishRender was already called, the render is done and
+      // there is nothing to cancel.
+      if (renderIdRef.current && !finishedRef.current) {
+        try {
+          await cancelRender(renderIdRef.current)
+        } catch {
+          // Ignore cancel errors during cleanup
+        }
+        renderIdRef.current = null
+      }
+
       if (cancelledRef.current) {
         return null
       }
@@ -118,7 +146,7 @@ export function useRenderVideo(): UseRenderVideoResult {
 
       setState('error')
       setError(message)
-      return null
+      throw err
     }
   }, [])
 

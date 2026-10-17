@@ -304,15 +304,17 @@ describe('useRenderVideo', () => {
     const { result } = renderHook(() => useRenderVideo())
 
     await act(async () => {
-      const output = await result.current.render({
-        resolved: makeResolved(),
-        format: FORMAT,
-        outputPath: '/output/test.mov',
-        fonts: FONT_DATA,
-        ffmpegDirectory: null
-      })
-      // Should propagate the error (throw) rather than silently returning null
-      expect(output).toBeNull()
+      try {
+        await result.current.render({
+          resolved: makeResolved(),
+          format: FORMAT,
+          outputPath: '/output/test.mov',
+          fonts: FONT_DATA,
+          ffmpegDirectory: null
+        })
+      } catch {
+        // Expected - render now throws on error so the caller can surface it
+      }
     })
 
     // cancelRender must be called to clean up the ffmpeg process
@@ -356,7 +358,8 @@ describe('useRenderVideo', () => {
     expect(mockCancelRender).toHaveBeenCalledWith('render-456')
   })
 
-  // P6.4: error handling
+  // P6.4: error handling - render now throws on error so the caller
+  // can surface it (S1 requires toast.error in the export hook).
   it('p6_4_encode_error_stops_render', async () => {
     mockSendRenderFrame
       .mockResolvedValueOnce(undefined) // frame 0 OK
@@ -365,13 +368,17 @@ describe('useRenderVideo', () => {
     const { result } = renderHook(() => useRenderVideo())
 
     await act(async () => {
-      await result.current.render({
-        resolved: makeResolved(),
-        format: FORMAT,
-        outputPath: '/output/test.mov',
-        fonts: FONT_DATA,
-        ffmpegDirectory: null
-      })
+      try {
+        await result.current.render({
+          resolved: makeResolved(),
+          format: FORMAT,
+          outputPath: '/output/test.mov',
+          fonts: FONT_DATA,
+          ffmpegDirectory: null
+        })
+      } catch {
+        // Expected - render now throws on error
+      }
     })
 
     expect(result.current.state).toBe('error')
@@ -380,5 +387,8 @@ describe('useRenderVideo', () => {
     // No further frames after the error
     expect(mockSendRenderFrame).toHaveBeenCalledTimes(2) // frame 0 + frame 1 (failed)
     expect(mockFinishRender).not.toHaveBeenCalled()
+
+    // S7: cancelRender must be called to clean up the ffmpeg process
+    expect(mockCancelRender).toHaveBeenCalledWith('render-123')
   })
 })

@@ -3,6 +3,9 @@
  *
  * Creates a temp folder, writes all export files into it, then renames it
  * to the final name. On any failure the temp folder is removed.
+ *
+ * Split into begin/commit so the video render can target the temp folder
+ * before any files are written (S1 fix).
  */
 import type { ExportFile, MotionFormat, MotionTarget, ParamValues } from '../types'
 
@@ -83,21 +86,20 @@ async function findAvailableName(
 }
 
 // ---------------------------------------------------------------------------
-// Main export
+// Phase 1: begin - create the temp folder
 // ---------------------------------------------------------------------------
 
 /**
- * Export a bundle of files atomically into `<project>/Graphics/Motion/<name>`.
+ * Create the bundle's temp folder inside `<project>/Graphics/Motion/`.
  *
- * 1. Create `Graphics/Motion/` recursively
- * 2. Write all files into `.tmp-<id>-<rand>/`
- * 3. Rename to `<id>-<slug>` (with collision suffix if needed)
- * 4. On any error, remove the temp folder
+ * Returns the temp dir path so the caller can render the video into it
+ * before committing the bundle. The caller is responsible for cleaning up
+ * the temp dir on error (commitBundle does this internally).
  */
-export async function exportBundle(
+export async function beginBundle(
   input: ExportBundleInput,
   api: ExportBundleApi
-): Promise<ExportBundleResult> {
+): Promise<{ tmpDir: string }> {
   const motionDir = await api.joinPath(input.projectFolder, 'Graphics', 'Motion')
   await api.makeDir(motionDir)
 
@@ -105,6 +107,24 @@ export async function exportBundle(
   const tmpName = `.tmp-${input.templateId}-${rand}`
   const tmpDir = await api.joinPath(motionDir, tmpName)
   await api.makeDir(tmpDir)
+
+  return { tmpDir }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: commit - write files and rename to final
+// ---------------------------------------------------------------------------
+
+/**
+ * Write all export files into the given temp folder and rename it to the
+ * final collision-safe name. On any error the temp folder is removed.
+ */
+export async function commitBundle(
+  input: ExportBundleInput,
+  api: ExportBundleApi,
+  tmpDir: string
+): Promise<ExportBundleResult> {
+  const motionDir = await api.joinPath(input.projectFolder, 'Graphics', 'Motion')
 
   try {
     // Write all export files
@@ -146,4 +166,24 @@ export async function exportBundle(
     }
     throw err
   }
+}
+
+// ---------------------------------------------------------------------------
+// Convenience: one-shot export (begin + commit)
+// ---------------------------------------------------------------------------
+
+/**
+ * Export a bundle of files atomically into `<project>/Graphics/Motion/<name>`.
+ *
+ * 1. Create `Graphics/Motion/` recursively
+ * 2. Write all files into `.tmp-<id>-<rand>/`
+ * 3. Rename to `<id>-<slug>` (with collision suffix if needed)
+ * 4. On any error, remove the temp folder
+ */
+export async function exportBundle(
+  input: ExportBundleInput,
+  api: ExportBundleApi
+): Promise<ExportBundleResult> {
+  const { tmpDir } = await beginBundle(input, api)
+  return commitBundle(input, api, tmpDir)
 }

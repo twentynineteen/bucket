@@ -56,6 +56,11 @@ pub fn build_args(
 
     let size = format!("{}x{}", width, height);
     let args = vec![
+        // S9: suppress stats and per-frame chatter so stderr stays small
+        // even when the drain thread is present.
+        "-nostats".to_string(),
+        "-loglevel".to_string(),
+        "error".to_string(),
         "-f".to_string(),
         "image2pipe".to_string(),
         "-framerate".to_string(),
@@ -105,20 +110,58 @@ pub struct RealSpawner;
 impl Spawner for RealSpawner {
     type Process = RealChild;
     fn spawn(&self, program: &str, args: &[String]) -> Result<Self::Process, std::io::Error> {
+        use std::collections::VecDeque;
         use std::process::{Command, Stdio};
-        let child = Command::new(program)
+
+        let mut child = Command::new(program)
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .stderr(Stdio::piped())
             .spawn()?;
-        Ok(RealChild { child })
+
+        // S9 fix: drain stderr continuously on a background thread so
+        // ffmpeg never blocks on a full pipe buffer. Keep the last 20
+        // lines for error reporting.
+        let stderr = child.stderr.take();
+        let stderr_tail = std::sync::Arc::new(std::sync::Mutex::new(VecDeque::<String>::new()));
+        let tail_clone = std::sync::Arc::clone(&stderr_tail);
+        let stderr_thread = if let Some(pipe) = stderr {
+            Some(std::thread::spawn(move || {
+                use std::io::BufRead;
+                let reader = std::io::BufReader::new(pipe);
+                for line in reader.lines() {
+                    match line {
+                        Ok(l) => {
+                            let mut buf = tail_clone.lock().unwrap();
+                            if buf.len() >= 20 {
+                                buf.pop_front();
+                            }
+                            buf.push_back(l);
+                        }
+                        Err(_) => break,
+                    }
+                }
+            }))
+        } else {
+            None
+        };
+
+        Ok(RealChild {
+            child,
+            stderr_tail,
+            stderr_thread,
+        })
     }
 }
 
-/// Wraps a real `std::process::Child`.
+/// Wraps a real `std::process::Child` with a stderr drain thread.
 pub struct RealChild {
     child: std::process::Child,
+    /// Last 20 lines of stderr, filled by the drain thread.
+    stderr_tail: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<String>>>,
+    /// Handle for the stderr drain thread.
+    stderr_thread: Option<std::thread::JoinHandle<()>>,
 }
 
 impl ChildProcess for RealChild {
@@ -140,17 +183,18 @@ impl ChildProcess for RealChild {
         // Drop stdin to signal EOF to ffmpeg
         drop(self.child.stdin.take());
 
-        let output = self.child.wait_with_output()?;
-        let stderr = String::from_utf8_lossy(&output.stderr)
-            .lines()
-            .rev()
-            .take(20)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect::<Vec<_>>()
-            .join("\n");
-        let code = output.status.code().unwrap_or(-1);
+        // Wait for the process to exit
+        let status = self.child.wait()?;
+
+        // Join the drain thread (it will exit once the pipe EOF's)
+        if let Some(handle) = self.stderr_thread.take() {
+            let _ = handle.join();
+        }
+
+        // Collect the stderr tail
+        let tail = self.stderr_tail.lock().unwrap();
+        let stderr = tail.iter().cloned().collect::<Vec<_>>().join("\n");
+        let code = status.code().unwrap_or(-1);
         Ok((code, stderr))
     }
 
@@ -159,6 +203,10 @@ impl ChildProcess for RealChild {
         drop(self.child.stdin.take());
         self.child.kill()?;
         let _ = self.child.wait();
+        // Join the drain thread
+        if let Some(handle) = self.stderr_thread.take() {
+            let _ = handle.join();
+        }
         Ok(())
     }
 

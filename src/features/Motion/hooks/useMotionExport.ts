@@ -18,7 +18,7 @@ import {
   writeBytes,
   writeText
 } from '../api'
-import { exportBundle, type ExportBundleApi } from '../internal/exportBundle'
+import { beginBundle, commitBundle, type ExportBundleApi } from '../internal/exportBundle'
 import { generateJsx } from '../internal/exporters/ae/generateJsx'
 import { generateSetting } from '../internal/exporters/fusion/generateSetting'
 import { generatePrompt } from '../internal/exporters/prompt'
@@ -164,60 +164,71 @@ export function useMotionExport(): UseMotionExportResult {
         // Generate text/script files
         const { files } = generateFiles(exportInput, targets)
 
-        // Render video if requested
-        if (targets.includes('video')) {
-          const videoOutputPath = await joinPath(
-            projectFolder,
-            'Graphics',
-            'Motion',
-            `${entry.template.id}.mov`
-          )
-
-          const videoResult = await renderVideo.render({
-            resolved,
-            format,
-            outputPath: videoOutputPath,
-            fonts: fontBytes ? [{ family: 'Cabrito Semi', bytes: fontBytes }] : [],
-            ffmpegDirectory
-          })
-
-          if (!videoResult) {
-            // Cancelled or error
-            if (renderVideo.state === 'cancelled') {
-              toast.info('Export cancelled')
-            }
-            return
-          }
-        }
-
         // Build the slug from the primary text param
         const primaryParam = entry.template.primaryTextParam
         const primaryValue = primaryParam ? values[primaryParam] : undefined
         const slug = typeof primaryValue === 'string' ? slugify(primaryValue) : ''
 
-        // Export the bundle atomically
-        const result = await exportBundle(
-          {
-            projectFolder,
-            templateId: entry.template.id,
-            slug,
-            files,
-            values,
-            format,
-            targets,
-            templateVersion: entry.template.version,
-            pickedImagePath
-          },
-          bundleApi
-        )
+        const bundleInput = {
+          projectFolder,
+          templateId: entry.template.id,
+          slug,
+          files,
+          values,
+          format,
+          targets,
+          templateVersion: entry.template.version,
+          pickedImagePath
+        }
 
-        toast.success('Exported to project', {
-          description: result.finalFolder.split('/').pop(),
-          action: {
-            label: 'Reveal in Finder',
-            onClick: () => void revealInFinder(result.finalFolder)
+        // S1 fix: create the temp folder first so the video can be
+        // rendered into it, then commit everything atomically.
+        const { tmpDir } = await beginBundle(bundleInput, bundleApi)
+
+        try {
+          // Render video into the temp folder if requested
+          if (targets.includes('video')) {
+            const videoOutputPath = await joinPath(tmpDir, `${entry.template.id}.mov`)
+
+            const videoResult = await renderVideo.render({
+              resolved,
+              format,
+              outputPath: videoOutputPath,
+              fonts: fontBytes ? [{ family: 'Cabrito Semi', bytes: fontBytes }] : [],
+              ffmpegDirectory
+            })
+
+            if (!videoResult) {
+              // Cancelled - clean up the temp folder
+              toast.info('Export cancelled')
+              try {
+                await removeDirRecursive(tmpDir)
+              } catch {
+                // Ignore cleanup errors
+              }
+              return
+            }
           }
-        })
+
+          // Commit the bundle (write files, rename to final)
+          const result = await commitBundle(bundleInput, bundleApi, tmpDir)
+
+          toast.success('Exported to project', {
+            description: result.finalFolder.split('/').pop(),
+            action: {
+              label: 'Reveal in Finder',
+              onClick: () => void revealInFinder(result.finalFolder)
+            }
+          })
+        } catch (innerErr) {
+          // Clean up the temp folder on any error in the inner block
+          try {
+            await removeDirRecursive(tmpDir)
+          } catch {
+            // Ignore cleanup errors
+          }
+          throw innerErr
+        }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Export failed')
       } finally {
