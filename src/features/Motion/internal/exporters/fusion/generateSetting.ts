@@ -113,6 +113,9 @@ function formatNumber(n: number): string {
   return s
 }
 
+/** A string key that is a valid Lua identifier and can be emitted bare. */
+const SAFE_LUA_IDENT_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/
+
 function serialiseTable(entries: LuaEntry[], depth: number): string {
   if (entries.length === 0) return '{ }'
   const lines: string[] = ['{']
@@ -122,8 +125,11 @@ function serialiseTable(entries: LuaEntry[], depth: number): string {
       lines.push(`${indent(depth + 1)}${val},`)
     } else if (typeof entry.key === 'number') {
       lines.push(`${indent(depth + 1)}[${entry.key}] = ${val},`)
-    } else {
+    } else if (SAFE_LUA_IDENT_RE.test(entry.key)) {
       lines.push(`${indent(depth + 1)}${entry.key} = ${val},`)
+    } else {
+      // Bracketed string key: prevents code injection from unsafe identifiers
+      lines.push(`${indent(depth + 1)}["${escapeLuaString(entry.key)}"] = ${val},`)
     }
   }
   lines.push(`${indent(depth)}}`)

@@ -131,6 +131,20 @@ const paramDefSchema = z.discriminatedUnion('kind', [
   imageParamSchema
 ])
 
+/**
+ * Param ids must be safe identifiers: start with a letter or underscore,
+ * then letters, digits or underscores only. This prevents code injection
+ * when param ids are emitted as Lua table keys in the Fusion .setting
+ * exporter or as JS identifiers in the AE .jsx exporter.
+ */
+const SAFE_PARAM_ID_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/
+const paramIdKeySchema = z
+  .string()
+  .regex(
+    SAFE_PARAM_ID_RE,
+    'param id must be a safe identifier (letters, digits, underscores; cannot start with a digit)'
+  )
+
 // ---------------------------------------------------------------------------
 // Layers
 // ---------------------------------------------------------------------------
@@ -333,7 +347,7 @@ const templateBaseSchema = z.object({
   duration: z.number().positive(),
   inEnd: z.number().nonnegative(),
   outStart: z.number().nonnegative(),
-  params: z.record(z.string(), paramDefSchema),
+  params: z.record(paramIdKeySchema, paramDefSchema),
   layers: z.array(layerSchema).min(1)
 })
 
