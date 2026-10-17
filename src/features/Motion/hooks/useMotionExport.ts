@@ -79,8 +79,6 @@ const bundleApi: ExportBundleApi = {
   copyFileTo,
   listFolder,
   modifiedTimeMs
-  // The stale .tmp-* sweep is structurally ready but inactive until
-  // a stat wrapper is added to api.ts.
 }
 
 // ---------------------------------------------------------------------------

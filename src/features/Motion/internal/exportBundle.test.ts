@@ -1,12 +1,9 @@
 /**
  * Export bundle tests (issue #337)
  *
- * M5.1: Atomic folder creation under Graphics/Motion.
- * M5.2: Collision suffix when folder already exists.
- * M5.3: Temp folder is removed on error.
- * M5.4: Folder contents are correct for selected targets.
- * M2.6 (export part): Image param copies source.png, params.json has relative path.
- * Ar11: Stale .tmp-* sweep in beginBundle.
+ * Covers atomic folder creation, collision suffixes, temp-folder cleanup
+ * on error, file-set correctness, image-param export and the stale
+ * .tmp-* sweep in beginBundle.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -26,6 +23,8 @@ function mockApi(overrides?: Partial<ExportBundleApi>): ExportBundleApi {
     removeDirRecursive: vi.fn(async () => {}),
     pathExists: vi.fn(async () => false),
     copyFileTo: vi.fn(async () => {}),
+    listFolder: vi.fn(async () => []),
+    modifiedTimeMs: vi.fn(async () => Date.now()),
     ...overrides
   }
 }
@@ -57,7 +56,7 @@ afterEach(() => {
 })
 
 describe('exportBundle', () => {
-  it('M5.1 - creates Graphics/Motion, writes to temp folder, renames to final', async () => {
+  it('creates Graphics/Motion, writes to temp folder, renames to final', async () => {
     const api = mockApi()
 
     const { tmpDir, motionDir } = await beginBundle(baseInput(), api)
@@ -83,7 +82,7 @@ describe('exportBundle', () => {
     expect(result.finalFolder).toBe('/p/Graphics/Motion/lower-third-glide-jane-doe')
   })
 
-  it('M5.2 - adds collision suffix when folder already exists', async () => {
+  it('adds collision suffix when folder already exists', async () => {
     const api = mockApi({
       pathExists: vi.fn(async (path: string) => {
         if (path === '/p/Graphics/Motion/lower-third-glide-jane-doe') return true
@@ -98,7 +97,7 @@ describe('exportBundle', () => {
     expect(result.finalFolder).toBe('/p/Graphics/Motion/lower-third-glide-jane-doe-3')
   })
 
-  it('M5.3 - removes temp folder on write failure', async () => {
+  it('removes temp folder on write failure', async () => {
     let writeCount = 0
     const api = mockApi({
       writeText: vi.fn(async () => {
@@ -119,7 +118,7 @@ describe('exportBundle', () => {
     expect(removedPath).toMatch(/\.tmp-lower-third-glide-/)
   })
 
-  it('M5.4 - writes correct file set and params.json with schema version', async () => {
+  it('writes correct file set and params.json with schema version', async () => {
     const api = mockApi()
 
     const { tmpDir, motionDir } = await beginBundle(baseInput(), api)
@@ -145,7 +144,7 @@ describe('exportBundle', () => {
     expect(paramsJson.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
 
-  it('M2.6 export - copies picked image as source.png, params.json has relative path', async () => {
+  it('copies picked image as source.png, params.json has relative path', async () => {
     const api = mockApi()
     const input = baseInput({
       pickedImagePath: '/Users/e/runner.png',
@@ -170,7 +169,7 @@ describe('exportBundle', () => {
     expect(JSON.stringify(paramsJson.values)).toContain('source.png')
   })
 
-  it('S1 - beginBundle creates temp dir and returns its path and motionDir', async () => {
+  it('beginBundle creates temp dir and returns its path and motionDir', async () => {
     const api = mockApi()
 
     const { tmpDir, motionDir } = await beginBundle(baseInput(), api)
@@ -187,7 +186,7 @@ describe('exportBundle', () => {
     expect(tmpDirCreated).toBe(true)
   })
 
-  it('S1 - commitBundle writes files and renames from provided tmpDir', async () => {
+  it('commitBundle writes files and renames from provided tmpDir', async () => {
     const api = mockApi()
     const tmpDir = '/p/Graphics/Motion/.tmp-lower-third-glide-abc123'
     const motionDir = '/p/Graphics/Motion'
@@ -209,7 +208,7 @@ describe('exportBundle', () => {
     expect(result.finalFolder).toBe('/p/Graphics/Motion/lower-third-glide-jane-doe')
   })
 
-  it('S1 - commitBundle removes tmpDir on error', async () => {
+  it('commitBundle removes tmpDir on error', async () => {
     let writeCount = 0
     const api = mockApi({
       writeText: vi.fn(async () => {
@@ -227,7 +226,7 @@ describe('exportBundle', () => {
     expect(api.removeDirRecursive).toHaveBeenCalledWith(tmpDir)
   })
 
-  it('M5.4 - writes binary files correctly', async () => {
+  it('writes binary files correctly', async () => {
     const api = mockApi()
     const binaryFile = {
       name: 'lower-third-glide.mov',
@@ -259,7 +258,7 @@ describe('exportBundle', () => {
   })
 })
 
-describe('Ar11 - stale .tmp-* sweep', () => {
+describe('stale .tmp-* sweep', () => {
   it('removes .tmp-* folders older than 24 hours', async () => {
     const now = Date.now()
     const TWO_DAYS_AGO = now - 2 * 24 * 60 * 60 * 1000
@@ -316,15 +315,6 @@ describe('Ar11 - stale .tmp-* sweep', () => {
     expect(api.removeDirRecursive).not.toHaveBeenCalled()
   })
 
-  it('skips sweep gracefully when listFolder is not provided', async () => {
-    const api = mockApi()
-    // No listFolder or modifiedTimeMs on the api
-
-    // Should still create the temp folder without errors
-    const { tmpDir } = await beginBundle(baseInput(), api)
-    expect(tmpDir).toMatch(/\.tmp-lower-third-glide-/)
-  })
-
   it('does not remove .tmp-* files (only folders)', async () => {
     const now = Date.now()
     const TWO_DAYS_AGO = now - 2 * 24 * 60 * 60 * 1000
@@ -337,5 +327,28 @@ describe('Ar11 - stale .tmp-* sweep', () => {
     await beginBundle(baseInput(), api)
 
     expect(api.removeDirRecursive).not.toHaveBeenCalled()
+  })
+
+  it('one failing stat does not prevent removal of other stale folders', async () => {
+    const now = Date.now()
+    const TWO_DAYS_AGO = now - 2 * 24 * 60 * 60 * 1000
+
+    const api = mockApi({
+      listFolder: vi.fn(async () => [
+        { name: '.tmp-broken-aaa', isFile: false },
+        { name: '.tmp-stale-bbb', isFile: false }
+      ]),
+      modifiedTimeMs: vi.fn(async (path: string) => {
+        if (path.includes('.tmp-broken-aaa')) throw new Error('permission denied')
+        return TWO_DAYS_AGO
+      })
+    })
+
+    await beginBundle(baseInput(), api)
+
+    // The second folder should still be removed even though the first stat failed
+    expect(api.removeDirRecursive).toHaveBeenCalledWith(
+      '/p/Graphics/Motion/.tmp-stale-bbb'
+    )
   })
 })
