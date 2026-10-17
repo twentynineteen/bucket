@@ -13,8 +13,9 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { MotionFormat, MotionTemplate } from '../../types'
 import { loadBuiltins } from '../builtins'
+import { evaluate } from '../evaluate'
 import { expandTemplate } from '../expand'
-import { validFormats } from '../resolve'
+import { resolveTemplate, validFormats } from '../resolve'
 import { parseTemplate } from '../schema'
 import {
   checkEaseDirection,
@@ -526,6 +527,101 @@ describe('S3.6: ease direction (entrance out, exit in)', () => {
       expect(violations, `${t.id} failed S3.6`).toEqual([])
     }
   })
+})
+
+// ---------------------------------------------------------------------------
+// Accent overlap guard: no thin rect strikes through text at hold time
+// ---------------------------------------------------------------------------
+
+describe('accent overlap guard: no thin rect strikes through text at hold', () => {
+  const FORMAT: MotionFormat = { width: 3840, height: 2160, fps: 25 }
+
+  for (const tmpl of builtins) {
+    it(`${tmpl.id}: thin rects clear of text at hold`, () => {
+      const holdTime = (tmpl.inEnd + tmpl.outStart) / 2
+      const values: Record<string, string | number> = {}
+      for (const [id, p] of Object.entries(tmpl.params)) {
+        if ('default' in p) values[id] = p.default
+      }
+      const resolved = resolveTemplate(tmpl, values, FORMAT)
+      const states = evaluate(resolved, holdTime)
+
+      // Collect thin rects (height <= 12) and text layers
+      const thinRects: {
+        id: string
+        top: number
+        bottom: number
+        left: number
+        right: number
+      }[] = []
+      const textBoxes: {
+        id: string
+        top: number
+        bottom: number
+        left: number
+        right: number
+      }[] = []
+
+      for (const s of states) {
+        if (s.kind === 'rect' && s.size && s.size.h <= 12) {
+          // Rect top-left is at the matrix translation (anchor is 0,0)
+          const x = s.matrix[4]
+          const y = s.matrix[5]
+          thinRects.push({
+            id: s.id,
+            top: y,
+            bottom: y + s.size.h,
+            left: x,
+            right: x + s.size.w
+          })
+        }
+
+        if (s.kind === 'text') {
+          // Estimated text box: baseline - 0.75*size to baseline + 0.25*size
+          const baseline = s.matrix[5]
+          const x = s.matrix[4]
+          const size = s.font.size
+          // For text-anchor "middle", the text is centred at x
+          // We estimate width from the text length and font size
+          const estimatedWidth = s.text.length * size * 0.6
+          let left: number
+          let right: number
+          if (s.align === 'center') {
+            left = x - estimatedWidth / 2
+            right = x + estimatedWidth / 2
+          } else if (s.align === 'right') {
+            left = x - estimatedWidth
+            right = x
+          } else {
+            left = x
+            right = x + estimatedWidth
+          }
+
+          textBoxes.push({
+            id: s.id,
+            top: baseline - 0.75 * size,
+            bottom: baseline + 0.25 * size,
+            left,
+            right
+          })
+        }
+      }
+
+      // Check no thin rect overlaps any text box both vertically and horizontally
+      for (const rect of thinRects) {
+        for (const text of textBoxes) {
+          const vOverlap = rect.top < text.bottom && rect.bottom > text.top
+          const hOverlap = rect.left < text.right && rect.right > text.left
+          if (vOverlap && hOverlap) {
+            expect.fail(
+              `${tmpl.id}: thin rect "${rect.id}" (y ${rect.top.toFixed(0)}-${rect.bottom.toFixed(0)}) ` +
+                `overlaps text "${text.id}" (y ${text.top.toFixed(0)}-${text.bottom.toFixed(0)})`
+            )
+          }
+        }
+      }
+    })
+  }
 })
 
 // ---------------------------------------------------------------------------
