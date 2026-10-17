@@ -121,6 +121,121 @@ describe('buildSvgString', () => {
     expect(svg).toContain('<path')
     expect(svg).toContain('fill="#ff3366"')
   })
+
+  it('s14_escapes_xml_special_chars_in_fill_attribute', () => {
+    const states: LayerState[] = [
+      {
+        kind: 'rect',
+        id: 'bg',
+        matrix: IDENTITY,
+        opacity: 1,
+        fill: '"><script>alert(1)</script>',
+        size: { w: 500, h: 200 },
+        radius: 0
+      }
+    ]
+    const svg = buildSvgString(states, 1920, 1080, [])
+    // The fill value must be XML-escaped, not injected raw
+    expect(svg).not.toContain('<script>')
+    expect(svg).toContain('&lt;script&gt;')
+    expect(svg).toContain('&quot;')
+  })
+
+  it('s14_escapes_text_fill_attribute', () => {
+    const states: LayerState[] = [
+      {
+        kind: 'text',
+        id: 't1',
+        matrix: IDENTITY,
+        opacity: 1,
+        fill: '"><img onerror=alert(1)>',
+        text: 'Hello',
+        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+        align: 'left',
+        lineHeight: 1.2,
+        multiline: false,
+        tracking: 0
+      }
+    ]
+    const svg = buildSvgString(states, 1920, 1080, [])
+    expect(svg).not.toContain('<img')
+    expect(svg).toContain('&quot;')
+  })
+
+  it('s6_text_align_center_maps_to_text_anchor_middle', () => {
+    const states: LayerState[] = [
+      {
+        kind: 'text',
+        id: 't1',
+        matrix: IDENTITY,
+        opacity: 1,
+        fill: '#ffffff',
+        text: 'Centred',
+        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+        align: 'center',
+        lineHeight: 1.2,
+        multiline: false,
+        tracking: 0
+      }
+    ]
+    const svg = buildSvgString(states, 1920, 1080, [])
+    expect(svg).toContain('text-anchor="middle"')
+  })
+
+  it('s6_text_align_right_maps_to_text_anchor_end', () => {
+    const states: LayerState[] = [
+      {
+        kind: 'text',
+        id: 't1',
+        matrix: IDENTITY,
+        opacity: 1,
+        fill: '#ffffff',
+        text: 'Right',
+        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+        align: 'right',
+        lineHeight: 1.2,
+        multiline: false,
+        tracking: 0
+      }
+    ]
+    const svg = buildSvgString(states, 1920, 1080, [])
+    expect(svg).toContain('text-anchor="end"')
+  })
+
+  it('s6_text_align_left_maps_to_text_anchor_start', () => {
+    const states: LayerState[] = [
+      {
+        kind: 'text',
+        id: 't1',
+        matrix: IDENTITY,
+        opacity: 1,
+        fill: '#ffffff',
+        text: 'Left',
+        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+        align: 'left',
+        lineHeight: 1.2,
+        multiline: false,
+        tracking: 0
+      }
+    ]
+    const svg = buildSvgString(states, 1920, 1080, [])
+    expect(svg).toContain('text-anchor="start"')
+  })
+
+  it('s15_font_css_is_memoised_across_frames', () => {
+    const fontBytes = new Uint8Array([0x4f, 0x54, 0x54, 0x4f])
+    const fonts: FontData[] = [{ family: 'Cabrito Semi', bytes: fontBytes }]
+    const states: LayerState[] = []
+
+    const svg1 = buildSvgString(states, 1920, 1080, fonts)
+    const svg2 = buildSvgString(states, 1920, 1080, fonts)
+
+    // Both should contain the font-face (basic correctness)
+    expect(svg1).toContain('@font-face')
+    expect(svg2).toContain('@font-face')
+    // Memoisation is an internal optimisation - the output should be identical
+    expect(svg1).toBe(svg2)
+  })
 })
 
 describe('buildFrameList', () => {

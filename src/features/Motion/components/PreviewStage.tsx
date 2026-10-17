@@ -14,11 +14,14 @@ import React from 'react'
 
 export interface PreviewStageProps {
   children: React.ReactNode
+  /** Ref callback forwarded to the root div (used by useMotionTicker). */
+  containerRef?: React.RefCallback<HTMLElement>
 }
 
-const PreviewStage: React.FC<PreviewStageProps> = ({ children }) => {
+const PreviewStage: React.FC<PreviewStageProps> = ({ children, containerRef }) => {
   return (
     <div
+      ref={containerRef}
       className="preview-stage relative aspect-video overflow-hidden rounded-t-xl"
       style={{
         // Hard-coded dark checkerboard - theme tokens don't apply here

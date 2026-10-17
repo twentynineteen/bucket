@@ -5,9 +5,9 @@
  * with a seeded PRNG. The same seed always produces the same point list,
  * and different seeds produce different lists.
  *
- * Used by:
+ * Imported by:
  * - `scripts/motion/sample-points.ts` to pre-sample built-in templates
- * - The runtime image param (canvas ImageData) to re-sample a user's PNG
+ * - `MotionTemplateDialog.tsx` for runtime image-param re-sampling (M2.6)
  */
 import { createRng } from './random'
 
@@ -31,6 +31,14 @@ export interface SamplerInput {
    * Sampled points are mapped from image space into this box.
    */
   targetBox: { x: number; y: number; w: number; h: number }
+  /**
+   * Luminance-weighted density: when set, minDistance varies per pixel
+   * from `minDistance` (darkest) to `maxDistance` (brightest). Only used
+   * by the offline script for the Muybridge photograph.
+   */
+  luminanceWeighted?: {
+    maxDistance: number
+  }
 }
 
 export interface SampledPoint {
@@ -65,6 +73,44 @@ function isOpaque(img: ImageDesc, px: number, py: number): boolean {
   if (px < 0 || py < 0 || px >= img.width || py >= img.height) return false
   const idx = (py * img.width + px) * 4 + 3 // alpha channel
   return img.rgba[idx] > 128
+}
+
+/** Luminance (0-1, 0=black, 1=white) from the R channel of the pixel. */
+function luminance(img: ImageDesc, px: number, py: number): number {
+  if (px < 0 || py < 0 || px >= img.width || py >= img.height) return 1
+  const idx = (py * img.width + px) * 4
+  return img.rgba[idx] / 255
+}
+
+// ---------------------------------------------------------------------------
+// Image alpha validation (M2.6)
+// ---------------------------------------------------------------------------
+
+export interface AlphaCheckResult {
+  hasOpaque: boolean
+  hasTransparent: boolean
+}
+
+/**
+ * Check decoded RGBA pixel data for both opaque (alpha > 128) and
+ * transparent (alpha < 128) pixels. Returns the result rather than
+ * throwing, so the caller can show the appropriate error.
+ */
+export function checkAlpha(
+  rgba: Uint8Array | Uint8ClampedArray,
+  width: number,
+  height: number
+): AlphaCheckResult {
+  let hasOpaque = false
+  let hasTransparent = false
+  const total = width * height
+  for (let i = 0; i < total; i++) {
+    const alpha = rgba[i * 4 + 3]
+    if (alpha > 128) hasOpaque = true
+    else hasTransparent = true
+    if (hasOpaque && hasTransparent) break
+  }
+  return { hasOpaque, hasTransparent }
 }
 
 // ---------------------------------------------------------------------------
@@ -150,9 +196,13 @@ function tryCandidate(
  *
  * Returns an empty array for a fully transparent image (no error).
  * Deterministic: same input always yields the same output.
+ *
+ * When `luminanceWeighted` is set, point density varies by pixel brightness:
+ * dark areas use `minDistance`, bright areas use `maxDistance`. This produces
+ * denser stipple in shadow regions (the Muybridge photograph effect).
  */
 export function samplePoints(input: SamplerInput): SampledPoint[] {
-  const { rgba, width, height, minDistance, seed, targetBox } = input
+  const { rgba, width, height, minDistance, seed, targetBox, luminanceWeighted } = input
 
   if (width <= 0 || height <= 0 || minDistance <= 0) return []
 
@@ -184,8 +234,26 @@ export function samplePoints(input: SamplerInput): SampledPoint[] {
     const { x: px, y: py } = gs.pointsImg[pIdx]
     let found = false
 
+    // Local minimum distance: luminance-weighted or fixed
+    const localMinDist = luminanceWeighted
+      ? minDistance +
+        luminance(img, Math.floor(px), Math.floor(py)) *
+          (luminanceWeighted.maxDistance - minDistance)
+      : minDistance
+
     for (let i = 0; i < k; i++) {
-      const pt = tryCandidate(px, py, rng, minDistance, img, gs)
+      const pt = luminanceWeighted
+        ? tryCandidateWeighted({
+            px,
+            py,
+            rng,
+            localMinDist,
+            img,
+            gs,
+            baseMinDist: minDistance,
+            maxDist: luminanceWeighted.maxDistance
+          })
+        : tryCandidate(px, py, rng, minDistance, img, gs)
       if (pt) {
         addPoint(pt.x, pt.y, gs, active)
         found = true
@@ -202,6 +270,59 @@ export function samplePoints(input: SamplerInput): SampledPoint[] {
     x: Math.round(targetBox.x + (p.x / width) * targetBox.w),
     y: Math.round(targetBox.y + (p.y / height) * targetBox.h)
   }))
+}
+
+interface WeightedCandidateArgs {
+  px: number
+  py: number
+  rng: () => number
+  localMinDist: number
+  img: ImageDesc
+  gs: GridState
+  baseMinDist: number
+  maxDist: number
+}
+
+/** Try one candidate with luminance-weighted minimum distance. */
+function tryCandidateWeighted(
+  args: WeightedCandidateArgs
+): { x: number; y: number } | null {
+  const { px, py, rng, localMinDist, img, gs, baseMinDist, maxDist } = args
+  const angle = rng() * Math.PI * 2
+  const dist = localMinDist + rng() * localMinDist
+  const nx = px + Math.cos(angle) * dist
+  const ny = py + Math.sin(angle) * dist
+  const nxi = Math.floor(nx)
+  const nyi = Math.floor(ny)
+
+  if (!isOpaque(img, nxi, nyi)) return null
+
+  const candidateMinDist =
+    baseMinDist + luminance(img, nxi, nyi) * (maxDist - baseMinDist)
+  const checkDist = Math.min(localMinDist, candidateMinDist)
+
+  const gx = Math.floor(nx / gs.cellSize)
+  const gy = Math.floor(ny / gs.cellSize)
+  if (gx < 0 || gy < 0 || gx >= gs.gridW || gy >= gs.gridH) return null
+
+  // Use variable-radius check: scan a wider range for the check distance
+  const checkRange = Math.ceil(checkDist / gs.cellSize) + 1
+  const checkDistSq = checkDist * checkDist
+  for (let dy = -checkRange; dy <= checkRange; dy++) {
+    const ggy = gy + dy
+    if (ggy < 0 || ggy >= gs.gridH) continue
+    for (let dx = -checkRange; dx <= checkRange; dx++) {
+      const ggx = gx + dx
+      if (ggx < 0 || ggx >= gs.gridW) continue
+      const neighbour = gs.grid[ggy * gs.gridW + ggx]
+      if (neighbour === null) continue
+      const op = gs.pointsImg[neighbour]
+      const ddx = op.x - nx
+      const ddy = op.y - ny
+      if (ddx * ddx + ddy * ddy < checkDistSq) return null
+    }
+  }
+  return { x: nx, y: ny }
 }
 
 /** Insert a new point into the grid and active list. */

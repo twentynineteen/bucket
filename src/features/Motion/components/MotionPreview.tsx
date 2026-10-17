@@ -126,9 +126,21 @@ function ShapeElement({ state }: { state: ShapeLayerState }) {
   return null
 }
 
+function alignToAnchor(align: 'left' | 'center' | 'right'): 'start' | 'middle' | 'end' {
+  switch (align) {
+    case 'center':
+      return 'middle'
+    case 'right':
+      return 'end'
+    default:
+      return 'start'
+  }
+}
+
 function TextElement({ state }: { state: TextLayerState }) {
   const transform = matrixStr(state.matrix)
   const fontFamily = `"${state.font.family}"`
+  const textAnchor = alignToAnchor(state.align)
 
   // Staggered text: each unit is its own tspan
   if (state.units && state.units.length > 0) {
@@ -138,6 +150,7 @@ function TextElement({ state }: { state: TextLayerState }) {
         fontSize={state.font.size}
         fill={state.fill}
         opacity={state.opacity}
+        textAnchor={textAnchor}
         transform={transform}
       >
         {state.units.map((u, i) => (
@@ -159,6 +172,7 @@ function TextElement({ state }: { state: TextLayerState }) {
         fontSize={state.font.size}
         fill={state.fill}
         opacity={state.opacity}
+        textAnchor={textAnchor}
         transform={transform}
       >
         {lines.map((line, i) => (
@@ -177,6 +191,7 @@ function TextElement({ state }: { state: TextLayerState }) {
       fontSize={state.font.size}
       fill={state.fill}
       opacity={state.opacity}
+      textAnchor={textAnchor}
       transform={transform}
     >
       {state.text}

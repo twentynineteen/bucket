@@ -88,19 +88,20 @@ function arcPath(
 
 function renderShapeState(state: ShapeLayerState): string {
   const transform = matrixAttr(state.matrix)
+  const fill = escapeXml(state.fill)
 
   if (state.kind === 'rect' && state.size) {
-    return `<rect x="0" y="0" width="${state.size.w}" height="${state.size.h}" rx="${state.radius ?? 0}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}" />`
+    return `<rect x="0" y="0" width="${state.size.w}" height="${state.size.h}" rx="${state.radius ?? 0}" fill="${fill}" opacity="${state.opacity}" transform="${transform}" />`
   }
 
   if (state.kind === 'ellipse') {
     const rx = state.radii?.rx ?? 0
     const ry = state.radii?.ry ?? 0
-    return `<ellipse cx="0" cy="0" rx="${rx}" ry="${ry}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}" />`
+    return `<ellipse cx="0" cy="0" rx="${rx}" ry="${ry}" fill="${fill}" opacity="${state.opacity}" transform="${transform}" />`
   }
 
   if (state.kind === 'path' && state.d) {
-    return `<path d="${escapeXml(state.d)}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}" />`
+    return `<path d="${escapeXml(state.d)}" fill="${fill}" opacity="${state.opacity}" transform="${transform}" />`
   }
 
   if (state.kind === 'arc' && state.arc) {
@@ -108,25 +109,39 @@ function renderShapeState(state: ShapeLayerState): string {
     // Arc is centred at the origin (transform handles placement)
     const d = arcPath(0, 0, innerRadius, outerRadius, startAngle, sweep)
     if (!d) return ''
-    return `<path d="${d}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}" />`
+    return `<path d="${d}" fill="${fill}" opacity="${state.opacity}" transform="${transform}" />`
   }
 
   return ''
 }
 
+function alignToAnchor(align: 'left' | 'center' | 'right'): string {
+  switch (align) {
+    case 'center':
+      return 'middle'
+    case 'right':
+      return 'end'
+    default:
+      return 'start'
+  }
+}
+
 function renderTextState(state: TextLayerState): string {
   const transform = matrixAttr(state.matrix)
-  const fontFamily = `"${state.font.family}"`
+  const fontFamily = `"${escapeXml(state.font.family)}"`
   const fontSize = state.font.size
+  const fill = escapeXml(state.fill)
+  const anchor = alignToAnchor(state.align)
 
   // Staggered text: each unit is its own tspan
   if (state.units && state.units.length > 0) {
     const tspans = state.units
       .map(
-        u => `<tspan opacity="${u.opacity}" fill="${u.fill}">${escapeXml(u.text)}</tspan>`
+        u =>
+          `<tspan opacity="${u.opacity}" fill="${escapeXml(u.fill)}">${escapeXml(u.text)}</tspan>`
       )
       .join('')
-    return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}">${tspans}</text>`
+    return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${tspans}</text>`
   }
 
   // Multiline text: one tspan per line
@@ -141,16 +156,40 @@ function renderTextState(state: TextLayerState): string {
         return `<tspan x="0" dy="${lineAdvance}">${escapeXml(line)}</tspan>`
       })
       .join('')
-    return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}">${tspans}</text>`
+    return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${tspans}</text>`
   }
 
   // Plain text
-  return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${state.fill}" opacity="${state.opacity}" transform="${transform}">${escapeXml(state.text)}</text>`
+  return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${escapeXml(state.text)}</text>`
 }
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Font CSS memoisation (S15)
+// ---------------------------------------------------------------------------
+
+let cachedFontRef: FontData[] | null = null
+let cachedFontCss = ''
+
+/**
+ * Build the @font-face CSS for a set of fonts, memoised by reference identity.
+ * The same FontData[] array passed across frames of a single render avoids
+ * re-encoding hundreds of KB of base64 per frame.
+ */
+function fontFaceCss(fonts: FontData[]): string {
+  if (fonts === cachedFontRef) return cachedFontCss
+  cachedFontRef = fonts
+  cachedFontCss = fonts
+    .map(
+      f =>
+        `@font-face { font-family: "${f.family}"; src: url("data:font/otf;base64,${uint8ToBase64(f.bytes)}"); }`
+    )
+    .join('\n')
+  return cachedFontCss
+}
 
 /**
  * Build the SVG string for a single frame with fonts embedded as data URIs.
@@ -162,12 +201,7 @@ export function buildSvgString(
   height: number,
   fonts: FontData[]
 ): string {
-  const fontFaces = fonts
-    .map(
-      f =>
-        `@font-face { font-family: "${f.family}"; src: url("data:font/otf;base64,${uint8ToBase64(f.bytes)}"); }`
-    )
-    .join('\n')
+  const fontFaces = fontFaceCss(fonts)
 
   const style = fontFaces ? `<defs><style>${fontFaces}</style></defs>` : ''
 
