@@ -1,9 +1,6 @@
 /**
  * Shared SVG geometry helpers used by both the preview (MotionPreview.tsx)
  * and the frame renderer (frameRenderer.ts).
- *
- * Extracted to eliminate duplication so a change in one renderer cannot
- * silently diverge from the other.
  */
 
 /** Format a 2D affine transform matrix as an SVG `matrix(...)` attribute value. */

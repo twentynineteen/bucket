@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { MotionTemplate, ParticlesLayer } from '../types'
-import { applyImageParam, type DecodedImage } from './imageParam'
+import { applyImageParam, thinEvenly, type DecodedImage } from './imageParam'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -406,5 +406,55 @@ describe('aspect-ratio fitting via applyImageParam', () => {
     const xMin = Math.min(...xs)
     const xMax = Math.max(...xs)
     expect(xMax - xMin).toBeLessThan(1000) // well under the full 2000 width
+  })
+})
+
+// ---------------------------------------------------------------------------
+// thinEvenly - direct test of the thinning function
+// ---------------------------------------------------------------------------
+
+describe('thinEvenly', () => {
+  it('returns the input unchanged when count is within the cap', () => {
+    const points = [1, 2, 3, 4, 5]
+    expect(thinEvenly(points, 10)).toBe(points)
+  })
+
+  it('keeps the first and last points', () => {
+    const points = Array.from({ length: 100 }, (_, i) => i)
+    const thinned = thinEvenly(points, 10)
+    expect(thinned[0]).toBe(0)
+    expect(thinned[thinned.length - 1]).toBe(99)
+  })
+
+  it('returns exactly maxCount points', () => {
+    const points = Array.from({ length: 100 }, (_, i) => i)
+    const thinned = thinEvenly(points, 10)
+    expect(thinned).toHaveLength(10)
+  })
+
+  it('selects points with uniform index spacing', () => {
+    const points = Array.from({ length: 100 }, (_, i) => i)
+    const thinned = thinEvenly(points, 10)
+
+    // The indices of the selected points (their values equal their original indices)
+    const indices = thinned as number[]
+
+    // Check spacing is uniform: differences between consecutive selected indices
+    const diffs: number[] = []
+    for (let i = 1; i < indices.length; i++) {
+      diffs.push(indices[i] - indices[i - 1])
+    }
+    // All diffs should be the same (or differ by at most 1 due to rounding)
+    const minDiff = Math.min(...diffs)
+    const maxDiff = Math.max(...diffs)
+    expect(maxDiff - minDiff).toBeLessThanOrEqual(1)
+  })
+
+  it('thins a large input to a small cap', () => {
+    const points = Array.from({ length: 10000 }, (_, i) => ({ x: i, y: i }))
+    const thinned = thinEvenly(points, 50)
+    expect(thinned).toHaveLength(50)
+    expect(thinned[0]).toBe(points[0])
+    expect(thinned[thinned.length - 1]).toBe(points[9999])
   })
 })

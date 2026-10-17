@@ -113,6 +113,9 @@ function formatNumber(n: number): string {
   return s
 }
 
+/** A string key that is a valid Lua identifier and can be emitted bare. */
+const SAFE_LUA_IDENT_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/
+
 function serialiseTable(entries: LuaEntry[], depth: number): string {
   if (entries.length === 0) return '{ }'
   const lines: string[] = ['{']
@@ -122,8 +125,11 @@ function serialiseTable(entries: LuaEntry[], depth: number): string {
       lines.push(`${indent(depth + 1)}${val},`)
     } else if (typeof entry.key === 'number') {
       lines.push(`${indent(depth + 1)}[${entry.key}] = ${val},`)
-    } else {
+    } else if (SAFE_LUA_IDENT_RE.test(entry.key)) {
       lines.push(`${indent(depth + 1)}${entry.key} = ${val},`)
+    } else {
+      // Bracketed string key: prevents code injection from unsafe identifiers
+      lines.push(`${indent(depth + 1)}["${escapeLuaString(entry.key)}"] = ${val},`)
     }
   }
   lines.push(`${indent(depth)}}`)
@@ -143,10 +149,12 @@ function toolToEntry(tool: FusionTool): LuaEntry {
 
 let splineCounter = 0
 let shapeBatchCounter = 0
+let mergeCounter = 0
 
 function resetCounters(): void {
   splineCounter = 0
   shapeBatchCounter = 0
+  mergeCounter = 0
 }
 
 function nextSplineName(baseName: string, property: string): string {
@@ -604,6 +612,11 @@ function addGroupTransformAnimations(
     inputs.push(...keep)
     inputs.push(sourceEntry)
 
+    // Remove the static Pivot before pushing the animated one
+    const keepPivot = inputs.filter(e => e.key !== 'Pivot')
+    inputs.length = 0
+    inputs.push(...keepPivot)
+
     // Animated Pivot follows the anchor's world position
     const pivXKfs = group.position.map(kf => ({
       t: kf.t,
@@ -722,7 +735,7 @@ function buildShapeInputs(
     case 'arc':
       return buildArcInputs(layer, w, h, format.fps, tools)
     case 'path':
-      // Simple paths -> sPolygon, bezier paths handled in buildPathFallback
+      // Simple paths -> sPolygon; hatch-band paths take buildPathFallback instead
       return buildPolygonInputs(layer, w, h, format.fps, tools)
     default:
       assertNever(layer)
@@ -1319,7 +1332,6 @@ function processTextLayer(
   layer: TextLayer,
   format: MotionFormat,
   result: ProcessedLayers,
-  _notes: string[],
   values: Record<string, unknown>
 ): void {
   const fps = format.fps
@@ -1428,7 +1440,7 @@ function processLayer(
 ): void {
   switch (layer.kind) {
     case 'text':
-      processTextLayer(layer, format, result, notes, values)
+      processTextLayer(layer, format, result, values)
       break
     case 'rect':
     case 'ellipse':
@@ -1938,12 +1950,11 @@ function buildShapeMergeChain(
   if (shapeTools.length === 0) return null
 
   const batchId = shapeBatchCounter++
-  const suffix = batchId === 0 ? '' : `_${batchId}`
 
-  // Build sMerge chain
+  // Build sMerge chain - always use batch-qualified names to prevent collisions
   let prevOutput = shapeTools[0].name
   for (let i = 1; i < shapeTools.length; i++) {
-    const smergeName = `shape_smerge${suffix}_${i}`
+    const smergeName = `shape_smerge_${batchId}_${i}`
     const inputs: LuaEntry[] = [
       sourceOpInput('Background', prevOutput),
       sourceOpInput('Foreground', shapeTools[i].name)
@@ -1958,7 +1969,7 @@ function buildShapeMergeChain(
 
   // Single shape still needs sMerge for the sRender chain
   if (shapeTools.length === 1) {
-    const smergeName = `shape_smerge${suffix}`
+    const smergeName = `shape_smerge_${batchId}_0`
     mergeTools.push({
       name: smergeName,
       type: 'sMerge',
@@ -1968,7 +1979,7 @@ function buildShapeMergeChain(
   }
 
   // sRender
-  const sRenderName = `shape_srender${suffix}`
+  const sRenderName = `shape_srender_${batchId}`
   mergeTools.push({
     name: sRenderName,
     type: 'sRender',
@@ -1982,7 +1993,7 @@ function buildImageMergeChain(outputs: string[], mergeTools: FusionTool[]): void
   if (outputs.length <= 1) return
   let prevOutput = outputs[0]
   for (let i = 1; i < outputs.length; i++) {
-    const mergeName = `merge_${i}`
+    const mergeName = `merge_${++mergeCounter}`
     mergeTools.push({
       name: mergeName,
       type: 'Merge',
@@ -2138,19 +2149,26 @@ function collectAllLeafTools(processed: ProcessedLayers): {
     if (tool.type === 'TextPlus') textTools.push(tool)
     else if (['sRectangle', 'sEllipse', 'sPolygon'].includes(tool.type))
       shapeTools.push(tool)
-    else if (tool.type === 'Background') fallbackTools.push(tool)
+    // Only hatch-band Backgrounds are fallback tools; group opacity
+    // backgrounds (*_alpha_bg) are structural and have no fill to bind.
+    else if (tool.type === 'Background' && !tool.name.endsWith('_alpha_bg'))
+      fallbackTools.push(tool)
   }
   return { shapeTools, textTools, fallbackTools }
 }
 
-/** Collect leaf tools from the top-level outputs only (for the internal tools list). */
+/**
+ * Collect leaf tools from the top-level outputs only (for the internal tools list).
+ * Excludes fallback tools: those are pushed into mergeTools by collectImageOutputs,
+ * so including them here would duplicate them in the final internalTools array.
+ */
 function collectTopLevelLeafTools(processed: ProcessedLayers): FusionTool[] {
   const tools: FusionTool[] = []
   for (const entry of processed.outputs) {
     if (entry.type === 'untransformedShape') tools.push(entry.tool)
     else if (entry.type === 'transformedShape') tools.push(entry.ts.shapeTool)
     else if (entry.type === 'text') tools.push(entry.tool)
-    else if (entry.type === 'fallback') tools.push(...entry.tools)
+    // fallback tools are already added by collectImageOutputs into mergeTools
   }
   return tools
 }

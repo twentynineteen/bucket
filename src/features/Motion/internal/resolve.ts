@@ -322,13 +322,13 @@ function applyColourBindings(
   }
 
   // Walk the layer tree by index, matching each node against every binding.
-  function applyAtDepth(ls: Layer[], depth: number, parentIndices: number[]): Layer[] {
+  function applyAtPath(ls: Layer[], parentIndices: number[]): Layer[] {
     return ls.map((layer, i) => {
       const current = [...parentIndices, i]
       if (layer.kind === 'group') {
         return {
           ...layer,
-          children: applyAtDepth(layer.children, depth + 1, current)
+          children: applyAtPath(layer.children, current)
         }
       }
       // Check whether any binding targets this exact node
@@ -345,7 +345,7 @@ function applyColourBindings(
     })
   }
 
-  return applyAtDepth(layers, 0, [])
+  return applyAtPath(layers, [])
 }
 
 // ---------------------------------------------------------------------------

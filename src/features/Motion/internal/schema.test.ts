@@ -1064,3 +1064,120 @@ describe('Schema (internal/schema.ts)', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// Param id validation - defence against Lua injection
+// ---------------------------------------------------------------------------
+
+describe('param id must be a safe identifier', () => {
+  const validBase = {
+    schemaVersion: 1,
+    id: 'sec-param-id',
+    version: '1.0.0',
+    name: 'Test',
+    description: 'test',
+    category: 'lower-third',
+    status: 'stable',
+    tags: [],
+    fonts: [],
+    duration: 4,
+    inEnd: 1,
+    outStart: 3,
+    layers: [
+      {
+        kind: 'rect',
+        id: 'r',
+        anchor: { x: 0, y: 0 },
+        width: 100,
+        height: 50,
+        fill: '#ff0000',
+        radius: 0
+      }
+    ]
+  }
+
+  it('rejects a param id containing Lua injection payload', () => {
+    const bad = {
+      ...validBase,
+      params: {
+        'x = os.execute("x"), y': {
+          kind: 'text',
+          label: 'Injected',
+          maxLength: 40,
+          default: 'test',
+          required: false
+        }
+      }
+    }
+    const result = parseTemplate(bad)
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects a param id starting with a digit', () => {
+    const bad = {
+      ...validBase,
+      params: {
+        '1abc': {
+          kind: 'text',
+          label: 'Bad',
+          maxLength: 20,
+          default: 'x',
+          required: false
+        }
+      }
+    }
+    const result = parseTemplate(bad)
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects a param id with hyphens', () => {
+    const bad = {
+      ...validBase,
+      params: {
+        'my-param': {
+          kind: 'text',
+          label: 'Bad',
+          maxLength: 20,
+          default: 'x',
+          required: false
+        }
+      }
+    }
+    const result = parseTemplate(bad)
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts a valid identifier param id', () => {
+    const good = {
+      ...validBase,
+      params: {
+        my_param: {
+          kind: 'text',
+          label: 'Good',
+          maxLength: 20,
+          default: 'x',
+          required: false
+        }
+      }
+    }
+    const result = parseTemplate(good)
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts underscore-prefixed param id', () => {
+    const good = {
+      ...validBase,
+      params: {
+        _internal: {
+          kind: 'text',
+          label: 'Good',
+          maxLength: 20,
+          default: 'x',
+          required: false
+        }
+      }
+    }
+    const result = parseTemplate(good)
+    expect(result.success).toBe(true)
+  })
+})

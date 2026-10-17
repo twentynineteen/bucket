@@ -2508,6 +2508,14 @@ describe('group Transform Centre is the image-centre translation', () => {
     expect(text).toContain(x0.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
     expect(text).toContain(x1.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
     expect(text).toContain(y1.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+
+    // Exactly one Pivot key in the g_transform tool (not two)
+    const transformMatch = text.match(
+      /g_transform\s*=\s*Transform\s*\{([\s\S]*?)\n {16}\}/
+    )
+    expect(transformMatch).not.toBeNull()
+    const pivotMatches = transformMatch![1].match(/Pivot\s*=/g) ?? []
+    expect(pivotMatches).toHaveLength(1)
   })
 })
 
@@ -2550,15 +2558,35 @@ describe('group opacity fades content through Foreground wiring', () => {
     const text = getSettingText(makeInput(template))
 
     // The blend Merge must have a Foreground SourceOp
-    const blendSection = text.match(/g_blend\s*=\s*Merge\s*\{([\s\S]*?)\n\s{12}\}/)
+    const blendSection = text.match(/g_blend\s*=\s*Merge\s*\{([\s\S]*?)\n {16}\}/)
     expect(blendSection).not.toBeNull()
     const blendBody = blendSection![1]
 
-    // Foreground must be wired (the content)
-    expect(blendBody).toMatch(/Foreground\s*=\s*Input/)
+    // Foreground SourceOp must be the child chain output (a shape sRender
+    // or group transform - whichever is the last output of the child chain)
+    const fgSourceOp = blendBody.match(
+      /Foreground\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
+    )
+    expect(fgSourceOp).not.toBeNull()
+    // Must NOT be the alpha_bg (that is the Background)
+    expect(fgSourceOp![1]).not.toBe('g_alpha_bg')
 
-    // Background must also be wired (the transparent base)
-    expect(blendBody).toMatch(/Background\s*=\s*Input/)
+    // Background SourceOp must be the transparent alpha_bg tool
+    const bgSourceOp = blendBody.match(
+      /Background\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
+    )
+    expect(bgSourceOp).not.toBeNull()
+    expect(bgSourceOp![1]).toBe('g_alpha_bg')
+
+    // The alpha_bg tool must have TopLeftAlpha = 0
+    const alphaBgSection = text.match(
+      /g_alpha_bg\s*=\s*Background\s*\{([\s\S]*?)\n {16}\}/
+    )
+    expect(alphaBgSection).not.toBeNull()
+    expect(alphaBgSection![1]).toContain('TopLeftAlpha')
+    const alphaMatch = alphaBgSection![1].match(/TopLeftAlpha[^}]*Value\s*=\s*(\d+)/)
+    expect(alphaMatch).not.toBeNull()
+    expect(Number(alphaMatch![1])).toBe(0)
   })
 })
 
@@ -2824,12 +2852,45 @@ describe('group sub-chain scopes transform to children only', () => {
     expect(g1Input).not.toBeNull()
 
     // g2_transform's Input must not depend on g1's children
-    const g2XfMatch = text.match(/g2_transform\s*=\s*Transform\s*\{([\s\S]*?)\n\s{12}\}/)
+    const g2XfMatch = text.match(/g2_transform\s*=\s*Transform\s*\{([\s\S]*?)\n {16}\}/)
     expect(g2XfMatch).not.toBeNull()
     const g2Input = g2XfMatch![1].match(
       /Input\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
     )
     expect(g2Input).not.toBeNull()
+
+    // Disjointness check: the dependency trees of g1 and g2 must not overlap
+    function collectSourceOps(startName: string): Set<string> {
+      const visited = new Set<string>()
+      const queue = [startName]
+      while (queue.length > 0) {
+        const name = queue.pop()!
+        if (visited.has(name)) continue
+        visited.add(name)
+        const toolStart = text.indexOf(`${name} = `)
+        if (toolStart === -1) continue
+        let depth = 0
+        let j = text.indexOf('{', toolStart)
+        if (j === -1) continue
+        const start = j
+        for (; j < text.length; j++) {
+          if (text[j] === '{') depth++
+          else if (text[j] === '}') {
+            depth--
+            if (depth === 0) break
+          }
+        }
+        const toolBody = text.slice(start, j + 1)
+        const refs = [...toolBody.matchAll(/SourceOp\s*=\s*"([^"]+)"/g)]
+        for (const r of refs) queue.push(r[1])
+      }
+      return visited
+    }
+
+    const g1Deps = collectSourceOps(g1Input![1])
+    const g2Deps = collectSourceOps(g2Input![1])
+    const overlap = [...g1Deps].filter(d => g2Deps.has(d))
+    expect(overlap).toEqual([])
   })
 })
 
@@ -2880,5 +2941,340 @@ describe('colour binds resolve at any depth via resolveBindPath', () => {
     // The colour InstanceInput should target the deeply-nested rect's fill
     expect(text).toMatch(/InstanceInput[^}]*SourceOp\s*=\s*"deep_rect_shape"/)
     expect(text).toMatch(/InstanceInput[^}]*Source\s*=\s*"Red"/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tool name uniqueness across all generated names
+// ---------------------------------------------------------------------------
+
+describe('tool name uniqueness in the Tools table', () => {
+  /** Extract all tool key names from the internal Tools table of the macro. */
+  function extractToolKeys(text: string): string[] {
+    // Tool entries are at depth 4 (16 spaces):
+    // depth 0: { Tools = { ... } }
+    // depth 1: Tools entry
+    // depth 2: macro_name = MacroOperator { ... }
+    // depth 3: macro entries (Inputs, Outputs, Tools)
+    // depth 4: internal tool entries: name = ToolType { ... }
+    const keys: string[] = []
+    const re =
+      /^ {16}(\w+)\s*=\s*(?:Merge|sMerge|sRender|sRectangle|sEllipse|sPolygon|TextPlus|Transform|Background|BezierSpline|XYPath|StyledTextFollower)\s*\{/gm
+    let m: RegExpExecArray | null
+    while ((m = re.exec(text)) !== null) {
+      keys.push(m[1])
+    }
+    return keys
+  }
+
+  it('[group{rect, text}, rect, text] has unique tool keys', () => {
+    const template: MotionTemplate = {
+      ...animBase('uniq-group-root-mix'),
+      params: {},
+      layers: [
+        {
+          kind: 'group',
+          id: 'g',
+          anchor: { x: 0, y: 0 },
+          position: [
+            {
+              t: 0,
+              value: { x: 0, y: 0 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 500, y: 0 } }
+          ],
+          children: [
+            {
+              kind: 'rect',
+              id: 'g-r',
+              anchor: { x: 0, y: 0 },
+              width: 100,
+              height: 50,
+              fill: '#ff0000',
+              radius: 0
+            },
+            {
+              kind: 'text',
+              id: 'g-t',
+              anchor: { x: 0, y: 0 },
+              position: [{ t: 0, value: { x: 50, y: 20 } }],
+              text: 'hi',
+              font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 24 },
+              align: 'left',
+              lineHeight: 1.2,
+              multiline: false,
+              fill: '#fff'
+            }
+          ]
+        },
+        {
+          kind: 'rect',
+          id: 'root-r',
+          anchor: { x: 0, y: 0 },
+          width: 200,
+          height: 100,
+          fill: '#0000ff',
+          radius: 0
+        },
+        {
+          kind: 'text',
+          id: 'root-t',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 300, y: 200 } }],
+          text: 'world',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 36 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#fff'
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    const keys = extractToolKeys(text)
+    expect(keys.length).toBeGreaterThan(0)
+    // Assert by counting duplicates, not by creating a Set
+    const counts = new Map<string, number>()
+    for (const k of keys) {
+      counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    const duplicates = [...counts.entries()].filter(([, c]) => c > 1)
+    expect(duplicates).toEqual([])
+  })
+
+  it('[rect, rect, text, rect] has unique tool keys (shape batch collision)', () => {
+    const template: MotionTemplate = {
+      ...animBase('uniq-shape-batch'),
+      params: {},
+      layers: [
+        {
+          kind: 'rect',
+          id: 'r1',
+          anchor: { x: 0, y: 0 },
+          width: 100,
+          height: 50,
+          fill: '#ff0000',
+          radius: 0
+        },
+        {
+          kind: 'rect',
+          id: 'r2',
+          anchor: { x: 0, y: 0 },
+          width: 200,
+          height: 100,
+          fill: '#00ff00',
+          radius: 0
+        },
+        {
+          kind: 'text',
+          id: 't1',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 100, y: 100 } }],
+          text: 'hello',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 24 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#fff'
+        },
+        {
+          kind: 'rect',
+          id: 'r3',
+          anchor: { x: 0, y: 0 },
+          width: 300,
+          height: 150,
+          fill: '#0000ff',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    const keys = extractToolKeys(text)
+    expect(keys.length).toBeGreaterThan(0)
+    const counts = new Map<string, number>()
+    for (const k of keys) {
+      counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    const duplicates = [...counts.entries()].filter(([, c]) => c > 1)
+    expect(duplicates).toEqual([])
+  })
+
+  it('every built-in template has unique tool keys', () => {
+    const nonParticleFixtures = layerKindFixtures.filter(
+      f => !f.layers.some(l => l.kind === 'particles')
+    )
+    for (const fixture of nonParticleFixtures) {
+      const text = getSettingText(makeInput(fixture))
+      const keys = extractToolKeys(text)
+      const counts = new Map<string, number>()
+      for (const k of keys) {
+        counts.set(k, (counts.get(k) ?? 0) + 1)
+      }
+      const duplicates = [...counts.entries()].filter(([, c]) => c > 1)
+      expect(duplicates, `duplicate keys in ${fixture.id}`).toEqual([])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Security: Lua injection through param ids
+// ---------------------------------------------------------------------------
+
+describe('Lua injection defence in serialised .setting', () => {
+  /** The tool types that legitimately appear in a .setting constructor. */
+  const ALLOWLISTED_CALLS = new Set([
+    'MacroOperator',
+    'GroupOperator',
+    'Merge',
+    'sMerge',
+    'sRender',
+    'sRectangle',
+    'sEllipse',
+    'sPolygon',
+    'TextPlus',
+    'Transform',
+    'Background',
+    'BezierSpline',
+    'XYPath',
+    'InstanceInput',
+    'InstanceOutput',
+    'Input',
+    'StyledTextFollower'
+  ])
+
+  /** Recursively collect all CallExpression names from a luaparse AST. */
+  function collectCallExpressions(node: Record<string, unknown>): string[] {
+    const calls: string[] = []
+    if (node.type === 'CallExpression' && node.base) {
+      const base = node.base as Record<string, unknown>
+      if (base.type === 'MemberExpression' && base.base) {
+        const obj = base.base as Record<string, unknown>
+        const ident = base.identifier as Record<string, unknown>
+        calls.push(`${obj.name}.${ident.name}`)
+      } else if (base.type === 'Identifier') {
+        calls.push(base.name as string)
+      }
+    }
+    for (const val of Object.values(node)) {
+      if (Array.isArray(val)) {
+        for (const item of val) {
+          if (item && typeof item === 'object') {
+            calls.push(...collectCallExpressions(item as Record<string, unknown>))
+          }
+        }
+      } else if (val && typeof val === 'object') {
+        calls.push(...collectCallExpressions(val as Record<string, unknown>))
+      }
+    }
+    return calls
+  }
+
+  it('unsafe text param id produces no unexpected CallExpression in the AST', () => {
+    // Bypass the schema: call generateSetting directly with an injection payload
+    const injectionId = 'x = os.execute("x"), y'
+    const template: MotionTemplate = {
+      ...animBase('sec-lua-inject-text'),
+      params: {
+        [injectionId]: {
+          kind: 'text',
+          label: 'Injected',
+          maxLength: 40,
+          default: 'test',
+          required: false
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 1920, y: 1080 } }],
+          text: 'test',
+          param: injectionId,
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 48 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff'
+        }
+      ]
+    }
+
+    const text = getSettingText(makeInput(template))
+    const ast = parseSetting(text) as unknown as Record<string, unknown>
+    const calls = collectCallExpressions(ast)
+
+    // Every call must be an allowlisted tool constructor
+    const disallowed = calls.filter(c => !ALLOWLISTED_CALLS.has(c))
+    expect(disallowed).toEqual([])
+  })
+
+  it('unsafe colour param id produces no unexpected CallExpression in the AST', () => {
+    const injectionId = 'x = os.execute("x"), accent'
+    const template: MotionTemplate = {
+      ...animBase('sec-lua-inject-colour'),
+      params: {
+        [injectionId]: {
+          kind: 'colour',
+          label: 'Injected colour',
+          default: '#ff3366',
+          binds: ['layers[0]']
+        }
+      },
+      layers: [
+        {
+          kind: 'rect',
+          id: 'r',
+          anchor: { x: 0, y: 0 },
+          width: 200,
+          height: 100,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+
+    const text = getSettingText(makeInput(template))
+    const ast = parseSetting(text) as unknown as Record<string, unknown>
+    const calls = collectCallExpressions(ast)
+
+    const disallowed = calls.filter(c => !ALLOWLISTED_CALLS.has(c))
+    expect(disallowed).toEqual([])
+  })
+
+  it('all table keys in the AST are identifiers or bracketed strings', () => {
+    const injectionId = 'x = os.execute("x"), y'
+    const template: MotionTemplate = {
+      ...animBase('sec-lua-key-form'),
+      params: {
+        [injectionId]: {
+          kind: 'text',
+          label: 'Injected',
+          maxLength: 40,
+          default: 'test',
+          required: false
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 1920, y: 1080 } }],
+          text: 'test',
+          param: injectionId,
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 48 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff'
+        }
+      ]
+    }
+
+    const text = getSettingText(makeInput(template))
+    // Must parse as valid Lua (no syntax error from the injection)
+    expect(() => parseSetting(text)).not.toThrow()
   })
 })
