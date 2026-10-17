@@ -224,6 +224,10 @@ function staticInput(key: string, value: number | string): LuaEntry {
 /**
  * Add animated position for a shape tool (XOffset / YOffset in shape coords).
  * Replaces any static XOffset/YOffset already in `inputs`.
+ *
+ * centreOffsetX/Y convert position keyframes (anchor-aligned) to shape-centre
+ * coordinates: centre = position + offset. Pass (0, 0) when the layer's
+ * position already represents its centre (e.g. arc).
  */
 function addShapePositionAnimation(
   inputs: LuaEntry[],
@@ -231,17 +235,19 @@ function addShapePositionAnimation(
   w: number,
   h: number,
   fps: number,
-  tools: FusionTool[]
+  tools: FusionTool[],
+  centreOffsetX = 0,
+  centreOffsetY = 0
 ): void {
   if (!layer.position || layer.position.length < 2) return
   const xKfs = layer.position.map(kf => ({
     t: kf.t,
-    value: toShapeCoords(kf.value.x, kf.value.y, w, h).x,
+    value: toShapeCoords(kf.value.x + centreOffsetX, kf.value.y + centreOffsetY, w, h).x,
     ease: kf.ease
   }))
   const yKfs = layer.position.map(kf => ({
     t: kf.t,
-    value: toShapeCoords(kf.value.x, kf.value.y, w, h).y,
+    value: toShapeCoords(kf.value.x + centreOffsetX, kf.value.y + centreOffsetY, w, h).y,
     ease: kf.ease
   }))
   // Remove static offsets and replace with animated
@@ -626,12 +632,14 @@ function buildRectInputs(
   fps: number,
   tools: FusionTool[]
 ): LuaEntry[] {
-  const pos = toShapeCoords(
-    layer.position?.[0]?.value.x ?? layer.anchor.x,
-    layer.position?.[0]?.value.y ?? layer.anchor.y,
-    w,
-    h
-  )
+  // Evaluator convention: world = position - anchor + local.
+  // Rect local origin is top-left, so local centre = (width/2, height/2).
+  // Fusion sRectangle XOffset/YOffset is the shape centre.
+  const rawX = layer.position?.[0]?.value.x ?? layer.anchor.x
+  const rawY = layer.position?.[0]?.value.y ?? layer.anchor.y
+  const centreX = rawX - layer.anchor.x + layer.width / 2
+  const centreY = rawY - layer.anchor.y + layer.height / 2
+  const pos = toShapeCoords(centreX, centreY, w, h)
   const inputs: LuaEntry[] = [
     staticInput('Width', toFusionSize(layer.width, w)),
     staticInput('Height', toFusionSize(layer.height, w)),
@@ -658,8 +666,12 @@ function buildRectInputs(
     inputs.push(animatedNumberInput(layer.id, 'Height', scaledKfs, fps, tools))
   }
 
+  // Anchor-to-centre offset for animated position
+  const centreOffsetX = -layer.anchor.x + layer.width / 2
+  const centreOffsetY = -layer.anchor.y + layer.height / 2
+
   // Base animatable properties
-  addShapePositionAnimation(inputs, layer, w, h, fps, tools)
+  addShapePositionAnimation(inputs, layer, w, h, fps, tools, centreOffsetX, centreOffsetY)
   addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
@@ -672,12 +684,15 @@ function buildEllipseInputs(
   fps: number,
   tools: FusionTool[]
 ): LuaEntry[] {
-  const pos = toShapeCoords(
-    layer.position?.[0]?.value.x ?? layer.anchor.x,
-    layer.position?.[0]?.value.y ?? layer.anchor.y,
-    w,
-    h
-  )
+  // Evaluator convention: world = position - anchor + local.
+  // Ellipse local origin is the top-left of its bounding box,
+  // so local centre = (radiusX, radiusY).
+  // Fusion sEllipse XOffset/YOffset is the shape centre.
+  const rawX = layer.position?.[0]?.value.x ?? layer.anchor.x
+  const rawY = layer.position?.[0]?.value.y ?? layer.anchor.y
+  const centreX = rawX - layer.anchor.x + layer.radiusX
+  const centreY = rawY - layer.anchor.y + layer.radiusY
+  const pos = toShapeCoords(centreX, centreY, w, h)
   const inputs: LuaEntry[] = [
     staticInput('Width', toFusionSize(layer.radiusX * 2, w)),
     staticInput('Height', toFusionSize(layer.radiusY * 2, w)),
@@ -685,8 +700,12 @@ function buildEllipseInputs(
     staticInput('YOffset', pos.y)
   ]
 
+  // Anchor-to-centre offset for animated position
+  const centreOffsetX = -layer.anchor.x + layer.radiusX
+  const centreOffsetY = -layer.anchor.y + layer.radiusY
+
   // Base animatable properties
-  addShapePositionAnimation(inputs, layer, w, h, fps, tools)
+  addShapePositionAnimation(inputs, layer, w, h, fps, tools, centreOffsetX, centreOffsetY)
   addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
@@ -1398,10 +1417,19 @@ interface InstanceInputDef {
   targetSource: string
 }
 
+/** Deferred expression link: wire a secondary tool's fill input to a primary. */
+interface ExpressionLink {
+  toolName: string
+  inputName: string
+  sourceToolName: string
+  sourceInputName: string
+}
+
 function buildInstanceInputs(
   template: MotionTemplate,
   layers: PrimitiveLayer[],
-  textTools: FusionTool[]
+  textTools: FusionTool[],
+  expressionLinks: ExpressionLink[]
 ): InstanceInputDef[] {
   const inputs: InstanceInputDef[] = []
 
@@ -1432,8 +1460,15 @@ function buildInstanceInputs(
         }
       }
     } else if (paramDef.kind === 'colour') {
-      // Expose R, G, B channels
-      buildColourInstanceInputs(paramId, paramDef, layers, textTools, inputs)
+      // Expose R, G, B channels on the bound shape/text tool's fill inputs
+      buildColourInstanceInputs(
+        paramId,
+        paramDef,
+        template.layers as PrimitiveLayer[],
+        textTools,
+        inputs,
+        expressionLinks
+      )
     }
     // hold, number, numberList, image: not exposed
   }
@@ -1458,69 +1493,137 @@ function findTextLayerForParam(
   return null
 }
 
+/**
+ * Resolve a binds path (e.g. 'layers[0]', 'layers[1].children[2]') to a layer
+ * from the template's original layer tree. Returns the layer and its kind-based
+ * tool name, or null if the path is invalid.
+ */
+function resolveBind(
+  bindPath: string,
+  templateLayers: PrimitiveLayer[]
+): { layer: PrimitiveLayer; toolName: string; fillInputs: readonly string[] } | null {
+  // Parse layers[N] and optional .children[M] segments
+  const match = bindPath.match(/^layers\[(\d+)\](?:\.children\[(\d+)\])?$/)
+  if (!match) return null
+
+  const idx = parseInt(match[1], 10)
+  if (idx >= templateLayers.length) return null
+
+  let layer = templateLayers[idx]
+  if (match[2] !== undefined) {
+    if (layer.kind !== 'group') return null
+    const childIdx = parseInt(match[2], 10)
+    const group = layer as GroupLayer
+    if (childIdx >= group.children.length) return null
+    layer = group.children[childIdx] as PrimitiveLayer
+  }
+
+  if (layer.kind === 'text') {
+    return {
+      layer,
+      toolName: luaIdent(`${layer.id}_text`),
+      fillInputs: ['Red1', 'Green1', 'Blue1'] as const
+    }
+  }
+  // shape tools (rect, ellipse, arc, path)
+  return {
+    layer,
+    toolName: luaIdent(`${layer.id}_shape`),
+    fillInputs: ['Red', 'Green', 'Blue'] as const
+  }
+}
+
 function buildColourInstanceInputs(
   paramId: string,
   paramDef: ParamDef & { kind: 'colour' },
-  _layers: PrimitiveLayer[],
+  layers: PrimitiveLayer[],
   _textTools: FusionTool[],
-  inputs: InstanceInputDef[]
+  inputs: InstanceInputDef[],
+  expressionLinks: ExpressionLink[]
 ): void {
-  // Colour params bind to fills. We expose the background's RGB.
-  // For simplicity, use the first bound layer's shape tool.
-  const channels = ['Red', 'Green', 'Blue'] as const
-  for (const channel of channels) {
+  if (paramDef.binds.length === 0) return
+
+  // Resolve the bound layers and their tool names
+  const resolved = paramDef.binds
+    .map(path => resolveBind(path, layers))
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+
+  if (resolved.length === 0) return
+
+  const primary = resolved[0]
+
+  // Create InstanceInputs pointing at the first bound tool's fill channels
+  const channelLabels = ['Red', 'Green', 'Blue'] as const
+  for (let ci = 0; ci < 3; ci++) {
     inputs.push({
       entry: {
-        key: `${paramId}_${channel}`,
+        key: `${paramId}_${channelLabels[ci]}`,
         value: {
           call: 'InstanceInput',
           arg: [
-            { key: 'SourceOp', value: luaIdent(`${paramId}_colour_bg`) },
-            { key: 'Source', value: `TopLeft${channel}` },
-            { key: 'Name', value: `${paramDef.label} ${channel}` }
+            { key: 'SourceOp', value: primary.toolName },
+            { key: 'Source', value: primary.fillInputs[ci] },
+            { key: 'Name', value: `${paramDef.label} ${channelLabels[ci]}` }
           ]
         }
       },
-      targetTool: luaIdent(`${paramId}_colour_bg`),
-      targetSource: `TopLeft${channel}`
+      targetTool: primary.toolName,
+      targetSource: primary.fillInputs[ci]
     })
+  }
+
+  // Expression-link subsequent bound tools' fills to the primary
+  for (let i = 1; i < resolved.length; i++) {
+    const secondary = resolved[i]
+    for (let ci = 0; ci < 3; ci++) {
+      expressionLinks.push({
+        toolName: secondary.toolName,
+        inputName: secondary.fillInputs[ci],
+        sourceToolName: primary.toolName,
+        sourceInputName: primary.fillInputs[ci]
+      })
+    }
   }
 }
 
 // ---------------------------------------------------------------------------
-// Build colour Background tools for exposed colour params
+// Expression link application
 // ---------------------------------------------------------------------------
 
-function buildColourBackgrounds(
-  template: MotionTemplate,
-  values: Record<string, unknown>
-): FusionTool[] {
-  const tools: FusionTool[] = []
-  for (const [paramId, paramDef] of Object.entries(template.params)) {
-    if (paramDef.kind === 'colour') {
-      const colourVal =
-        typeof values[paramId] === 'string'
-          ? (values[paramId] as string)
-          : paramDef.default
-      const rgb = hexToRgb(colourVal)
-      tools.push({
-        name: luaIdent(`${paramId}_colour_bg`),
-        type: 'Background',
-        entries: [
-          {
-            key: 'Inputs',
-            value: [
-              staticInput('TopLeftRed', rgb.r),
-              staticInput('TopLeftGreen', rgb.g),
-              staticInput('TopLeftBlue', rgb.b),
-              staticInput('TopLeftAlpha', 1)
-            ]
-          }
+/**
+ * Apply deferred expression links to the tool list. Each link replaces the
+ * static fill input on the secondary tool with an expression that reads
+ * the primary tool's input at the current time.
+ */
+function applyExpressionLinks(tools: FusionTool[], links: ExpressionLink[]): void {
+  for (const link of links) {
+    const tool = tools.find(t => t.name === link.toolName)
+    if (!tool) continue
+    const inputsEntry = tool.entries.find(e => e.key === 'Inputs')
+    if (!inputsEntry || !Array.isArray(inputsEntry.value)) continue
+    const inputs = inputsEntry.value as LuaEntry[]
+
+    // Replace the static input with an expression-driven one
+    const idx = inputs.findIndex(e => e.key === link.inputName)
+    const expr =
+      `self.Comp:FindTool("${link.sourceToolName}")` +
+      `:GetInput("${link.sourceInputName}", self.Comp.CurrentTime)`
+    const exprInput: LuaEntry = {
+      key: link.inputName,
+      value: {
+        call: 'Input',
+        arg: [
+          { key: 'Value', value: 0 },
+          { key: 'Expression', value: expr }
         ]
-      })
+      }
+    }
+    if (idx >= 0) {
+      inputs[idx] = exprInput
+    } else {
+      inputs.push(exprInput)
     }
   }
-  return tools
 }
 
 // ---------------------------------------------------------------------------
@@ -1612,8 +1715,7 @@ function buildMergeChain(
   shapeTools: FusionTool[],
   textTools: FusionTool[],
   fallbackTools: FusionTool[],
-  transformTools: FusionTool[],
-  colourBgTools: FusionTool[]
+  transformTools: FusionTool[]
 ): FusionTool[] {
   const mergeTools: FusionTool[] = []
 
@@ -1638,7 +1740,6 @@ function buildMergeChain(
   for (const ft of fallbackTools) {
     if (ft.type === 'Background') imageOutputs.push(ft.name)
   }
-  for (const cb of colourBgTools) imageOutputs.push(cb.name)
   for (const tt of textTools) imageOutputs.push(tt.name)
 
   buildImageMergeChain(imageOutputs, mergeTools)
@@ -1698,23 +1799,29 @@ export function generateSetting(input: ExportInput): ExportResult {
     processLayer(layer, format, processed, notes, resolved.values)
   }
 
-  // Build colour background tools for exposed colour params
-  const colourBgTools = buildColourBackgrounds(template, resolved.values)
-
-  // Build instance inputs
+  // Build instance inputs (colour params bind to shape/text fills directly)
+  const expressionLinks: ExpressionLink[] = []
   const instanceInputs = buildInstanceInputs(
     template,
     resolved.layers,
-    processed.textTools
+    processed.textTools,
+    expressionLinks
   )
+
+  // Apply expression links for multi-bound colour params
+  const allProcessedTools = [
+    ...processed.shapeTools,
+    ...processed.textTools,
+    ...processed.fallbackTools
+  ]
+  applyExpressionLinks(allProcessedTools, expressionLinks)
 
   // Build merge chain
   const mergeTools = buildMergeChain(
     processed.shapeTools,
     processed.textTools,
     processed.fallbackTools,
-    processed.splineTools.filter(t => t.type === 'Transform'),
-    colourBgTools
+    processed.splineTools.filter(t => t.type === 'Transform')
   )
 
   // Find the final output tool
@@ -1722,8 +1829,7 @@ export function generateSetting(input: ExportInput): ExportResult {
     ...processed.shapeTools.map(t => t.name),
     ...processed.textTools.map(t => t.name),
     ...processed.fallbackTools.map(t => t.name),
-    ...mergeTools.map(t => t.name),
-    ...colourBgTools.map(t => t.name)
+    ...mergeTools.map(t => t.name)
   ]
   const lastMerge = mergeTools.filter(t => t.type === 'Merge').pop()
   const finalOutput =
@@ -1754,7 +1860,6 @@ export function generateSetting(input: ExportInput): ExportResult {
     ...processed.shapeTools,
     ...processed.textTools,
     ...processed.fallbackTools,
-    ...colourBgTools,
     ...processed.splineTools,
     ...mergeTools
   ]
