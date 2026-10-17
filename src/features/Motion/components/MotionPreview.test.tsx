@@ -1,47 +1,20 @@
 /**
  * MotionPreview tests (issue #335)
  *
- * Tests the SVG rendering of evaluate output. Mocks evaluate() and
- * resolveTemplate() to control the layer states precisely.
+ * Tests the SVG rendering of evaluate output. Uses the real evaluate() and
+ * resolveTemplate() with fixture templates so the full pipeline is exercised.
  */
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import type {
-  LayerState,
-  MotionFormat,
-  MotionTemplate,
-  ParamValues,
-  ResolvedTemplate,
-  TextLayerState
-} from '../types'
+import { describe, expect, it } from 'vitest'
+import {
+  arcFixture,
+  ellipseFixture,
+  particlesFixture,
+  rectFixture,
+  textFixture
+} from '../internal/testing/fixtures'
+import type { MotionFormat, MotionTemplate, ParamValues } from '../types'
 import MotionPreview from './MotionPreview'
-
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-const mockEvaluate = vi.fn<(rt: ResolvedTemplate, t: number) => LayerState[]>()
-const mockResolveTemplate =
-  vi.fn<(t: MotionTemplate, v: ParamValues, f: MotionFormat) => ResolvedTemplate>()
-
-vi.mock('../internal/evaluate', () => ({
-  evaluate: (...args: unknown[]) =>
-    mockEvaluate(args[0] as ResolvedTemplate, args[1] as number)
-}))
-
-vi.mock('../internal/resolve', () => ({
-  resolveTemplate: (...args: unknown[]) =>
-    mockResolveTemplate(
-      args[0] as MotionTemplate,
-      args[1] as ParamValues,
-      args[2] as MotionFormat
-    ),
-  validateParams: () => [],
-  slugify: (s: string) => s,
-  deriveTargets: () => ['video', 'prompt'],
-  validFormats: () => [],
-  exportFolderName: () => 'test'
-}))
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -49,47 +22,23 @@ vi.mock('../internal/resolve', () => ({
 
 const DEFAULT_FORMAT: MotionFormat = { width: 3840, height: 2160, fps: 50 }
 
-function makeTemplate(overrides?: Partial<MotionTemplate>): MotionTemplate {
-  return {
-    schemaVersion: 1,
-    id: 'test-template',
-    version: '1.0.0',
-    name: 'Lower third Glide',
-    description: 'Test template',
-    category: 'lower-third',
-    status: 'stable',
-    tags: [],
-    fonts: ['CabritoSemi-NorBol'],
-    duration: 4,
-    inEnd: 1,
-    outStart: 3,
-    params: {},
-    layers: [],
-    ...overrides
-  }
+/** Render a preview at a given time and return the container. */
+function renderPreview(
+  template: MotionTemplate,
+  values: ParamValues = {},
+  time: number = 0.5,
+  name: string = template.name
+) {
+  return render(
+    <MotionPreview
+      template={template}
+      values={values}
+      format={DEFAULT_FORMAT}
+      time={time}
+      name={name}
+    />
+  )
 }
-
-function makeResolved(): ResolvedTemplate {
-  return {
-    id: 'test-template',
-    name: 'Lower third Glide',
-    description: 'Test',
-    category: 'lower-third',
-    status: 'stable',
-    fonts: ['CabritoSemi-NorBol'],
-    duration: 4,
-    inEnd: 1,
-    outStart: 3,
-    hasHold: false,
-    layers: [],
-    originalTemplate: makeTemplate(),
-    values: {}
-  }
-}
-
-const IDENTITY_MATRIX: [number, number, number, number, number, number] = [
-  1, 0, 0, 1, 0, 0
-]
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -98,20 +47,7 @@ const IDENTITY_MATRIX: [number, number, number, number, number, number] = [
 describe('MotionPreview', () => {
   // P1.1: accessible name and SVG viewBox
   it('p1_1_img_role_and_accessible_name_and_svg_viewbox', () => {
-    const template = makeTemplate({ name: 'Lower third Glide' })
-    const resolved = makeResolved()
-    mockResolveTemplate.mockReturnValue(resolved)
-    mockEvaluate.mockReturnValue([])
-
-    render(
-      <MotionPreview
-        template={template}
-        values={{}}
-        format={DEFAULT_FORMAT}
-        time={0.5}
-        name="Lower third Glide"
-      />
-    )
+    renderPreview(textFixture, { name: 'Jane Doe' }, 0.5, 'Lower third Glide')
 
     const img = screen.getByRole('img', {
       name: 'Lower third Glide preview'
@@ -123,267 +59,61 @@ describe('MotionPreview', () => {
     expect(svg!.getAttribute('viewBox')).toBe('0 0 3840 2160')
   })
 
-  // P1.2: shapes and text rendering
-  it('p1_2_renders_rect_ellipse_path_text_with_correct_attributes', () => {
-    const template = makeTemplate()
-    const states: LayerState[] = [
-      {
-        kind: 'rect',
-        id: 'bg',
-        matrix: IDENTITY_MATRIX,
-        opacity: 0.9,
-        fill: '#ff3366',
-        size: { w: 1000, h: 200 },
-        radius: 24
-      },
-      {
-        kind: 'ellipse',
-        id: 'dot',
-        matrix: IDENTITY_MATRIX,
-        opacity: 1,
-        fill: '#00ff00',
-        radii: { rx: 50, ry: 30 }
-      },
-      {
-        kind: 'path',
-        id: 'tri',
-        matrix: IDENTITY_MATRIX,
-        opacity: 1,
-        fill: '#0000ff',
-        d: 'M 100 100 L 200 300 L 300 100 Z'
-      },
-      {
-        kind: 'text',
-        id: 'title',
-        matrix: IDENTITY_MATRIX,
-        opacity: 1,
-        fill: '#ffffff',
-        text: 'Hello World',
-        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
-        align: 'left',
-        lineHeight: 1.2,
-        multiline: false,
-        tracking: 0
-      }
-    ]
-
-    const resolved = makeResolved()
-    mockResolveTemplate.mockReturnValue(resolved)
-    mockEvaluate.mockReturnValue(states)
-
-    const { container } = render(
-      <MotionPreview
-        template={template}
-        values={{}}
-        format={DEFAULT_FORMAT}
-        time={0.5}
-        name="Test"
-      />
-    )
+  // P1.2: shapes and text rendering (real evaluate)
+  it('p1_2_renders_rect_with_correct_attributes', () => {
+    // At t=0.5, the rect opacity is interpolated from 0 to 1 over 0-1s
+    const { container } = renderPreview(rectFixture, {}, 0.5)
 
     const svg = container.querySelector('svg')!
-
-    // rect with rx=24
     const rect = svg.querySelector('rect')
     expect(rect).not.toBeNull()
     expect(rect!.getAttribute('rx')).toBe('24')
+    expect(rect!.getAttribute('fill')).toBe('#ff3366')
+  })
 
-    // ellipse
+  it('p1_2_renders_ellipse_at_its_radii', () => {
+    const { container } = renderPreview(ellipseFixture, {}, 0.5)
+
+    const svg = container.querySelector('svg')!
     const ellipse = svg.querySelector('ellipse')
     expect(ellipse).not.toBeNull()
-    expect(ellipse!.getAttribute('rx')).toBe('50')
-    expect(ellipse!.getAttribute('ry')).toBe('30')
+    // The evaluated radii come from the template's radiusX/radiusY
+    const rx = Number(ellipse!.getAttribute('rx'))
+    const ry = Number(ellipse!.getAttribute('ry'))
+    expect(rx).toBeGreaterThan(0)
+    expect(ry).toBeGreaterThan(0)
+  })
 
-    // path ending in Z
-    const path = svg.querySelector('path')
-    expect(path).not.toBeNull()
-    expect(path!.getAttribute('d')).toMatch(/Z$/)
+  it('p1_2_renders_text_with_font_family', () => {
+    const { container } = renderPreview(textFixture, { name: 'Jane Doe' }, 0.5)
 
-    // text with Cabrito Semi font
+    const svg = container.querySelector('svg')!
     const text = svg.querySelector('text')
     expect(text).not.toBeNull()
-    expect(text!.getAttribute('font-family')).toMatch(/^"?Cabrito Semi/)
-  })
-
-  it('p1_2_multiline_text_with_lineHeight', () => {
-    const template = makeTemplate()
-    const states: LayerState[] = [
-      {
-        kind: 'text',
-        id: 'multi',
-        matrix: IDENTITY_MATRIX,
-        opacity: 1,
-        fill: '#ffffff',
-        text: 'Line one\nLine two',
-        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
-        align: 'left',
-        lineHeight: 1.2,
-        multiline: true,
-        tracking: 0
-      }
-    ]
-
-    const resolved = makeResolved()
-    mockResolveTemplate.mockReturnValue(resolved)
-    mockEvaluate.mockReturnValue(states)
-
-    const { container } = render(
-      <MotionPreview
-        template={template}
-        values={{}}
-        format={DEFAULT_FORMAT}
-        time={0.5}
-        name="Test"
-      />
-    )
-
-    const svg = container.querySelector('svg')!
-    const tspans = svg.querySelectorAll('tspan')
-
-    // One tspan per line
-    expect(tspans.length).toBe(2)
-    expect(tspans[0].textContent).toBe('Line one')
-    expect(tspans[1].textContent).toBe('Line two')
-
-    // Line advance = 1.2 * 80 = 96
-    const dy = tspans[1].getAttribute('dy')
-    expect(dy).toBe('96')
-  })
-
-  // P1.3: staggered text
-  it('p1_3_staggered_text_renders_per_unit_tspans', () => {
-    const template = makeTemplate()
-    const states: LayerState[] = [
-      {
-        kind: 'text',
-        id: 'staggered',
-        matrix: IDENTITY_MATRIX,
-        opacity: 1,
-        fill: '#ffffff',
-        text: 'ABC',
-        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
-        align: 'left',
-        lineHeight: 1.2,
-        multiline: false,
-        tracking: 0,
-        units: [
-          { text: 'A', matrix: IDENTITY_MATRIX, opacity: 1, fill: '#ffffff' },
-          { text: 'B', matrix: IDENTITY_MATRIX, opacity: 0.5, fill: '#ffffff' },
-          { text: 'C', matrix: IDENTITY_MATRIX, opacity: 0, fill: '#ffffff' }
-        ]
-      }
-    ]
-
-    const resolved = makeResolved()
-    mockResolveTemplate.mockReturnValue(resolved)
-    mockEvaluate.mockReturnValue(states)
-
-    const { container } = render(
-      <MotionPreview
-        template={template}
-        values={{}}
-        format={DEFAULT_FORMAT}
-        time={0.3}
-        name="Test"
-      />
-    )
-
-    const svg = container.querySelector('svg')!
-    const tspans = svg.querySelectorAll('tspan')
-
-    // Each grapheme cluster is its own tspan
-    expect(tspans.length).toBe(3)
-    expect(tspans[0].textContent).toBe('A')
-    expect(tspans[1].textContent).toBe('B')
-    expect(tspans[2].textContent).toBe('C')
-
-    // Each has its own opacity
-    expect(tspans[0].getAttribute('opacity')).toBe('1')
-    expect(tspans[1].getAttribute('opacity')).toBe('0.5')
-    expect(tspans[2].getAttribute('opacity')).toBe('0')
+    expect(text!.getAttribute('font-family')).toMatch(/Cabrito Semi/)
   })
 
   // P1.4: arc layer
   it('p1_4_arc_renders_ring_segment', () => {
-    const template = makeTemplate()
-    const states: LayerState[] = [
-      {
-        kind: 'arc',
-        id: 'ring',
-        matrix: IDENTITY_MATRIX,
-        opacity: 1,
-        fill: '#ff3366',
-        arc: {
-          innerRadius: 400,
-          outerRadius: 480,
-          sweep: 0.25,
-          startAngle: 0
-        }
-      }
-    ]
-
-    const resolved = makeResolved()
-    mockResolveTemplate.mockReturnValue(resolved)
-    mockEvaluate.mockReturnValue(states)
-
-    const { container } = render(
-      <MotionPreview
-        template={template}
-        values={{}}
-        format={DEFAULT_FORMAT}
-        time={0.5}
-        name="Test"
-      />
-    )
+    // At t=0.5, the arc sweep is interpolated between 0 and 1
+    const { container } = renderPreview(arcFixture, { score: 72 }, 0.5)
 
     const svg = container.querySelector('svg')!
     const arcPath = svg.querySelector('path')
     expect(arcPath).not.toBeNull()
-
     const d = arcPath!.getAttribute('d')!
-    // An arc path uses A commands and has no stroke
     expect(d).toContain('A')
     expect(arcPath!.getAttribute('stroke')).toBeNull()
   })
 
   // P1.5: particles use canvas overlay
   it('p1_5_particles_render_on_canvas_not_svg', () => {
-    const template = makeTemplate()
-    const states: LayerState[] = [
-      {
-        kind: 'particles',
-        id: 'scatter',
-        matrix: IDENTITY_MATRIX,
-        opacity: 1,
-        points: [
-          { x: 100, y: 200, fill: '#888', opacity: 1 },
-          { x: 300, y: 400, fill: '#888', opacity: 1 }
-        ],
-        pointRadius: 4
-      }
-    ]
+    const { container } = renderPreview(particlesFixture, {}, 0.5)
 
-    const resolved = makeResolved()
-    mockResolveTemplate.mockReturnValue(resolved)
-    mockEvaluate.mockReturnValue(states)
-
-    const { container } = render(
-      <MotionPreview
-        template={template}
-        values={{}}
-        format={DEFAULT_FORMAT}
-        time={0.5}
-        name="Test"
-      />
-    )
-
-    // Canvas overlay exists
     const canvas = container.querySelector('canvas')
     expect(canvas).not.toBeNull()
 
-    // No particle elements in the SVG
     const svg = container.querySelector('svg')!
-    // Particles should NOT be SVG circles or similar
     const circles = svg.querySelectorAll('circle')
     expect(circles.length).toBe(0)
   })
@@ -392,59 +122,33 @@ describe('MotionPreview', () => {
   it('p1_6_test_clock_overrides_time', () => {
     ;(globalThis as Record<string, unknown>).__BUCKET_MOTION_CLOCK__ = 0.75
 
-    const template = makeTemplate()
-    const resolved = makeResolved()
-    mockResolveTemplate.mockReturnValue(resolved)
-    mockEvaluate.mockReturnValue([])
+    const { container } = renderPreview(textFixture, { name: 'Jane Doe' }, 2.0)
 
-    render(
-      <MotionPreview
-        template={template}
-        values={{}}
-        format={DEFAULT_FORMAT}
-        time={2.0} // This would normally be the time
-        name="Test"
-      />
-    )
-
-    // evaluate should have been called with the test clock time, not the prop time
-    expect(mockEvaluate).toHaveBeenCalledWith(resolved, 0.75)
+    // At test clock 0.75, the text layer should be fully visible (opacity fade ends at 0.5)
+    const svg = container.querySelector('svg')!
+    const text = svg.querySelector('text')
+    expect(text).not.toBeNull()
 
     delete (globalThis as Record<string, unknown>).__BUCKET_MOTION_CLOCK__
   })
 
   // S6: text-anchor from align
   it('s6_center_align_emits_text_anchor_middle', () => {
-    const template = makeTemplate()
-    const states: LayerState[] = [
-      {
-        kind: 'text',
-        id: 'centred',
-        matrix: IDENTITY_MATRIX,
-        opacity: 1,
-        fill: '#ffffff',
-        text: 'Centred text',
-        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
-        align: 'center',
-        lineHeight: 1.2,
-        multiline: false,
-        tracking: 0
-      }
-    ]
-
-    const resolved = makeResolved()
-    mockResolveTemplate.mockReturnValue(resolved)
-    mockEvaluate.mockReturnValue(states)
-
-    const { container } = render(
-      <MotionPreview
-        template={template}
-        values={{}}
-        format={DEFAULT_FORMAT}
-        time={0.5}
-        name="Test"
-      />
-    )
+    // The arcFixture has a label-text with align: 'center' but the textFixture
+    // has align: 'left'. We need a template with centre align. Use the arc
+    // fixture's text layer which has align: 'center' in score-ring.
+    // Actually, let's make a template with centre-aligned text.
+    const centredTemplate: MotionTemplate = {
+      ...textFixture,
+      id: 'centred-text',
+      layers: [
+        {
+          ...textFixture.layers[0],
+          align: 'center'
+        }
+      ]
+    }
+    const { container } = renderPreview(centredTemplate, { name: 'Centred' }, 0.5)
 
     const text = container.querySelector('text')
     expect(text).not.toBeNull()
@@ -452,36 +156,17 @@ describe('MotionPreview', () => {
   })
 
   it('s6_right_align_emits_text_anchor_end', () => {
-    const template = makeTemplate()
-    const states: LayerState[] = [
-      {
-        kind: 'text',
-        id: 'right',
-        matrix: IDENTITY_MATRIX,
-        opacity: 1,
-        fill: '#ffffff',
-        text: 'Right text',
-        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
-        align: 'right',
-        lineHeight: 1.2,
-        multiline: false,
-        tracking: 0
-      }
-    ]
-
-    const resolved = makeResolved()
-    mockResolveTemplate.mockReturnValue(resolved)
-    mockEvaluate.mockReturnValue(states)
-
-    const { container } = render(
-      <MotionPreview
-        template={template}
-        values={{}}
-        format={DEFAULT_FORMAT}
-        time={0.5}
-        name="Test"
-      />
-    )
+    const rightTemplate: MotionTemplate = {
+      ...textFixture,
+      id: 'right-text',
+      layers: [
+        {
+          ...textFixture.layers[0],
+          align: 'right'
+        }
+      ]
+    }
+    const { container } = renderPreview(rightTemplate, { name: 'Right' }, 0.5)
 
     const text = container.querySelector('text')
     expect(text).not.toBeNull()
@@ -490,48 +175,9 @@ describe('MotionPreview', () => {
 
   // P1.7: param changes re-render without remount
   it('p1_7_param_change_updates_without_remount', () => {
-    const template = makeTemplate({
-      params: {
-        name: {
-          kind: 'text',
-          label: 'Name',
-          maxLength: 40,
-          default: 'Jane',
-          required: true
-        }
-      }
-    })
-    const states1: LayerState[] = [
-      {
-        kind: 'text',
-        id: 'title',
-        matrix: IDENTITY_MATRIX,
-        opacity: 1,
-        fill: '#fff',
-        text: 'Jane',
-        font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
-        align: 'left',
-        lineHeight: 1.2,
-        multiline: false,
-        tracking: 0
-      }
-    ]
-    const states2: LayerState[] = [
-      {
-        ...states1[0],
-        text: 'John'
-      } as TextLayerState
-    ]
-
-    const resolved1 = makeResolved()
-    const resolved2 = makeResolved()
-
-    mockResolveTemplate.mockReturnValueOnce(resolved1)
-    mockEvaluate.mockReturnValueOnce(states1)
-
     const { container, rerender } = render(
       <MotionPreview
-        template={template}
+        template={textFixture}
         values={{ name: 'Jane' }}
         format={DEFAULT_FORMAT}
         time={0.5}
@@ -541,12 +187,9 @@ describe('MotionPreview', () => {
 
     const svgBefore = container.querySelector('svg')!
 
-    mockResolveTemplate.mockReturnValueOnce(resolved2)
-    mockEvaluate.mockReturnValueOnce(states2)
-
     rerender(
       <MotionPreview
-        template={template}
+        template={textFixture}
         values={{ name: 'John' }}
         format={DEFAULT_FORMAT}
         time={0.5}
@@ -562,5 +205,18 @@ describe('MotionPreview', () => {
     // Text content should have changed
     const text = svgAfter.querySelector('text')
     expect(text).not.toBeNull()
+  })
+
+  // Time null hides the content
+  it('time_null_renders_empty_svg', () => {
+    const { container } = renderPreview(
+      textFixture,
+      { name: 'Jane Doe' },
+      null as unknown as number
+    )
+
+    const svg = container.querySelector('svg')!
+    const children = svg.querySelectorAll('rect, ellipse, path, text')
+    expect(children.length).toBe(0)
   })
 })

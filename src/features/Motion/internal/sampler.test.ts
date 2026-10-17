@@ -1,7 +1,7 @@
 /**
  * Sampler tests (issue #332)
  *
- * Behaviours S1.1 - S1.5, plus checkAlpha (M2.6) and luminance-weighted density
+ * Behaviours S1.1 - S1.5, plus checkAlpha and luminance-weighted density
  */
 import { describe, expect, it } from 'vitest'
 import { checkAlpha, samplePoints } from './sampler'
@@ -189,7 +189,7 @@ describe('S1.5: fully transparent image', () => {
 })
 
 // ---------------------------------------------------------------------------
-// checkAlpha (M2.6)
+// checkAlpha
 // ---------------------------------------------------------------------------
 
 describe('checkAlpha', () => {
