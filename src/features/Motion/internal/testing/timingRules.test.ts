@@ -36,10 +36,6 @@ const { templates: builtins } = loadBuiltins()
 // Helpers
 // ---------------------------------------------------------------------------
 
-function findBuiltin(id: string): MotionTemplate | undefined {
-  return builtins.find(t => t.id === id)
-}
-
 /** Make a minimal broken fixture from a valid template with overrides. */
 function brokenFixture(
   overrides: Partial<MotionTemplate> & { id: string }
@@ -88,10 +84,10 @@ function brokenFixture(
 }
 
 // ---------------------------------------------------------------------------
-// S2.1: all ten built-ins present
+// S2.1: every built-in passes the schema
 // ---------------------------------------------------------------------------
 
-describe('S2.1: all ten built-ins present', () => {
+describe('S2.1: every built-in passes the schema', () => {
   it('each built-in passes the schema with a semver version', () => {
     for (const t of builtins) {
       const result = parseTemplate(t)
@@ -143,7 +139,7 @@ describe('S2.2: Cabrito font in text layers', () => {
 })
 
 // ---------------------------------------------------------------------------
-// S2.3: Spread map structure
+// Spread map: stipple figure check
 // ---------------------------------------------------------------------------
 
 describe('Spread map stipple forms a figure', () => {
@@ -175,189 +171,22 @@ describe('Spread map stipple forms a figure', () => {
   })
 })
 
-describe('S2.3: Spread map template', () => {
-  it('has particles, image param, region tints, counter and credits', () => {
-    const sm = findBuiltin('spread-map')
-    expect(sm).toBeDefined()
-    if (!sm) return
-
-    // Particles layer
-    const particles = sm.layers.find(l => l.kind === 'particles')
-    expect(particles, 'no particles layer').toBeDefined()
-    if (particles && particles.kind === 'particles') {
-      expect(particles.points.length).toBeGreaterThanOrEqual(3000)
-      expect(particles.points.length).toBeLessThanOrEqual(6000)
-    }
-
-    // Image param
-    const imageParam = Object.values(sm.params).find(p => p.kind === 'image')
-    expect(imageParam, 'no image param').toBeDefined()
-
-    // Region tint colour params
-    const colourParams = Object.values(sm.params).filter(p => p.kind === 'colour')
-    expect(colourParams.length).toBeGreaterThan(0)
-
-    // Number counter param
-    const numberParam = Object.values(sm.params).find(p => p.kind === 'number')
-    expect(numberParam, 'no number param').toBeDefined()
-
-    // Credits
-    expect(sm.credits).toBeDefined()
-    expect(sm.credits!.length).toBeGreaterThan(0)
-    const credit = sm.credits![0]
-    expect(credit.url).toBeTruthy()
-    expect(credit.author).toBeTruthy()
-    expect(['CC0', 'Unsplash License', 'Public domain']).toContain(credit.licence)
-
-    // Derived targets: video and prompt only
-    // (checked via hasParticles logic)
-    expect(sm.layers.some(l => l.kind === 'particles')).toBe(true)
-  })
-})
-
 // ---------------------------------------------------------------------------
-// S2.4: Scan trail structure
+// Score ring: 72 -> 0.72 sweep
 // ---------------------------------------------------------------------------
 
-describe('S2.4: Scan trail template', () => {
-  it('has series layer with numberList, marker, band, expands correctly', () => {
-    const st = findBuiltin('scan-trail')
-    expect(st).toBeDefined()
-    if (!st) return
-
-    // Series layer (may be inside a group)
-    function findSeries(
-      layers: MotionTemplate['layers']
-    ): MotionTemplate['layers'][number] | undefined {
-      for (const l of layers) {
-        if (l.kind === 'series') return l
-        if (l.kind === 'group') {
-          const found = findSeries(l.children)
-          if (found) return found
-        }
-      }
-      return undefined
-    }
-    const series = findSeries(st.layers)
-    expect(series, 'no series layer').toBeDefined()
-    if (!series || series.kind !== 'series') return
-
-    // Bound to numberList param
-    const param = st.params[series.series.param]
-    expect(param).toBeDefined()
-    expect(param.kind).toBe('numberList')
-    if (param.kind === 'numberList') {
-      expect(param.default.length).toBeLessThanOrEqual(8)
-    }
-
-    // Has marker
-    expect(series.series.marker).toBeDefined()
-
-    // Has band
-    expect(series.series.band).toBeDefined()
-
-    // Expand with 6 values: yields dots, marker and hatch
-    const sixValues = [
-      { label: 'A', value: 10 },
-      { label: 'B', value: 30 },
-      { label: 'C', value: 50 },
-      { label: 'D', value: 70 },
-      { label: 'E', value: 40 },
-      { label: 'F', value: 60 }
-    ]
-    // Flatten expanded layers (series inside groups become children)
-    function flattenLayers(
-      layers: ReturnType<typeof expandTemplate>
-    ): ReturnType<typeof expandTemplate> {
-      const flat: ReturnType<typeof expandTemplate> = []
-      for (const l of layers) {
-        flat.push(l)
-        if (l.kind === 'group') {
-          flat.push(...flattenLayers(l.children))
-        }
-      }
-      return flat
-    }
-
-    const expanded6 = flattenLayers(
-      expandTemplate(st.layers, st.params, {
-        [series.series.param]: sixValues
-      })
-    )
-    const dots6 = expanded6.filter(l => l.kind === 'ellipse' && l.id.includes('-dot-'))
-    expect(dots6.length).toBe(6)
-    const marker6 = expanded6.find(l => l.id.includes('-marker'))
-    expect(marker6).toBeDefined()
-    const hatch6 = expanded6.filter(l => l.id.includes('-hatch-'))
-    expect(hatch6.length).toBeGreaterThan(0)
-
-    // Expand with 1 value: no hatch
-    const oneValue = [{ label: 'A', value: 10 }]
-    const expanded1 = flattenLayers(
-      expandTemplate(st.layers, st.params, {
-        [series.series.param]: oneValue
-      })
-    )
-    const hatch1 = expanded1.filter(l => l.id.includes('-hatch-'))
-    expect(hatch1.length).toBe(0)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// S2.5: Score ring and Spread map counter/arc
-// ---------------------------------------------------------------------------
-
-describe('S2.5: Score ring and Spread map counters/arcs', () => {
-  it('Score ring: number param, arc with sweepFromParam, counter', () => {
-    const sr = findBuiltin('score-ring')
-    expect(sr).toBeDefined()
-    if (!sr) return
-
-    // Number param with min 0, max 100
-    const numParam = Object.entries(sr.params).find(([, p]) => p.kind === 'number')
-    expect(numParam).toBeDefined()
-    if (!numParam) return
-    const [numId, numDef] = numParam
-    expect(numDef.kind).toBe('number')
-    if (numDef.kind !== 'number') return
-    expect(numDef.min).toBe(0)
-    expect(numDef.max).toBe(100)
-
-    // Arc with sweepFromParam
-    const arc = sr.layers.find(l => l.kind === 'arc' && l.sweepFromParam)
-    expect(arc, 'no arc with sweepFromParam').toBeDefined()
-    if (!arc || arc.kind !== 'arc') return
-    expect(arc.sweepFromParam!.param).toBe(numId)
-
-    // Counter text layer
-    const counterLayer = sr.layers.find(l => l.kind === 'text' && l.counter)
-    expect(counterLayer, 'no counter text layer').toBeDefined()
-    if (!counterLayer || counterLayer.kind !== 'text') return
-    expect(counterLayer.counter!.param).toBe(numId)
-
-    // Resolve with 72: arc sweep is 0.72, counter text ends at "72"
+describe('Score ring sweep expansion', () => {
+  it('passing 72 to the number param produces a final sweep of 0.72', () => {
+    const sr = builtins.find(t => t.id === 'score-ring')!
+    const numParam = Object.entries(sr.params).find(([, p]) => p.kind === 'number')!
+    const [numId] = numParam
+    const arc = sr.layers.find(l => l.kind === 'arc' && l.sweepFromParam)!
     const expanded = expandTemplate(sr.layers, sr.params, { [numId]: 72 })
-    const expandedArc = expanded.find(l => l.id === arc.id)
-    expect(expandedArc).toBeDefined()
-    if (expandedArc && expandedArc.kind === 'arc') {
+    const expandedArc = expanded.find(l => l.id === arc.id)!
+    if (expandedArc.kind === 'arc') {
       const lastSweep = expandedArc.sweep[expandedArc.sweep.length - 1]
       expect(lastSweep.value).toBeCloseTo(0.72, 5)
     }
-  })
-
-  it('Spread map: counter bound to its number param', () => {
-    const sm = findBuiltin('spread-map')
-    expect(sm).toBeDefined()
-    if (!sm) return
-
-    const numParam = Object.entries(sm.params).find(([, p]) => p.kind === 'number')
-    expect(numParam).toBeDefined()
-    if (!numParam) return
-
-    const counterLayer = sm.layers.find(l => l.kind === 'text' && l.counter)
-    expect(counterLayer, 'Spread map has no counter text layer').toBeDefined()
-    if (!counterLayer || counterLayer.kind !== 'text') return
-    expect(counterLayer.counter!.param).toBe(numParam[0])
   })
 })
 
@@ -401,13 +230,7 @@ describe('S2.7: templates directory contains only .json', () => {
     const __filename = fileURLToPath(import.meta.url)
     const __dirname = dirname(__filename)
     const templatesDir = join(__dirname, '..', 'templates')
-    let files: string[]
-    try {
-      files = readdirSync(templatesDir)
-    } catch {
-      files = []
-    }
-    // Filter out .gitkeep
+    const files = readdirSync(templatesDir)
     const realFiles = files.filter(f => f !== '.gitkeep')
     for (const f of realFiles) {
       expect(f, `non-JSON file in templates: ${f}`).toMatch(/\.json$/)

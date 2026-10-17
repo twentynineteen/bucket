@@ -418,12 +418,21 @@ src-tauri/         motion/encoder.rs: ffmpeg stdin pipe for .mov
 
 1. Add the interface in `types.ts` and the union member in `Layer`.
 2. Add the Zod branch in `schema.ts` (the discriminatedUnion).
-3. Handle it in `resolve.ts` (`scaleLayer`, `snapLayer`, `applyHoldShift`).
-4. Add a case in `evaluate.ts` `walkLayers` (the `assertNever` default will
+3. If the kind carries animated fields, add them to `KEYFRAME_TRACK_FIELDS`
+   in `schema.ts` (the `satisfies` will not compile until you do).
+4. If the kind carries a bindable `fill`, add it to `FILL_BEARING_KINDS`
+   in `schema.ts`.
+5. Handle it in `resolve.ts` (`scaleLayer`, `snapLayer`, `applyHoldShift`,
+   `checkCollapsingKeyframes`).
+6. Add a case in `evaluate.ts` `walkLayers` (the `assertNever` default will
    not compile until you do).
-5. Add it to each exporter (`ae/generateJsx.ts`, `fusion/generateSetting.ts`,
+7. Add it to each exporter (`ae/generateJsx.ts`, `fusion/generateSetting.ts`,
    `prompt.ts`, `frameRenderer.ts`, `MotionPreview.tsx`).
-6. Add a fixture in `testing/fixtures.ts` and a test in `evaluate.test.ts`.
+8. If it uses colour binds, ensure `bindPath.ts` can resolve paths to it.
+9. If it is not a particles layer, ensure it does not paint after a
+   particles layer (the `validateParticlesLast` check walks the flattened
+   tree; see `layers.ts` for the `hasParticles` walker).
+10. Add a fixture in `testing/fixtures.ts` and a test in `evaluate.test.ts`.
 
 **How to add a param type:**
 

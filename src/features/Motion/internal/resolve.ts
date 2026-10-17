@@ -27,6 +27,7 @@ import type {
   SeriesLayer,
   TextLayer
 } from '../types'
+import { parseBindPath } from './bindPath'
 import { expandTemplate } from './expand'
 import { hasParticles } from './layers'
 
@@ -202,7 +203,7 @@ function applyTextValues(
 }
 
 // ---------------------------------------------------------------------------
-// Stagger delay clamping
+// Stagger delay quantisation
 // ---------------------------------------------------------------------------
 
 /**
@@ -216,41 +217,6 @@ function graphemeCount(text: string): number {
   }
   return Array.from(text).length
 }
-
-/**
- * Clamp stagger delays so the total stagger fits the 40% entrance budget
- * for the actual (resolved) text content.
- *
- * effectiveDelay = min(templateDelay, 0.4 * inEnd / max(1, charCount - 1))
- */
-function clampStaggerDelays(layers: Layer[], inEnd: number): Layer[] {
-  if (inEnd <= 0) return layers
-  const budget = inEnd * 0.4
-
-  return layers.map(layer => {
-    if (layer.kind === 'group') {
-      return {
-        ...layer,
-        children: clampStaggerDelays(layer.children, inEnd)
-      }
-    }
-    if (layer.kind === 'text' && layer.stagger && layer.stagger.delay > 0) {
-      const charCount = graphemeCount(layer.text)
-      const maxDelay = budget / Math.max(1, charCount - 1)
-      if (layer.stagger.delay > maxDelay) {
-        return {
-          ...layer,
-          stagger: { delay: maxDelay }
-        }
-      }
-    }
-    return layer
-  })
-}
-
-// ---------------------------------------------------------------------------
-// Stagger delay quantisation
-// ---------------------------------------------------------------------------
 
 /**
  * Quantise stagger delays to whole frames at the chosen fps, clamped so the
@@ -277,13 +243,15 @@ function quantiseStaggerDelays(layers: Layer[], fps: number, inEnd: number): Lay
     if (layer.kind === 'text' && layer.stagger && layer.stagger.delay > 0) {
       const charCount = graphemeCount(layer.text)
       const n = Math.max(1, charCount - 1)
-      // Maximum whole frames that keeps (n-1)*delay within the budget
+      // Maximum whole frames that keeps n * delay within the budget.
+      // n is charCount - 1 (the number of inter-character gaps).
       // The epsilon stops float noise (0.4 * 0.7 * 25 / 7 = 0.9999...) from
-      // dropping an exact fit to zero frames
+      // dropping an exact fit to zero frames.
       const maxFrames = Math.floor((budget * fps) / n + 1e-9)
       if (maxFrames <= 0) {
-        // Even one frame per character exceeds the budget - disable stagger
-        return { ...layer, stagger: { delay: 0 } }
+        // Even one frame per character exceeds the budget - drop stagger
+        // entirely so exporters do not emit a follower with delay 0
+        return { ...layer, stagger: undefined }
       }
       // Authored delay to the nearest whole frame, at least one so a short
       // authored stagger stays visible, then capped by the budget
@@ -340,35 +308,44 @@ function applyColourBindings(
   params: Record<string, ParamDef>,
   values: ParamValues
 ): Layer[] {
-  // Build a map of bound paths to their resolved colour
-  const bindings = new Map<string, string>()
+  // Build a map of parsed bind-path index lists to their resolved colour.
+  // Using parseBindPath ensures the same grammar as the schema and Fusion.
+  const bindings: { indices: number[]; colour: string }[] = []
   for (const [id, def] of Object.entries(params)) {
     if (def.kind === 'colour') {
       const colour = typeof values[id] === 'string' ? (values[id] as string) : def.default
       for (const bindPath of def.binds) {
-        bindings.set(bindPath, colour)
+        const indices = parseBindPath(bindPath)
+        if (indices) bindings.push({ indices, colour })
       }
     }
   }
 
-  function applyToLayers(ls: Layer[], prefix: string): Layer[] {
+  // Walk the layer tree by index, matching each node against every binding.
+  function applyAtDepth(ls: Layer[], depth: number, parentIndices: number[]): Layer[] {
     return ls.map((layer, i) => {
-      const path = `${prefix}[${i}]`
+      const current = [...parentIndices, i]
       if (layer.kind === 'group') {
         return {
           ...layer,
-          children: applyToLayers(layer.children, `${path}.children`)
+          children: applyAtDepth(layer.children, depth + 1, current)
         }
       }
-      const bound = bindings.get(path)
-      if (bound && 'fill' in layer) {
-        return { ...layer, fill: bound }
+      // Check whether any binding targets this exact node
+      for (const { indices, colour } of bindings) {
+        if (
+          indices.length === current.length &&
+          indices.every((idx, j) => idx === current[j]) &&
+          'fill' in layer
+        ) {
+          return { ...layer, fill: colour }
+        }
       }
       return layer
     })
   }
 
-  return applyToLayers(layers, 'layers')
+  return applyAtDepth(layers, 0, [])
 }
 
 // ---------------------------------------------------------------------------
@@ -829,7 +806,6 @@ function resolveStructure(
 ): { layers: Layer[]; resolvedValues: ParamValues } {
   const resolvedValues = resolveValues(template, values)
   let layers = applyTextValues(template.layers, template.params, resolvedValues)
-  layers = clampStaggerDelays(layers, template.inEnd)
   layers = applyColourBindings(layers, template.params, resolvedValues)
   layers = resolveRegionFills(layers, template.params, resolvedValues)
   layers = expandTemplate(layers, template.params, resolvedValues)
@@ -954,14 +930,14 @@ export function resolveTemplate(
   // 6. Scale to format
   layers = scaleLayers(layers, format)
 
-  // 7. Quantise stagger delays to whole frames, clamped to the 40% budget
-  layers = quantiseStaggerDelays(layers, format.fps, template.inEnd)
-
-  // 8. Snap keyframes to frame grid
-  layers = snapAllKeyframes(layers, format.fps)
-
-  // Snap timing markers too
+  // 7. Snap inEnd first so the stagger budget uses the snapped value
   const inEnd = snapToFrame(template.inEnd, format.fps)
+
+  // 8. Quantise stagger delays to whole frames, clamped to the 40% budget
+  layers = quantiseStaggerDelays(layers, format.fps, inEnd)
+
+  // 9. Snap keyframes to frame grid
+  layers = snapAllKeyframes(layers, format.fps)
   const snappedOutStart = snapToFrame(outStart, format.fps)
   const snappedDuration = snapToFrame(duration, format.fps)
 
