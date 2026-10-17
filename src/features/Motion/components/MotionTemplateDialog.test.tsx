@@ -711,6 +711,81 @@ describe('MotionTemplateDialog', () => {
     })
   })
 
+  describe('F3: font missing uses canvas measurer, not approximation', () => {
+    it('when font is missing, resolve uses the canvas measurer and font warning shows', async () => {
+      const fontHook = await import('../hooks/useMotionFont')
+      ;(fontHook.useMotionFont as ReturnType<typeof vi.fn>).mockReturnValue({
+        status: 'missing'
+      })
+
+      // Inject a stub that measures differently from the approximation
+      measurerStub.current = { measure: (text: string) => text.length * 100 }
+      try {
+        const wrapTmpl: MotionTemplate = {
+          ...barRevealTemplate(),
+          id: 'font-missing-test',
+          name: 'Font missing',
+          params: {
+            quote: {
+              kind: 'text',
+              label: 'Quote',
+              maxLength: 200,
+              default: 'aa bb cc',
+              required: true
+            }
+          },
+          layers: [
+            {
+              kind: 'text',
+              id: 'quote-text',
+              anchor: { x: 0, y: 0 },
+              position: [{ t: 0, value: { x: 1920, y: 1000 } }],
+              text: 'aa bb cc',
+              param: 'quote',
+              font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 88 },
+              align: 'center',
+              lineHeight: 1.4,
+              multiline: true,
+              fill: '#ffffff',
+              width: 500,
+              wrap: true,
+              maxLines: 2
+            }
+          ]
+        }
+        renderDialog(makeEntry(wrapTmpl))
+
+        // The font warning banner should be visible
+        expect(
+          screen.getByText(/Requires Cabrito\.otf/i)
+        ).toBeInTheDocument()
+
+        // The stub measures 100/char. At width 500, "aa bb cc" wraps.
+        // If the dialog used the approximation (88*0.6=52.8/char), it
+        // would NOT wrap. The stub forces wrapping, proving the dialog
+        // uses the canvas measurer even when font is missing.
+        const preview = screen.getByRole('img', { name: /Font missing preview/i })
+        await waitFor(() => {
+          const text = preview.querySelector('text')
+          const spans = text ? Array.from(text.querySelectorAll('tspan')) : []
+          expect(spans.length).toBeGreaterThanOrEqual(2)
+        })
+
+        // "Loading font" should NOT show for 'missing'
+        const loadingFont = screen.queryByText('Loading font...')
+        expect(
+          loadingFont === null || loadingFont.hidden
+        ).toBe(true)
+      } finally {
+        measurerStub.current = null
+        ;(fontHook.useMotionFont as ReturnType<typeof vi.fn>).mockReturnValue({
+          status: 'ready',
+          bytes: new Uint8Array(8)
+        })
+      }
+    })
+  })
+
   describe('W4.4 font loading state', () => {
     it('export is disabled with "Loading font" while useMotionFont is loading', async () => {
       const fontHook = await import('../hooks/useMotionFont')

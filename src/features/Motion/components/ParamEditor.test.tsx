@@ -311,4 +311,27 @@ describe('ParamEditor', () => {
 
     expect(screen.getByText('runner.png')).toBeInTheDocument()
   })
+
+  it('F4: empty required text field shows exactly one error, not two', () => {
+    const tmpl = textTemplate()
+    // Simulate paramErrors from validateParams: the "required text is empty" error
+    const paramErrors = [
+      { paramId: 'name', message: 'name: required text is empty' }
+    ]
+
+    render(
+      <ParamEditor
+        template={tmpl}
+        values={{ name: '' }}
+        onChange={vi.fn()}
+        paramErrors={paramErrors}
+      />
+    )
+
+    // "Name is required" comes from the field itself.
+    // The paramErrors error should NOT also show because the field already
+    // covers that state. One user-facing message per state.
+    const alerts = screen.getAllByText(/required/i)
+    expect(alerts).toHaveLength(1)
+  })
 })

@@ -626,6 +626,66 @@ describe('preview vs. frameRenderer parity', () => {
     // First character should have the highest (or equal) opacity
     expect(visible[0].opacity).toBeGreaterThanOrEqual(visible[3].opacity)
   })
+
+  it('W0.3 staggered multiline "Hi.\\n\\nYes." with blank line draws 3 lines', () => {
+    const baseText = textFixture.layers[0] as TextLayer
+    const fixture: MotionTemplate = {
+      ...textFixture,
+      id: 'stagger-blank-line',
+      layers: [
+        {
+          ...baseText,
+          text: 'Hi.\n\nYes.',
+          multiline: true,
+          lineHeight: 1.4,
+          align: 'center' as const,
+          stagger: { delay: 0.02 }
+        }
+      ]
+    }
+
+    const t = 2.0
+    const values = { name: 'Hi.\n\nYes.' }
+    const resolved = resolveTemplate(fixture, values, FORMAT)
+    const states = evaluate(resolved, t)
+
+    // Renderer: must have two dy attributes (line 2 and line 3)
+    const rendererSvg = buildSvgString(states, 3840, 2160, [])
+    const dyMatches = rendererSvg.match(/dy="/g) || []
+    expect(dyMatches).toHaveLength(2)
+
+    // Preview: same
+    setTestClock(t)
+    const html = renderToStaticMarkup(
+      React.createElement(MotionPreview, {
+        template: fixture,
+        values,
+        format: FORMAT,
+        time: 999,
+        name: 'stagger-blank-line'
+      })
+    )
+    const previewSvg = extractSvgElement(html)
+    const previewDyMatches = previewSvg.match(/dy="/g) || []
+    expect(previewDyMatches).toHaveLength(2)
+
+    // Parity
+    const rendererBody = extractSvgBody(rendererSvg)
+    const previewBody = extractSvgBody(previewSvg)
+    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+
+    // The non-stagger multiline branch also produces 3 lines for the same text
+    const noStaggerFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'no-stagger-blank-line',
+      layers: [{ ...baseText, text: 'Hi.\n\nYes.', multiline: true, lineHeight: 1.4 }]
+    }
+    const noStaggerResolved = resolveTemplate(noStaggerFixture, values, FORMAT)
+    const noStaggerStates = evaluate(noStaggerResolved, t)
+    const noStaggerSvg = buildSvgString(noStaggerStates, 3840, 2160, [])
+    const noStaggerDy = noStaggerSvg.match(/dy="/g) || []
+    expect(noStaggerDy).toHaveLength(2)
+  })
 })
 
 describe('buildFrameList', () => {
