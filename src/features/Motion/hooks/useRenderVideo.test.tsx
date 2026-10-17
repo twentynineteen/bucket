@@ -391,4 +391,103 @@ describe('useRenderVideo', () => {
     // S7: cancelRender must be called to clean up the ffmpeg process
     expect(mockCancelRender).toHaveBeenCalledWith('render-123')
   })
+
+  // Sk9: Rust errors carry { kind, message } - prefer the message field
+  it('sk9_rust_error_message_reaches_hook_error_state', async () => {
+    mockSendRenderFrame.mockRejectedValueOnce({
+      kind: 'encodeFailed',
+      message: 'ffmpeg exited with code 1: ...stderr tail'
+    })
+
+    const { result } = renderHook(() => useRenderVideo())
+
+    await act(async () => {
+      try {
+        await result.current.render({
+          resolved: makeResolved(),
+          format: FORMAT,
+          outputPath: '/output/test.mov',
+          fonts: FONT_DATA,
+          ffmpegDirectory: null
+        })
+      } catch {
+        // Expected
+      }
+    })
+
+    expect(result.current.state).toBe('error')
+    // Must contain the human-readable message, not just the error kind
+    expect(result.current.error).toContain('ffmpeg exited with code 1')
+  })
+
+  // Sk9: cancel() wraps the fire-and-forget cancelRender in safeCancelRender
+  it('sk9_cancel_uses_safe_cancel_to_swallow_rejection', async () => {
+    // Make cancelRender reject (e.g. unknownRender after the registry took it)
+    mockCancelRender.mockRejectedValue({ kind: 'unknownRender', message: 'not found' })
+
+    // Block sendRenderFrame so we can cancel mid-render
+    let resolveFrame: () => void
+    const framePromise = new Promise<void>(r => {
+      resolveFrame = r
+    })
+    mockSendRenderFrame.mockImplementationOnce(() => framePromise)
+
+    const { result } = renderHook(() => useRenderVideo())
+
+    let renderPromise: Promise<string | null> | undefined
+    act(() => {
+      renderPromise = result.current.render({
+        resolved: makeResolved(),
+        format: FORMAT,
+        outputPath: '/output/test.mov',
+        fonts: FONT_DATA,
+        ffmpegDirectory: null
+      })
+    })
+
+    await act(async () => {
+      await new Promise(r => setTimeout(r, 0))
+    })
+
+    // Cancel - this fires a void cancelRender that rejects
+    // The test will fail with an unhandled rejection if it's not caught
+    await act(async () => {
+      result.current.cancel()
+    })
+
+    await act(async () => {
+      resolveFrame!()
+      await renderPromise
+    })
+
+    // If we get here without an unhandled rejection, the test passes
+    expect(mockCancelRender).toHaveBeenCalled()
+  })
+
+  // Sk9: cancel that arrives after the last frame is sent treats render
+  // as "finishing" rather than reporting it as cancelled
+  it('sk9_late_cancel_after_finish_does_not_report_cancelled', async () => {
+    const { result } = renderHook(() => useRenderVideo())
+
+    // Complete a full render
+    await act(async () => {
+      await result.current.render({
+        resolved: makeResolved(),
+        format: FORMAT,
+        outputPath: '/output/test.mov',
+        fonts: FONT_DATA,
+        ffmpegDirectory: null
+      })
+    })
+
+    expect(result.current.state).toBe('done')
+
+    // Now cancel after the render has already finished
+    await act(async () => {
+      result.current.cancel()
+    })
+
+    // State should remain 'done', not flip to 'cancelled'
+    expect(result.current.state).toBe('done')
+  })
 })

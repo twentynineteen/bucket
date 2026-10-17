@@ -29,6 +29,7 @@ vi.mock('../api', () => ({
   removeDirRecursive: vi.fn(async () => {}),
   pathExists: vi.fn(async () => false),
   copyFileTo: vi.fn(async () => {}),
+  listFolder: vi.fn(async () => []),
   startRender: vi.fn(async () => 'render-1'),
   sendRenderFrame: vi.fn(async () => {}),
   finishRender: vi.fn(async () => '/p/Graphics/Motion/test.mov'),
@@ -191,6 +192,59 @@ describe('useMotionExport', () => {
 
     // toast.error should have been called with the error message
     expect(toast.error).toHaveBeenCalled()
+  })
+
+  it('Sk9 - Rust {kind, message} error shows message text in the export toast', async () => {
+    // Rust rejects with { kind, message }, not an Error instance
+    const api = await import('../api')
+    ;(api.startRender as Mock).mockRejectedValueOnce({
+      kind: 'encodeFailed',
+      message: 'ffmpeg exited with code 1: ...stderr tail'
+    })
+
+    const { result } = renderHook(() => useMotionExport(), { wrapper })
+
+    await act(async () => {
+      await result.current.exportToProject({
+        entry: makeEntry(),
+        values,
+        format,
+        resolved: makeResolved(),
+        targets: ['video'],
+        projectFolder: '/p',
+        ffmpegDirectory: null
+      })
+    })
+
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    const toastMessage = (toast.error as Mock).mock.calls[0][0]
+    // Must show the Rust message, not a bare "Export failed"
+    expect(toastMessage).toContain('ffmpeg exited with code 1')
+  })
+
+  it('Sk9 - Rust {kind} without message falls back to kind in the export toast', async () => {
+    const api = await import('../api')
+    ;(api.startRender as Mock).mockRejectedValueOnce({
+      kind: 'encodeFailed'
+    })
+
+    const { result } = renderHook(() => useMotionExport(), { wrapper })
+
+    await act(async () => {
+      await result.current.exportToProject({
+        entry: makeEntry(),
+        values,
+        format,
+        resolved: makeResolved(),
+        targets: ['video'],
+        projectFolder: '/p',
+        ffmpegDirectory: null
+      })
+    })
+
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    const toastMessage = (toast.error as Mock).mock.calls[0][0]
+    expect(toastMessage).toContain('encodeFailed')
   })
 
   it('M5.7 - copyPrompt calls copyToClipboard synchronously in the click handler', async () => {

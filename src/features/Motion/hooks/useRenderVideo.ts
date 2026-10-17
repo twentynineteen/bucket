@@ -39,10 +39,14 @@ export interface RenderOptions {
   ffmpegDirectory: string | null
 }
 
-/** Extract an error message from a Tauri error or plain Error. */
+/** Extract an error message from a Tauri error or plain Error.
+ *  Rust rejects with { kind, message } objects - prefer the human-readable
+ *  message field and fall back to the kind when message is absent. */
 function extractErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'kind' in err) {
-    return String((err as Record<string, unknown>).kind)
+  if (err && typeof err === 'object') {
+    const obj = err as Record<string, unknown>
+    if ('message' in obj && typeof obj.message === 'string') return obj.message
+    if ('kind' in obj && typeof obj.kind === 'string') return obj.kind
   }
   if (err instanceof Error) return err.message
   return String(err)
@@ -101,8 +105,8 @@ export function useRenderVideo(): UseRenderVideoResult {
         })
         renderIdRef.current = renderId
 
-        // S7 fix: if cancel arrived while startRender was awaiting,
-        // cancel the newly started render immediately.
+        // If cancel arrived while startRender was awaiting, cancel
+        // the newly started render immediately.
         if (cancelledRef.current) {
           await safeCancelRender(renderId)
           renderIdRef.current = null
@@ -135,7 +139,7 @@ export function useRenderVideo(): UseRenderVideoResult {
         unsubProgress()
       }
     } catch (err: unknown) {
-      // S7 fix: always cancel the render on error to clean up ffmpeg.
+      // Always cancel the render on error to clean up the ffmpeg process.
       if (renderIdRef.current && !finishedRef.current) {
         await safeCancelRender(renderIdRef.current)
         renderIdRef.current = null
@@ -151,9 +155,12 @@ export function useRenderVideo(): UseRenderVideoResult {
 
   const cancel = useCallback(() => {
     cancelledRef.current = true
+    // If the render has already finished, treat this as a no-op rather than
+    // flipping the state to 'cancelled' while the output is being committed.
+    if (finishedRef.current) return
     setState('cancelled')
     if (renderIdRef.current) {
-      void cancelRender(renderIdRef.current)
+      void safeCancelRender(renderIdRef.current)
     }
   }, [])
 

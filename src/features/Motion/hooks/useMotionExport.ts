@@ -10,6 +10,7 @@ import {
   copyFileTo,
   copyToClipboard,
   joinPath,
+  listFolder,
   makeDir,
   pathExists,
   removeDirRecursive,
@@ -74,7 +75,28 @@ const bundleApi: ExportBundleApi = {
   renamePath,
   removeDirRecursive,
   pathExists,
-  copyFileTo
+  copyFileTo,
+  listFolder
+  // modifiedTimeMs is not wired - api.ts does not wrap stat() yet.
+  // The stale .tmp-* sweep is structurally ready but inactive until
+  // a stat wrapper is added to api.ts.
+}
+
+// ---------------------------------------------------------------------------
+// Error extraction
+// ---------------------------------------------------------------------------
+
+/** Extract a human-readable message from a Tauri/Rust error or a plain Error.
+ *  Rust commands reject with { kind, message } objects - prefer the message
+ *  field and fall back to kind when it is absent. */
+function extractErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const obj = err as Record<string, unknown>
+    if ('message' in obj && typeof obj.message === 'string') return obj.message
+    if ('kind' in obj && typeof obj.kind === 'string') return obj.kind
+  }
+  if (err instanceof Error) return err.message
+  return 'Export failed'
 }
 
 // ---------------------------------------------------------------------------
@@ -181,9 +203,9 @@ export function useMotionExport(): UseMotionExportResult {
           pickedImagePath
         }
 
-        // S1 fix: create the temp folder first so the video can be
-        // rendered into it, then commit everything atomically.
-        const { tmpDir } = await beginBundle(bundleInput, bundleApi)
+        // Create the temp folder first so the video can be rendered
+        // into it, then commit everything atomically.
+        const { tmpDir, motionDir } = await beginBundle(bundleInput, bundleApi)
 
         try {
           // Render video into the temp folder if requested
@@ -211,7 +233,7 @@ export function useMotionExport(): UseMotionExportResult {
           }
 
           // Commit the bundle (write files, rename to final)
-          const result = await commitBundle(bundleInput, bundleApi, tmpDir)
+          const result = await commitBundle(bundleInput, bundleApi, tmpDir, motionDir)
 
           toast.success('Exported to project', {
             description: result.finalFolder.split('/').pop(),
@@ -230,7 +252,7 @@ export function useMotionExport(): UseMotionExportResult {
           throw innerErr
         }
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Export failed')
+        toast.error(extractErrorMessage(err))
       } finally {
         setIsExporting(false)
       }
