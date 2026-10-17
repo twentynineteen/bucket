@@ -5,7 +5,8 @@
  * to the final name. On any failure the temp folder is removed.
  *
  * Split into begin/commit so the video render can target the temp folder
- * before any files are written (S1 fix).
+ * before any files are written. beginBundle returns motionDir alongside
+ * tmpDir so commitBundle does not re-derive it.
  */
 import type { ExportFile, MotionFormat, MotionTarget, ParamValues } from '../types'
 
@@ -34,6 +35,12 @@ export interface ExportBundleApi {
   removeDirRecursive: (path: string) => Promise<void>
   pathExists: (path: string) => Promise<boolean>
   copyFileTo: (from: string, to: string) => Promise<void>
+  /** List a folder's entries. Required for the stale .tmp-* sweep. */
+  listFolder?: (path: string) => Promise<{ name: string; isFile: boolean }[]>
+  /** Get a path's modified time in epoch milliseconds.
+   *  Required for the stale .tmp-* sweep. api.ts does not wrap this yet -
+   *  the sweep is inactive until a stat wrapper is added there. */
+  modifiedTimeMs?: (path: string) => Promise<number>
 }
 
 // ---------------------------------------------------------------------------
@@ -86,29 +93,72 @@ async function findAvailableName(
 }
 
 // ---------------------------------------------------------------------------
+// Stale temp-folder sweep
+// ---------------------------------------------------------------------------
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Remove `.tmp-*` directories in motionDir that are older than 24 hours.
+ * Best-effort: errors are swallowed so the sweep never blocks an export.
+ */
+async function sweepStaleTmpFolders(
+  motionDir: string,
+  api: ExportBundleApi
+): Promise<void> {
+  if (!api.listFolder || !api.modifiedTimeMs) return
+
+  try {
+    const entries = await api.listFolder(motionDir)
+    const now = Date.now()
+
+    for (const entry of entries) {
+      if (entry.isFile) continue
+      if (!entry.name.startsWith('.tmp-')) continue
+
+      const folderPath = await api.joinPath(motionDir, entry.name)
+      const mtime = await api.modifiedTimeMs(folderPath)
+
+      if (now - mtime > ONE_DAY_MS) {
+        await api.removeDirRecursive(folderPath)
+      }
+    }
+  } catch {
+    // Best-effort sweep - do not block the export on a sweep failure
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Phase 1: begin - create the temp folder
 // ---------------------------------------------------------------------------
 
 /**
  * Create the bundle's temp folder inside `<project>/Graphics/Motion/`.
  *
- * Returns the temp dir path so the caller can render the video into it
- * before committing the bundle. The caller is responsible for cleaning up
- * the temp dir on error (commitBundle does this internally).
+ * Returns the temp dir path and the motion dir path so the caller can render
+ * the video into the temp folder before committing, and commitBundle does not
+ * need to re-derive motionDir. The caller is responsible for cleaning up the
+ * temp dir on error (commitBundle does this internally).
+ *
+ * Before creating the new temp folder, sweeps any `.tmp-*` folders older
+ * than 24 hours that a previous crashed render may have left behind.
  */
 export async function beginBundle(
   input: ExportBundleInput,
   api: ExportBundleApi
-): Promise<{ tmpDir: string }> {
+): Promise<{ tmpDir: string; motionDir: string }> {
   const motionDir = await api.joinPath(input.projectFolder, 'Graphics', 'Motion')
   await api.makeDir(motionDir)
+
+  // Sweep stale temp folders from crashed renders
+  await sweepStaleTmpFolders(motionDir, api)
 
   const rand = Math.random().toString(36).slice(2, 8)
   const tmpName = `.tmp-${input.templateId}-${rand}`
   const tmpDir = await api.joinPath(motionDir, tmpName)
   await api.makeDir(tmpDir)
 
-  return { tmpDir }
+  return { tmpDir, motionDir }
 }
 
 // ---------------------------------------------------------------------------
@@ -122,10 +172,9 @@ export async function beginBundle(
 export async function commitBundle(
   input: ExportBundleInput,
   api: ExportBundleApi,
-  tmpDir: string
+  tmpDir: string,
+  motionDir: string
 ): Promise<ExportBundleResult> {
-  const motionDir = await api.joinPath(input.projectFolder, 'Graphics', 'Motion')
-
   try {
     // Write all export files
     for (const file of input.files) {
@@ -166,24 +215,4 @@ export async function commitBundle(
     }
     throw err
   }
-}
-
-// ---------------------------------------------------------------------------
-// Convenience: one-shot export (begin + commit)
-// ---------------------------------------------------------------------------
-
-/**
- * Export a bundle of files atomically into `<project>/Graphics/Motion/<name>`.
- *
- * 1. Create `Graphics/Motion/` recursively
- * 2. Write all files into `.tmp-<id>-<rand>/`
- * 3. Rename to `<id>-<slug>` (with collision suffix if needed)
- * 4. On any error, remove the temp folder
- */
-export async function exportBundle(
-  input: ExportBundleInput,
-  api: ExportBundleApi
-): Promise<ExportBundleResult> {
-  const { tmpDir } = await beginBundle(input, api)
-  return commitBundle(input, api, tmpDir)
 }

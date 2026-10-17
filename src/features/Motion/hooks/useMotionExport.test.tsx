@@ -29,6 +29,7 @@ vi.mock('../api', () => ({
   removeDirRecursive: vi.fn(async () => {}),
   pathExists: vi.fn(async () => false),
   copyFileTo: vi.fn(async () => {}),
+  listFolder: vi.fn(async () => []),
   startRender: vi.fn(async () => 'render-1'),
   sendRenderFrame: vi.fn(async () => {}),
   finishRender: vi.fn(async () => '/p/Graphics/Motion/test.mov'),

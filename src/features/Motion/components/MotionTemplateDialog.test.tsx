@@ -59,6 +59,7 @@ vi.mock('../api', () => ({
   removeDirRecursive: vi.fn(async () => {}),
   pathExists: vi.fn(async () => false),
   copyFileTo: vi.fn(async () => {}),
+  listFolder: vi.fn(async () => []),
   motionFontAvailable: vi.fn(async () => true),
   readMotionFont: vi.fn(async () => new Uint8Array(8)),
   readBytes: vi.fn(async () => new Uint8Array(8)),
