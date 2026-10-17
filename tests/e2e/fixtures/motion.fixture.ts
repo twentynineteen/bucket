@@ -46,6 +46,8 @@ export interface MotionMockOptions {
   ffmpegAvailable?: boolean
   /** Render progress events to emit (frame count increments) */
   renderProgressFrames?: number[]
+  /** Delay per frame in milliseconds for the render mock (default: 0) */
+  renderFrameDelayMs?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -109,7 +111,8 @@ export async function installMotionMocks(
     fontBytesB64,
     projectFolder: options?.projectFolder ?? null,
     ffmpegAvailable,
-    renderProgressFrames: options?.renderProgressFrames ?? [5, 10, 15, 20, 25]
+    renderProgressFrames: options?.renderProgressFrames ?? [5, 10, 15, 20, 25],
+    renderFrameDelayMs: options?.renderFrameDelayMs ?? 0
   }
 
   await page.addInitScript((cfg: typeof config) => {
@@ -180,8 +183,10 @@ export async function installMotionMocks(
     // -----------------------------------------------------------------------
     const APP_DATA_DIR = '/tmp/bucket-test/data'
     const PREFS_PATH = `${APP_DATA_DIR}/motion_prefs.json`
-    const FONT_DIR = '/tmp/bucket-test/fonts'
-    const FONT_PATH = `${FONT_DIR}/Cabrito.otf`
+    // fontDir() calls plugin:path|resolve_directory which the shared mock
+    // answers with APP_DATA_DIR for all base directories including Font.
+    // The font path is then join(APP_DATA_DIR, 'Cabrito.otf').
+    const FONT_PATH = `${APP_DATA_DIR}/Cabrito.otf`
 
     // Serialise prefs to bytes (plugin:fs|read_text_file returns bytes)
     const asBytes = (text: string) => Array.from(new TextEncoder().encode(text))
@@ -207,12 +212,6 @@ export async function installMotionMocks(
     const motionInvoke: InvokeFn = async (cmd, args, options) => {
       const payload = (args ?? {}) as Record<string, unknown>
       const headers = options?.headers ?? {}
-
-      // ----- Path plugin -----
-      // fontDir returns the system font directory
-      if (cmd === 'plugin:path|font_dir') {
-        return FONT_DIR
-      }
 
       // ----- Font availability -----
       if (cmd === 'plugin:fs|exists') {
@@ -491,6 +490,11 @@ export async function installMotionMocks(
           byteLength = (data as number[]).length
         }
         state.renderFrames.push({ renderId, byteLength })
+        // Delay per frame so the render loop doesn't finish instantly,
+        // giving the progress bar and cancel button time to appear
+        if (cfg.renderFrameDelayMs > 0) {
+          await new Promise(r => setTimeout(r, cfg.renderFrameDelayMs))
+        }
         return null
       }
 
@@ -509,11 +513,20 @@ export async function installMotionMocks(
       }
 
       // ----- Kavanagh ffmpeg detection -----
+      // Must match FfmpegAvailability from src/features/Kavanagh/types.ts
       if (cmd === 'kavanagh_detect_ffmpeg') {
         if (cfg.ffmpegAvailable) {
-          return { status: 'available', directory: '/usr/local/bin' }
+          return {
+            status: 'ready',
+            ffmpeg: '/usr/local/bin/ffmpeg',
+            ffprobe: '/usr/local/bin/ffprobe'
+          }
         }
-        return { status: 'unavailable', directory: null }
+        return {
+          status: 'notFound',
+          missing: ['ffmpeg', 'ffprobe'],
+          searched: ['/usr/local/bin']
+        }
       }
 
       // ----- Event listening (render progress) -----

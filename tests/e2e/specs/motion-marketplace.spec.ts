@@ -2,12 +2,17 @@
  * Motion Marketplace behaviour and keyboard/reduced-motion e2e specs (issue #338).
  *
  * Tests T1.1-T1.11 (grid behaviour), T2.1-T2.2 (keyboard and reduced motion).
- * Tests T1.5-T1.9 and T1.11 that depend on the dialog (#337) are marked
- * test.fixme until the dialog is merged.
  */
 import { expect, test, type Page } from '@playwright/test'
 import { setupTauriMocks } from '../fixtures/mocks.fixture'
-import { getMotionWrites, installMotionMocks } from '../fixtures/motion.fixture'
+import {
+  getMotionClipboard,
+  getMotionRemoves,
+  getMotionRenames,
+  getMotionWrites,
+  installMotionMocks,
+  resetMotionState
+} from '../fixtures/motion.fixture'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -77,6 +82,15 @@ async function gotoMarketplace(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: /Motion marketplace/i })).toBeVisible()
 }
 
+/** Open a template card's dialog by clicking its name button. */
+async function openDialog(page: Page, templateId: string): Promise<void> {
+  const card = page.locator(`[data-template-id="${templateId}"]`)
+  await expect(card).toBeVisible()
+  const nameButton = card.getByRole('button').first()
+  await nameButton.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+}
+
 // Built-in template names (10 starters from #332)
 const BUILTIN_NAMES = [
   'Chapter title card',
@@ -132,7 +146,12 @@ test.describe('Motion Marketplace behaviour', () => {
     const assertNoExternal = await setupAll(page, {
       libraryFolder: {
         path: '/mock/library',
-        files: [{ name: 'custom-lib-template.json', contents: LIBRARY_TEMPLATE_JSON }]
+        files: [
+          {
+            name: 'custom-lib-template.json',
+            contents: LIBRARY_TEMPLATE_JSON
+          }
+        ]
       }
     })
     await gotoMarketplace(page)
@@ -140,14 +159,15 @@ test.describe('Motion Marketplace behaviour', () => {
     const grid = page.getByRole('list', { name: 'Templates' })
     await expect(grid).toBeVisible()
 
-    // Each built-in name is present - use aria-label on the name button
     for (const name of BUILTIN_NAMES) {
       await expect(page.getByRole('button', { name, exact: true })).toBeVisible()
     }
 
-    // Library template appears with "Library" marker
     await expect(
-      page.getByRole('button', { name: 'Custom Library Template', exact: true })
+      page.getByRole('button', {
+        name: 'Custom Library Template',
+        exact: true
+      })
     ).toBeVisible()
     const card = page.locator('[data-template-id="custom-lib-template"]')
     await expect(card.getByText('Library', { exact: true })).toBeVisible()
@@ -161,26 +181,29 @@ test.describe('Motion Marketplace behaviour', () => {
     const assertNoExternal = await setupAll(page, {
       libraryFolder: {
         path: '/mock/library',
-        files: [{ name: 'custom-lib-template.json', contents: LIBRARY_TEMPLATE_JSON }],
-        brokenFile: { name: 'broken.json', errorMessage: 'Unexpected token' }
+        files: [
+          {
+            name: 'custom-lib-template.json',
+            contents: LIBRARY_TEMPLATE_JSON
+          }
+        ],
+        brokenFile: {
+          name: 'broken.json',
+          errorMessage: 'Unexpected token'
+        }
       }
     })
     await gotoMarketplace(page)
 
-    // Alert shows with the count and path
     const alert = page.getByRole('alert')
     await expect(alert).toContainText("1 template couldn't be loaded")
     await expect(alert).toContainText('/mock/library/broken.json')
 
-    // Dismiss hides it
     const dismissBtn = alert.getByRole('button', { name: /Dismiss/i })
     await dismissBtn.click()
     await expect(alert).not.toBeVisible()
 
-    // Click Rescan (the header button)
     await page.getByRole('button', { name: /Rescan/i }).click()
-
-    // After rescan the banner reappears because the broken file is still there
     await expect(page.getByRole('alert')).toContainText("1 template couldn't be loaded")
 
     assertNoExternal()
@@ -190,7 +213,6 @@ test.describe('Motion Marketplace behaviour', () => {
     const assertNoExternal = await setupAll(page)
     await gotoMarketplace(page)
 
-    // Find the Quote card and star it
     const quoteCard = page.locator('[data-template-id="quote-card"]')
     await expect(quoteCard).toBeVisible()
     const starButton = quoteCard.getByRole('button', {
@@ -200,14 +222,12 @@ test.describe('Motion Marketplace behaviour', () => {
     await starButton.click()
     await expect(starButton).toHaveAttribute('aria-pressed', 'true')
 
-    // Verify the prefs write was recorded with favourites containing quote-card
     const writes = await getMotionWrites(page)
     const prefsWrite = writes.find(w => w.path.includes('motion_prefs.json'))
     expect(prefsWrite).toBeTruthy()
     const savedPrefs = JSON.parse(prefsWrite!.data as string)
     expect(savedPrefs.favourites).toContain('quote-card')
 
-    // After starring, favourites sort ahead: Quote card should be first
     const grid = page.getByRole('list', { name: 'Templates' })
     const items = grid.getByRole('listitem')
     const firstCardText = await items.first().textContent()
@@ -222,27 +242,24 @@ test.describe('Motion Marketplace behaviour', () => {
     const assertNoExternal = await setupAll(page)
     await gotoMarketplace(page)
 
-    // Set category to "Data" via the Radix Select
     const categoryTrigger = page.getByRole('combobox', { name: /Category/i })
     await categoryTrigger.click()
     await page.getByRole('option', { name: 'Data' }).click()
 
-    // Set search to "ring"
-    const searchInput = page.getByRole('searchbox', { name: /Search templates/i })
+    const searchInput = page.getByRole('searchbox', {
+      name: /Search templates/i
+    })
     await searchInput.fill('ring')
 
-    // Only Score ring should remain
     const grid = page.getByRole('list', { name: 'Templates' })
     const items = grid.getByRole('listitem')
     await expect(items).toHaveCount(1)
     await expect(page.getByText('Score ring')).toBeVisible()
 
-    // Clear the search and category to restore (use the filter controls directly)
     await searchInput.clear()
     await categoryTrigger.click()
     await page.getByRole('option', { name: 'All categories' }).click()
 
-    // All templates restored
     const allItems = grid.getByRole('listitem')
     const count = await allItems.count()
     expect(count).toBeGreaterThanOrEqual(10)
@@ -250,32 +267,255 @@ test.describe('Motion Marketplace behaviour', () => {
     assertNoExternal()
   })
 
-  // T1.5 - T1.9: Dialog-dependent tests - marked fixme until #337 merges
-  // The dialog is currently a placeholder that doesn't have the export UI.
-  test.fixme('T1.5 export to project creates temp folder, renames to final, shows Reveal toast', async () => {})
+  test('T1.5 export to project writes to temp folder, renames, shows Reveal toast', async ({
+    page
+  }) => {
+    const assertNoExternal = await setupAll(page, {
+      projectFolder: {
+        path: '/mock/project',
+        hasBreadcrumbs: true,
+        hasGraphicsMotion: true
+      }
+    })
+    await gotoMarketplace(page)
+    await openDialog(page, 'lower-third-glide')
 
-  test.fixme('T1.6 repeated export appends -2 to the folder name', async () => {})
+    const dialog = page.getByRole('dialog')
 
-  test.fixme('T1.7 Copy Claude prompt with no project folder captures clipboard and shows toast', async () => {})
+    // Fill the name param with a Unicode name
+    const nameInput = dialog.getByRole('textbox', { name: /Name/i })
+    await nameInput.clear()
+    await nameInput.fill('Zoë Ångström')
 
-  test.fixme('T1.8 ffmpeg unavailable disables Video checkbox and shows Settings link', async () => {})
+    // Pick the project folder
+    const folderBtn = dialog.getByRole('button', {
+      name: /Choose project folder/i
+    })
+    await folderBtn.click()
 
-  test.fixme('T1.9 video render shows progress, cancel removes temp folder', async () => {})
+    // Select targets: AE + Claude prompt (default for non-particle)
+    // Targets should already be checked by default
+
+    // Click Export to project
+    const exportBtn = dialog.getByRole('button', {
+      name: /Export to project/i
+    })
+    await expect(exportBtn).toBeEnabled()
+    await exportBtn.click()
+
+    // Wait for the success toast
+    await expect(page.getByText('Exported to project')).toBeVisible()
+    await expect(page.getByText('Reveal in Finder')).toBeVisible()
+
+    // Check recorded writes went to the right path
+    const renames = await getMotionRenames(page)
+    expect(renames.length).toBeGreaterThan(0)
+    const lastRename = renames[renames.length - 1]
+
+    // The temp folder should start with .tmp-lower-third-glide-
+    expect(lastRename.oldPath).toContain('.tmp-lower-third-glide-')
+    // The final folder should be lower-third-glide-zoe-angstrom
+    expect(lastRename.newPath).toContain('lower-third-glide-zoe-angstrom')
+    expect(lastRename.newPath).toContain('/Graphics/Motion/')
+
+    // Check params.json was written and has no absolute paths
+    const writes = await getMotionWrites(page)
+    const paramsWrite = writes.find(w => w.path.includes('params.json'))
+    expect(paramsWrite).toBeTruthy()
+    const params = JSON.parse(paramsWrite!.data as string)
+    expect(params.templateId).toBe('lower-third-glide')
+    // No absolute paths in params
+    const paramsStr = JSON.stringify(params)
+    expect(paramsStr).not.toContain('/mock/')
+    expect(paramsStr).not.toContain('/Users/')
+
+    assertNoExternal()
+  })
+
+  test('T1.6 repeated export appends -2 to the folder name', async ({ page }) => {
+    const assertNoExternal = await setupAll(page, {
+      projectFolder: {
+        path: '/mock/project',
+        hasBreadcrumbs: true,
+        hasGraphicsMotion: true,
+        existingMotionFolders: ['lower-third-glide-jane-doe']
+      }
+    })
+    await gotoMarketplace(page)
+    await openDialog(page, 'lower-third-glide')
+
+    const dialog = page.getByRole('dialog')
+    const nameInput = dialog.getByRole('textbox', { name: /Name/i })
+    await nameInput.clear()
+    await nameInput.fill('Jane Doe')
+
+    // Pick project folder
+    await dialog.getByRole('button', { name: /Choose project folder/i }).click()
+
+    // Export
+    await dialog.getByRole('button', { name: /Export to project/i }).click()
+    await expect(page.getByText('Exported to project')).toBeVisible()
+
+    // The final rename should use -2 suffix since the base name exists
+    const renames = await getMotionRenames(page)
+    const lastRename = renames[renames.length - 1]
+    expect(lastRename.newPath).toContain('lower-third-glide-jane-doe-2')
+
+    assertNoExternal()
+  })
+
+  test('T1.7 Copy Claude prompt with no project folder captures clipboard and shows toast', async ({
+    page
+  }) => {
+    const assertNoExternal = await setupAll(page)
+    await gotoMarketplace(page)
+    await openDialog(page, 'lower-third-glide')
+
+    const dialog = page.getByRole('dialog')
+
+    // Click Copy Claude prompt (no project folder needed)
+    const copyBtn = dialog.getByRole('button', {
+      name: /Copy Claude prompt/i
+    })
+    await expect(copyBtn).toBeEnabled()
+    await copyBtn.click()
+
+    // Toast appears
+    await expect(page.getByText('Prompt copied to clipboard')).toBeVisible()
+
+    // Clipboard was captured
+    const clipboard = await getMotionClipboard(page)
+    expect(clipboard).toBeTruthy()
+    // Prompt starts with the template name as a heading
+    expect(clipboard!).toContain('# Lower third "Glide"')
+
+    assertNoExternal()
+  })
+
+  test('T1.8 ffmpeg unavailable disables Video checkbox and shows Settings link', async ({
+    page
+  }) => {
+    const assertNoExternal = await setupAll(page, {
+      ffmpegAvailable: false
+    })
+    await gotoMarketplace(page)
+    await openDialog(page, 'lower-third-glide')
+
+    const dialog = page.getByRole('dialog')
+
+    // Video checkbox should be disabled
+    const videoCheckbox = dialog.getByRole('checkbox', {
+      name: /Video/i
+    })
+    await expect(videoCheckbox).toBeDisabled()
+
+    // Settings link should be visible
+    const settingsLink = dialog.getByRole('link', {
+      name: /Set up ffmpeg in Settings/i
+    })
+    await expect(settingsLink).toBeVisible()
+    await expect(settingsLink).toHaveAttribute('href', '/settings/general#kavanagh')
+
+    assertNoExternal()
+  })
+
+  test('T1.9 video render shows progress, cancel stops the export', async ({ page }) => {
+    const assertNoExternal = await setupAll(page, {
+      projectFolder: {
+        path: '/mock/project',
+        hasBreadcrumbs: true,
+        hasGraphicsMotion: true
+      },
+      renderProgressFrames: [1, 2, 3, 4, 5],
+      // Each frame takes 500ms so the render loop runs long enough for the
+      // progress UI to appear and the test to click Cancel
+      renderFrameDelayMs: 500
+    })
+    await gotoMarketplace(page)
+    await openDialog(page, 'lower-third-glide')
+
+    const dialog = page.getByRole('dialog')
+
+    // Uncheck all non-video targets so the export only renders video.
+    // Use exact name matching to avoid the "After Effects" / "Premiere
+    // (mogrt via After Effects)" ambiguity.
+    for (const label of [
+      'After Effects',
+      'DaVinci Resolve',
+      'Premiere (mogrt via After Effects)',
+      'Claude prompt'
+    ]) {
+      const cb = dialog.getByRole('checkbox', { name: label, exact: true })
+      if (await cb.isChecked()) await cb.click()
+    }
+
+    // Pick project folder
+    await dialog.getByRole('button', { name: /Choose project folder/i }).click()
+
+    // Export with only Video checked
+    await dialog.getByRole('button', { name: /Export to project/i }).click()
+
+    // The "Rendering video" label or progress bar should appear
+    await expect(dialog.getByText('Rendering video')).toBeVisible()
+
+    // Cancel the render
+    const cancelBtn = dialog.getByRole('button', { name: /Cancel render/i })
+    await expect(cancelBtn).toBeVisible()
+    await cancelBtn.click()
+
+    // After cancel, the Export button becomes enabled again (not exporting)
+    await expect(dialog.getByRole('button', { name: /Export to project/i })).toBeEnabled()
+
+    assertNoExternal()
+  })
 
   test('T1.10 Spread map card shows Video and Claude prompt only', async ({ page }) => {
     const assertNoExternal = await setupAll(page)
     await gotoMarketplace(page)
 
-    // Spread map's card should show "Video and Claude prompt only" text
     const spreadCard = page.locator('[data-template-id="spread-map"]')
     await expect(spreadCard).toBeVisible()
     await expect(spreadCard.getByText('Video and Claude prompt only')).toBeVisible()
 
+    // Open the dialog - only Video and Claude prompt checkboxes should exist
+    await openDialog(page, 'spread-map')
+    const dialog = page.getByRole('dialog')
+
+    // Video and Claude prompt should be present
+    await expect(dialog.getByRole('checkbox', { name: /Video/i })).toBeVisible()
+    await expect(dialog.getByRole('checkbox', { name: /Claude prompt/i })).toBeVisible()
+
+    // After Effects, Resolve and Premiere should NOT be present
+    await expect(
+      dialog.getByRole('checkbox', { name: /After Effects/i })
+    ).not.toBeVisible()
+    await expect(
+      dialog.getByRole('checkbox', { name: /DaVinci Resolve/i })
+    ).not.toBeVisible()
+    await expect(dialog.getByRole('checkbox', { name: /Premiere/i })).not.toBeVisible()
+
     assertNoExternal()
   })
 
-  // T1.11 depends on dialog and settings integration - fixme until #337
-  test.fixme('T1.11 Settings Motion library folder and format change updates marketplace', async () => {})
+  test('T1.11 Settings Motion format change is reflected in dialog', async ({ page }) => {
+    const assertNoExternal = await setupAll(page, {
+      prefs: {
+        defaultFormat: { width: 1920, height: 1080, fps: 25 }
+      }
+    })
+    await gotoMarketplace(page)
+    await openDialog(page, 'lower-third-glide')
+
+    const dialog = page.getByRole('dialog')
+
+    // Format should show the configured default
+    const formatTrigger = dialog.getByRole('combobox', { name: /Format/i })
+    await expect(formatTrigger).toContainText('1920')
+    await expect(formatTrigger).toContainText('1080')
+    await expect(formatTrigger).toContainText('25')
+
+    assertNoExternal()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -292,25 +532,30 @@ test.describe('Motion Marketplace keyboard and reduced motion', () => {
     const grid = page.getByRole('list', { name: 'Templates' })
     await expect(grid).toBeVisible()
 
-    // Focus the first card's name button
     const firstItem = grid.getByRole('listitem').first()
     const nameButton = firstItem.locator('[data-template-id]').getByRole('button').first()
     await nameButton.focus()
     await expect(nameButton).toBeFocused()
 
-    // Press Enter to open dialog
+    // Enter opens dialog
     await page.keyboard.press('Enter')
-
-    // The placeholder dialog should open
     const dialog = page.getByRole('dialog')
-    if (await dialog.isVisible().catch(() => false)) {
-      // Escape closes it
-      await page.keyboard.press('Escape')
-      await expect(dialog).not.toBeVisible()
+    await expect(dialog).toBeVisible()
 
-      // Focus returns to the card
-      await expect(nameButton).toBeFocused()
-    }
+    // Tab reaches param inputs, format, targets and export button
+    // Just verify Tab moves focus within the dialog
+    await page.keyboard.press('Tab')
+    const focusedInDialog = await dialog.evaluate(el =>
+      el.contains(document.activeElement)
+    )
+    expect(focusedInDialog).toBe(true)
+
+    // Escape closes
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible()
+
+    // Focus returns to the same card
+    await expect(nameButton).toBeFocused()
 
     assertNoExternal()
   })
@@ -327,7 +572,6 @@ test.describe('Motion Marketplace keyboard and reduced motion', () => {
     const grid = page.getByRole('list', { name: 'Templates' })
     await expect(grid).toBeVisible()
 
-    // Under reduced motion, the preview should be static (poster at inEnd)
     const firstCard = grid.getByRole('listitem').first()
     const preview = firstCard.locator('.preview-stage')
     await expect(preview).toBeVisible()

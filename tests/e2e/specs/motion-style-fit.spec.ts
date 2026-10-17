@@ -284,3 +284,98 @@ test.describe('T3.4 preview 16:9 aspect ratio', () => {
     assertNoExternal()
   })
 })
+
+// ---------------------------------------------------------------------------
+// T3.5: Dialog surface tokens match shared Dialog under Light, Dark, Dracula
+// ---------------------------------------------------------------------------
+
+test.describe('T3.5 dialog style-fit: token equality', () => {
+  const themes = ['light', 'dark', 'dracula'] as const
+
+  for (const theme of themes) {
+    test(`dialog tokens match bg-background border probe in ${theme} theme`, async ({
+      page
+    }) => {
+      const assertNoExternal = await setupAll(page)
+      await setTheme(page, theme)
+      await gotoMarketplace(page)
+
+      // Open the Glide dialog
+      const card = page.locator('[data-template-id="lower-third-glide"]')
+      await expect(card).toBeVisible()
+      await card.getByRole('button').first().click()
+
+      const dialog = page.getByRole('dialog')
+      await expect(dialog).toBeVisible()
+
+      // Probe with the shared Dialog's classes (bg-background + border + sm:rounded-lg)
+      const probeResult = await page.evaluate(() => {
+        const probe = document.createElement('div')
+        probe.className = 'bg-background border rounded-lg'
+        probe.style.position = 'fixed'
+        probe.style.top = '-9999px'
+        probe.style.left = '-9999px'
+        probe.style.width = '100px'
+        probe.style.height = '100px'
+        document.body.appendChild(probe)
+
+        const style = window.getComputedStyle(probe)
+        const result = {
+          backgroundColor: style.backgroundColor,
+          borderTopColor: style.borderTopColor,
+          borderTopLeftRadius: style.borderTopLeftRadius
+        }
+
+        probe.remove()
+        return result
+      })
+
+      const dialogResult = await dialog.evaluate(el => {
+        const style = window.getComputedStyle(el)
+        return {
+          backgroundColor: style.backgroundColor,
+          borderTopColor: style.borderTopColor,
+          borderTopLeftRadius: style.borderTopLeftRadius
+        }
+      })
+
+      expect(dialogResult.backgroundColor).toBe(probeResult.backgroundColor)
+      expect(dialogResult.borderTopColor).toBe(probeResult.borderTopColor)
+      expect(dialogResult.borderTopLeftRadius).toBe(probeResult.borderTopLeftRadius)
+
+      assertNoExternal()
+    })
+  }
+})
+
+// ---------------------------------------------------------------------------
+// T3.6: No horizontal scroll at 1024 with dialog open
+// ---------------------------------------------------------------------------
+
+test.describe('T3.6 dialog no horizontal scroll at 1024', () => {
+  test('no horizontal scroll with dialog open at 1024px', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 900 })
+    const assertNoExternal = await setupAll(page)
+    await gotoMarketplace(page)
+
+    // Open the Glide dialog
+    const card = page.locator('[data-template-id="lower-third-glide"]')
+    await expect(card).toBeVisible()
+    await card.getByRole('button').first().click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+
+    const scrollCheck = await page.evaluate(() => {
+      const el = document.scrollingElement
+      if (!el) return { overflow: false }
+      return {
+        overflow: el.scrollWidth > el.clientWidth
+      }
+    })
+
+    expect(scrollCheck.overflow).toBe(false)
+
+    assertNoExternal()
+  })
+})

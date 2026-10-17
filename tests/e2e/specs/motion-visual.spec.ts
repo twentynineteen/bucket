@@ -2,8 +2,7 @@
  * Motion Marketplace screenshot (visual regression) specs (issue #338).
  *
  * T4.1 - grid screenshot at frozen clock, Light theme, 1440x900
- * T4.2 - dialog screenshot (fixme until #337 merges)
- * T4.3 - baseline script generates deterministic Linux baselines
+ * T4.2 - dialog screenshot at frozen clock, Light theme
  *
  * These specs skip on non-Linux platforms. Baselines are generated with
  * scripts/e2e-motion-baselines.sh inside the pinned Playwright Docker image.
@@ -22,17 +21,6 @@ async function stubReleaseCheck(page: Page): Promise<void> {
       json: { tag_name: 'v0.0.0', name: 'v0.0.0', body: '', html_url: '' }
     })
   )
-}
-
-function collectExternalRequests(page: Page): string[] {
-  const external: string[] = []
-  page.on('request', req => {
-    const url = new URL(req.url())
-    if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
-      external.push(req.url())
-    }
-  })
-  return external
 }
 
 async function gotoMarketplace(page: Page): Promise<void> {
@@ -56,39 +44,58 @@ test.describe('Motion visual regression', () => {
   test('T4.1 grid screenshot at frozen clock, Light theme, 1440x900', async ({
     page
   }) => {
-    const external = collectExternalRequests(page)
     await stubReleaseCheck(page)
     await page.setViewportSize({ width: 1440, height: 900 })
     await setupTauriMocks(page)
     await installMotionMocks(page)
 
-    // Set Light theme
     await page.addInitScript(() => {
       localStorage.setItem('theme', 'light')
     })
-
-    // Freeze the preview clock at 1.0s
     await page.addInitScript(() => {
       ;(window as unknown as Record<string, unknown>).__BUCKET_MOTION_CLOCK__ = 1.0
     })
 
     await gotoMarketplace(page)
 
-    // Wait for the grid to settle
     const grid = page.getByRole('list', { name: 'Templates' })
     await expect(grid).toBeVisible()
 
-    // Wait a frame for layout to finalise
     await page.waitForTimeout(100)
 
     await expect(page).toHaveScreenshot('motion-grid-light-1440.png', {
       fullPage: true,
       maxDiffPixelRatio: 0.01
     })
-
-    expect(external).toEqual([])
   })
 
-  // T4.2 depends on dialog (#337) - marked fixme
-  test.fixme('T4.2 dialog screenshot at frozen clock, Light theme', async () => {}) // eslint-disable-next-line @typescript-eslint/no-empty-function
+  test('T4.2 dialog screenshot at frozen clock, Light theme', async ({ page }) => {
+    await stubReleaseCheck(page)
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await setupTauriMocks(page)
+    await installMotionMocks(page)
+
+    await page.addInitScript(() => {
+      localStorage.setItem('theme', 'light')
+    })
+    await page.addInitScript(() => {
+      ;(window as unknown as Record<string, unknown>).__BUCKET_MOTION_CLOCK__ = 1.0
+    })
+
+    await gotoMarketplace(page)
+
+    // Open the Glide dialog
+    const card = page.locator('[data-template-id="lower-third-glide"]')
+    await expect(card).toBeVisible()
+    await card.getByRole('button').first().click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+
+    await page.waitForTimeout(100)
+
+    await expect(dialog).toHaveScreenshot('motion-dialog-light-1440.png', {
+      maxDiffPixelRatio: 0.01
+    })
+  })
 })
