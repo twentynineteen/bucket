@@ -295,6 +295,67 @@ describe('useRenderVideo', () => {
     expect(mockSendRenderFrame).toHaveBeenCalledTimes(1)
   })
 
+  // S7: JS failure after startRender must call cancelRender
+  it('s7_render_frame_rejection_calls_cancel_render', async () => {
+    mockRenderFrameToPng
+      .mockResolvedValueOnce(new Uint8Array([0x89])) // frame 0 OK
+      .mockRejectedValueOnce(new Error('SVG render failed')) // frame 1 fails
+
+    const { result } = renderHook(() => useRenderVideo())
+
+    await act(async () => {
+      const output = await result.current.render({
+        resolved: makeResolved(),
+        format: FORMAT,
+        outputPath: '/output/test.mov',
+        fonts: FONT_DATA,
+        ffmpegDirectory: null
+      })
+      // Should propagate the error (throw) rather than silently returning null
+      expect(output).toBeNull()
+    })
+
+    // cancelRender must be called to clean up the ffmpeg process
+    expect(mockCancelRender).toHaveBeenCalledWith('render-123')
+  })
+
+  // S7: cancel before startRender resolves must still cancel
+  it('s7_cancel_before_start_render_resolves_still_cancels', async () => {
+    let resolveStart: (id: string) => void
+    const startPromise = new Promise<string>(r => {
+      resolveStart = r
+    })
+    mockStartRender.mockReturnValue(startPromise)
+
+    const { result } = renderHook(() => useRenderVideo())
+
+    // Start the render (startRender is pending)
+    let renderPromise: Promise<string | null> | undefined
+    act(() => {
+      renderPromise = result.current.render({
+        resolved: makeResolved(),
+        format: FORMAT,
+        outputPath: '/output/test.mov',
+        fonts: FONT_DATA,
+        ffmpegDirectory: null
+      })
+    })
+
+    // Cancel while startRender is still pending
+    await act(async () => {
+      result.current.cancel()
+    })
+
+    // Now resolve startRender - the render ID becomes available
+    await act(async () => {
+      resolveStart!('render-456')
+      await renderPromise
+    })
+
+    // cancelRender should have been called with the new render id
+    expect(mockCancelRender).toHaveBeenCalledWith('render-456')
+  })
+
   // P6.4: error handling
   it('p6_4_encode_error_stops_render', async () => {
     mockSendRenderFrame

@@ -50,10 +50,7 @@ pub fn build_args(
     if output_path.exists() {
         return Err(MotionError {
             kind: "spawnFailed".to_string(),
-            message: format!(
-                "output file already exists: {}",
-                output_path.display()
-            ),
+            message: format!("output file already exists: {}", output_path.display()),
         });
     }
 
@@ -87,11 +84,7 @@ pub fn build_args(
 /// Trait abstracting process spawning so unit tests can inject a fake.
 pub trait Spawner: Send + Sync + 'static {
     type Process: ChildProcess;
-    fn spawn(
-        &self,
-        program: &str,
-        args: &[String],
-    ) -> Result<Self::Process, std::io::Error>;
+    fn spawn(&self, program: &str, args: &[String]) -> Result<Self::Process, std::io::Error>;
 }
 
 /// Trait abstracting a child process.
@@ -111,11 +104,7 @@ pub struct RealSpawner;
 
 impl Spawner for RealSpawner {
     type Process = RealChild;
-    fn spawn(
-        &self,
-        program: &str,
-        args: &[String],
-    ) -> Result<Self::Process, std::io::Error> {
+    fn spawn(&self, program: &str, args: &[String]) -> Result<Self::Process, std::io::Error> {
         use std::process::{Command, Stdio};
         let child = Command::new(program)
             .args(args)
@@ -198,10 +187,7 @@ impl<P: ChildProcess> ActiveRender<P> {
                 let _ = std::fs::remove_file(&self.output_path);
                 return Err(MotionError {
                     kind: "encodeFailed".to_string(),
-                    message: format!(
-                        "ffmpeg exited with code {} while writing frames",
-                        code
-                    ),
+                    message: format!("ffmpeg exited with code {} while writing frames", code),
                 });
             }
             Ok(None) => {} // Still running - good
@@ -234,10 +220,7 @@ impl<P: ChildProcess> ActiveRender<P> {
                 let _ = std::fs::remove_file(&output_path);
                 Err(MotionError {
                     kind: "encodeFailed".to_string(),
-                    message: format!(
-                        "ffmpeg exited with code {}:\n{}",
-                        code, stderr
-                    ),
+                    message: format!("ffmpeg exited with code {}:\n{}", code, stderr),
                 })
             }
             Err(e) => {
@@ -334,6 +317,39 @@ pub mod tests {
         fn try_wait(&mut self) -> Result<Option<i32>, std::io::Error> {
             Ok(*self.dead.lock().unwrap())
         }
+    }
+
+    // ---------------------------------------------------------------
+    // S9 - ffmpeg args include -nostats -loglevel error
+    // ---------------------------------------------------------------
+    #[test]
+    fn s9_ffmpeg_args_include_nostats_loglevel_error() {
+        let avail = resolve_ffmpeg_tools(None, probe_binary_path);
+        if !matches!(avail, FfmpegAvailability::Ready { .. }) {
+            eprintln!("skipping s9: ffmpeg not installed");
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("out.mov");
+        let result = build_args(None, 1920, 1080, 25, &out).unwrap();
+        let args = &result.args;
+        assert!(
+            args.contains(&"-nostats".to_string()),
+            "expected -nostats in ffmpeg args, got: {:?}",
+            args
+        );
+        assert!(
+            args.contains(&"-loglevel".to_string()),
+            "expected -loglevel in ffmpeg args, got: {:?}",
+            args
+        );
+        let ll_idx = args.iter().position(|a| a == "-loglevel").unwrap();
+        assert_eq!(
+            args[ll_idx + 1],
+            "error",
+            "expected -loglevel error, got: {}",
+            args[ll_idx + 1]
+        );
     }
 
     // ---------------------------------------------------------------

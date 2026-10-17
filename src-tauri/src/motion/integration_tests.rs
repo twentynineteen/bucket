@@ -178,8 +178,10 @@ fn r5_1_real_ffmpeg_prores_4444() {
     // Probe the output with ffprobe
     let probe_output = Command::new(&ffprobe)
         .args([
-            "-v", "quiet",
-            "-print_format", "json",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
             "-show_streams",
             "-count_frames",
             out.to_str().unwrap(),
@@ -213,6 +215,81 @@ fn r5_1_real_ffmpeg_prores_4444() {
 }
 
 // ---------------------------------------------------------------
+// S9 - stderr drain: many frames with verbose logging must not
+// hang even when stderr output exceeds the pipe buffer (64 KiB).
+// On the current code, stderr is never drained so ffmpeg blocks
+// once the buffer fills, which blocks stdin writes, hanging the
+// render. With the fix, a drain thread keeps reading stderr.
+// ---------------------------------------------------------------
+#[test]
+fn s9_many_frames_with_verbose_stderr_does_not_hang() {
+    let (_ffmpeg, ffprobe) = require_ffmpeg!();
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("stderr_drain_test.mov");
+
+    let spawner = RealSpawner;
+    let mut args_obj = build_args(None, 64, 36, 25, &out).unwrap();
+
+    // Override loglevel to verbose so ffmpeg produces lots of stderr.
+    // Remove any existing -loglevel or -nostats so we control them.
+    args_obj
+        .args
+        .retain(|a| a != "-nostats" && a != "-loglevel" && a != "error");
+    // Insert -loglevel verbose before the output path (last arg)
+    let out_idx = args_obj.args.len() - 1;
+    args_obj.args.insert(out_idx, "-loglevel".to_string());
+    args_obj.args.insert(out_idx + 1, "verbose".to_string());
+
+    let child = spawner
+        .spawn(&args_obj.ffmpeg_path, &args_obj.args)
+        .unwrap();
+
+    let mut render = ActiveRender {
+        process: child,
+        output_path: out.clone(),
+        // 200 frames at verbose: each frame produces ~200 bytes of
+        // stderr, totalling ~40 KiB plus the banner; on some ffmpeg
+        // builds the per-frame output is larger, pushing past 64 KiB.
+        total_frames: 200,
+        frames_written: 0,
+    };
+
+    let frame = create_test_png(64, 36);
+    for _ in 0..200 {
+        render.write_frame(&frame).unwrap();
+    }
+
+    let result_path = render.finish().unwrap();
+    assert!(Path::new(&result_path).exists());
+
+    // Probe the output - should have 200 frames
+    let probe_output = Command::new(&ffprobe)
+        .args([
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_streams",
+            "-count_frames",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&probe_output.stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout)
+        .unwrap_or_else(|_| panic!("ffprobe output is not valid JSON: {}", stdout));
+
+    let stream = &json["streams"][0];
+    let nb_frames = stream["nb_read_frames"]
+        .as_str()
+        .unwrap_or("0")
+        .parse::<u64>()
+        .unwrap_or(0);
+    assert_eq!(nb_frames, 200, "expected 200 frames, got {}", nb_frames);
+}
+
+// ---------------------------------------------------------------
 // R5.2 - cancel leaves no file and no orphan process
 // ---------------------------------------------------------------
 #[test]
@@ -238,7 +315,10 @@ fn r5_2_cancel_leaves_no_file() {
     render.cancel().unwrap();
 
     // No output file should remain
-    assert!(!out.exists(), "partial output file should have been removed");
+    assert!(
+        !out.exists(),
+        "partial output file should have been removed"
+    );
 
     // Check no ffmpeg child is left running (best effort)
     // We cannot easily check by PID here, but the kill + wait in cancel
