@@ -371,9 +371,17 @@ const ParamEditor: React.FC<ParamEditorProps> = ({
     [values, onChange]
   )
 
-  /** Get the first error message for a param, or undefined. */
-  const errorFor = (paramId: string): string | undefined =>
-    paramErrors?.find(e => e.paramId === paramId)?.message
+  /**
+   * Get the first error for a param that the field does not already render.
+   * TextParamField shows "required" and maxLength inline, so only errors the
+   * field cannot know about (line-count) are surfaced here.
+   */
+  const errorFor = (paramId: string): string | undefined => {
+    const match = paramErrors?.find(
+      e => e.paramId === paramId && e.message.includes('lines')
+    )
+    return match?.message
+  }
 
   return (
     <div className="space-y-4">

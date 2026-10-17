@@ -11,6 +11,7 @@ import { PackageSearch, RefreshCw, Star } from 'lucide-react'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useMotionCatalogue } from '../hooks/useMotionCatalogue'
 import { useMotionFont } from '../hooks/useMotionFont'
+import { useMotionMeasurer } from '../hooks/useMotionMeasurer'
 import { useMotionPrefs } from '../hooks/useMotionPrefs'
 import { useMotionTicker } from '../hooks/useMotionTicker'
 import {
@@ -21,7 +22,6 @@ import {
 } from '../internal/filters'
 import { toggleFavourite } from '../internal/prefs'
 import { deriveTargets } from '../internal/resolve'
-import { createCanvasMeasurer } from '../internal/textOverflow'
 import type { CatalogueEntry, MotionFormat } from '../types'
 import CatalogueIssuesBanner from './CatalogueIssuesBanner'
 import FilterBar from './FilterBar'
@@ -59,12 +59,9 @@ const MotionMarketplacePage: React.FC = () => {
   const { entries, issues, rescan } = useMotionCatalogue(prefs.libraryFolder)
   const fontState = useMotionFont()
 
-  // Text measurer for line wrapping. Created once per font state, so the
-  // grid cards re-resolve with canvas measurement when the font arrives.
-  const measurer = useMemo(
-    () => (fontState.status === 'ready' ? createCanvasMeasurer() : undefined),
-    [fontState.status]
-  )
+  // Text measurer: canvas measurer when font is ready or missing,
+  // undefined while loading (falls back to approximation in the resolver).
+  const measurer = useMotionMeasurer(fontState)
 
   // Filter state
   const [filters, setFilters] = useState<FilterCriteria>(DEFAULT_FILTERS)

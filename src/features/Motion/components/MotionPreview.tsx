@@ -16,6 +16,7 @@ import React, { useEffect, useMemo, useRef } from 'react'
 import { readTestClock } from '../internal/clock'
 import { evaluate } from '../internal/evaluate'
 import { resolveTemplate } from '../internal/resolve'
+import { staggerLineBreaks } from '../internal/staggerLineBreaks'
 import { arcPath, matrixStr } from '../internal/svgGeometry'
 import type { TextMeasurer } from '../internal/textOverflow'
 import type {
@@ -112,23 +113,11 @@ function TextElement({ state }: { state: TextLayerState }) {
 
   // Staggered text: each unit is its own tspan.
   // xml:space="preserve" prevents SVG from collapsing a lone space tspan.
-  // When the text contains \n (multiline + stagger), the \n unit becomes a
-  // line break: the next visible tspan gets x="0" and dy to advance the line.
+  // staggerLineBreaks computes the dy multiplier per unit, handling
+  // consecutive \n (blank lines) correctly in both renderers.
   if (state.units && state.units.length > 0) {
     const lineAdvance = state.lineHeight * state.font.size
-    // Build the set of indices that follow a \n unit and need line-break attrs
-    const breakAfter = new Set<number>()
-    for (let j = 0; j < state.units.length; j++) {
-      if (state.units[j].text === '\n') {
-        // Mark the next non-\n unit as needing a line break
-        for (let k = j + 1; k < state.units.length; k++) {
-          if (state.units[k].text !== '\n') {
-            breakAfter.add(k)
-            break
-          }
-        }
-      }
-    }
+    const breaks = staggerLineBreaks(state.units)
 
     return (
       <text
@@ -141,14 +130,15 @@ function TextElement({ state }: { state: TextLayerState }) {
         xmlSpace="preserve"
       >
         {state.units.map((u, i) => {
-          if (u.text === '\n') return null
+          const dy = breaks[i]
+          if (dy === -1) return null
           return (
             <tspan
               key={i}
               opacity={u.opacity}
               fill={u.fill}
-              x={breakAfter.has(i) ? '0' : undefined}
-              dy={breakAfter.has(i) ? String(lineAdvance) : undefined}
+              x={dy > 0 ? '0' : undefined}
+              dy={dy > 0 ? String(dy * lineAdvance) : undefined}
             >
               {u.text}
             </tspan>

@@ -20,6 +20,7 @@ import React, { useCallback, useMemo, useState } from 'react'
 import { pathExists, pickFolder, pickPngImage, readBytes } from '../api'
 import { useMotionExport } from '../hooks/useMotionExport'
 import { useMotionFont } from '../hooks/useMotionFont'
+import { useMotionMeasurer } from '../hooks/useMotionMeasurer'
 import { useMotionPrefs } from '../hooks/useMotionPrefs'
 import { useMotionTicker } from '../hooks/useMotionTicker'
 import { applyImageParam } from '../internal/imageParam'
@@ -220,13 +221,9 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     [entry, effectiveTemplate]
   )
 
-  // Text measurer for line wrapping. Re-created when the font becomes ready,
-  // so every useMemo that resolves text re-runs with the canvas measurer.
-  const fontReady = fontState.status === 'ready'
-  const measurer = useMemo(
-    () => (fontReady ? createCanvasMeasurer() : undefined),
-    [fontReady]
-  )
+  // Text measurer: canvas measurer when font is ready or missing,
+  // undefined while loading (falls back to approximation in the resolver).
+  const measurer = useMotionMeasurer(fontState)
 
   // Resolve the template for the evaluator (and export)
   const resolved = useMemo(
@@ -263,13 +260,13 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     )
   }, [resolved.layers])
 
-  // For overflow and param validation, use the same measurer or a fallback.
-  const overflowMeasurer = useMemo(() => measurer ?? createCanvasMeasurer(), [measurer])
-
+  // Overflow uses the same measurer. While loading, the resolver used the
+  // approximation, so overflow should too - createCanvasMeasurer in jsdom
+  // also falls back to the approximation, keeping them in sync.
   const overflowResults = useMemo(() => {
     if (textLayers.length === 0) return []
-    return checkTextOverflow(textLayers, overflowMeasurer)
-  }, [textLayers, overflowMeasurer])
+    return checkTextOverflow(textLayers, measurer ?? createCanvasMeasurer())
+  }, [textLayers, measurer])
 
   const hasOverflow = overflowResults.some(r => r.overflowing)
 

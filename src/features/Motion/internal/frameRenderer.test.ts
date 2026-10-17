@@ -644,15 +644,17 @@ describe('preview vs. frameRenderer parity', () => {
       ]
     }
 
+    const lineAdvance = 1.4 * 80 // lineHeight * fontSize
     const t = 2.0
     const values = { name: 'Hi.\n\nYes.' }
     const resolved = resolveTemplate(fixture, values, FORMAT)
     const states = evaluate(resolved, t)
 
-    // Renderer: must have two dy attributes (line 2 and line 3)
+    // Renderer: the stagger branch emits one dy for the two-\n gap (dy = 2 * lineAdvance),
+    // which visually produces 3 lines (line 1, blank line, line 3).
     const rendererSvg = buildSvgString(states, 3840, 2160, [])
-    const dyMatches = rendererSvg.match(/dy="/g) || []
-    expect(dyMatches).toHaveLength(2)
+    expect(rendererSvg).toContain(`dy="${2 * lineAdvance}"`)
+    expect(rendererSvg).toContain('x="0"')
 
     // Preview: same
     setTestClock(t)
@@ -666,15 +668,15 @@ describe('preview vs. frameRenderer parity', () => {
       })
     )
     const previewSvg = extractSvgElement(html)
-    const previewDyMatches = previewSvg.match(/dy="/g) || []
-    expect(previewDyMatches).toHaveLength(2)
+    expect(previewSvg).toContain(`dy="${2 * lineAdvance}"`)
 
-    // Parity
+    // Parity: both renderers produce the same SVG body
     const rendererBody = extractSvgBody(rendererSvg)
     const previewBody = extractSvgBody(previewSvg)
     expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
 
-    // The non-stagger multiline branch also produces 3 lines for the same text
+    // The non-stagger multiline branch produces the same visual layout
+    // (3 lines), using two separate dy attributes instead of one doubled dy.
     const noStaggerFixture: MotionTemplate = {
       ...textFixture,
       id: 'no-stagger-blank-line',
@@ -684,7 +686,7 @@ describe('preview vs. frameRenderer parity', () => {
     const noStaggerStates = evaluate(noStaggerResolved, t)
     const noStaggerSvg = buildSvgString(noStaggerStates, 3840, 2160, [])
     const noStaggerDy = noStaggerSvg.match(/dy="/g) || []
-    expect(noStaggerDy).toHaveLength(2)
+    expect(noStaggerDy).toHaveLength(2) // two separate dy for 3 lines
   })
 })
 
