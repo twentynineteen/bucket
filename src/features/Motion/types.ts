@@ -147,6 +147,8 @@ export interface TextLayer extends LayerBase {
   stagger?: Stagger
   counter?: Counter
   width?: number
+  wrap?: boolean
+  maxLines?: number
 }
 
 export interface RectLayer extends LayerBase {

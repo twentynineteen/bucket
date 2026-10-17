@@ -655,3 +655,191 @@ describe('S3.7: entrance has position or scale animation', () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// W5: Wrap-aware timing rules
+// ---------------------------------------------------------------------------
+
+describe('W5.1 S3.5 wrapped formula', () => {
+  it('wrap layer uses 0.9 slack: a box too small for maxLength fails', () => {
+    const t: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'wrap-too-small',
+      version: '1.0.0',
+      name: 'Too small',
+      description: '',
+      category: 'title-card',
+      status: 'stable',
+      tags: [],
+      fonts: [],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {
+        quote: {
+          kind: 'text',
+          label: 'Quote',
+          maxLength: 120,
+          default: 'Test',
+          required: true
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          text: 'Test',
+          param: 'quote',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 88 },
+          align: 'center',
+          lineHeight: 1.4,
+          multiline: true,
+          fill: '#ffffff',
+          // 0.9 * width * maxLines >= maxLength * fontSize * 0.6
+          // 0.9 * 1000 * 3 = 2700 < 120 * 88 * 0.6 = 6336 -> fail
+          width: 1000,
+          wrap: true,
+          maxLines: 3
+        }
+      ]
+    }
+    const violations = checkTextBoxWidth(t)
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations[0].rule).toBe('S3.5')
+  })
+
+  it('unwrapped layer keeps the existing formula', () => {
+    const t: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'nowrap-check',
+      version: '1.0.0',
+      name: 'No wrap',
+      description: '',
+      category: 'title-card',
+      status: 'stable',
+      tags: [],
+      fonts: [],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {
+        name: {
+          kind: 'text',
+          label: 'Name',
+          maxLength: 40,
+          default: 'Test',
+          required: true
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          text: 'Test',
+          param: 'name',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff',
+          // 40 * 80 * 0.6 = 1920 <= 2000 -> pass
+          width: 2000
+        }
+      ]
+    }
+    const violations = checkTextBoxWidth(t)
+    expect(violations).toEqual([])
+  })
+})
+
+describe('W5.2 vertical title-safe for wrapped layers', () => {
+  it('fails when maxLines block leaves title-safe at a position keyframe', () => {
+    const t: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'wrap-vtitle-fail',
+      version: '1.0.0',
+      name: 'V title fail',
+      description: '',
+      category: 'title-card',
+      status: 'stable',
+      tags: [],
+      fonts: [],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {
+        quote: {
+          kind: 'text',
+          label: 'Quote',
+          maxLength: 120,
+          default: 'Test',
+          required: true
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 1920, y: 1900 } }],
+          text: 'Test',
+          param: 'quote',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 88 },
+          align: 'center',
+          lineHeight: 1.4,
+          multiline: true,
+          fill: '#ffffff',
+          width: 3400,
+          wrap: true,
+          // 3 lines: baseline at y=1900 + 2 * (1.4 * 88) + 0.25 * 88
+          // = 1900 + 246.4 + 22 = 2168.4 > title-safe bottom 2052
+          maxLines: 3
+        }
+      ]
+    }
+    const violations = checkTitleSafe(t)
+    const vertRule = violations.find(v => v.message.includes('vertical'))
+    expect(vertRule).toBeDefined()
+  })
+
+  it('passes every built-in', () => {
+    for (const t of builtins) {
+      const violations = checkTitleSafe(t)
+      const vertViolation = violations.find(v => v.message.includes('vertical'))
+      expect(vertViolation, `${t.id} failed vertical title-safe`).toBeUndefined()
+    }
+  })
+})
+
+describe('W5.3 Quote card template', () => {
+  const quote = builtins.find(t => t.id === 'quote-card')!
+
+  it('has maxLength 120', () => {
+    expect(quote.params.quote.kind).toBe('text')
+    if (quote.params.quote.kind === 'text') {
+      expect(quote.params.quote.maxLength).toBe(120)
+    }
+  })
+
+  it('has wrap and maxLines 4', () => {
+    const layer = quote.layers.find(l => l.kind === 'text' && l.id === 'quote-text')
+    expect(layer).toBeDefined()
+    if (layer?.kind === 'text') {
+      expect(layer.wrap).toBe(true)
+      expect(layer.maxLines).toBe(4)
+    }
+  })
+
+  it('has no character stagger on quote-text', () => {
+    const layer = quote.layers.find(l => l.kind === 'text' && l.id === 'quote-text')
+    if (layer?.kind === 'text') {
+      expect(layer.stagger).toBeUndefined()
+    }
+  })
+
+  it('description does not claim character-stagger fade', () => {
+    expect(quote.description).not.toContain('character-stagger')
+  })
+})

@@ -37,6 +37,18 @@ vi.mock('../hooks/useMotionFont', () => ({
   }))
 }))
 
+// Canvas measurement is the boundary: a test can swap in a stub measurer
+const measurerStub = vi.hoisted(() => ({
+  current: null as null | { measure(text: string): number }
+}))
+vi.mock('../internal/textOverflow', async importOriginal => {
+  const actual = await importOriginal<typeof import('../internal/textOverflow')>()
+  return {
+    ...actual,
+    createCanvasMeasurer: () => measurerStub.current ?? actual.createCanvasMeasurer()
+  }
+})
+
 // Mock api module
 vi.mock('../api', () => ({
   pickFolder: vi.fn(async () => '/p'),
@@ -696,6 +708,225 @@ describe('MotionTemplateDialog', () => {
         time: 0.5,
         isPlaying: true
       })
+    })
+  })
+
+  describe('F3: font missing uses canvas measurer, not approximation', () => {
+    it('when font is missing, resolve uses the canvas measurer and font warning shows', async () => {
+      const fontHook = await import('../hooks/useMotionFont')
+      ;(fontHook.useMotionFont as ReturnType<typeof vi.fn>).mockReturnValue({
+        status: 'missing'
+      })
+
+      // Inject a stub that measures differently from the approximation
+      measurerStub.current = { measure: (text: string) => text.length * 100 }
+      try {
+        const wrapTmpl: MotionTemplate = {
+          ...barRevealTemplate(),
+          id: 'font-missing-test',
+          name: 'Font missing',
+          params: {
+            quote: {
+              kind: 'text',
+              label: 'Quote',
+              maxLength: 200,
+              default: 'aa bb cc',
+              required: true
+            }
+          },
+          layers: [
+            {
+              kind: 'text',
+              id: 'quote-text',
+              anchor: { x: 0, y: 0 },
+              position: [{ t: 0, value: { x: 1920, y: 1000 } }],
+              text: 'aa bb cc',
+              param: 'quote',
+              font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 88 },
+              align: 'center',
+              lineHeight: 1.4,
+              multiline: true,
+              fill: '#ffffff',
+              width: 500,
+              wrap: true,
+              maxLines: 2
+            }
+          ]
+        }
+        renderDialog(makeEntry(wrapTmpl))
+
+        // The font warning banner should be visible
+        expect(screen.getByText(/Requires Cabrito\.otf/i)).toBeInTheDocument()
+
+        // The stub measures 100/char. At width 500, "aa bb cc" wraps.
+        // If the dialog used the approximation (88*0.6=52.8/char), it
+        // would NOT wrap. The stub forces wrapping, proving the dialog
+        // uses the canvas measurer even when font is missing.
+        const preview = screen.getByRole('img', { name: /Font missing preview/i })
+        await waitFor(() => {
+          const text = preview.querySelector('text')
+          const spans = text ? Array.from(text.querySelectorAll('tspan')) : []
+          expect(spans.length).toBeGreaterThanOrEqual(2)
+        })
+
+        // "Loading font" should NOT show for 'missing'
+        const loadingFont = screen.queryByText('Loading font...')
+        expect(loadingFont === null || loadingFont.hidden).toBe(true)
+      } finally {
+        measurerStub.current = null
+        ;(fontHook.useMotionFont as ReturnType<typeof vi.fn>).mockReturnValue({
+          status: 'ready',
+          bytes: new Uint8Array(8)
+        })
+      }
+    })
+  })
+
+  describe('W4.4 font loading state', () => {
+    it('export is disabled with "Loading font" while useMotionFont is loading', async () => {
+      const fontHook = await import('../hooks/useMotionFont')
+      ;(fontHook.useMotionFont as ReturnType<typeof vi.fn>).mockReturnValue({
+        status: 'loading'
+      })
+
+      renderDialog(makeEntry())
+
+      // Should show "Loading font" text
+      expect(screen.getByText(/Loading font/i)).toBeInTheDocument()
+
+      // Export button should be disabled
+      expect(screen.getByRole('button', { name: /Export to project/i })).toBeDisabled()
+
+      // Restore
+      ;(fontHook.useMotionFont as ReturnType<typeof vi.fn>).mockReturnValue({
+        status: 'ready',
+        bytes: new Uint8Array(8)
+      })
+    })
+  })
+
+  describe('W4.1 line-count error in dialog', () => {
+    it('shows line-count error and disables export for long text on a wrap layer', async () => {
+      // A template where text wraps to more than maxLines
+      // at the approximation: 500 / (88 * 0.6) = ~9.5 chars/line
+      const wrapTemplate: MotionTemplate = {
+        ...barRevealTemplate(),
+        id: 'wrap-error-test',
+        name: 'Wrap error',
+        params: {
+          quote: {
+            kind: 'text',
+            label: 'Quote',
+            maxLength: 200,
+            default: 'Test',
+            required: true
+          }
+        },
+        layers: [
+          {
+            kind: 'text',
+            id: 'quote-text',
+            anchor: { x: 0, y: 0 },
+            position: [{ t: 0, value: { x: 1920, y: 1000 } }],
+            text: 'Test',
+            param: 'quote',
+            font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 88 },
+            align: 'center',
+            lineHeight: 1.4,
+            multiline: true,
+            fill: '#ffffff',
+            width: 500,
+            wrap: true,
+            maxLines: 2
+          }
+        ]
+      }
+
+      const user = userEvent.setup()
+      renderDialog(makeEntry(wrapTemplate))
+
+      // Type text that wraps to more than 2 lines
+      const input = screen.getByRole('textbox', { name: /Quote/i })
+      await user.clear(input)
+      await user.type(input, 'aaa bbb ccc ddd eee fff ggggg')
+
+      // Should show the full line-count error: "Needs N lines; this template fits 2."
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Needs \d+ lines; this template fits 2/i)
+        ).toBeInTheDocument()
+      })
+
+      // Copy Claude prompt should be disabled when param errors exist
+      expect(screen.getByRole('button', { name: /Copy Claude prompt/i })).toBeDisabled()
+    })
+  })
+
+  describe('W3.5 one measurer for preview, validation and export', () => {
+    function wrapQuoteTemplate(): MotionTemplate {
+      return {
+        ...barRevealTemplate(),
+        id: 'wrap-measurer-test',
+        name: 'Wrap measurer',
+        params: {
+          quote: {
+            kind: 'text',
+            label: 'Quote',
+            maxLength: 200,
+            default: 'aa bb cc',
+            required: true
+          }
+        },
+        layers: [
+          {
+            kind: 'text',
+            id: 'quote-text',
+            anchor: { x: 0, y: 0 },
+            position: [{ t: 0, value: { x: 1920, y: 1000 } }],
+            text: 'aa bb cc',
+            param: 'quote',
+            font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 88 },
+            align: 'center',
+            lineHeight: 1.4,
+            multiline: true,
+            fill: '#ffffff',
+            width: 500,
+            wrap: true,
+            maxLines: 2
+          }
+        ]
+      }
+    }
+
+    it('the preview lines and the line-count check follow the dialog measurer, not the approximation', async () => {
+      // 100 units per character. The approximation (88 x 0.6 = 52.8 per
+      // character) fits "aa bb cc" on one line at width 500; the stub needs two.
+      measurerStub.current = { measure: (text: string) => text.length * 100 }
+      try {
+        const user = userEvent.setup()
+        renderDialog(makeEntry(wrapQuoteTemplate()))
+
+        const preview = screen.getByRole('img', { name: /Wrap measurer preview/i })
+        const lineTexts = () => {
+          const text = preview.querySelector('text')
+          if (!text) return []
+          const spans = Array.from(text.querySelectorAll('tspan'))
+          return spans.length > 0 ? spans.map(n => n.textContent) : [text.textContent]
+        }
+        await waitFor(() => expect(lineTexts()).toEqual(['aa bb', 'cc']))
+
+        // Fits two lines under the approximation, needs three under the stub
+        const input = screen.getByRole('textbox', { name: /Quote/i })
+        await user.clear(input)
+        await user.type(input, 'aa bb cc dd ee')
+        await waitFor(() => {
+          expect(
+            screen.getByText(/Needs 3 lines; this template fits 2/i)
+          ).toBeInTheDocument()
+        })
+      } finally {
+        measurerStub.current = null
+      }
     })
   })
 

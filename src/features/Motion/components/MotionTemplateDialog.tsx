@@ -20,6 +20,7 @@ import React, { useCallback, useMemo, useState } from 'react'
 import { pathExists, pickFolder, pickPngImage, readBytes } from '../api'
 import { useMotionExport } from '../hooks/useMotionExport'
 import { useMotionFont } from '../hooks/useMotionFont'
+import { useMotionMeasurer } from '../hooks/useMotionMeasurer'
 import { useMotionPrefs } from '../hooks/useMotionPrefs'
 import { useMotionTicker } from '../hooks/useMotionTicker'
 import { applyImageParam } from '../internal/imageParam'
@@ -220,10 +221,14 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     [entry, effectiveTemplate]
   )
 
-  // Resolve the template for the evaluator
+  // Text measurer: canvas measurer when font is ready or missing,
+  // undefined while loading (falls back to approximation in the resolver).
+  const measurer = useMotionMeasurer(fontState)
+
+  // Resolve the template for the evaluator (and export)
   const resolved = useMemo(
-    () => resolveTemplate(effectiveTemplate, values, format),
-    [effectiveTemplate, values, format]
+    () => resolveTemplate(effectiveTemplate, values, format, measurer),
+    [effectiveTemplate, values, format, measurer]
   )
 
   // Ticker drives the preview animation
@@ -233,9 +238,10 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     playing
   })
 
-  // Track the template id so we can reset state when it changes
+  // Reset state when the template changes (a new card was opened)
   const [lastTemplateId, setLastTemplateId] = useState(template.id)
-  if (template.id !== lastTemplateId) {
+  const templateChanged = template.id !== lastTemplateId
+  if (templateChanged) {
     setLastTemplateId(template.id)
     setValues(defaultValues(entry))
     setImageError(null)
@@ -254,30 +260,33 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
     )
   }, [resolved.layers])
 
-  // Measurer uses canvas.measureText with the loaded template font when
-  // available, falling back to a coarse approximation in jsdom. Created
-  // once and reused for the lifetime of the dialog.
-  const measurer = useMemo(() => createCanvasMeasurer(), [])
-
+  // Overflow uses the same measurer. While loading, the resolver used the
+  // approximation, so overflow should too - createCanvasMeasurer in jsdom
+  // also falls back to the approximation, keeping them in sync.
   const overflowResults = useMemo(() => {
     if (textLayers.length === 0) return []
-    return checkTextOverflow(textLayers, measurer)
+    return checkTextOverflow(textLayers, measurer ?? createCanvasMeasurer())
   }, [textLayers, measurer])
 
   const hasOverflow = overflowResults.some(r => r.overflowing)
 
-  // Param validation
-  const paramErrors = useMemo(() => validateParams(template, values), [template, values])
+  // Param validation (uses the same measurer for line-count checks)
+  const paramErrors = useMemo(
+    () => validateParams(template, values, measurer),
+    [template, values, measurer]
+  )
   const hasParamErrors = paramErrors.length > 0
 
   // Font availability
+  const fontLoading = fontState.status === 'loading'
   const fontInstalled = fontState.status === 'ready'
   // ffmpeg availability is checked directly via the typed field, not by
   // string-matching the reason text (which could be about pools, not ffmpeg).
   const ffmpegAvailable = kavanaghAvail.ffmpeg?.status === 'ready'
 
-  // Can export: folder set, at least one target, params valid
-  const canExport = Boolean(projectFolder) && targets.length > 0 && !hasParamErrors
+  // Can export: folder set, at least one target, params valid, font loaded
+  const canExport =
+    Boolean(projectFolder) && targets.length > 0 && !hasParamErrors && !fontLoading
   const canCopyPrompt = !hasParamErrors
 
   // Favourite and default state
@@ -460,6 +469,7 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
               format={format}
               time={time}
               name={template.name}
+              measurer={measurer}
             />
           </PreviewStage>
 
@@ -484,11 +494,14 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
           </div>
 
           {/* Overflow warning */}
-          {hasOverflow && (
-            <p className="text-warning text-sm" role="status">
-              Text is wider than its box
-            </p>
-          )}
+          <p className="text-warning text-sm" role="status" hidden={!hasOverflow}>
+            Text is wider than its box
+          </p>
+
+          {/* Font loading indicator */}
+          <p className="text-muted-foreground text-sm" hidden={!fontLoading}>
+            Loading font...
+          </p>
 
           {/* Param editor */}
           <ParamEditor
@@ -497,6 +510,7 @@ const MotionTemplateDialog: React.FC<MotionTemplateDialogProps> = ({
             onChange={setValues}
             onPickImage={handlePickImage}
             imageError={imageError}
+            paramErrors={paramErrors}
           />
 
           {/* Notice: custom image replaces built-in region data */}

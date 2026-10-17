@@ -12,7 +12,13 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import MotionPreview from '../components/MotionPreview'
-import type { LayerState, MotionFormat, MotionTemplate, ParamValues } from '../types'
+import type {
+  LayerState,
+  MotionFormat,
+  MotionTemplate,
+  ParamValues,
+  TextLayer
+} from '../types'
 import { loadBuiltins } from './builtins'
 import { evaluate } from './evaluate'
 import { buildFrameList, buildSvgString, type FontData } from './frameRenderer'
@@ -481,6 +487,206 @@ describe('preview vs. frameRenderer parity', () => {
     const previewBody = extractSvgBody(previewSvg)
 
     expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+  })
+
+  // W0: Staggered multiline text keeps its lines (bug fix)
+
+  it('W0.1 staggered multiline "Hi.\\nYes." draws two lines mid-stagger', () => {
+    const baseText = textFixture.layers[0] as TextLayer
+    const multiStaggerFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'stagger-multiline-parity',
+      layers: [
+        {
+          ...baseText,
+          text: 'Hi.\nYes.',
+          multiline: true,
+          lineHeight: 1.4,
+          align: 'center' as const,
+          stagger: { delay: 0.02 }
+        }
+      ]
+    }
+
+    const t = 0.15 // mid-stagger
+    const values = { name: 'Hi.\nYes.' }
+    const resolved = resolveTemplate(multiStaggerFixture, values, FORMAT)
+    const states = evaluate(resolved, t)
+
+    // --- Renderer side ---
+    const rendererSvg = buildSvgString(states, 3840, 2160, [])
+
+    // Must contain a dy attribute for the second line
+    expect(rendererSvg).toContain('dy=')
+    // Must contain x="0" for the second line reset
+    expect(rendererSvg).toContain('x="0"')
+    // The newline character itself must not appear as visible text
+    expect(rendererSvg).not.toContain('>&#10;</tspan>')
+    expect(rendererSvg).not.toContain('>\n</tspan>')
+
+    // --- Preview side ---
+    setTestClock(t)
+    const html = renderToStaticMarkup(
+      React.createElement(MotionPreview, {
+        template: multiStaggerFixture,
+        values,
+        format: FORMAT,
+        time: 999,
+        name: 'stagger-multiline-parity'
+      })
+    )
+    const previewSvg = extractSvgElement(html)
+
+    // Preview must also have dy for the second line
+    expect(previewSvg).toContain('dy=')
+    expect(previewSvg).toContain('x="0"')
+
+    // --- Parity ---
+    const rendererBody = extractSvgBody(rendererSvg)
+    const previewBody = extractSvgBody(previewSvg)
+    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+  })
+
+  it('W0.1 staggered multiline "Hi.\\nYes." draws two lines when settled', () => {
+    const baseText = textFixture.layers[0] as TextLayer
+    const multiStaggerFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'stagger-multiline-settled',
+      layers: [
+        {
+          ...baseText,
+          text: 'Hi.\nYes.',
+          multiline: true,
+          lineHeight: 1.4,
+          align: 'center' as const,
+          stagger: { delay: 0.02 }
+        }
+      ]
+    }
+
+    const t = 2.0 // settled (well past stagger)
+    const values = { name: 'Hi.\nYes.' }
+    const resolved = resolveTemplate(multiStaggerFixture, values, FORMAT)
+    const states = evaluate(resolved, t)
+
+    const rendererSvg = buildSvgString(states, 3840, 2160, [])
+    expect(rendererSvg).toContain('dy=')
+    expect(rendererSvg).toContain('x="0"')
+
+    setTestClock(t)
+    const html = renderToStaticMarkup(
+      React.createElement(MotionPreview, {
+        template: multiStaggerFixture,
+        values,
+        format: FORMAT,
+        time: 999,
+        name: 'stagger-multiline-settled'
+      })
+    )
+    const previewSvg = extractSvgElement(html)
+    expect(previewSvg).toContain('dy=')
+
+    const rendererBody = extractSvgBody(rendererSvg)
+    const previewBody = extractSvgBody(previewSvg)
+    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+  })
+
+  it('W0.2 staggered multiline preserves per-character opacity order', () => {
+    const baseText = textFixture.layers[0] as TextLayer
+    const multiStaggerFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'stagger-multiline-opacity',
+      layers: [
+        {
+          ...baseText,
+          text: 'AB\nCD',
+          multiline: true,
+          lineHeight: 1.4,
+          align: 'left' as const,
+          stagger: { delay: 0.02 }
+        }
+      ]
+    }
+
+    const t = 0.15 // mid-stagger so opacities differ
+    const values = { name: 'AB\nCD' }
+    const resolved = resolveTemplate(multiStaggerFixture, values, FORMAT)
+    const states = evaluate(resolved, t)
+
+    const textState = states.find(s => s.kind === 'text') as LayerState & {
+      kind: 'text'
+    }
+    // Units should exist and contain graphemes (A, B, \n, C, D)
+    expect(textState.units).toBeDefined()
+    const units = textState.units!
+    // The visible graphemes (excluding \n) should have decreasing opacity
+    // because stagger delay makes later characters lag behind
+    const visible = units.filter(u => u.text !== '\n')
+    expect(visible).toHaveLength(4) // A, B, C, D
+    // First character should have the highest (or equal) opacity
+    expect(visible[0].opacity).toBeGreaterThanOrEqual(visible[3].opacity)
+  })
+
+  it('W0.3 staggered multiline "Hi.\\n\\nYes." with blank line draws 3 lines', () => {
+    const baseText = textFixture.layers[0] as TextLayer
+    const fixture: MotionTemplate = {
+      ...textFixture,
+      id: 'stagger-blank-line',
+      layers: [
+        {
+          ...baseText,
+          text: 'Hi.\n\nYes.',
+          multiline: true,
+          lineHeight: 1.4,
+          align: 'center' as const,
+          stagger: { delay: 0.02 }
+        }
+      ]
+    }
+
+    const lineAdvance = 1.4 * 80 // lineHeight * fontSize
+    const t = 2.0
+    const values = { name: 'Hi.\n\nYes.' }
+    const resolved = resolveTemplate(fixture, values, FORMAT)
+    const states = evaluate(resolved, t)
+
+    // Renderer: the stagger branch emits one dy for the two-\n gap (dy = 2 * lineAdvance),
+    // which visually produces 3 lines (line 1, blank line, line 3).
+    const rendererSvg = buildSvgString(states, 3840, 2160, [])
+    expect(rendererSvg).toContain(`dy="${2 * lineAdvance}"`)
+    expect(rendererSvg).toContain('x="0"')
+
+    // Preview: same
+    setTestClock(t)
+    const html = renderToStaticMarkup(
+      React.createElement(MotionPreview, {
+        template: fixture,
+        values,
+        format: FORMAT,
+        time: 999,
+        name: 'stagger-blank-line'
+      })
+    )
+    const previewSvg = extractSvgElement(html)
+    expect(previewSvg).toContain(`dy="${2 * lineAdvance}"`)
+
+    // Parity: both renderers produce the same SVG body
+    const rendererBody = extractSvgBody(rendererSvg)
+    const previewBody = extractSvgBody(previewSvg)
+    expect(normaliseSvg(rendererBody)).toBe(normaliseSvg(previewBody))
+
+    // The non-stagger multiline branch produces the same visual layout
+    // (3 lines), using two separate dy attributes instead of one doubled dy.
+    const noStaggerFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'no-stagger-blank-line',
+      layers: [{ ...baseText, text: 'Hi.\n\nYes.', multiline: true, lineHeight: 1.4 }]
+    }
+    const noStaggerResolved = resolveTemplate(noStaggerFixture, values, FORMAT)
+    const noStaggerStates = evaluate(noStaggerResolved, t)
+    const noStaggerSvg = buildSvgString(noStaggerStates, 3840, 2160, [])
+    const noStaggerDy = noStaggerSvg.match(/dy="/g) || []
+    expect(noStaggerDy).toHaveLength(2) // two separate dy for 3 lines
   })
 })
 

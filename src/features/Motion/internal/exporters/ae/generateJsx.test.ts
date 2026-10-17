@@ -2332,3 +2332,61 @@ describe('multiline text uses addText (not addBoxText)', () => {
     expect(src).toContain('addText')
   })
 })
+
+// ---------------------------------------------------------------------------
+// W3.1 - wrapped text has \r at exactly the resolved break positions
+// ---------------------------------------------------------------------------
+
+describe('W3.1 wrapped text in AE export', () => {
+  it('wrapped text has \\r at the resolved break positions', () => {
+    const wrapFixture: MotionTemplate = {
+      ...textFixture,
+      id: 'wrap-ae-test',
+      params: {
+        quote: {
+          kind: 'text',
+          label: 'Quote',
+          maxLength: 120,
+          default: 'Test',
+          required: true
+        }
+      },
+      layers: [
+        {
+          ...(textFixture.layers[0] as TextLayer),
+          id: 'quote-text',
+          param: 'quote',
+          text: 'Test',
+          multiline: true,
+          width: 3400,
+          wrap: true,
+          maxLines: 3
+        }
+      ]
+    }
+
+    // Text that wraps at native (3840) sizes: 80 * 80 * 0.6 = 3840 > 3400.
+    const longText =
+      'aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp'
+    const input = makeInput(wrapFixture, { values: { quote: longText } })
+
+    // Check that the resolved template has wrapped text
+    const resolvedLayer = input.resolved.layers.find(l => l.id === 'quote-text')
+    expect(resolvedLayer?.kind).toBe('text')
+    if (resolvedLayer?.kind !== 'text') return
+    const resolvedLines = resolvedLayer.text.split('\n')
+    expect(resolvedLines.length).toBeGreaterThan(1)
+
+    // Get the JSX source
+    const src = getJsxSrc(input)
+
+    // In AE, \n becomes \r. Build the expected text with \r and verify
+    // it appears in the JSX source as a string literal.
+    const expectedAeText = resolvedLines.join('\\r')
+    expect(src).toContain(expectedAeText)
+
+    // The text should use point text (addText), not box text
+    expect(src).toContain('addText')
+    expect(src).not.toContain('addBoxText')
+  })
+})

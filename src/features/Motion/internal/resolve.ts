@@ -30,6 +30,8 @@ import type {
 import { parseBindPath } from './bindPath'
 import { expandTemplate } from './expand'
 import { hasParticles } from './layers'
+import { APPROX_MEASURER, type TextMeasurer } from './textOverflow'
+import { countLines, wrapText } from './wrapText'
 
 /** Exhaustiveness check: the compiler proves this is never called. */
 function assertNever(x: never): never {
@@ -43,6 +45,8 @@ function assertNever(x: never): never {
 export interface ParamError {
   paramId: string
   message: string
+  /** 'lineCount' marks the wrap error the param field cannot show itself. */
+  kind?: 'lineCount'
 }
 
 /** Validate a single text param. */
@@ -90,15 +94,63 @@ function validateNumberListParam(
   return errors
 }
 
+/** Validate a single colour param. */
+function validateColourParam(
+  id: string,
+  def: Extract<ParamDef, { kind: 'colour' }>,
+  val: unknown
+): ParamError[] {
+  const colour = typeof val === 'string' ? val : def.default
+  if (!/^#[0-9a-fA-F]{6}$/.test(colour)) {
+    return [{ paramId: id, message: `${id}: invalid hex colour` }]
+  }
+  return []
+}
+
+/** Validate a single hold param. */
+function validateHoldParam(
+  id: string,
+  def: Extract<ParamDef, { kind: 'hold' }>,
+  val: unknown
+): ParamError[] {
+  const hold = typeof val === 'number' ? val : def.default
+  if (hold < def.min || hold > def.max) {
+    return [
+      { paramId: id, message: `${id}: hold outside range [${def.min}, ${def.max}]` }
+    ]
+  }
+  return []
+}
+
+/** Validate a single number param. */
+function validateNumberParam(
+  id: string,
+  def: Extract<ParamDef, { kind: 'number' }>,
+  val: unknown
+): ParamError[] {
+  const n = typeof val === 'number' ? val : def.default
+  if (n < def.min || n > def.max) {
+    return [
+      { paramId: id, message: `${id}: number outside range [${def.min}, ${def.max}]` }
+    ]
+  }
+  return []
+}
+
 /**
  * Validate param values against the template's param definitions.
  * Returns an empty array when all values are valid.
+ *
+ * When a measurer is provided, wrap layers are checked for line count.
+ * Without a measurer, the fallback approximation is used.
  */
 export function validateParams(
   template: MotionTemplate,
-  values: ParamValues
+  values: ParamValues,
+  measurer?: TextMeasurer
 ): ParamError[] {
   const errors: ParamError[] = []
+  const m = measurer ?? APPROX_MEASURER
 
   for (const [id, def] of Object.entries(template.params)) {
     const val = values[id]
@@ -106,38 +158,70 @@ export function validateParams(
     switch (def.kind) {
       case 'text':
         errors.push(...validateTextParam(id, def, val))
+        errors.push(...validateWrapLineCount(id, def, val, template, m))
         break
-      case 'colour': {
-        const colour = typeof val === 'string' ? val : def.default
-        if (!/^#[0-9a-fA-F]{6}$/.test(colour)) {
-          errors.push({ paramId: id, message: `${id}: invalid hex colour` })
-        }
+      case 'colour':
+        errors.push(...validateColourParam(id, def, val))
         break
-      }
-      case 'hold': {
-        const hold = typeof val === 'number' ? val : def.default
-        if (hold < def.min || hold > def.max) {
-          errors.push({
-            paramId: id,
-            message: `${id}: hold outside range [${def.min}, ${def.max}]`
-          })
-        }
+      case 'hold':
+        errors.push(...validateHoldParam(id, def, val))
         break
-      }
       case 'numberList':
         errors.push(...validateNumberListParam(id, def, val))
         break
-      case 'number': {
-        const n = typeof val === 'number' ? val : def.default
-        if (n < def.min || n > def.max) {
-          errors.push({
-            paramId: id,
-            message: `${id}: number outside range [${def.min}, ${def.max}]`
-          })
-        }
+      case 'number':
+        errors.push(...validateNumberParam(id, def, val))
         break
-      }
       // image: no validation - picked or default
+    }
+  }
+
+  return errors
+}
+
+/** Check whether a text param's value wraps to more than maxLines. */
+function validateWrapLineCount(
+  id: string,
+  def: Extract<ParamDef, { kind: 'text' }>,
+  val: unknown,
+  template: MotionTemplate,
+  measurer: TextMeasurer
+): ParamError[] {
+  const text = typeof val === 'string' ? val : def.default
+
+  // Find layers that bind this param and have wrap enabled
+  function findWrapLayers(
+    layers: Layer[]
+  ): (TextLayer & { wrap: true; maxLines: number; width: number })[] {
+    const result: (TextLayer & { wrap: true; maxLines: number; width: number })[] = []
+    for (const layer of layers) {
+      if (layer.kind === 'group') {
+        result.push(...findWrapLayers(layer.children))
+      } else if (
+        layer.kind === 'text' &&
+        layer.param === id &&
+        layer.wrap &&
+        layer.maxLines != null &&
+        layer.width != null
+      ) {
+        result.push(layer as TextLayer & { wrap: true; maxLines: number; width: number })
+      }
+    }
+    return result
+  }
+
+  const wrapLayers = findWrapLayers(template.layers)
+  const errors: ParamError[] = []
+
+  for (const layer of wrapLayers) {
+    const wrapped = wrapText(text, layer.width, layer.font, measurer)
+    const lines = countLines(wrapped)
+    if (lines > layer.maxLines) {
+      errors.push({
+        paramId: id,
+        message: `Needs ${lines} lines; this template fits ${layer.maxLines}.`,
+        kind: 'lineCount'
+      })
     }
   }
 
@@ -197,6 +281,28 @@ function applyTextValues(
       if (typeof val === 'string') {
         return { ...layer, text: val }
       }
+    }
+    return layer
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Automatic line wrapping
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply automatic wrapping to text layers that opt in (`wrap: true`).
+ * Runs at native template sizes (before scaling), so break positions
+ * are identical at every output format.
+ */
+function applyWrap(layers: Layer[], measurer: TextMeasurer): Layer[] {
+  return layers.map(layer => {
+    if (layer.kind === 'group') {
+      return { ...layer, children: applyWrap(layer.children, measurer) }
+    }
+    if (layer.kind === 'text' && layer.wrap && layer.width != null) {
+      const wrapped = wrapText(layer.text, layer.width, layer.font, measurer)
+      return { ...layer, text: wrapped }
     }
     return layer
   })
@@ -802,10 +908,12 @@ export function getHoldParam(
  */
 function resolveStructure(
   template: MotionTemplate,
-  values: ParamValues
+  values: ParamValues,
+  measurer?: TextMeasurer
 ): { layers: Layer[]; resolvedValues: ParamValues } {
   const resolvedValues = resolveValues(template, values)
   let layers = applyTextValues(template.layers, template.params, resolvedValues)
+  layers = applyWrap(layers, measurer ?? APPROX_MEASURER)
   layers = applyColourBindings(layers, template.params, resolvedValues)
   layers = resolveRegionFills(layers, template.params, resolvedValues)
   layers = expandTemplate(layers, template.params, resolvedValues)
@@ -904,10 +1012,11 @@ function fillDefaultPositions(layers: Layer[]): Layer[] {
 export function resolveTemplate(
   template: MotionTemplate,
   values: ParamValues,
-  format: MotionFormat
+  format: MotionFormat,
+  measurer?: TextMeasurer
 ): ResolvedTemplate {
   // Steps 1-4b: shared with validFormats via resolveStructure
-  const structure = resolveStructure(template, values)
+  const structure = resolveStructure(template, values, measurer)
   const { resolvedValues } = structure
   let { layers } = structure
 
