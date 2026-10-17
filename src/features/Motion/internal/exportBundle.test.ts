@@ -6,12 +6,12 @@
  * M5.3: Temp folder is removed on error.
  * M5.4: Folder contents are correct for selected targets.
  * M2.6 (export part): Image param copies source.png, params.json has relative path.
+ * Ar11: Stale .tmp-* sweep in beginBundle.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   beginBundle,
   commitBundle,
-  exportBundle,
   type ExportBundleApi,
   type ExportBundleInput
 } from './exportBundle'
@@ -60,7 +60,8 @@ describe('exportBundle', () => {
   it('M5.1 - creates Graphics/Motion, writes to temp folder, renames to final', async () => {
     const api = mockApi()
 
-    const result = await exportBundle(baseInput(), api)
+    const { tmpDir, motionDir } = await beginBundle(baseInput(), api)
+    const result = await commitBundle(baseInput(), api, tmpDir, motionDir)
 
     // Graphics/Motion should be created
     expect(api.makeDir).toHaveBeenCalledWith('/p/Graphics/Motion')
@@ -91,7 +92,8 @@ describe('exportBundle', () => {
       })
     })
 
-    const result = await exportBundle(baseInput(), api)
+    const { tmpDir, motionDir } = await beginBundle(baseInput(), api)
+    const result = await commitBundle(baseInput(), api, tmpDir, motionDir)
 
     expect(result.finalFolder).toBe('/p/Graphics/Motion/lower-third-glide-jane-doe-3')
   })
@@ -105,7 +107,10 @@ describe('exportBundle', () => {
       })
     })
 
-    await expect(exportBundle(baseInput(), api)).rejects.toThrow('disk full')
+    const { tmpDir, motionDir } = await beginBundle(baseInput(), api)
+    await expect(commitBundle(baseInput(), api, tmpDir, motionDir)).rejects.toThrow(
+      'disk full'
+    )
 
     // Temp folder should be removed on error
     expect(api.removeDirRecursive).toHaveBeenCalledTimes(1)
@@ -117,7 +122,8 @@ describe('exportBundle', () => {
   it('M5.4 - writes correct file set and params.json with schema version', async () => {
     const api = mockApi()
 
-    await exportBundle(baseInput(), api)
+    const { tmpDir, motionDir } = await beginBundle(baseInput(), api)
+    await commitBundle(baseInput(), api, tmpDir, motionDir)
 
     const writeCalls = (api.writeText as ReturnType<typeof vi.fn>).mock.calls
     const writtenNames = writeCalls.map(([path]: [string]) => path.split('/').pop())
@@ -146,7 +152,8 @@ describe('exportBundle', () => {
       values: { name: 'Jane Doe', image: { pickedPath: '/Users/e/runner.png' } }
     })
 
-    await exportBundle(input, api)
+    const { tmpDir, motionDir } = await beginBundle(input, api)
+    await commitBundle(input, api, tmpDir, motionDir)
 
     // Source image should be copied
     expect(api.copyFileTo).toHaveBeenCalledTimes(1)
@@ -163,15 +170,17 @@ describe('exportBundle', () => {
     expect(JSON.stringify(paramsJson.values)).toContain('source.png')
   })
 
-  it('S1 - beginBundle creates temp dir and returns its path', async () => {
+  it('S1 - beginBundle creates temp dir and returns its path and motionDir', async () => {
     const api = mockApi()
 
-    const { tmpDir } = await beginBundle(baseInput(), api)
+    const { tmpDir, motionDir } = await beginBundle(baseInput(), api)
 
     // Graphics/Motion should be created
     expect(api.makeDir).toHaveBeenCalledWith('/p/Graphics/Motion')
     // Temp dir should be inside Graphics/Motion with the template id
     expect(tmpDir).toMatch(/\/p\/Graphics\/Motion\/\.tmp-lower-third-glide-/)
+    // motionDir should be the parent
+    expect(motionDir).toBe('/p/Graphics/Motion')
     // Temp dir itself should also be created
     const makeDirCalls = (api.makeDir as ReturnType<typeof vi.fn>).mock.calls
     const tmpDirCreated = makeDirCalls.some(([path]: [string]) => path === tmpDir)
@@ -181,8 +190,9 @@ describe('exportBundle', () => {
   it('S1 - commitBundle writes files and renames from provided tmpDir', async () => {
     const api = mockApi()
     const tmpDir = '/p/Graphics/Motion/.tmp-lower-third-glide-abc123'
+    const motionDir = '/p/Graphics/Motion'
 
-    const result = await commitBundle(baseInput(), api, tmpDir)
+    const result = await commitBundle(baseInput(), api, tmpDir, motionDir)
 
     // Files should be written to the provided temp dir
     const writeCalls = (api.writeText as ReturnType<typeof vi.fn>).mock.calls
@@ -208,8 +218,11 @@ describe('exportBundle', () => {
       })
     })
     const tmpDir = '/p/Graphics/Motion/.tmp-lower-third-glide-abc123'
+    const motionDir = '/p/Graphics/Motion'
 
-    await expect(commitBundle(baseInput(), api, tmpDir)).rejects.toThrow('disk full')
+    await expect(commitBundle(baseInput(), api, tmpDir, motionDir)).rejects.toThrow(
+      'disk full'
+    )
 
     expect(api.removeDirRecursive).toHaveBeenCalledWith(tmpDir)
   })
@@ -222,17 +235,107 @@ describe('exportBundle', () => {
       bytes: new Uint8Array([0, 1, 2, 3])
     }
 
-    await exportBundle(
+    const { tmpDir, motionDir } = await beginBundle(
       baseInput({
         files: [...baseInput().files, binaryFile],
         targets: ['ae', 'prompt', 'video']
       }),
       api
     )
+    await commitBundle(
+      baseInput({
+        files: [...baseInput().files, binaryFile],
+        targets: ['ae', 'prompt', 'video']
+      }),
+      api,
+      tmpDir,
+      motionDir
+    )
 
     expect(api.writeBytes).toHaveBeenCalledTimes(1)
     const [path, bytes] = (api.writeBytes as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(path).toMatch(/lower-third-glide\.mov$/)
     expect(bytes).toEqual(new Uint8Array([0, 1, 2, 3]))
+  })
+})
+
+describe('Ar11 - stale .tmp-* sweep', () => {
+  it('removes .tmp-* folders older than 24 hours', async () => {
+    const now = Date.now()
+    const TWO_DAYS_AGO = now - 2 * 24 * 60 * 60 * 1000
+
+    const api = mockApi({
+      listFolder: vi.fn(async () => [
+        { name: '.tmp-old-render-abc', isFile: false },
+        { name: 'glide-jane-doe', isFile: false },
+        { name: 'README.md', isFile: true }
+      ]),
+      modifiedTimeMs: vi.fn(async () => TWO_DAYS_AGO)
+    })
+
+    await beginBundle(baseInput(), api)
+
+    // Only the stale .tmp-* folder should be removed, not the real folder
+    expect(api.removeDirRecursive).toHaveBeenCalledWith(
+      '/p/Graphics/Motion/.tmp-old-render-abc'
+    )
+    expect(api.removeDirRecursive).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not remove .tmp-* folders younger than 24 hours', async () => {
+    const now = Date.now()
+    const ONE_HOUR_AGO = now - 60 * 60 * 1000
+
+    const api = mockApi({
+      listFolder: vi.fn(async () => [{ name: '.tmp-recent-render-xyz', isFile: false }]),
+      modifiedTimeMs: vi.fn(async () => ONE_HOUR_AGO)
+    })
+
+    await beginBundle(baseInput(), api)
+
+    // removeDirRecursive should NOT have been called (no stale folders)
+    expect(api.removeDirRecursive).not.toHaveBeenCalled()
+  })
+
+  it('never touches folders that do not start with .tmp-', async () => {
+    const now = Date.now()
+    const TWO_DAYS_AGO = now - 2 * 24 * 60 * 60 * 1000
+
+    const api = mockApi({
+      listFolder: vi.fn(async () => [
+        { name: 'glide-jane-doe', isFile: false },
+        { name: '.hidden-folder', isFile: false },
+        { name: 'tmp-no-dot-prefix', isFile: false }
+      ]),
+      modifiedTimeMs: vi.fn(async () => TWO_DAYS_AGO)
+    })
+
+    await beginBundle(baseInput(), api)
+
+    // Nothing should be removed
+    expect(api.removeDirRecursive).not.toHaveBeenCalled()
+  })
+
+  it('skips sweep gracefully when listFolder is not provided', async () => {
+    const api = mockApi()
+    // No listFolder or modifiedTimeMs on the api
+
+    // Should still create the temp folder without errors
+    const { tmpDir } = await beginBundle(baseInput(), api)
+    expect(tmpDir).toMatch(/\.tmp-lower-third-glide-/)
+  })
+
+  it('does not remove .tmp-* files (only folders)', async () => {
+    const now = Date.now()
+    const TWO_DAYS_AGO = now - 2 * 24 * 60 * 60 * 1000
+
+    const api = mockApi({
+      listFolder: vi.fn(async () => [{ name: '.tmp-old-file', isFile: true }]),
+      modifiedTimeMs: vi.fn(async () => TWO_DAYS_AGO)
+    })
+
+    await beginBundle(baseInput(), api)
+
+    expect(api.removeDirRecursive).not.toHaveBeenCalled()
   })
 })
