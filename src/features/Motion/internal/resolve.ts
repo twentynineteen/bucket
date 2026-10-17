@@ -92,6 +92,49 @@ function validateNumberListParam(
   return errors
 }
 
+/** Validate a single colour param. */
+function validateColourParam(
+  id: string,
+  def: Extract<ParamDef, { kind: 'colour' }>,
+  val: unknown
+): ParamError[] {
+  const colour = typeof val === 'string' ? val : def.default
+  if (!/^#[0-9a-fA-F]{6}$/.test(colour)) {
+    return [{ paramId: id, message: `${id}: invalid hex colour` }]
+  }
+  return []
+}
+
+/** Validate a single hold param. */
+function validateHoldParam(
+  id: string,
+  def: Extract<ParamDef, { kind: 'hold' }>,
+  val: unknown
+): ParamError[] {
+  const hold = typeof val === 'number' ? val : def.default
+  if (hold < def.min || hold > def.max) {
+    return [
+      { paramId: id, message: `${id}: hold outside range [${def.min}, ${def.max}]` }
+    ]
+  }
+  return []
+}
+
+/** Validate a single number param. */
+function validateNumberParam(
+  id: string,
+  def: Extract<ParamDef, { kind: 'number' }>,
+  val: unknown
+): ParamError[] {
+  const n = typeof val === 'number' ? val : def.default
+  if (n < def.min || n > def.max) {
+    return [
+      { paramId: id, message: `${id}: number outside range [${def.min}, ${def.max}]` }
+    ]
+  }
+  return []
+}
+
 /**
  * Validate param values against the template's param definitions.
  * Returns an empty array when all values are valid.
@@ -115,36 +158,18 @@ export function validateParams(
         errors.push(...validateTextParam(id, def, val))
         errors.push(...validateWrapLineCount(id, def, val, template, m))
         break
-      case 'colour': {
-        const colour = typeof val === 'string' ? val : def.default
-        if (!/^#[0-9a-fA-F]{6}$/.test(colour)) {
-          errors.push({ paramId: id, message: `${id}: invalid hex colour` })
-        }
+      case 'colour':
+        errors.push(...validateColourParam(id, def, val))
         break
-      }
-      case 'hold': {
-        const hold = typeof val === 'number' ? val : def.default
-        if (hold < def.min || hold > def.max) {
-          errors.push({
-            paramId: id,
-            message: `${id}: hold outside range [${def.min}, ${def.max}]`
-          })
-        }
+      case 'hold':
+        errors.push(...validateHoldParam(id, def, val))
         break
-      }
       case 'numberList':
         errors.push(...validateNumberListParam(id, def, val))
         break
-      case 'number': {
-        const n = typeof val === 'number' ? val : def.default
-        if (n < def.min || n > def.max) {
-          errors.push({
-            paramId: id,
-            message: `${id}: number outside range [${def.min}, ${def.max}]`
-          })
-        }
+      case 'number':
+        errors.push(...validateNumberParam(id, def, val))
         break
-      }
       // image: no validation - picked or default
     }
   }

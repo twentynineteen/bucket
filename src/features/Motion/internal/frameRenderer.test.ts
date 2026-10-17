@@ -12,7 +12,13 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import MotionPreview from '../components/MotionPreview'
-import type { LayerState, MotionFormat, MotionTemplate, ParamValues } from '../types'
+import type {
+  LayerState,
+  MotionFormat,
+  MotionTemplate,
+  ParamValues,
+  TextLayer
+} from '../types'
 import { loadBuiltins } from './builtins'
 import { evaluate } from './evaluate'
 import { buildFrameList, buildSvgString, type FontData } from './frameRenderer'
@@ -486,12 +492,13 @@ describe('preview vs. frameRenderer parity', () => {
   // W0: Staggered multiline text keeps its lines (bug fix)
 
   it('W0.1 staggered multiline "Hi.\\nYes." draws two lines mid-stagger', () => {
+    const baseText = textFixture.layers[0] as TextLayer
     const multiStaggerFixture: MotionTemplate = {
       ...textFixture,
       id: 'stagger-multiline-parity',
       layers: [
         {
-          ...textFixture.layers[0],
+          ...baseText,
           text: 'Hi.\nYes.',
           multiline: true,
           lineHeight: 1.4,
@@ -541,12 +548,13 @@ describe('preview vs. frameRenderer parity', () => {
   })
 
   it('W0.1 staggered multiline "Hi.\\nYes." draws two lines when settled', () => {
+    const baseText = textFixture.layers[0] as TextLayer
     const multiStaggerFixture: MotionTemplate = {
       ...textFixture,
       id: 'stagger-multiline-settled',
       layers: [
         {
-          ...textFixture.layers[0],
+          ...baseText,
           text: 'Hi.\nYes.',
           multiline: true,
           lineHeight: 1.4,
@@ -584,12 +592,13 @@ describe('preview vs. frameRenderer parity', () => {
   })
 
   it('W0.2 staggered multiline preserves per-character opacity order', () => {
+    const baseText = textFixture.layers[0] as TextLayer
     const multiStaggerFixture: MotionTemplate = {
       ...textFixture,
       id: 'stagger-multiline-opacity',
       layers: [
         {
-          ...textFixture.layers[0],
+          ...baseText,
           text: 'AB\nCD',
           multiline: true,
           lineHeight: 1.4,

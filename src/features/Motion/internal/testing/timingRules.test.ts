@@ -824,9 +824,7 @@ describe('W5.3 Quote card template', () => {
   })
 
   it('has wrap and maxLines 3', () => {
-    const layer = quote.layers.find(
-      l => l.kind === 'text' && l.id === 'quote-text'
-    )
+    const layer = quote.layers.find(l => l.kind === 'text' && l.id === 'quote-text')
     expect(layer).toBeDefined()
     if (layer?.kind === 'text') {
       expect(layer.wrap).toBe(true)
@@ -835,9 +833,7 @@ describe('W5.3 Quote card template', () => {
   })
 
   it('has no character stagger on quote-text', () => {
-    const layer = quote.layers.find(
-      l => l.kind === 'text' && l.id === 'quote-text'
-    )
+    const layer = quote.layers.find(l => l.kind === 'text' && l.id === 'quote-text')
     if (layer?.kind === 'text') {
       expect(layer.stagger).toBeUndefined()
     }

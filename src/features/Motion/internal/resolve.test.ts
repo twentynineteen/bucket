@@ -961,14 +961,18 @@ describe('W4 validateParams line-count errors', () => {
     // fits ~64 chars per line. 3 lines = ~192 chars, so 200 chars = 4 lines
     const longText = 'word '.repeat(40).trim() // 40 words, ~200 chars
     const errors = validateParams(wrapTemplate, { quote: longText })
-    const lineError = errors.find(e => e.paramId === 'quote' && e.message.includes('lines'))
+    const lineError = errors.find(
+      e => e.paramId === 'quote' && e.message.includes('lines')
+    )
     expect(lineError).toBeDefined()
   })
 
   it('W4.2 value shortened to fit clears the error', () => {
     const shortText = 'Short text'
     const errors = validateParams(wrapTemplate, { quote: shortText })
-    const lineError = errors.find(e => e.paramId === 'quote' && e.message.includes('lines'))
+    const lineError = errors.find(
+      e => e.paramId === 'quote' && e.message.includes('lines')
+    )
     expect(lineError).toBeUndefined()
   })
 })

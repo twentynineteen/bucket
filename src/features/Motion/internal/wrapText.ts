@@ -58,20 +58,9 @@ function breakLongWord(
 }
 
 /**
- * Wrap a single typed line (no \n in it) to fit within `width`.
- * Returns an array of output lines.
+ * Tokenise a line into alternating word and space-run tokens.
  */
-function wrapSingleLine(
-  line: string,
-  width: number,
-  font: { family: string; size: number },
-  measurer: TextMeasurer
-): string[] {
-  // Empty line or only spaces: return as-is
-  if (line === '' || /^\s+$/.test(line)) return [line]
-
-  // Split into words on space boundaries, keeping runs of spaces
-  // as separate "words" so we can handle them at breaks
+function tokenise(line: string): string[] {
   const tokens: string[] = []
   let i = 0
   while (i < line.length) {
@@ -87,47 +76,70 @@ function wrapSingleLine(
       i = j
     }
   }
+  return tokens
+}
 
+/** Whether a string is only spaces. */
+function isSpaceRun(s: string): boolean {
+  return /^\s+$/.test(s)
+}
+
+/** Handle a word that does not fit on the current line. */
+function handleOverflowWord(
+  token: string,
+  width: number,
+  font: { family: string; size: number },
+  measurer: TextMeasurer,
+  result: string[]
+): string {
+  if (measurer.measure(token, font) <= width) {
+    return token
+  }
+  // Word is wider than width - break between graphemes
+  const pieces = breakLongWord(token, width, font, measurer)
+  for (let p = 0; p < pieces.length - 1; p++) {
+    result.push(pieces[p])
+  }
+  return pieces[pieces.length - 1]
+}
+
+/**
+ * Wrap a single typed line (no \n in it) to fit within `width`.
+ * Returns an array of output lines.
+ */
+function wrapSingleLine(
+  line: string,
+  width: number,
+  font: { family: string; size: number },
+  measurer: TextMeasurer
+): string[] {
+  if (line === '' || isSpaceRun(line)) return [line]
+
+  const tokens = tokenise(line)
   const result: string[] = []
   let currentLine = ''
 
   for (const token of tokens) {
-    // Skip space tokens at the start of a new line
-    if (currentLine === '' && /^\s+$/.test(token)) continue
+    if (currentLine === '' && isSpaceRun(token)) continue
 
-    const candidate = currentLine + token
-    const candidateWidth = measurer.measure(candidate, font)
-
+    const candidateWidth = measurer.measure(currentLine + token, font)
     if (candidateWidth <= width) {
-      currentLine = candidate
-    } else {
-      // Token does not fit on current line
-      if (/^\s+$/.test(token)) {
-        // It is a space run - just break here, don't add the spaces
-        if (currentLine !== '') {
-          result.push(currentLine)
-          currentLine = ''
-        }
-      } else {
-        // It is a word
-        if (currentLine !== '') {
-          // Trim trailing spaces from the current line
-          result.push(currentLine.replace(/ +$/, ''))
-          currentLine = ''
-        }
-        // Check if this word fits alone on a line
-        if (measurer.measure(token, font) <= width) {
-          currentLine = token
-        } else {
-          // Word is wider than width - break between graphemes
-          const pieces = breakLongWord(token, width, font, measurer)
-          // Add all pieces except the last as separate lines
-          for (let p = 0; p < pieces.length - 1; p++) {
-            result.push(pieces[p])
-          }
-          currentLine = pieces[pieces.length - 1]
-        }
+      currentLine += token
+      continue
+    }
+
+    // Token does not fit on current line
+    if (isSpaceRun(token)) {
+      if (currentLine !== '') {
+        result.push(currentLine)
+        currentLine = ''
       }
+    } else {
+      if (currentLine !== '') {
+        result.push(currentLine.replace(/ +$/, ''))
+        currentLine = ''
+      }
+      currentLine = handleOverflowWord(token, width, font, measurer, result)
     }
   }
 
