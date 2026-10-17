@@ -72,10 +72,8 @@ export function computeLH(
  * Each segment k -> k+1 uses the ease from key k. The ease governs handle
  * placement for both the outgoing (RH on key k) and incoming (LH on key k+1).
  *
- * When two adjacent segments share a key, the LH from the earlier segment
- * wins (it is set first and overwritten by the later segment's LH only if
- * the key is revisited). In practice, interior keys get both an LH from the
- * incoming segment and an RH from the outgoing segment.
+ * Interior keys get both an LH from the incoming segment and an RH from
+ * the outgoing segment.
  */
 export function toFusionKeyframes(
   keyframes: Keyframe<number>[],

@@ -45,6 +45,15 @@ import {
 import { escapeLuaString } from './luaString'
 
 // ---------------------------------------------------------------------------
+// Exhaustiveness check
+// ---------------------------------------------------------------------------
+
+/** Exhaustiveness check: the compiler proves this is never called. */
+function assertNever(x: never): never {
+  throw new Error(`Unexpected layer kind: ${(x as { kind: string }).kind}`)
+}
+
+// ---------------------------------------------------------------------------
 // Internal types
 // ---------------------------------------------------------------------------
 
@@ -338,15 +347,38 @@ function buildShapeTransform(
   if (!hasScale && !hasRotation) return null
 
   const name = toolName(layer.id, 'xf')
+  const { w, h, fps } = format
 
-  // Anchor's world position = position (evaluator convention)
-  const posX = layer.position?.[0]?.value.x ?? layer.anchor.x
-  const posY = layer.position?.[0]?.value.y ?? layer.anchor.y
-  const pivot = toImageCoords(posX, posY, format.w, format.h)
+  const xfInputs: LuaEntry[] = []
 
-  const xfInputs: LuaEntry[] = [pivotInput(pivot)]
-  addTransformScale(xfInputs, layer, name, format.fps, tools)
-  addTransformRotation(xfInputs, layer, name, format.fps, tools)
+  // Pivot follows the animated position (the anchor's world position).
+  // Evaluator: world_anchor = position (when anchor maps to the pivot).
+  if (layer.position && layer.position.length > 1) {
+    // Animated pivot via XYPath
+    const xKfs = layer.position.map(kf => ({
+      t: kf.t,
+      value: toImageCoords(kf.value.x, kf.value.y, w, h).x,
+      ease: kf.ease
+    }))
+    const yKfs = layer.position.map(kf => ({
+      t: kf.t,
+      value: toImageCoords(kf.value.x, kf.value.y, w, h).y,
+      ease: kf.ease
+    }))
+    const pivotXYName = luaIdent(`${name}_pivot`)
+    const { xyPathTool, sourceEntry } = buildXYPath(pivotXYName, xKfs, yKfs, fps, tools)
+    tools.push(xyPathTool)
+    // Rewrite sourceEntry key from 'Center' to 'Pivot'
+    xfInputs.push({ ...sourceEntry, key: 'Pivot' })
+  } else {
+    const posX = layer.position?.[0]?.value.x ?? layer.anchor.x
+    const posY = layer.position?.[0]?.value.y ?? layer.anchor.y
+    const pivot = toImageCoords(posX, posY, w, h)
+    xfInputs.push(pivotInput(pivot))
+  }
+
+  addTransformScale(xfInputs, layer, name, fps, tools)
+  addTransformRotation(xfInputs, layer, name, fps, tools)
 
   return {
     name,
@@ -657,8 +689,10 @@ function parseLinearPath(d: string): PathPoint[] {
 // Tool builders for each layer kind
 // ---------------------------------------------------------------------------
 
+type ShapeLayer = RectLayer | EllipseLayer | ArcLayer | PathLayer
+
 function buildShapeInputs(
-  layer: PrimitiveLayer,
+  layer: ShapeLayer,
   format: MotionFormat,
   tools: FusionTool[]
 ): LuaEntry[] {
@@ -676,7 +710,7 @@ function buildShapeInputs(
       // Simple paths -> sPolygon, bezier paths handled in buildPathFallback
       return buildPolygonInputs(layer, w, h, format.fps, tools)
     default:
-      return []
+      assertNever(layer)
   }
 }
 
@@ -775,7 +809,13 @@ function buildArcInputs(
   fps: number,
   tools: FusionTool[]
 ): LuaEntry[] {
-  const pos = toShapeCoords(layer.anchor.x, layer.anchor.y, w, h)
+  // Evaluator convention: world = position - anchor + local.
+  // Arc local origin is its centre (0,0), so world_centre = position - anchor.
+  const rawX = layer.position?.[0]?.value.x ?? layer.anchor.x
+  const rawY = layer.position?.[0]?.value.y ?? layer.anchor.y
+  const centreX = rawX - layer.anchor.x
+  const centreY = rawY - layer.anchor.y
+  const pos = toShapeCoords(centreX, centreY, w, h)
   const thickness = toFusionSize(layer.outerRadius - layer.innerRadius, w)
   const outerDiameter = toFusionSize(layer.outerRadius * 2, w)
 
@@ -806,8 +846,14 @@ function buildArcInputs(
     inputs.push(staticInput('WritePosition', layer.startAngle[0].value / 360))
   }
 
+  // Anchor-to-centre offset for animated position (arc centre = position - anchor)
+  const centreOffset = {
+    x: -layer.anchor.x,
+    y: -layer.anchor.y
+  }
+
   // Base animatable properties (rotation handled by per-layer Transform)
-  addShapePositionAnimation(inputs, layer, { w, h, fps }, tools)
+  addShapePositionAnimation(inputs, layer, { w, h, fps }, tools, centreOffset)
 
   return inputs
 }
@@ -1150,19 +1196,9 @@ function buildCounterTextTool(
 // Stagger / Follower
 // ---------------------------------------------------------------------------
 
-interface StaggerResult {
-  delayFrames: number
-  rounded: boolean
-  originalFrames: number
-}
-
-function computeStaggerDelay(delaySeconds: number, fps: number): StaggerResult {
-  const raw = delaySeconds * fps
-  if (Number.isInteger(raw) && raw >= 1) {
-    return { delayFrames: raw, rounded: false, originalFrames: raw }
-  }
-  const rounded = Math.max(1, Math.round(raw))
-  return { delayFrames: rounded, rounded: raw !== rounded, originalFrames: raw }
+/** Convert a stagger delay (already quantised by resolveTemplate) to frames. */
+function computeStaggerFrames(delaySeconds: number, fps: number): number {
+  return Math.max(1, Math.round(delaySeconds * fps))
 }
 
 function buildFollowerModifier(textToolName: string, delayFrames: number): FusionTool {
@@ -1229,11 +1265,24 @@ function buildShapeFillInputs(
 // Layer processing
 // ---------------------------------------------------------------------------
 
+/** A shape that has its own per-layer Transform (scale/rotation). */
+interface TransformedShape {
+  shapeTool: FusionTool
+  transformTool: FusionTool
+}
+
 interface ProcessedLayers {
+  /** Shape tools without per-layer transforms - go through shared sMerge+sRender. */
   shapeTools: FusionTool[]
+  /** Shapes with per-layer transforms - each gets its own sRender+Transform. */
+  transformedShapes: TransformedShape[]
   textTools: FusionTool[]
   fallbackTools: FusionTool[]
   splineTools: FusionTool[]
+  /** Group transforms to apply after all children are merged. */
+  groupTransforms: FusionTool[]
+  /** Group opacity blends to apply after group transforms. */
+  groupBlends: FusionTool[]
 }
 
 /** Determine if a path layer needs the Background fallback. */
@@ -1263,14 +1312,8 @@ function processTextLayer(
   }
 
   if (layer.stagger) {
-    const stagger = computeStaggerDelay(layer.stagger.delay, fps)
-    if (stagger.rounded) {
-      notes.push(
-        `Stagger delay was rounded from ${stagger.originalFrames.toFixed(2)} ` +
-          `to ${stagger.delayFrames} frame(s) for Resolve Follower compatibility`
-      )
-    }
-    result.splineTools.push(buildFollowerModifier(textTool.name, stagger.delayFrames))
+    const delayFrames = computeStaggerFrames(layer.stagger.delay, fps)
+    result.splineTools.push(buildFollowerModifier(textTool.name, delayFrames))
   }
 
   result.textTools.push(textTool)
@@ -1290,18 +1333,23 @@ function processShapeLayer(
   addShapeOpacity(inputs, layer, shapeName, fps, result.splineTools)
   const fillInputs = buildShapeFillInputs(layer, shapeName, fps, result.splineTools)
 
-  result.shapeTools.push({
+  const shapeTool: FusionTool = {
     name: shapeName,
     type: shapeType,
     entries: [{ key: 'Inputs', value: [...inputs, ...fillInputs] }]
-  })
+  }
 
   const xf = buildShapeTransform(
     layer,
     { w: format.width, h: format.height, fps },
     result.splineTools
   )
-  if (xf) result.splineTools.push(xf)
+  if (xf) {
+    // Shape with transform gets its own sRender+Transform
+    result.transformedShapes.push({ shapeTool, transformTool: xf })
+  } else {
+    result.shapeTools.push(shapeTool)
+  }
 }
 
 /** Process a path layer into sPolygon or Background fallback. */
@@ -1327,18 +1375,22 @@ function processPathLayer(
   addShapeOpacity(inputs, layer, shapeName, fps, result.splineTools)
   const fillInputs = buildShapeFillInputs(layer, shapeName, fps, result.splineTools)
 
-  result.shapeTools.push({
+  const shapeTool: FusionTool = {
     name: shapeName,
     type: 'sPolygon',
     entries: [{ key: 'Inputs', value: [...inputs, ...fillInputs] }]
-  })
+  }
 
   const xf = buildShapeTransform(
     layer,
     { w: format.width, h: format.height, fps },
     result.splineTools
   )
-  if (xf) result.splineTools.push(xf)
+  if (xf) {
+    result.transformedShapes.push({ shapeTool, transformTool: xf })
+  } else {
+    result.shapeTools.push(shapeTool)
+  }
 }
 
 function processLayer(
@@ -1365,6 +1417,8 @@ function processLayer(
       break
     case 'particles':
       break
+    default:
+      assertNever(layer)
   }
 }
 
@@ -1464,10 +1518,10 @@ function processGroup(
   }
 
   const transform = buildGroupTransform(group, format, result.splineTools)
-  if (transform) result.splineTools.push(transform)
+  if (transform) result.groupTransforms.push(transform)
 
   const blendMerge = buildGroupOpacityMerge(group, format, result.splineTools)
-  if (blendMerge) result.splineTools.push(blendMerge)
+  if (blendMerge) result.groupBlends.push(blendMerge)
 }
 
 // ---------------------------------------------------------------------------
@@ -1492,7 +1546,9 @@ function buildInstanceInputs(
   template: MotionTemplate,
   layers: PrimitiveLayer[],
   textTools: FusionTool[],
-  expressionLinks: ExpressionLink[]
+  shapeTools: FusionTool[],
+  expressionLinks: ExpressionLink[],
+  notes: string[]
 ): InstanceInputDef[] {
   const inputs: InstanceInputDef[] = []
 
@@ -1501,8 +1557,8 @@ function buildInstanceInputs(
       // Find the Text+ tool that corresponds to this param
       const textLayer = findTextLayerForParam(paramId, layers)
       if (textLayer) {
-        const toolName = textLayer.id + '_text'
-        const tool = textTools.find(t => t.name === toolName)
+        const textToolName = luaIdent(textLayer.id + '_text')
+        const tool = textTools.find(t => t.name === textToolName)
         if (tool) {
           inputs.push({
             entry: {
@@ -1510,28 +1566,27 @@ function buildInstanceInputs(
               value: {
                 call: 'InstanceInput',
                 arg: [
-                  { key: 'SourceOp', value: toolName },
+                  { key: 'SourceOp', value: textToolName },
                   { key: 'Source', value: 'StyledText' },
                   { key: 'Name', value: paramDef.label },
                   { key: 'Default', value: paramDef.default }
                 ]
               }
             },
-            targetTool: toolName,
+            targetTool: textToolName,
             targetSource: 'StyledText'
           })
         }
       }
     } else if (paramDef.kind === 'colour') {
       // Expose R, G, B channels on the bound shape/text tool's fill inputs
-      buildColourInstanceInputs(
-        paramId,
-        paramDef,
-        template.layers as PrimitiveLayer[],
-        textTools,
+      buildColourInstanceInputs(paramId, paramDef, {
+        layers: template.layers as PrimitiveLayer[],
+        emittedTools: [...textTools, ...shapeTools],
         inputs,
-        expressionLinks
-      )
+        expressionLinks,
+        notes
+      })
     }
     // hold, number, numberList, image: not exposed
   }
@@ -1596,19 +1651,36 @@ function resolveBind(
   }
 }
 
+interface ColourBindContext {
+  layers: PrimitiveLayer[]
+  emittedTools: FusionTool[]
+  inputs: InstanceInputDef[]
+  expressionLinks: ExpressionLink[]
+  notes: string[]
+}
+
 function buildColourInstanceInputs(
   paramId: string,
   paramDef: ParamDef & { kind: 'colour' },
-  layers: PrimitiveLayer[],
-  _textTools: FusionTool[],
-  inputs: InstanceInputDef[],
-  expressionLinks: ExpressionLink[]
+  ctx: ColourBindContext
 ): void {
+  const { layers, emittedTools, inputs, expressionLinks, notes } = ctx
   if (paramDef.binds.length === 0) return
 
-  // Resolve the bound layers and their tool names
+  // Resolve the bound layers and their tool names, verifying each exists
   const resolved = paramDef.binds
-    .map(path => resolveBind(path, layers))
+    .map(path => {
+      const r = resolveBind(path, layers)
+      if (!r) return null
+      // Verify the tool was actually emitted
+      if (!emittedTools.find(t => t.name === r.toolName)) {
+        notes.push(
+          `Colour bind "${paramId}" target "${path}" has no emitted tool "${r.toolName}" - skipped`
+        )
+        return null
+      }
+      return r
+    })
     .filter((r): r is NonNullable<typeof r> => r !== null)
 
   if (resolved.length === 0) return
@@ -1774,38 +1846,90 @@ function buildImageMergeChain(outputs: string[], mergeTools: FusionTool[]): void
   }
 }
 
-function buildMergeChain(
-  shapeTools: FusionTool[],
-  textTools: FusionTool[],
-  fallbackTools: FusionTool[],
-  transformTools: FusionTool[]
-): FusionTool[] {
+/**
+ * Build an sRender+Transform pair for a single transformed shape.
+ * Returns the Transform name as the image output.
+ */
+function buildPerShapeTransform(ts: TransformedShape, mergeTools: FusionTool[]): string {
+  // sMerge (single shape needs it for sRender)
+  const smergeName = luaIdent(`${ts.shapeTool.name}_smerge`)
+  mergeTools.push({
+    name: smergeName,
+    type: 'sMerge',
+    entries: [{ key: 'Inputs', value: [sourceOpInput('Background', ts.shapeTool.name)] }]
+  })
+
+  // sRender
+  const srenderName = luaIdent(`${ts.shapeTool.name}_srender`)
+  mergeTools.push({
+    name: srenderName,
+    type: 'sRender',
+    entries: [{ key: 'Inputs', value: [sourceOpInput('Background', smergeName)] }]
+  })
+
+  // Wire the Transform's Input to the sRender output
+  const transformInputs = ts.transformTool.entries.find(e => e.key === 'Inputs')
+  if (transformInputs && Array.isArray(transformInputs.value)) {
+    ;(transformInputs.value as LuaEntry[]).unshift(sourceOpInput('Input', srenderName))
+  }
+  mergeTools.push(ts.transformTool)
+
+  return ts.transformTool.name
+}
+
+/** Wire a tool's first Input entry to a source, then push it into the chain. */
+function wireAndPush(
+  tool: FusionTool,
+  inputKey: string,
+  sourceOp: string,
+  mergeTools: FusionTool[]
+): void {
+  const inputs = tool.entries.find(e => e.key === 'Inputs')
+  if (inputs && Array.isArray(inputs.value)) {
+    ;(inputs.value as LuaEntry[]).unshift(sourceOpInput(inputKey, sourceOp))
+  }
+  mergeTools.push(tool)
+}
+
+/** Return the last chain output from the merge tools, or fall back to the last image output. */
+function lastChainOutput(mergeTools: FusionTool[], fallback: string[]): string | null {
+  return mergeTools[mergeTools.length - 1]?.name ?? fallback[fallback.length - 1] ?? null
+}
+
+/** Collect all image outputs into a single list for the final merge. */
+function collectImageOutputs(
+  processed: ProcessedLayers,
+  mergeTools: FusionTool[]
+): string[] {
+  const outputs: string[] = []
+  const shapeMergeOutput = buildShapeMergeChain(processed.shapeTools, mergeTools)
+  if (shapeMergeOutput) outputs.push(shapeMergeOutput)
+  for (const ts of processed.transformedShapes) {
+    outputs.push(buildPerShapeTransform(ts, mergeTools))
+  }
+  for (const ft of processed.fallbackTools) {
+    if (ft.type === 'Background') outputs.push(ft.name)
+  }
+  for (const tt of processed.textTools) outputs.push(tt.name)
+  return outputs
+}
+
+function buildMergeChain(processed: ProcessedLayers): FusionTool[] {
   const mergeTools: FusionTool[] = []
-
-  let shapeMergeOutput = buildShapeMergeChain(shapeTools, mergeTools)
-
-  // Apply group transform if present
-  const transform = transformTools.find(t => t.type === 'Transform')
-  if (transform && shapeMergeOutput) {
-    const transformInputs = transform.entries.find(e => e.key === 'Inputs')
-    if (transformInputs && Array.isArray(transformInputs.value)) {
-      ;(transformInputs.value as LuaEntry[]).unshift(
-        sourceOpInput('Input', shapeMergeOutput)
-      )
-    }
-    mergeTools.push(transform)
-    shapeMergeOutput = transform.name
-  }
-
-  // Collect image outputs
-  const imageOutputs: string[] = []
-  if (shapeMergeOutput) imageOutputs.push(shapeMergeOutput)
-  for (const ft of fallbackTools) {
-    if (ft.type === 'Background') imageOutputs.push(ft.name)
-  }
-  for (const tt of textTools) imageOutputs.push(tt.name)
-
+  const imageOutputs = collectImageOutputs(processed, mergeTools)
   buildImageMergeChain(imageOutputs, mergeTools)
+
+  // Group transform wraps ALL children (shapes + text + fallbacks)
+  for (const transform of processed.groupTransforms) {
+    const src = lastChainOutput(mergeTools, imageOutputs)
+    if (src) wireAndPush(transform, 'Input', src, mergeTools)
+  }
+
+  // Group opacity blend wraps everything
+  for (const blend of processed.groupBlends) {
+    const src = lastChainOutput(mergeTools, imageOutputs)
+    if (src) wireAndPush(blend, 'Background', src, mergeTools)
+  }
 
   return mergeTools
 }
@@ -1853,9 +1977,12 @@ export function generateSetting(input: ExportInput): ExportResult {
   // Process layers
   const processed: ProcessedLayers = {
     shapeTools: [],
+    transformedShapes: [],
     textTools: [],
     fallbackTools: [],
-    splineTools: []
+    splineTools: [],
+    groupTransforms: [],
+    groupBlends: []
   }
 
   for (const layer of resolved.layers) {
@@ -1864,39 +1991,44 @@ export function generateSetting(input: ExportInput): ExportResult {
 
   // Build instance inputs (colour params bind to shape/text fills directly)
   const expressionLinks: ExpressionLink[] = []
+  const allShapeTools = [
+    ...processed.shapeTools,
+    ...processed.transformedShapes.map(ts => ts.shapeTool)
+  ]
   const instanceInputs = buildInstanceInputs(
     template,
     resolved.layers,
     processed.textTools,
-    expressionLinks
+    allShapeTools,
+    expressionLinks,
+    notes
   )
 
   // Apply expression links for multi-bound colour params
   const allProcessedTools = [
     ...processed.shapeTools,
+    ...processed.transformedShapes.map(ts => ts.shapeTool),
     ...processed.textTools,
     ...processed.fallbackTools
   ]
   applyExpressionLinks(allProcessedTools, expressionLinks)
 
   // Build merge chain
-  const mergeTools = buildMergeChain(
-    processed.shapeTools,
-    processed.textTools,
-    processed.fallbackTools,
-    processed.splineTools.filter(t => t.type === 'Transform')
-  )
+  const mergeTools = buildMergeChain(processed)
 
-  // Find the final output tool
+  // Find the final output tool - the last tool in the merge chain, or the
+  // last emitted tool if no merges exist
   const allToolNames = [
     ...processed.shapeTools.map(t => t.name),
+    ...processed.transformedShapes.map(ts => ts.transformTool.name),
     ...processed.textTools.map(t => t.name),
     ...processed.fallbackTools.map(t => t.name),
     ...mergeTools.map(t => t.name)
   ]
-  const lastMerge = mergeTools.filter(t => t.type === 'Merge').pop()
   const finalOutput =
-    lastMerge?.name ?? allToolNames[allToolNames.length - 1] ?? template.id
+    mergeTools.length > 0
+      ? mergeTools[mergeTools.length - 1].name
+      : (allToolNames[allToolNames.length - 1] ?? template.id)
 
   // Build the macro
   const macroName = luaIdent(template.id)
@@ -1921,6 +2053,7 @@ export function generateSetting(input: ExportInput): ExportResult {
   // Collect all internal tools
   const internalTools: FusionTool[] = [
     ...processed.shapeTools,
+    ...processed.transformedShapes.map(ts => ts.shapeTool),
     ...processed.textTools,
     ...processed.fallbackTools,
     ...processed.splineTools,

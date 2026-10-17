@@ -171,7 +171,7 @@ describe('RES2.1: instance inputs', () => {
       layers: [
         {
           kind: 'text',
-          id: 'title',
+          id: 'name-text',
           anchor: { x: 0, y: 0 },
           position: [{ t: 0, value: { x: 200, y: 500 } }],
           text: 'Jane Doe',
@@ -184,7 +184,7 @@ describe('RES2.1: instance inputs', () => {
         },
         {
           kind: 'text',
-          id: 'sub',
+          id: 'subtitle-text',
           anchor: { x: 0, y: 0 },
           position: [{ t: 0, value: { x: 200, y: 620 } }],
           text: 'CEO',
@@ -2095,17 +2095,27 @@ describe('Sk5: group opacity and transform wiring', () => {
     // Merge containing the text tool (i.e. the text is merged BEFORE
     // the group transform, not after it)
     expect(text).toMatch(/Transform/)
-    // The Transform tool's name should be reachable from the final output
-    // (either it IS the final output or it feeds into a merge that is)
-    expect(text).toContain('g_transform')
-    // The Transform must come after both the sRender and the text merge
-    const transformPos = text.indexOf('g_transform')
-    const textToolPos = text.indexOf('g_t_text')
-    expect(transformPos).toBeGreaterThan(-1)
-    expect(textToolPos).toBeGreaterThan(-1)
-    // The Transform's Input should reference a merge that includes the text
-    const transformSection = text.slice(transformPos, transformPos + 500)
-    expect(transformSection).toMatch(/Input\s*=\s*Input\s*\{[^}]*SourceOp/)
+
+    // The Transform's Input must source from a merge that includes
+    // both the sRender and the text tool. In the original buggy code,
+    // the transform's Input goes to shape_srender and text is merged
+    // AFTER the transform, so the text escapes the group transform.
+    const toolDefMatch = text.match(
+      /g_transform\s*=\s*Transform\s*\{([\s\S]*?)\n\s{12}\}/
+    )
+    expect(toolDefMatch).not.toBeNull()
+    const toolDef = toolDefMatch![1]
+
+    // Extract the Input SourceOp
+    const inputMatch = toolDef.match(
+      /Input\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
+    )
+    expect(inputMatch).not.toBeNull()
+    const inputSource = inputMatch![1]
+
+    // The input source should be a merge (not shape_srender directly)
+    // because the text must be included before the transform
+    expect(inputSource).toMatch(/merge/i)
   })
 
   it('every non-spline tool is referenced by a SourceOp or the output', () => {
