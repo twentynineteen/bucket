@@ -20,10 +20,16 @@
 import * as luaparse from 'luaparse'
 import { describe, expect, it } from 'vitest'
 import type {
+  ArcLayer,
+  EllipseLayer,
   ExportInput,
+  GroupLayer,
+  Layer,
   MotionFormat,
   MotionTemplate,
   ParamValues,
+  PathLayer,
+  RectLayer,
   TextLayer
 } from '../../../types'
 import { resolveTemplate } from '../../resolve'
@@ -812,5 +818,856 @@ describe('S5: rect origin parity with evaluator convention', () => {
     const x2 = (900 - 1920) / 3840
     expect(text).toContain(x1.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
     expect(text).toContain(x2.toFixed(10).replace(/0+$/, '').replace(/\.$/, ''))
+  })
+})
+
+// ===========================================================================
+// Fusion name allowlist (merged from fusionNames.test.ts)
+//
+// Validates that every tool type and input name the generator emits is a
+// known Fusion identifier, sourced from real .setting files and official
+// documentation. Prevents inventing API names that Resolve would silently
+// ignore.
+//
+// Sources per entry are in comments on the allowlist.
+// ===========================================================================
+
+/**
+ * Every tool type (the identifier after `=` in `Name = ToolType { }`) that
+ * this exporter may emit.
+ *
+ * Sources:
+ * - Fusion 18.6 Manual (steakunderwater.com mirror, part1118-1130 shape nodes)
+ * - Fusion 7 Tool Reference PDF (documents.blackmagicdesign.com)
+ * - jayaretv.com Fusion node reference (sEllipse, sDuplicate, sPolygon)
+ * - Blackmagic forum .setting examples (forum.blackmagicdesign.com)
+ * - Grokipedia BezierSpline reference
+ */
+const KNOWN_TOOL_TYPES = new Set([
+  // Shape tools - Fusion 18.6 manual, shape nodes chapter; jayaretv.com node refs
+  'sRectangle',
+  'sEllipse',
+  'sPolygon',
+  'sMerge',
+  'sRender',
+
+  // Image tools - Fusion 7 Tool Reference; Fusion 18.6 manual
+  'TextPlus', // Text+ node (Fusion 18.6 manual part585, part1953)
+  'Merge', // Merge node (Fusion 7 Tool Reference, ch. Composite)
+  'Background', // Background node (Fusion 7 Tool Reference, ch. Creator)
+  'Transform', // Transform node (Fusion 7 Tool Reference, ch. Transform)
+
+  // Spline - Grokipedia BezierSpline reference; Fusion scripting guide
+  'BezierSpline',
+
+  // Mask - Fusion 7 Tool Reference, ch. Mask; Fusion 18.6 manual mask nodes
+  'Polygon',
+
+  // Macro structure - Blackmagic forum; VFXstudy.com; Fusion 18.6 manual
+  'MacroOperator',
+  'GroupOperator',
+  'InstanceInput',
+  'InstanceOutput',
+  'OperatorInfo',
+
+  // Spline data - Fusion scripting guide; Grokipedia reference
+  'Polyline',
+
+  // Input wrapper - every .setting file uses this
+  'Input',
+
+  // XYPath modifier for animated point inputs - Resolve 18.6 manual;
+  // forum.blackmagicdesign.com viewtopic.php?f=22&t=67065 (wiring pattern),
+  // viewtopic.php?f=22&t=223637 (AddModifier script),
+  // viewtopic.php?f=22&t=75019 (BezierSpline vs XYPath on Center)
+  'XYPath',
+
+  // Follower modifier - Blackmagic forum Text+ Follower threads
+  // UNVERIFIED exact type ID; flagged for #339
+  'StyledTextFollower'
+])
+
+/**
+ * Every input key that this exporter may set on each tool type.
+ *
+ * Sources:
+ * - Fusion 18.6 manual sRectangle/sEllipse pages (steakunderwater.com)
+ * - jayaretv.com sEllipse/sRectangle node references
+ * - Blackmagic forum Text+ .setting examples (viewtopic.php?p=247995, p=428801)
+ * - Fusion 7 Tool Reference (Merge, Background, Transform chapters)
+ * - forum.blackmagicdesign.com Follower threads (viewtopic.php?f=22&t=177057)
+ */
+const KNOWN_INPUTS: Record<string, Set<string>> = {
+  // sRectangle - Fusion 18.6 manual; jayaretv.com
+  sRectangle: new Set([
+    'Inputs',
+    'Width',
+    'Height',
+    'XOffset',
+    'YOffset',
+    'CornerRadius',
+    'Angle',
+    'Opacity',
+    'Red',
+    'Green',
+    'Blue',
+    'Solid'
+  ]),
+
+  // sEllipse - Fusion 18.6 manual; jayaretv.com sEllipse node
+  sEllipse: new Set([
+    'Inputs',
+    'Width',
+    'Height',
+    'XOffset',
+    'YOffset',
+    'Angle',
+    'Opacity',
+    'Red',
+    'Green',
+    'Blue',
+    'BorderWidth',
+    'Solid',
+    'WriteLength',
+    'WritePosition' // arc/border controls
+  ]),
+
+  // sPolygon - Fusion 18.6 manual sPolygon/sNGon
+  sPolygon: new Set([
+    'Inputs',
+    'Closed',
+    'Polyline',
+    'XOffset',
+    'YOffset',
+    'Angle',
+    'Opacity',
+    'Red',
+    'Green',
+    'Blue'
+  ]),
+
+  // sMerge - Fusion 18.6 manual shape merge
+  sMerge: new Set(['Inputs', 'Background', 'Foreground']),
+
+  // sRender - Fusion 18.6 manual shape render
+  sRender: new Set(['Inputs', 'Background']),
+
+  // TextPlus - Blackmagic forum examples (viewtopic.php?p=247995, p=428801);
+  // Fusion 18.6 manual Text+ chapter (steakunderwater.com part585, part1953)
+  TextPlus: new Set([
+    'Inputs',
+    'Width',
+    'Height',
+    'UseFrameFormatSettings',
+    'StyledText',
+    'Font',
+    'Style',
+    'Size',
+    'Center', // animated via XYPath modifier, not CenterX/CenterY
+    'HorizontalJustification',
+    'LineSpacing',
+    'Tracking',
+    'Opacity',
+    'Angle',
+    'Red1',
+    'Green1',
+    'Blue1', // Character shading tab colours
+    'Expression' // on the StyledText Input for counter expressions
+  ]),
+
+  // Merge - Fusion 7 Tool Reference; Fusion 18.6 manual
+  Merge: new Set(['Inputs', 'Background', 'Foreground', 'Blend']),
+
+  // Background - Fusion 7 Tool Reference; Fusion 18.6 manual
+  Background: new Set([
+    'Inputs',
+    'TopLeftRed',
+    'TopLeftGreen',
+    'TopLeftBlue',
+    'TopLeftAlpha',
+    'EffectMask'
+  ]),
+
+  // Transform - Fusion 7 Tool Reference; Fusion 18.6 manual
+  // Animated Center uses XYPath modifier, not CenterX/CenterY
+  Transform: new Set(['Inputs', 'Input', 'Center', 'Size', 'Angle']),
+
+  // XYPath modifier - Resolve 18.6 manual; forum.blackmagicdesign.com
+  // viewtopic.php?f=22&t=67065, t=223637, t=75019
+  XYPath: new Set(['X', 'Y']),
+
+  // BezierSpline - Grokipedia reference; Fusion scripting guide
+  BezierSpline: new Set(['SplineColor', 'KeyFrames']),
+
+  // Polygon mask - Fusion 7 Tool Reference
+  Polygon: new Set(['Inputs', 'Polyline']),
+
+  // MacroOperator - Blackmagic forum; VFXstudy.com
+  MacroOperator: new Set(['Inputs', 'Outputs', 'ViewInfo', 'Tools']),
+
+  // InstanceInput - Blackmagic forum examples
+  InstanceInput: new Set(['SourceOp', 'Source', 'Name', 'Default']),
+
+  // InstanceOutput - Blackmagic forum examples
+  InstanceOutput: new Set(['SourceOp', 'Source']),
+
+  // OperatorInfo - Blackmagic forum examples
+  OperatorInfo: new Set(['Pos']),
+
+  // StyledTextFollower - Blackmagic forum Follower threads
+  // UNVERIFIED exact input names; flagged for #339
+  StyledTextFollower: new Set(['Inputs', 'Delay', 'DelayType', 'Order', 'SourceOp'])
+}
+
+// ---------------------------------------------------------------------------
+// AST walker for name allowlist
+// ---------------------------------------------------------------------------
+
+interface AllowlistToolCall {
+  name: string
+  type: string
+  inputs: string[]
+}
+
+type CallLike =
+  luaparse.CallExpression | luaparse.TableCallExpression | luaparse.StringCallExpression
+
+/** Normalise call arguments to an array of expressions. */
+function allowlistCallArgs(expr: CallLike): luaparse.Expression[] {
+  if (expr.type === 'CallExpression') return expr.arguments
+  if (expr.type === 'TableCallExpression') return [expr.arguments]
+  if (expr.type === 'StringCallExpression') return [expr.argument]
+  return []
+}
+
+/** Walk the luaparse AST to extract all tool-type calls and their input keys. */
+function extractToolCallsForAllowlist(ast: luaparse.Chunk): AllowlistToolCall[] {
+  const calls: AllowlistToolCall[] = []
+
+  function visit(expr: luaparse.Expression, parentKey?: string): void {
+    if (expr.type === 'TableConstructorExpression') {
+      for (const field of expr.fields) {
+        if (field.type === 'TableKeyString') visit(field.value, field.key.name)
+        else if (field.type === 'TableValue') visit(field.value)
+        else if (field.type === 'TableKey') visit(field.value)
+      }
+    } else if (
+      expr.type === 'CallExpression' ||
+      expr.type === 'TableCallExpression' ||
+      expr.type === 'StringCallExpression'
+    ) {
+      const base = (expr as CallLike).base
+      if (base.type === 'Identifier') {
+        const inputKeys: string[] = []
+        for (const arg of allowlistCallArgs(expr as CallLike)) {
+          if (arg.type === 'TableConstructorExpression') {
+            for (const field of arg.fields) {
+              if (field.type === 'TableKeyString') {
+                inputKeys.push(field.key.name)
+                visit(field.value, field.key.name)
+              }
+            }
+          }
+        }
+        calls.push({ name: parentKey ?? '', type: base.name, inputs: inputKeys })
+      }
+      for (const arg of allowlistCallArgs(expr as CallLike)) visit(arg)
+    }
+  }
+
+  for (const stmt of ast.body) {
+    if (stmt.type === 'ReturnStatement') {
+      for (const arg of stmt.arguments) visit(arg)
+    }
+  }
+
+  return calls
+}
+
+function getAllowlistToolCalls(template: MotionTemplate): AllowlistToolCall[] {
+  const result = generateSetting(makeInput(template))
+  const text = (result.files[0] as { contents: string }).contents
+  const latin1 = utf8ToLatin1(text)
+  const ast = luaparse.parse('return ' + latin1, {
+    luaVersion: '5.1',
+    encodingMode: 'pseudo-latin1'
+  })
+  return extractToolCallsForAllowlist(ast)
+}
+
+// ---------------------------------------------------------------------------
+// Fusion name allowlist tests
+// ---------------------------------------------------------------------------
+
+const allowlistFixtures = [
+  textFixture,
+  rectFixture,
+  ellipseFixture,
+  pathFixture,
+  arcFixture,
+  groupFixture,
+  counterFixture,
+  seriesFixture,
+  colourParamFixture,
+  holdParamFixture,
+  allAnimatedFixture
+]
+
+describe('Fusion name allowlist', () => {
+  for (const fixture of allowlistFixtures) {
+    describe(fixture.id, () => {
+      it('emits only known tool types', () => {
+        const calls = getAllowlistToolCalls(fixture)
+        const unknownTypes = calls.map(c => c.type).filter(t => !KNOWN_TOOL_TYPES.has(t))
+
+        expect(
+          unknownTypes,
+          `Unknown tool types: ${[...new Set(unknownTypes)].join(', ')}`
+        ).toEqual([])
+      })
+
+      it('emits only known input names per tool type', () => {
+        const calls = getAllowlistToolCalls(fixture)
+        const unknowns: string[] = []
+
+        for (const call of calls) {
+          const allowedInputs = KNOWN_INPUTS[call.type]
+          if (!allowedInputs) continue // tool type itself checked in the previous test
+          for (const key of call.inputs) {
+            if (!allowedInputs.has(key)) {
+              unknowns.push(`${call.type}.${key}`)
+            }
+          }
+        }
+
+        expect(unknowns, `Unknown inputs: ${[...new Set(unknowns)].join(', ')}`).toEqual(
+          []
+        )
+      })
+    })
+  }
+})
+
+// ===========================================================================
+// Animated property coverage (merged from animatedProperties.test.ts)
+//
+// Table-driven: one row per (layer kind x animatable property).
+// Each row asserts a BezierSpline on the correct Fusion input in the
+// correct coordinate family (shape-space for s* tools, image-space for
+// Text+ and Transform).
+// ===========================================================================
+
+/** Two-keyframe animation track for a number property. */
+const numAnim = [
+  { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+  { t: 1, value: 100 }
+]
+
+/** Two-keyframe animation track for a point property. */
+const posAnim = [
+  {
+    t: 0,
+    value: { x: 100, y: 100 },
+    ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+  },
+  { t: 1, value: { x: 500, y: 500 } }
+]
+
+/** Two-keyframe scale track. */
+const scaleAnim = [
+  {
+    t: 0,
+    value: { x: 1, y: 1 },
+    ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+  },
+  { t: 1, value: { x: 2, y: 2 } }
+]
+
+function animBase(
+  id: string,
+  overrides?: Partial<MotionTemplate>
+): Omit<MotionTemplate, 'layers' | 'params'> {
+  return {
+    schemaVersion: 1,
+    id,
+    version: '1.0.0',
+    name: id,
+    description: 'test',
+    category: 'lower-third',
+    status: 'stable',
+    tags: [],
+    fonts: ['CabritoSemi-NorBol'],
+    duration: 4,
+    inEnd: 1,
+    outStart: 3,
+    ...overrides
+  }
+}
+
+// Base layers for animated property tests
+
+const animBaseRect: RectLayer = {
+  kind: 'rect',
+  id: 'r',
+  anchor: { x: 0, y: 0 },
+  width: 500,
+  height: 200,
+  fill: '#ff3366',
+  radius: 0
+}
+
+const animBaseEllipse: EllipseLayer = {
+  kind: 'ellipse',
+  id: 'e',
+  anchor: { x: 0, y: 0 },
+  radiusX: 50,
+  radiusY: 50,
+  fill: '#00ff00'
+}
+
+const animBasePath: PathLayer = {
+  kind: 'path',
+  id: 'p',
+  anchor: { x: 0, y: 0 },
+  d: 'M 100 100 L 200 300 L 300 100 Z',
+  fill: '#0000ff'
+}
+
+const animBaseArc: ArcLayer = {
+  kind: 'arc',
+  id: 'a',
+  anchor: { x: 1920, y: 1080 },
+  innerRadius: 400,
+  outerRadius: 480,
+  sweep: [{ t: 0, value: 0.72 }],
+  startAngle: [{ t: 0, value: 0 }],
+  fill: '#ff3366'
+}
+
+const animBaseText: TextLayer = {
+  kind: 'text',
+  id: 't',
+  anchor: { x: 0, y: 0 },
+  text: 'Test',
+  font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+  align: 'left',
+  lineHeight: 1.2,
+  multiline: false,
+  fill: '#ffffff'
+}
+
+const animBaseGroup: GroupLayer = {
+  kind: 'group',
+  id: 'g',
+  anchor: { x: 0, y: 0 },
+  children: [
+    {
+      kind: 'rect',
+      id: 'g-child',
+      anchor: { x: 0, y: 0 },
+      width: 100,
+      height: 100,
+      fill: '#333333',
+      radius: 0
+    }
+  ]
+}
+
+// Coverage table
+
+interface AnimTestRow {
+  kind: string
+  property: string
+  layer: Layer
+  /** Fusion input name to check for BezierSpline (or presence in output). */
+  fusionInput: string
+  /** Coordinate family: 'shape' for s* tools, 'image' for Text+/Transform. */
+  coordFamily: 'shape' | 'image'
+}
+
+const animRows: AnimTestRow[] = [
+  // rect
+  {
+    kind: 'rect',
+    property: 'position',
+    layer: { ...animBaseRect, position: posAnim },
+    fusionInput: 'XOffset',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'rect',
+    property: 'scale',
+    layer: { ...animBaseRect, scale: scaleAnim },
+    fusionInput: 'Size',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'rect',
+    property: 'rotation',
+    layer: { ...animBaseRect, rotation: numAnim },
+    fusionInput: 'Angle',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'rect',
+    property: 'opacity',
+    layer: { ...animBaseRect, opacity: numAnim },
+    fusionInput: 'Opacity',
+    coordFamily: 'shape'
+  },
+
+  // ellipse
+  {
+    kind: 'ellipse',
+    property: 'position',
+    layer: { ...animBaseEllipse, position: posAnim },
+    fusionInput: 'XOffset',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'ellipse',
+    property: 'scale',
+    layer: { ...animBaseEllipse, scale: scaleAnim },
+    fusionInput: 'Size',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'ellipse',
+    property: 'rotation',
+    layer: { ...animBaseEllipse, rotation: numAnim },
+    fusionInput: 'Angle',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'ellipse',
+    property: 'opacity',
+    layer: { ...animBaseEllipse, opacity: numAnim },
+    fusionInput: 'Opacity',
+    coordFamily: 'shape'
+  },
+
+  // path
+  {
+    kind: 'path',
+    property: 'position',
+    layer: { ...animBasePath, position: posAnim },
+    fusionInput: 'XOffset',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'path',
+    property: 'scale',
+    layer: { ...animBasePath, scale: scaleAnim },
+    fusionInput: 'Size',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'path',
+    property: 'rotation',
+    layer: { ...animBasePath, rotation: numAnim },
+    fusionInput: 'Angle',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'path',
+    property: 'opacity',
+    layer: { ...animBasePath, opacity: numAnim },
+    fusionInput: 'Opacity',
+    coordFamily: 'shape'
+  },
+
+  // arc
+  {
+    kind: 'arc',
+    property: 'position',
+    layer: { ...animBaseArc, position: posAnim },
+    fusionInput: 'XOffset',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'arc',
+    property: 'scale',
+    layer: { ...animBaseArc, scale: scaleAnim },
+    fusionInput: 'Size',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'arc',
+    property: 'rotation',
+    layer: { ...animBaseArc, rotation: numAnim },
+    fusionInput: 'Angle',
+    coordFamily: 'shape'
+  },
+  {
+    kind: 'arc',
+    property: 'opacity',
+    layer: { ...animBaseArc, opacity: numAnim },
+    fusionInput: 'Opacity',
+    coordFamily: 'shape'
+  },
+
+  // text
+  {
+    kind: 'text',
+    property: 'position',
+    layer: { ...animBaseText, position: posAnim },
+    fusionInput: 'Center',
+    coordFamily: 'image'
+  },
+  {
+    kind: 'text',
+    property: 'scale',
+    layer: { ...animBaseText, scale: scaleAnim },
+    fusionInput: 'Size',
+    coordFamily: 'image'
+  },
+  {
+    kind: 'text',
+    property: 'rotation',
+    layer: { ...animBaseText, rotation: numAnim },
+    fusionInput: 'Angle',
+    coordFamily: 'image'
+  },
+  {
+    kind: 'text',
+    property: 'opacity',
+    layer: { ...animBaseText, opacity: numAnim },
+    fusionInput: 'Opacity',
+    coordFamily: 'image'
+  },
+
+  // group (via image Transform)
+  {
+    kind: 'group',
+    property: 'position',
+    layer: { ...animBaseGroup, position: posAnim },
+    fusionInput: 'Center',
+    coordFamily: 'image'
+  },
+  {
+    kind: 'group',
+    property: 'scale',
+    layer: { ...animBaseGroup, scale: scaleAnim },
+    fusionInput: 'Size',
+    coordFamily: 'image'
+  },
+  {
+    kind: 'group',
+    property: 'rotation',
+    layer: { ...animBaseGroup, rotation: numAnim },
+    fusionInput: 'Angle',
+    coordFamily: 'image'
+  },
+  {
+    kind: 'group',
+    property: 'opacity',
+    layer: { ...animBaseGroup, opacity: numAnim },
+    fusionInput: 'Blend',
+    coordFamily: 'image'
+  }
+]
+
+describe('animated property coverage (kind x property)', () => {
+  for (const row of animRows) {
+    it(`${row.kind} x ${row.property} produces a BezierSpline for ${row.fusionInput}`, () => {
+      const template: MotionTemplate = {
+        ...animBase(`anim-${row.kind}-${row.property}`, {
+          category: row.kind === 'arc' ? 'data' : 'lower-third'
+        }),
+        params: {},
+        layers: [row.layer]
+      }
+      const text = getSettingText(makeInput(template))
+
+      // Must produce at least one BezierSpline
+      expect(text).toMatch(/BezierSpline/)
+
+      // The Fusion input name must appear in the output
+      expect(text).toContain(row.fusionInput)
+    })
+  }
+})
+
+// ===========================================================================
+// XYPath modifier and stagger scope (merged from xyPathAndStagger.test.ts)
+//
+// 1. Animated point inputs (Text+ Center, Transform Center) must use an
+//    XYPath modifier with X/Y BezierSplines, not CenterX/CenterY.
+// 2. Stagger drives only per-character opacity and fill. Position, scale
+//    and rotation remain on the layer as whole-layer transforms.
+// ===========================================================================
+
+const rotAnim = [
+  { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+  { t: 1, value: 90 }
+]
+
+const opacityAnim = [
+  { t: 0, value: 0, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+  { t: 1, value: 1 }
+]
+
+function xyBase(id: string): Omit<MotionTemplate, 'layers' | 'params'> {
+  return {
+    schemaVersion: 1,
+    id,
+    version: '1.0.0',
+    name: id,
+    description: 'test',
+    category: 'lower-third',
+    status: 'stable',
+    tags: [],
+    fonts: ['CabritoSemi-NorBol'],
+    duration: 4,
+    inEnd: 1,
+    outStart: 3
+  }
+}
+
+describe('XYPath modifier for animated point inputs', () => {
+  const xyAnimatedText: TextLayer = {
+    kind: 'text',
+    id: 'xy-txt',
+    anchor: { x: 0, y: 0 },
+    position: posAnim,
+    text: 'Test',
+    font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+    align: 'left',
+    lineHeight: 1.2,
+    multiline: false,
+    fill: '#ffffff'
+  }
+
+  it('animated Text+ position emits an XYPath, not CenterX/CenterY', () => {
+    const template: MotionTemplate = {
+      ...xyBase('xypath-text'),
+      params: {},
+      layers: [xyAnimatedText]
+    }
+    const text = getSettingText(makeInput(template))
+    expect(text).toMatch(/XYPath/)
+    expect(text).not.toContain('CenterX')
+    expect(text).not.toContain('CenterY')
+  })
+
+  it('XYPath has X and Y inputs each driven by a BezierSpline', () => {
+    const template: MotionTemplate = {
+      ...xyBase('xypath-text-splines'),
+      params: {},
+      layers: [xyAnimatedText]
+    }
+    const text = getSettingText(makeInput(template))
+    // XYPath tool should have X and Y inputs
+    expect(text).toMatch(/X\s*=\s*Input/)
+    expect(text).toMatch(/Y\s*=\s*Input/)
+    // Those inputs source from BezierSplines
+    expect(text).toMatch(/BezierSpline/)
+  })
+
+  it('animated group Transform position emits an XYPath', () => {
+    const group: GroupLayer = {
+      kind: 'group',
+      id: 'xy-grp',
+      anchor: { x: 0, y: 0 },
+      position: posAnim,
+      children: [
+        {
+          kind: 'rect',
+          id: 'xy-grp-child',
+          anchor: { x: 0, y: 0 },
+          width: 100,
+          height: 100,
+          fill: '#333333',
+          radius: 0
+        }
+      ]
+    }
+    const template: MotionTemplate = {
+      ...xyBase('xypath-group'),
+      params: {},
+      layers: [group]
+    }
+    const text = getSettingText(makeInput(template))
+    expect(text).toMatch(/XYPath/)
+    expect(text).not.toContain('CenterX')
+    expect(text).not.toContain('CenterY')
+  })
+
+  it('shape XOffset/YOffset remain as direct splines (not XYPath)', () => {
+    const template: MotionTemplate = {
+      ...xyBase('xypath-shape-no'),
+      params: {},
+      layers: [
+        {
+          kind: 'rect',
+          id: 'xy-rect',
+          anchor: { x: 0, y: 0 },
+          position: posAnim,
+          width: 500,
+          height: 200,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+    // Shape tools use XOffset/YOffset as direct scalar splines
+    expect(text).toContain('XOffset')
+    expect(text).toContain('YOffset')
+    // No XYPath for shapes
+    expect(text).not.toMatch(/XYPath/)
+  })
+})
+
+describe('stagger scope: position/scale/rotation stay on the layer', () => {
+  const staggerText: TextLayer = {
+    kind: 'text',
+    id: 'stg',
+    anchor: { x: 0, y: 0 },
+    position: posAnim,
+    scale: scaleAnim,
+    rotation: rotAnim,
+    opacity: opacityAnim,
+    text: 'Hello',
+    font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+    align: 'left',
+    lineHeight: 1.2,
+    multiline: false,
+    fill: '#ffffff',
+    stagger: { delay: 0.04 }
+  }
+
+  it('position animation produces splines even with stagger', () => {
+    const template: MotionTemplate = {
+      ...xyBase('stg-pos'),
+      params: {},
+      layers: [staggerText]
+    }
+    const text = getSettingText(makeInput(template))
+    // XYPath for position (whole layer)
+    expect(text).toMatch(/XYPath/)
+    expect(text).toMatch(/BezierSpline/)
+  })
+
+  it('scale animation produces a Size spline even with stagger', () => {
+    const template: MotionTemplate = {
+      ...xyBase('stg-scale'),
+      params: {},
+      layers: [staggerText]
+    }
+    const text = getSettingText(makeInput(template))
+    expect(text).toContain('Size')
+    expect(text).toMatch(/BezierSpline/)
+  })
+
+  it('rotation animation produces an Angle spline even with stagger', () => {
+    const template: MotionTemplate = {
+      ...xyBase('stg-rot'),
+      params: {},
+      layers: [staggerText]
+    }
+    const text = getSettingText(makeInput(template))
+    expect(text).toContain('Angle')
+    expect(text).toMatch(/BezierSpline/)
   })
 })

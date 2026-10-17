@@ -225,29 +225,29 @@ function staticInput(key: string, value: number | string): LuaEntry {
  * Add animated position for a shape tool (XOffset / YOffset in shape coords).
  * Replaces any static XOffset/YOffset already in `inputs`.
  *
- * centreOffsetX/Y convert position keyframes (anchor-aligned) to shape-centre
- * coordinates: centre = position + offset. Pass (0, 0) when the layer's
- * position already represents its centre (e.g. arc).
+ * centreOffset converts position keyframes (anchor-aligned) to shape-centre
+ * coordinates: centre = position + offset. Omit when the layer's position
+ * already represents its centre (e.g. arc).
  */
 function addShapePositionAnimation(
   inputs: LuaEntry[],
   layer: PrimitiveLayer,
-  w: number,
-  h: number,
-  fps: number,
+  format: { w: number; h: number; fps: number },
   tools: FusionTool[],
-  centreOffsetX = 0,
-  centreOffsetY = 0
+  centreOffset = { x: 0, y: 0 }
 ): void {
   if (!layer.position || layer.position.length < 2) return
+  const { w, h, fps } = format
   const xKfs = layer.position.map(kf => ({
     t: kf.t,
-    value: toShapeCoords(kf.value.x + centreOffsetX, kf.value.y + centreOffsetY, w, h).x,
+    value: toShapeCoords(kf.value.x + centreOffset.x, kf.value.y + centreOffset.y, w, h)
+      .x,
     ease: kf.ease
   }))
   const yKfs = layer.position.map(kf => ({
     t: kf.t,
-    value: toShapeCoords(kf.value.x + centreOffsetX, kf.value.y + centreOffsetY, w, h).y,
+    value: toShapeCoords(kf.value.x + centreOffset.x, kf.value.y + centreOffset.y, w, h)
+      .y,
     ease: kf.ease
   }))
   // Remove static offsets and replace with animated
@@ -667,11 +667,13 @@ function buildRectInputs(
   }
 
   // Anchor-to-centre offset for animated position
-  const centreOffsetX = -layer.anchor.x + layer.width / 2
-  const centreOffsetY = -layer.anchor.y + layer.height / 2
+  const centreOffset = {
+    x: -layer.anchor.x + layer.width / 2,
+    y: -layer.anchor.y + layer.height / 2
+  }
 
   // Base animatable properties
-  addShapePositionAnimation(inputs, layer, w, h, fps, tools, centreOffsetX, centreOffsetY)
+  addShapePositionAnimation(inputs, layer, { w, h, fps }, tools, centreOffset)
   addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
@@ -701,11 +703,13 @@ function buildEllipseInputs(
   ]
 
   // Anchor-to-centre offset for animated position
-  const centreOffsetX = -layer.anchor.x + layer.radiusX
-  const centreOffsetY = -layer.anchor.y + layer.radiusY
+  const centreOffset = {
+    x: -layer.anchor.x + layer.radiusX,
+    y: -layer.anchor.y + layer.radiusY
+  }
 
   // Base animatable properties
-  addShapePositionAnimation(inputs, layer, w, h, fps, tools, centreOffsetX, centreOffsetY)
+  addShapePositionAnimation(inputs, layer, { w, h, fps }, tools, centreOffset)
   addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
@@ -750,7 +754,7 @@ function buildArcInputs(
   }
 
   // Base animatable properties
-  addShapePositionAnimation(inputs, layer, w, h, fps, tools)
+  addShapePositionAnimation(inputs, layer, { w, h, fps }, tools)
   addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
@@ -798,7 +802,7 @@ function buildPolygonInputs(
   ]
 
   // Base animatable properties
-  addShapePositionAnimation(inputs, layer, w, h, fps, tools)
+  addShapePositionAnimation(inputs, layer, { w, h, fps }, tools)
   addShapeRotationAnimation(inputs, layer, fps, tools)
 
   return inputs
