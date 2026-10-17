@@ -399,9 +399,10 @@ function isSupportedPath(d: string): boolean {
  * Every keyframe-track field name across the Layer union.
  *
  * This typed mapping uses `satisfies` to ensure that every leaf layer kind
- * is accounted for. Adding a new layer kind to the Layer union or a new
- * animated field to an existing kind without updating this map is a
- * compile error, preventing a silent omission from ease validation.
+ * is accounted for. Adding a new layer kind without updating this map is
+ * a compile error. Adding a new animated field to an existing kind is not
+ * caught by the type - it only requires the value to be *some* key of
+ * *some* layer type, not every keyframe field of that specific kind.
  *
  * Groups, particles and series are not listed because they carry no
  * kind-specific animated fields (groups recurse, particles have none,
@@ -532,11 +533,12 @@ function validatePrimaryTextParam(data: MotionTemplate): string[] {
 /**
  * Layer kinds that carry a fill and can be bound to a colour param.
  *
- * Typed as a const satisfies so that adding a fill-bearing layer kind to
- * the Layer union without listing it here is a compile error only if you
- * also update the type guard that feeds it. The set is intentionally
- * smaller than the full kind union - group, particles and series do not
- * carry a bindable fill.
+ * Typed as ReadonlySet<string>, so there is no compile-time coupling to
+ * the Layer union. A new fill-bearing kind added without updating this
+ * set will fail loudly at runtime (the bind validator rejects it), but
+ * will not be caught at compile time. The set is intentionally smaller
+ * than the full kind union - group, particles and series do not carry
+ * a bindable fill.
  */
 const FILL_BEARING_KINDS: ReadonlySet<string> = new Set<string>([
   'rect',

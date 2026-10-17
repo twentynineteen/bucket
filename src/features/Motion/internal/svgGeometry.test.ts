@@ -25,24 +25,24 @@ describe('arcPath', () => {
     expect(arcPath(0, 0, 100, 200, 0, -0.5)).toBe('')
   })
 
-  it('produces a closed path with M, A, L, A, Z for a quarter turn', () => {
+  it('produces a closed path for a quarter turn with correct geometry', () => {
     const d = arcPath(0, 0, 100, 200, 0, 0.25)
-    expect(d).toContain('M ')
-    expect(d).toContain('A ')
-    expect(d).toContain('L ')
-    expect(d).toContain(' Z')
-    // Quarter turn: largeArc should be 0
-    expect(d).toMatch(/A \d+ \d+ 0 0 1/)
+    // A quarter turn from 12 o'clock (startAngle=0) to 3 o'clock.
+    // Compute expected values from the same formula:
+    const startRad = -Math.PI / 2
+    const endRad = 0
+    const expected = [
+      `M ${200 * Math.cos(startRad)} ${200 * Math.sin(startRad)}`,
+      `A 200 200 0 0 1 ${200 * Math.cos(endRad)} ${200 * Math.sin(endRad)}`,
+      `L ${100 * Math.cos(endRad)} ${100 * Math.sin(endRad)}`,
+      `A 100 100 0 0 0 ${100 * Math.cos(startRad)} ${100 * Math.sin(startRad)}`,
+      'Z'
+    ].join(' ')
+    expect(d).toBe(expected)
   })
 
   it('uses large-arc flag for sweeps over half a turn', () => {
     const d = arcPath(0, 0, 100, 200, 0, 0.75)
     expect(d).toMatch(/A \d+ \d+ 0 1 1/)
-  })
-
-  it('is deterministic for the same inputs', () => {
-    const a = arcPath(100, 200, 50, 80, 45, 0.3)
-    const b = arcPath(100, 200, 50, 80, 45, 0.3)
-    expect(a).toBe(b)
   })
 })

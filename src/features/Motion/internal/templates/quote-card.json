@@ -43,11 +43,11 @@
   },
   "layers": [
     {
-      "kind": "rect",
+      "kind": "text",
       "id": "quote-mark",
       "anchor": {
-        "x": 60,
-        "y": 40
+        "x": 0,
+        "y": 0
       },
       "position": [
         {
@@ -112,10 +112,17 @@
           "value": 0
         }
       ],
-      "width": 120,
-      "height": 80,
+      "text": "“",
+      "font": {
+        "family": "Cabrito Semi",
+        "style": "Norm Bold",
+        "size": 200
+      },
+      "align": "left",
+      "lineHeight": 1,
+      "multiline": false,
       "fill": "#C8E64A",
-      "radius": 8
+      "width": 300
     },
     {
       "kind": "text",

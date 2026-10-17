@@ -2852,12 +2852,45 @@ describe('group sub-chain scopes transform to children only', () => {
     expect(g1Input).not.toBeNull()
 
     // g2_transform's Input must not depend on g1's children
-    const g2XfMatch = text.match(/g2_transform\s*=\s*Transform\s*\{([\s\S]*?)\n\s{12}\}/)
+    const g2XfMatch = text.match(/g2_transform\s*=\s*Transform\s*\{([\s\S]*?)\n {16}\}/)
     expect(g2XfMatch).not.toBeNull()
     const g2Input = g2XfMatch![1].match(
       /Input\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
     )
     expect(g2Input).not.toBeNull()
+
+    // Disjointness check: the dependency trees of g1 and g2 must not overlap
+    function collectSourceOps(startName: string): Set<string> {
+      const visited = new Set<string>()
+      const queue = [startName]
+      while (queue.length > 0) {
+        const name = queue.pop()!
+        if (visited.has(name)) continue
+        visited.add(name)
+        const toolStart = text.indexOf(`${name} = `)
+        if (toolStart === -1) continue
+        let depth = 0
+        let j = text.indexOf('{', toolStart)
+        if (j === -1) continue
+        const start = j
+        for (; j < text.length; j++) {
+          if (text[j] === '{') depth++
+          else if (text[j] === '}') {
+            depth--
+            if (depth === 0) break
+          }
+        }
+        const toolBody = text.slice(start, j + 1)
+        const refs = [...toolBody.matchAll(/SourceOp\s*=\s*"([^"]+)"/g)]
+        for (const r of refs) queue.push(r[1])
+      }
+      return visited
+    }
+
+    const g1Deps = collectSourceOps(g1Input![1])
+    const g2Deps = collectSourceOps(g2Input![1])
+    const overlap = [...g1Deps].filter(d => g2Deps.has(d))
+    expect(overlap).toEqual([])
   })
 })
 

@@ -735,7 +735,7 @@ function buildShapeInputs(
     case 'arc':
       return buildArcInputs(layer, w, h, format.fps, tools)
     case 'path':
-      // Simple paths -> sPolygon, bezier paths handled in buildPathFallback
+      // Simple paths -> sPolygon; hatch-band paths take buildPathFallback instead
       return buildPolygonInputs(layer, w, h, format.fps, tools)
     default:
       assertNever(layer)
@@ -1332,7 +1332,6 @@ function processTextLayer(
   layer: TextLayer,
   format: MotionFormat,
   result: ProcessedLayers,
-  _notes: string[],
   values: Record<string, unknown>
 ): void {
   const fps = format.fps
@@ -1441,7 +1440,7 @@ function processLayer(
 ): void {
   switch (layer.kind) {
     case 'text':
-      processTextLayer(layer, format, result, notes, values)
+      processTextLayer(layer, format, result, values)
       break
     case 'rect':
     case 'ellipse':
@@ -2150,7 +2149,10 @@ function collectAllLeafTools(processed: ProcessedLayers): {
     if (tool.type === 'TextPlus') textTools.push(tool)
     else if (['sRectangle', 'sEllipse', 'sPolygon'].includes(tool.type))
       shapeTools.push(tool)
-    else if (tool.type === 'Background') fallbackTools.push(tool)
+    // Only hatch-band Backgrounds are fallback tools; group opacity
+    // backgrounds (*_alpha_bg) are structural and have no fill to bind.
+    else if (tool.type === 'Background' && !tool.name.endsWith('_alpha_bg'))
+      fallbackTools.push(tool)
   }
   return { shapeTools, textTools, fallbackTools }
 }
