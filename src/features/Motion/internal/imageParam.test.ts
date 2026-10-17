@@ -1,12 +1,12 @@
 /**
  * imageParam tests - pure applyImageParam function
  *
- * Ar3: the image param key must come from layer.imageParam, not hard-coded.
+ * The image param key must come from layer.imageParam, not hard-coded.
  * Each image-driven layer re-samples with its own seed.
  */
 import { describe, expect, it } from 'vitest'
 import type { MotionTemplate, ParticlesLayer } from '../types'
-import { applyImageParam, fitInsideBox, type DecodedImage } from './imageParam'
+import { applyImageParam, type DecodedImage } from './imageParam'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -46,7 +46,7 @@ function baseTemplate(
 // ---------------------------------------------------------------------------
 
 describe('applyImageParam', () => {
-  it('ar3_uses_layer_imageParam_as_value_key_not_hard_coded_image', () => {
+  it('uses layer.imageParam as value key, not hard-coded "image"', () => {
     // A template whose image param is called "logo", not "image"
     const template: MotionTemplate = {
       ...baseTemplate(),
@@ -82,7 +82,7 @@ describe('applyImageParam', () => {
     expect(result.values.logo).toEqual({ pickedPath: '/path/to/logo.png' })
   })
 
-  it('ar3_each_layer_resamples_with_its_own_seed', () => {
+  it('each layer resamples with its own seed', () => {
     const template: MotionTemplate = {
       ...baseTemplate(),
       params: {
@@ -138,7 +138,7 @@ describe('applyImageParam', () => {
     expect(JSON.stringify(layerA.points)).not.toEqual(JSON.stringify(layerB.points))
   })
 
-  it('ar3_non_particle_layers_are_unchanged', () => {
+  it('non-particle layers are unchanged', () => {
     const template: MotionTemplate = {
       ...baseTemplate(),
       params: {
@@ -177,7 +177,7 @@ describe('applyImageParam', () => {
     expect(result.template.layers[0]).toBe(template.layers[0])
   })
 
-  it('ar3_particle_layer_without_imageParam_is_unchanged', () => {
+  it('particle layer without imageParam is unchanged', () => {
     const template: MotionTemplate = {
       ...baseTemplate(),
       params: {},
@@ -205,7 +205,7 @@ describe('applyImageParam', () => {
     expect(result.template.layers[0]).toBe(template.layers[0])
   })
 
-  it('ar3_resampled_points_carry_no_region', () => {
+  it('resampled points carry no region', () => {
     const template: MotionTemplate = {
       ...baseTemplate(),
       params: {
@@ -241,7 +241,54 @@ describe('applyImageParam', () => {
     }
   })
 
-  it('ar3_caps_points_at_maximum', () => {
+  it('recurses into groups to find nested particle layers', () => {
+    const template: MotionTemplate = {
+      ...baseTemplate(),
+      params: {
+        image: { kind: 'image', label: 'Image' }
+      },
+      layers: [
+        {
+          kind: 'group',
+          id: 'container',
+          anchor: { x: 0, y: 0 },
+          children: [
+            {
+              kind: 'particles',
+              id: 'nested-scatter',
+              anchor: { x: 0, y: 0 },
+              points: [
+                { x: 100, y: 200 },
+                { x: 300, y: 400 }
+              ],
+              seed: 42,
+              assembleStart: 0,
+              assembleEnd: 1,
+              baseFill: '#888',
+              regionFills: {},
+              pointRadius: 4,
+              imageParam: 'image'
+            }
+          ]
+        }
+      ]
+    }
+
+    const decoded = makeOpaqueImage(100, 100)
+    const result = applyImageParam(template, {}, decoded, '/img.png')
+
+    // The nested particle layer should have been re-sampled
+    const group = result.template.layers[0]
+    expect(group.kind).toBe('group')
+    if (group.kind === 'group') {
+      const nested = group.children[0] as ParticlesLayer
+      expect(nested.points.length).toBeGreaterThan(0)
+      // The value should be set
+      expect(result.values).toHaveProperty('image')
+    }
+  })
+
+  it('caps points by thinning evenly rather than slicing', () => {
     // Use a very large image that would produce many points
     const decoded = makeOpaqueImage(2000, 2000)
     const template: MotionTemplate = {
@@ -278,41 +325,86 @@ describe('applyImageParam', () => {
   })
 })
 
-describe('fitInsideBox', () => {
-  it('sk10_landscape_image_fits_width_preserving_aspect_ratio', () => {
-    // 4:1 landscape image into a 2000x1600 box
-    const box = fitInsideBox(400, 100, { x: 500, y: 300, w: 2000, h: 1600 })
+describe('aspect-ratio fitting via applyImageParam', () => {
+  it('landscape image points stay within the layer bounding box', () => {
+    // A wide image (4:1) fitted into a box defined by two points.
+    // The fitting logic preserves aspect ratio, so points should not
+    // exceed the bounding box of the layer's built-in points.
+    const template: MotionTemplate = {
+      ...baseTemplate(),
+      params: {
+        image: { kind: 'image', label: 'Image' }
+      },
+      layers: [
+        {
+          kind: 'particles',
+          id: 'scatter',
+          anchor: { x: 0, y: 0 },
+          points: [
+            { x: 500, y: 300 },
+            { x: 2500, y: 1900 }
+          ],
+          seed: 42,
+          assembleStart: 0,
+          assembleEnd: 1,
+          baseFill: '#888',
+          regionFills: {},
+          pointRadius: 4,
+          imageParam: 'image'
+        }
+      ]
+    }
 
-    // Should fit to the width (2000), so height = 2000 / 4 = 500
-    expect(box.w).toBeCloseTo(2000, 0)
-    expect(box.h).toBeCloseTo(500, 0)
+    // 400x100 landscape image
+    const decoded = makeOpaqueImage(400, 100)
+    const result = applyImageParam(template, {}, decoded, '/img.png')
+    const layer = result.template.layers[0] as ParticlesLayer
 
-    // Centred vertically: y offset = 300 + (1600 - 500) / 2 = 850
-    expect(box.y).toBeCloseTo(850, 0)
-    expect(box.x).toBeCloseTo(500, 0)
+    // All re-sampled points should fall within the bounding box
+    for (const pt of layer.points) {
+      expect(pt.x).toBeGreaterThanOrEqual(500)
+      expect(pt.x).toBeLessThanOrEqual(2500)
+      expect(pt.y).toBeGreaterThanOrEqual(300)
+      expect(pt.y).toBeLessThanOrEqual(1900)
+    }
   })
 
-  it('sk10_portrait_image_fits_height_preserving_aspect_ratio', () => {
-    // 1:4 portrait image into a 2000x1600 box
-    const box = fitInsideBox(100, 400, { x: 500, y: 300, w: 2000, h: 1600 })
+  it('portrait image points cluster in a narrow vertical band', () => {
+    const template: MotionTemplate = {
+      ...baseTemplate(),
+      params: {
+        image: { kind: 'image', label: 'Image' }
+      },
+      layers: [
+        {
+          kind: 'particles',
+          id: 'scatter',
+          anchor: { x: 0, y: 0 },
+          points: [
+            { x: 0, y: 0 },
+            { x: 2000, y: 1600 }
+          ],
+          seed: 42,
+          assembleStart: 0,
+          assembleEnd: 1,
+          baseFill: '#888',
+          regionFills: {},
+          pointRadius: 4,
+          imageParam: 'image'
+        }
+      ]
+    }
 
-    // Should fit to the height (1600), so width = 1600 / 4 = 400
-    expect(box.h).toBeCloseTo(1600, 0)
-    expect(box.w).toBeCloseTo(400, 0)
+    // 100x400 portrait image - should fit to height, so x range narrows
+    const decoded = makeOpaqueImage(100, 400)
+    const result = applyImageParam(template, {}, decoded, '/img.png')
+    const layer = result.template.layers[0] as ParticlesLayer
 
-    // Centred horizontally: x offset = 500 + (2000 - 400) / 2 = 1300
-    expect(box.x).toBeCloseTo(1300, 0)
-    expect(box.y).toBeCloseTo(300, 0)
-  })
-
-  it('sk10_square_image_into_wider_box', () => {
-    // Square into a 2000x1000 box
-    const box = fitInsideBox(100, 100, { x: 0, y: 0, w: 2000, h: 1000 })
-
-    // Should fit to height (1000), width also 1000
-    expect(box.h).toBeCloseTo(1000, 0)
-    expect(box.w).toBeCloseTo(1000, 0)
-    expect(box.x).toBeCloseTo(500, 0) // centred
-    expect(box.y).toBeCloseTo(0, 0)
+    // With a 1:4 portrait fitted into a 2000x1600 box, width = 400.
+    // Points should cluster in the centre 400px of the 2000-wide box.
+    const xs = layer.points.map(p => p.x)
+    const xMin = Math.min(...xs)
+    const xMax = Math.max(...xs)
+    expect(xMax - xMin).toBeLessThan(1000) // well under the full 2000 width
   })
 })

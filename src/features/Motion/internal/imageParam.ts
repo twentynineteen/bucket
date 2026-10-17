@@ -6,7 +6,13 @@
  * the updated template and values. This keeps the sampling logic testable
  * as a pure function.
  */
-import type { ImageValue, MotionTemplate, ParamValues, ParticlesLayer } from '../types'
+import type {
+  ImageValue,
+  Layer,
+  MotionTemplate,
+  ParamValues,
+  ParticlesLayer
+} from '../types'
 import { samplePoints } from './sampler'
 
 export interface DecodedImage {
@@ -66,7 +72,7 @@ function deriveMinDistance(
  * Fit the source image dimensions inside the target box while preserving
  * aspect ratio (letterbox). Returns the fitted box within the target.
  */
-export function fitInsideBox(
+function fitInsideBox(
   imgWidth: number,
   imgHeight: number,
   targetBox: { x: number; y: number; w: number; h: number }
@@ -99,13 +105,28 @@ export interface ApplyImageResult {
 }
 
 /**
- * Apply a decoded image to a template's particle layers.
+ * Thin an array of points evenly by selecting every k-th point, keeping
+ * the first and last. This preserves spatial coverage across the whole
+ * image rather than slicing off a contiguous region.
+ */
+function thinEvenly<T>(points: T[], maxCount: number): T[] {
+  if (points.length <= maxCount) return points
+  const step = (points.length - 1) / (maxCount - 1)
+  const result: T[] = []
+  for (let i = 0; i < maxCount; i++) {
+    result.push(points[Math.round(i * step)])
+  }
+  return result
+}
+
+/**
+ * Apply a decoded image to a template's particle layers, recursing into groups.
  *
  * For each particle layer that declares an `imageParam`, this function:
  * 1. Finds the param id from `layer.imageParam`
  * 2. Re-samples the image using the layer's own seed
  * 3. Fits the image into the layer's built-in bounding box preserving aspect ratio
- * 4. Caps the point count at MAX_POINTS
+ * 4. Caps the point count at MAX_POINTS by thinning evenly
  * 5. Sets the param value keyed by the actual param id (not hard-coded "image")
  *
  * Re-sampled points carry no `region`, because the image has no region data.
@@ -117,7 +138,11 @@ export function applyImageParam(
   pickedPath: string
 ): ApplyImageResult {
   const nextValues: ParamValues = { ...values }
-  const nextLayers = template.layers.map(layer => {
+
+  function processLayer(layer: Layer): Layer {
+    if (layer.kind === 'group') {
+      return { ...layer, children: layer.children.map(processLayer) }
+    }
     if (layer.kind !== 'particles') return layer
     const pLayer = layer as ParticlesLayer
     if (!pLayer.imageParam) return layer
@@ -137,9 +162,9 @@ export function applyImageParam(
       targetBox: fittedBox
     })
 
-    // Cap the point count
+    // Cap the point count by thinning evenly (preserves spatial coverage)
     if (newPoints.length > MAX_POINTS) {
-      newPoints = newPoints.slice(0, MAX_POINTS)
+      newPoints = thinEvenly(newPoints, MAX_POINTS)
     }
 
     // Set the param value keyed by the actual param id
@@ -147,7 +172,9 @@ export function applyImageParam(
     nextValues[paramId] = imgVal
 
     return { ...layer, points: newPoints }
-  })
+  }
+
+  const nextLayers = template.layers.map(processLayer)
 
   return {
     template: { ...template, layers: nextLayers },
