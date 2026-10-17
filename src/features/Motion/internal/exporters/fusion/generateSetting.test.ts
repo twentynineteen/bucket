@@ -987,17 +987,44 @@ function allowlistCallArgs(expr: CallLike): luaparse.Expression[] {
   return []
 }
 
+/** Visit a table constructor, recursing into its fields. */
+function visitTable(
+  table: luaparse.TableConstructorExpression,
+  visitor: (expr: luaparse.Expression, key?: string) => void
+): void {
+  for (const field of table.fields) {
+    if (field.type === 'TableKeyString') visitor(field.value, field.key.name)
+    else if (field.type === 'TableValue') visitor(field.value)
+    else if (field.type === 'TableKey') visitor(field.value)
+  }
+}
+
+/** Extract input keys from a call's table arguments. */
+function extractCallInputKeys(
+  call: CallLike,
+  visitor: (expr: luaparse.Expression, key?: string) => void
+): string[] {
+  const inputKeys: string[] = []
+  for (const arg of allowlistCallArgs(call)) {
+    if (arg.type === 'TableConstructorExpression') {
+      for (const field of arg.fields) {
+        if (field.type === 'TableKeyString') {
+          inputKeys.push(field.key.name)
+          visitor(field.value, field.key.name)
+        }
+      }
+    }
+  }
+  return inputKeys
+}
+
 /** Walk the luaparse AST to extract all tool-type calls and their input keys. */
 function extractToolCallsForAllowlist(ast: luaparse.Chunk): AllowlistToolCall[] {
   const calls: AllowlistToolCall[] = []
 
   function visit(expr: luaparse.Expression, parentKey?: string): void {
     if (expr.type === 'TableConstructorExpression') {
-      for (const field of expr.fields) {
-        if (field.type === 'TableKeyString') visit(field.value, field.key.name)
-        else if (field.type === 'TableValue') visit(field.value)
-        else if (field.type === 'TableKey') visit(field.value)
-      }
+      visitTable(expr, visit)
     } else if (
       expr.type === 'CallExpression' ||
       expr.type === 'TableCallExpression' ||
@@ -1005,17 +1032,7 @@ function extractToolCallsForAllowlist(ast: luaparse.Chunk): AllowlistToolCall[] 
     ) {
       const base = (expr as CallLike).base
       if (base.type === 'Identifier') {
-        const inputKeys: string[] = []
-        for (const arg of allowlistCallArgs(expr as CallLike)) {
-          if (arg.type === 'TableConstructorExpression') {
-            for (const field of arg.fields) {
-              if (field.type === 'TableKeyString') {
-                inputKeys.push(field.key.name)
-                visit(field.value, field.key.name)
-              }
-            }
-          }
-        }
+        const inputKeys = extractCallInputKeys(expr as CallLike, visit)
         calls.push({ name: parentKey ?? '', type: base.name, inputs: inputKeys })
       }
       for (const arg of allowlistCallArgs(expr as CallLike)) visit(arg)
@@ -1616,5 +1633,242 @@ describe('stagger scope: position/scale/rotation stay on the layer', () => {
     const text = getSettingText(makeInput(template))
     expect(text).toContain('Angle')
     expect(text).toMatch(/BezierSpline/)
+  })
+})
+
+// ===========================================================================
+// S5 pivot: scale and rotation about the anchor
+//
+// The evaluator applies scale and rotation about the layer's anchor:
+//   world = position + R * S * (local - anchor)
+// The Fusion Transform's Pivot must sit at the anchor's world position.
+// ===========================================================================
+
+/**
+ * Apply the evaluator's transform to a local point:
+ *   world = position + R(angleDeg) * scale * (local - anchor)
+ */
+function evalWorld(
+  local: { x: number; y: number },
+  anchor: { x: number; y: number },
+  position: { x: number; y: number },
+  scale: number,
+  angleDeg: number
+): { x: number; y: number } {
+  const rad = (angleDeg * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  const dx = local.x - anchor.x
+  const dy = local.y - anchor.y
+  return {
+    x: position.x + scale * (cos * dx - sin * dy),
+    y: position.y + scale * (sin * dx + cos * dy)
+  }
+}
+
+/**
+ * From the Fusion output, compute where a local point ends up:
+ *   shapeCentre is the sRectangle/sEllipse centre in template coords.
+ *   The Transform applies Size and Angle about Pivot (all in image coords).
+ *   Convert back to template coords for comparison.
+ */
+function fusionWorld(
+  localCentre: { x: number; y: number },
+  pivot: { x: number; y: number },
+  size: number,
+  angleDeg: number
+): { x: number; y: number } {
+  // Fusion rotation is negated, so the effective angle is -angleDeg
+  const rad = (-angleDeg * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  const dx = localCentre.x - pivot.x
+  const dy = localCentre.y - pivot.y
+  return {
+    x: pivot.x + size * (cos * dx - sin * dy),
+    y: pivot.y + size * (sin * dx + cos * dy)
+  }
+}
+
+/** Extract a static Input value from the .setting text for a specific tool and key. */
+function extractStaticInput(text: string, key: string): number | null {
+  const re = new RegExp(`${key}\\s*=\\s*Input\\s*\\{\\s*Value\\s*=\\s*([\\d.e+-]+)`)
+  const m = re.exec(text)
+  return m ? parseFloat(m[1]) : null
+}
+
+/** Extract a point Input value { x, y } from the .setting text. */
+function extractPointInput(text: string, key: string): { x: number; y: number } | null {
+  // Point inputs look like: Key = Input { Value = { 0.123, 0.456 } }
+  const re = new RegExp(
+    `${key}\\s*=\\s*Input\\s*\\{[^}]*Value\\s*=\\s*\\{[^}]*?([\\d.e+-]+)\\s*,\\s*([\\d.e+-]+)`
+  )
+  const m = re.exec(text)
+  return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : null
+}
+
+describe('S5 pivot: scale and rotation about the anchor', () => {
+  it('rect with non-zero anchor: scale+rotation pivots around anchor', () => {
+    // Rect: anchor=(100,50), width=400, height=200, position=(500,600)
+    // scale=0.5, rotation=30
+    const template: MotionTemplate = {
+      ...xyBase('s5-pivot-rect'),
+      params: {},
+      layers: [
+        {
+          kind: 'rect',
+          id: 'pivr',
+          anchor: { x: 100, y: 50 },
+          position: [{ t: 0, value: { x: 500, y: 600 } }],
+          scale: [
+            {
+              t: 0,
+              value: { x: 0.5, y: 0.5 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 0.5, y: 0.5 } }
+          ],
+          rotation: [{ t: 0, value: 30 }],
+          width: 400,
+          height: 200,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // The Transform must have a Pivot at the anchor's world position
+    // anchor world = position = (500, 600)
+    // In image coords: (500/3840, 1-600/2160)
+    const pivotImg = { x: 500 / 3840, y: 1 - 600 / 2160 }
+    const pivot = extractPointInput(text, 'Pivot')
+    expect(pivot).not.toBeNull()
+    expect(pivot!.x).toBeCloseTo(pivotImg.x, 6)
+    expect(pivot!.y).toBeCloseTo(pivotImg.y, 6)
+
+    // Shape centre in template coords:
+    //   centreX = 500 - 100 + 200 = 600
+    //   centreY = 600 - 50 + 100 = 650
+    // In image coords: (600/3840, 1 - 650/2160)
+    const centreImg = { x: 600 / 3840, y: 1 - 650 / 2160 }
+
+    // Verify parity: the four corners should match the evaluator
+    const corners = [
+      { x: 0, y: 0 },
+      { x: 400, y: 0 },
+      { x: 400, y: 200 },
+      { x: 0, y: 200 }
+    ]
+    const anchor = { x: 100, y: 50 }
+    const position = { x: 500, y: 600 }
+
+    // The Transform Size and Angle
+    const xfSize = extractStaticInput(text, 'Size')
+    expect(xfSize).not.toBeNull()
+    const xfAngle = extractStaticInput(text, 'Angle')
+    expect(xfAngle).not.toBeNull()
+
+    for (const corner of corners) {
+      const evalPt = evalWorld(corner, anchor, position, 0.5, 30)
+      // Convert evalPt to image coords for comparison
+      const evalImg = { x: evalPt.x / 3840, y: 1 - evalPt.y / 2160 }
+
+      // Compute the corner's image coords from the shape centre
+      // The shape is a rect: corners offset from centre by +/- (width/2, height/2)
+      const localOffset = {
+        x: (corner.x - 200) / 3840, // (corner - localCentre) / width
+        y: -(corner.y - 100) / 3840 // negated for image Y flip, normalised to width
+      }
+      const cornerImg = {
+        x: centreImg.x + localOffset.x,
+        y: centreImg.y + localOffset.y
+      }
+
+      // Apply Transform about Pivot
+      const fusionPt = fusionWorld(cornerImg, pivotImg, xfSize!, xfAngle!)
+      expect(fusionPt.x).toBeCloseTo(evalImg.x, 3)
+      expect(fusionPt.y).toBeCloseTo(evalImg.y, 3)
+    }
+  })
+
+  it('ellipse with non-zero anchor: scale+rotation pivots around anchor', () => {
+    // Ellipse: anchor=(30,30), radiusX=60, radiusY=40, position=(1000,800)
+    // scale=0.5, rotation=30
+    const template: MotionTemplate = {
+      ...xyBase('s5-pivot-ellipse'),
+      params: {},
+      layers: [
+        {
+          kind: 'ellipse',
+          id: 'pive',
+          anchor: { x: 30, y: 30 },
+          position: [{ t: 0, value: { x: 1000, y: 800 } }],
+          scale: [
+            {
+              t: 0,
+              value: { x: 0.5, y: 0.5 },
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: { x: 0.5, y: 0.5 } }
+          ],
+          rotation: [{ t: 0, value: 30 }],
+          radiusX: 60,
+          radiusY: 40,
+          fill: '#00ff00'
+        }
+      ]
+    }
+    const text = getSettingText(makeInput(template))
+
+    // The Transform must have a Pivot at the anchor's world position
+    // anchor world = position = (1000, 800)
+    // In image coords: (1000/3840, 1-800/2160)
+    const pivotImg = { x: 1000 / 3840, y: 1 - 800 / 2160 }
+    const pivot = extractPointInput(text, 'Pivot')
+    expect(pivot).not.toBeNull()
+    expect(pivot!.x).toBeCloseTo(pivotImg.x, 6)
+    expect(pivot!.y).toBeCloseTo(pivotImg.y, 6)
+
+    // Verify parity: the four extremes of the ellipse bounding box
+    // Ellipse local bounding-box corners:
+    //   (0,0), (2*radiusX, 0), (2*radiusX, 2*radiusY), (0, 2*radiusY)
+    const extremes = [
+      { x: 0, y: 0 },
+      { x: 120, y: 0 },
+      { x: 120, y: 80 },
+      { x: 0, y: 80 }
+    ]
+    const anchor = { x: 30, y: 30 }
+    const position = { x: 1000, y: 800 }
+
+    // Shape centre in template coords:
+    //   centreX = 1000 - 30 + 60 = 1030
+    //   centreY = 800 - 30 + 40 = 810
+    const centreImg = { x: 1030 / 3840, y: 1 - 810 / 2160 }
+
+    const xfSize = extractStaticInput(text, 'Size')
+    expect(xfSize).not.toBeNull()
+    const xfAngle = extractStaticInput(text, 'Angle')
+    expect(xfAngle).not.toBeNull()
+
+    for (const extreme of extremes) {
+      const evalPt = evalWorld(extreme, anchor, position, 0.5, 30)
+      const evalImg = { x: evalPt.x / 3840, y: 1 - evalPt.y / 2160 }
+
+      // Corner offset from centre in shape coords
+      const localOffset = {
+        x: (extreme.x - 60) / 3840,
+        y: -(extreme.y - 40) / 3840
+      }
+      const cornerImg = {
+        x: centreImg.x + localOffset.x,
+        y: centreImg.y + localOffset.y
+      }
+
+      const fusionPt = fusionWorld(cornerImg, pivotImg, xfSize!, xfAngle!)
+      expect(fusionPt.x).toBeCloseTo(evalImg.x, 3)
+      expect(fusionPt.y).toBeCloseTo(evalImg.y, 3)
+    }
   })
 })
