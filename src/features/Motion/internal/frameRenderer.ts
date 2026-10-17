@@ -19,6 +19,7 @@ import type {
   TextLayerState
 } from '../types'
 import { evaluate } from './evaluate'
+import { arcPath, matrixStr } from './svgGeometry'
 
 /** Exhaustiveness check: the compiler proves this is never called. */
 function assertNever(x: never): never {
@@ -42,10 +43,6 @@ function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(binary)
 }
 
-function matrixAttr(m: [number, number, number, number, number, number]): string {
-  return `matrix(${m[0]} ${m[1]} ${m[2]} ${m[3]} ${m[4]} ${m[5]})`
-}
-
 function escapeXml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -54,45 +51,8 @@ function escapeXml(text: string): string {
     .replace(/"/g, '&quot;')
 }
 
-/**
- * Build an SVG arc path for a ring segment (no stroke).
- * sweep is in turns (0-1), startAngle in degrees.
- */
-function arcPath(
-  cx: number,
-  cy: number,
-  innerR: number,
-  outerR: number,
-  startAngleDeg: number,
-  sweepTurns: number
-): string {
-  if (sweepTurns <= 0) return ''
-
-  const startRad = ((startAngleDeg - 90) * Math.PI) / 180
-  const endRad = startRad + sweepTurns * 2 * Math.PI
-
-  const largeArc = sweepTurns > 0.5 ? 1 : 0
-
-  const ox1 = cx + outerR * Math.cos(startRad)
-  const oy1 = cy + outerR * Math.sin(startRad)
-  const ox2 = cx + outerR * Math.cos(endRad)
-  const oy2 = cy + outerR * Math.sin(endRad)
-  const ix1 = cx + innerR * Math.cos(endRad)
-  const iy1 = cy + innerR * Math.sin(endRad)
-  const ix2 = cx + innerR * Math.cos(startRad)
-  const iy2 = cy + innerR * Math.sin(startRad)
-
-  return [
-    `M ${ox1} ${oy1}`,
-    `A ${outerR} ${outerR} 0 ${largeArc} 1 ${ox2} ${oy2}`,
-    `L ${ix1} ${iy1}`,
-    `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2} ${iy2}`,
-    'Z'
-  ].join(' ')
-}
-
 function renderShapeState(state: ShapeLayerState): string {
-  const transform = matrixAttr(state.matrix)
+  const transform = matrixStr(state.matrix)
   const fill = escapeXml(state.fill)
 
   if (state.kind === 'rect' && state.size) {
@@ -132,7 +92,7 @@ function alignToAnchor(align: 'left' | 'center' | 'right'): string {
 }
 
 function renderTextState(state: TextLayerState): string {
-  const transform = matrixAttr(state.matrix)
+  const transform = matrixStr(state.matrix)
   const fontFamily = `"${escapeXml(state.font.family)}"`
   const fontSize = state.font.size
   const fill = escapeXml(state.fill)
