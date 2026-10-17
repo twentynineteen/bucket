@@ -19,6 +19,7 @@ import type {
   TextLayerState
 } from '../types'
 import { evaluate } from './evaluate'
+import { staggerLineBreaks } from './staggerLineBreaks'
 import { arcPath, matrixStr } from './svgGeometry'
 
 /** Exhaustiveness check: the compiler proves this is never called. */
@@ -100,12 +101,21 @@ function renderTextState(state: TextLayerState): string {
 
   // Staggered text: each unit is its own tspan.
   // xml:space="preserve" prevents SVG from collapsing a lone space tspan.
+  // staggerLineBreaks computes the dy multiplier per unit, handling
+  // consecutive \n (blank lines) correctly in both renderers.
   if (state.units && state.units.length > 0) {
+    const lineAdvance = state.lineHeight * fontSize
+    const breaks = staggerLineBreaks(state.units)
     const tspans = state.units
-      .map(
-        u =>
-          `<tspan opacity="${u.opacity}" fill="${escapeXml(u.fill)}">${escapeXml(u.text)}</tspan>`
-      )
+      .map((u, i) => {
+        const dy = breaks[i]
+        if (dy === -1) return ''
+        let extra = ''
+        if (dy > 0) {
+          extra = ` x="0" dy="${dy * lineAdvance}"`
+        }
+        return `<tspan opacity="${u.opacity}" fill="${escapeXml(u.fill)}"${extra}>${escapeXml(u.text)}</tspan>`
+      })
       .join('')
     return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}" xml:space="preserve">${tspans}</text>`
   }

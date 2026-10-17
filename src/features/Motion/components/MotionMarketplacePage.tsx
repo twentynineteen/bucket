@@ -11,6 +11,7 @@ import { PackageSearch, RefreshCw, Star } from 'lucide-react'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useMotionCatalogue } from '../hooks/useMotionCatalogue'
 import { useMotionFont } from '../hooks/useMotionFont'
+import { useMotionMeasurer } from '../hooks/useMotionMeasurer'
 import { useMotionPrefs } from '../hooks/useMotionPrefs'
 import { useMotionTicker } from '../hooks/useMotionTicker'
 import {
@@ -57,6 +58,10 @@ const MotionMarketplacePage: React.FC = () => {
   const { prefs, updatePrefs } = useMotionPrefs()
   const { entries, issues, rescan } = useMotionCatalogue(prefs.libraryFolder)
   const fontState = useMotionFont()
+
+  // Text measurer: canvas measurer when font is ready or missing,
+  // undefined while loading (falls back to approximation in the resolver).
+  const measurer = useMotionMeasurer(fontState)
 
   // Filter state
   const [filters, setFilters] = useState<FilterCriteria>(DEFAULT_FILTERS)
@@ -220,6 +225,7 @@ const MotionMarketplacePage: React.FC = () => {
                       handleSelectCard(entry, el)
                     }}
                     time={tickerTime}
+                    measurer={measurer}
                   />
                 </li>
               )

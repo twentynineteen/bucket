@@ -187,7 +187,9 @@ const textLayerSchema = z.object({
   tracking: z.array(numberKeyframeSchema).optional(),
   stagger: staggerSchema.optional(),
   counter: counterSchema.optional(),
-  width: z.number().positive().optional()
+  width: z.number().positive().optional(),
+  wrap: z.boolean().optional(),
+  maxLines: z.number().int().min(2).optional()
 })
 
 const rectLayerSchema = z.object({
@@ -726,6 +728,46 @@ function validateStaggerFillAnimation(data: MotionTemplate): string[] {
   return errors
 }
 
+/**
+ * Validate wrap field constraints on text layers:
+ * - wrap requires width and multiline: true
+ * - wrap requires maxLines >= 2
+ * - wrap cannot combine with counter or tracking animation
+ */
+function validateWrapFields(data: MotionTemplate): string[] {
+  const errors: string[] = []
+  for (const { layer, path } of walkLayers(data.layers as unknown as unknown[])) {
+    if (layer.kind !== 'text' || !layer.wrap) continue
+
+    if (layer.width == null) {
+      errors.push(
+        `${path}: wrap requires a width on the text layer "${layer.id as string}"`
+      )
+    }
+    if (layer.maxLines == null || (layer.maxLines as number) < 2) {
+      errors.push(
+        `${path}: wrap requires maxLines >= 2 on the text layer "${layer.id as string}"`
+      )
+    }
+    if (layer.multiline === false) {
+      errors.push(
+        `${path}: wrap requires multiline: true on the text layer "${layer.id as string}"`
+      )
+    }
+    if (layer.counter && typeof layer.counter === 'object') {
+      errors.push(
+        `${path}: wrap cannot be combined with counter on the text layer "${layer.id as string}"`
+      )
+    }
+    if (Array.isArray(layer.tracking) && (layer.tracking as unknown[]).length > 0) {
+      errors.push(
+        `${path}: wrap cannot be combined with tracking animation on the text layer "${layer.id as string}"`
+      )
+    }
+  }
+  return errors
+}
+
 /** Validate that a param reference points to a param of the expected kind. */
 function validateParamRef(
   params: MotionTemplate['params'],
@@ -834,7 +876,8 @@ export function parseTemplate(json: unknown): ParseResult {
     ...validateHoldParamConstraints(data),
     ...validateHoldRange(data),
     ...validateParticlesLast(data),
-    ...validateStaggerFillAnimation(data)
+    ...validateStaggerFillAnimation(data),
+    ...validateWrapFields(data)
   ]
 
   // Per-layer checks
