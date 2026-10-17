@@ -109,7 +109,8 @@ export interface ApplyImageResult {
  * the first and last. This preserves spatial coverage across the whole
  * image rather than slicing off a contiguous region.
  */
-function thinEvenly<T>(points: T[], maxCount: number): T[] {
+/** @internal Exported for testing only. */
+export function thinEvenly<T>(points: T[], maxCount: number): T[] {
   if (points.length <= maxCount) return points
   const step = (points.length - 1) / (maxCount - 1)
   const result: T[] = []
