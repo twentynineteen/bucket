@@ -37,7 +37,16 @@ export function checkTextOverflow(
     if (layer.kind !== 'text') continue
     if (layer.width == null) continue
 
-    const measuredWidth = measurer.measure(layer.text, layer.font)
+    // Measure the widest \n-separated line, not the whole string.
+    // Wrapped or multiline text would show a false overflow if the whole
+    // string were measured as one run.
+    const lines = layer.text.split('\n')
+    let widest = 0
+    for (const line of lines) {
+      const w = measurer.measure(line, layer.font)
+      if (w > widest) widest = w
+    }
+    const measuredWidth = widest
     results.push({
       layerId: layer.id,
       overflowing: measuredWidth > layer.width,
