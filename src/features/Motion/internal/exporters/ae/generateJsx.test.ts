@@ -557,7 +557,7 @@ describe('AE4.4 - multiline vs point text', () => {
     expect(tdProp).toBeDefined()
   })
 
-  it('creates paragraph (box) text for multiline true with a box width', () => {
+  it('uses point text for multiline true with a box width (S6: no word-wrapping)', () => {
     const fixture: MotionTemplate = {
       ...textFixture,
       id: 'fixture-box-text',
@@ -574,12 +574,13 @@ describe('AE4.4 - multiline vs point text', () => {
 
     const tl = stub.comps[0].layers.find(l => l.kind === 'text')
     expect(tl).toBeDefined()
-    // Box text sets boxTextSize on the TextDocument
+    // S6: multiline text uses point text (addText), not box text (addBoxText),
+    // so word-wrapping matches the SVG preview (explicit \n only).
     const tdProp = tl!.properties['ADBE Text Document']
     expect(tdProp).toBeDefined()
-    const tdoc = tdProp.value as { boxText: boolean; boxTextSize: number[] }
-    expect(tdoc.boxText).toBe(true)
-    expect(tdoc.boxTextSize[0]).toBeGreaterThan(0)
+    const tdoc = tdProp.value as { boxText: boolean; pointText: boolean }
+    expect(tdoc.boxText).toBe(false)
+    expect(tdoc.pointText).toBe(true)
   })
 })
 

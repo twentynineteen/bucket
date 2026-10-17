@@ -329,22 +329,10 @@ function emitText(layer: TextLayer, compExpr: string, ctx: GenContext): string {
     jsStringLiteral(ps) +
     ')'
 
-  if (layer.multiline && layer.width) {
-    const ld = layer.lineHeight * layer.font.size
-    L.push(
-      'var ' +
-        v +
-        ' = ' +
-        compExpr +
-        '.layers.addBoxText([' +
-        layer.width +
-        ', ' +
-        ld * 10 +
-        ']);'
-    )
-  } else {
-    L.push('var ' + v + ' = ' + compExpr + '.layers.addText();')
-  }
+  // S6: always use point text (addText). The SVG preview only breaks at
+  // explicit \n, so addBoxText would enable AE word-wrapping that the
+  // preview does not match. Line breaks come from \r in the text content.
+  L.push('var ' + v + ' = ' + compExpr + '.layers.addText();')
   L.push(v + '.name = ' + jsStringLiteral(layer.id) + ';')
 
   const txt = layer.text.replace(/\n/g, '\r')
