@@ -107,7 +107,7 @@ describe('Schema (internal/schema.ts)', () => {
               id: 'p1',
               anchor: { x: 0, y: 0 },
               d: 'M 0 0 L 100 0 L 100 100',
-              fill: '#000'
+              fill: '#000000'
             }
           ]
         }
@@ -124,7 +124,7 @@ describe('Schema (internal/schema.ts)', () => {
               anchor: { x: 0, y: 0 },
               width: 100,
               height: 100,
-              fill: '#000',
+              fill: '#000000',
               radius: 0,
               stagger: { delay: 0.1 }
             }
@@ -190,7 +190,7 @@ describe('Schema (internal/schema.ts)', () => {
               align: 'center',
               lineHeight: 1.2,
               multiline: false,
-              fill: '#fff',
+              fill: '#ffffff',
               opacity: [
                 { t: 0, value: 0, ease: [-0.1, 1, 0.3, 1] },
                 { t: 1, value: 1 }
@@ -249,7 +249,7 @@ describe('Schema (internal/schema.ts)', () => {
               anchor: { x: 0, y: 0 },
               innerRadius: 400,
               outerRadius: 480,
-              fill: '#fff',
+              fill: '#ffffff',
               sweep: [
                 { t: 0, value: 0, ease: [0, 0, 1, 1] },
                 { t: 1, value: 1 }
@@ -262,6 +262,159 @@ describe('Schema (internal/schema.ts)', () => {
       ]
     ])('rejects %s', (_label, template) => {
       const result = parseTemplate(template)
+      expect(result.success).toBe(false)
+    })
+
+    // S12 - path d restricted to M/L/H/V/Z
+    it('rejects path d with curve commands (C, A, Q, S, T)', () => {
+      const bad = {
+        ...rectFixture,
+        layers: [
+          {
+            kind: 'path',
+            id: 'p1',
+            anchor: { x: 0, y: 0 },
+            d: 'M 0 0 C 10 20 30 40 50 60 Z',
+            fill: '#000000'
+          }
+        ]
+      }
+      const result = parseTemplate(bad)
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toContain('d')
+      }
+    })
+
+    // S12 - path d with relative commands rejected
+    it('rejects path d with relative commands (m, l)', () => {
+      const bad = {
+        ...rectFixture,
+        layers: [
+          {
+            kind: 'path',
+            id: 'p1',
+            anchor: { x: 0, y: 0 },
+            d: 'm 0 0 l 100 0 l 0 100 z',
+            fill: '#000000'
+          }
+        ]
+      }
+      const result = parseTemplate(bad)
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toContain('d')
+      }
+    })
+
+    // S14 - fill fields validated as hex
+    it('rejects non-hex fill on a rect layer', () => {
+      const bad = {
+        ...rectFixture,
+        layers: [
+          {
+            kind: 'rect',
+            id: 'r1',
+            anchor: { x: 0, y: 0 },
+            width: 100,
+            height: 100,
+            fill: 'red',
+            radius: 0
+          }
+        ]
+      }
+      const result = parseTemplate(bad)
+      expect(result.success).toBe(false)
+    })
+
+    // S14 - fillAnimation values validated as hex
+    it('rejects non-hex fillAnimation values', () => {
+      const bad = {
+        ...rectFixture,
+        layers: [
+          {
+            kind: 'rect',
+            id: 'r1',
+            anchor: { x: 0, y: 0 },
+            width: 100,
+            height: 100,
+            fill: '#ff0000',
+            radius: 0,
+            fillAnimation: [
+              { t: 0, value: 'not-a-hex', ease: [0, 0, 1, 1] },
+              { t: 1, value: '#0000ff' }
+            ]
+          }
+        ]
+      }
+      const result = parseTemplate(bad)
+      expect(result.success).toBe(false)
+    })
+
+    // S14 - baseFill validated as hex
+    it('rejects non-hex baseFill on particles layer', () => {
+      const bad = {
+        ...rectFixture,
+        params: {
+          image: { kind: 'image', label: 'Source image' }
+        },
+        layers: [
+          {
+            kind: 'particles',
+            id: 'scatter',
+            anchor: { x: 0, y: 0 },
+            points: [{ x: 100, y: 200 }],
+            seed: 42,
+            assembleStart: 0,
+            assembleEnd: 1,
+            baseFill: 'invalid-colour',
+            regionFills: {},
+            pointRadius: 4
+          }
+        ]
+      }
+      const result = parseTemplate(bad)
+      expect(result.success).toBe(false)
+    })
+
+    // S13 - hold param is the single source (no template.hold)
+    it('accepts a template with a hold param but no top-level hold block', () => {
+      const template = {
+        ...rectFixture,
+        params: {
+          hold: {
+            kind: 'hold',
+            label: 'Hold duration',
+            min: 1,
+            max: 10,
+            default: 3
+          }
+        }
+      }
+      const result = parseTemplate(template)
+      expect(result.success).toBe(true)
+    })
+
+    // S13 - hold range refinement: hold delta must not push outStart before inEnd
+    it('rejects hold param whose min pushes outStart before inEnd', () => {
+      // inEnd=1, outStart=3, hold default=3
+      // With hold min=0, delta = 0 - 3 = -3, outStart = 3 + (-3) = 0 < inEnd=1
+      const bad = {
+        ...rectFixture,
+        inEnd: 1,
+        outStart: 3,
+        duration: 4,
+        params: {
+          hold: {
+            kind: 'hold',
+            label: 'Hold',
+            min: 0,
+            max: 10,
+            default: 3
+          }
+        }
+      }
+      const result = parseTemplate(bad)
       expect(result.success).toBe(false)
     })
 
@@ -294,7 +447,7 @@ describe('Schema (internal/schema.ts)', () => {
             align: 'center',
             lineHeight: 1.2,
             multiline: false,
-            fill: '#fff',
+            fill: '#ffffff',
             opacity: [
               { t: 0, value: 0 }, // MISSING ease on non-last
               { t: 0.5, value: 0.5, ease: [0, 0, 1, 1] },

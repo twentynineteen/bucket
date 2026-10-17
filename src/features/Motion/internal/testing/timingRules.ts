@@ -22,9 +22,9 @@ import type {
   MotionTemplate,
   PrimitiveLayer,
   TextLayer
-} from '../types'
-import { evaluate } from './evaluate'
-import { resolveTemplate } from './resolve'
+} from '../../types'
+import { evaluate } from '../evaluate'
+import { resolveTemplate } from '../resolve'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,10 +41,10 @@ export interface TimingViolation {
 // ---------------------------------------------------------------------------
 
 /** 90% title-safe: 5% inset on each side. */
-const TITLE_SAFE = { left: 192, right: 3648, top: 108, bottom: 2052 }
+export const TITLE_SAFE = { left: 192, right: 3648, top: 108, bottom: 2052 }
 
 /** 93% action-safe: 3.5% inset on each side. */
-const ACTION_SAFE = { left: 134.4, right: 3705.6, top: 75.6, bottom: 2084.4 }
+export const ACTION_SAFE = { left: 134.4, right: 3705.6, top: 75.6, bottom: 2084.4 }
 
 // ---------------------------------------------------------------------------
 // Rule S3.1: in-duration 0.5-1 s

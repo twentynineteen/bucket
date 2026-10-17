@@ -391,29 +391,141 @@ describe('Resolve (internal/resolve.ts)', () => {
       ]
     }
 
-    it('short name (2 chars) keeps the template delay unclamped', () => {
+    it('short name (2 chars) keeps the template delay unclamped but quantises to frames', () => {
       // "Jo" = 2 graphemes, budget = 0.4 * 0.7 / max(1, 2-1) = 0.28
-      // Template delay 0.03 < 0.28, so it stays
+      // Template delay 0.03 < 0.28, so it stays before quantisation
+      // At 50fps: 0.03 * 50 = 1.5 frames -> round to 2 -> 2/50 = 0.04
       const resolved = resolveTemplate(staggerFixture, { name: 'Jo' }, FORMAT_4K)
       const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
-      expect(textLayer.stagger!.delay).toBeCloseTo(0.03, 5)
+      expect(textLayer.stagger!.delay).toBe(0.04)
     })
 
-    it('long name (30 chars) clamps the delay to fit the budget', () => {
+    it('long name (30 chars) clamps the delay to fit the budget then quantises', () => {
       // "A very long name that is exact" = 30 graphemes
       // budget = 0.4 * 0.7 / max(1, 30-1) = 0.28 / 29 ~= 0.00966
-      // Template delay 0.03 > 0.00966, so it clamps
+      // Template delay 0.03 > 0.00966, so it clamps to ~0.00966
+      // At 50fps: 0.00966 * 50 = 0.483 frames -> round to 1 -> 1/50 = 0.02
       const longName = 'A very long name that is exact'
       const resolved = resolveTemplate(staggerFixture, { name: longName }, FORMAT_4K)
       const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
-      const expected = (0.4 * 0.7) / (longName.length - 1)
-      expect(textLayer.stagger!.delay).toBeCloseTo(expected, 5)
+      expect(textLayer.stagger!.delay).toBe(0.02)
       expect(textLayer.stagger!.delay).toBeLessThan(0.03)
     })
   })
 })
 
 describe('particle region tints resolve to colours', () => {
+  // S11 - validFormats must check expanded, hold-shifted layers
+  it('S11 series marker keys that collapse at low fps are rejected after expansion', () => {
+    // A series with segmentDuration=0.03 at 24fps: 0.03*24=0.72
+    // keys at t=0, 0.03, 0.06 => frames 0, 0.72, 1.44 => snapped 1, 1, 1
+    // Different values on the same frame should invalidate 24fps
+    const seriesTemplate: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-series-collapse',
+      version: '1.0.0',
+      name: 'Series collapse',
+      description: '',
+      category: 'data',
+      status: 'stable',
+      tags: [],
+      fonts: [],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {
+        data: {
+          kind: 'numberList' as const,
+          label: 'Data',
+          default: [
+            { label: 'A', value: 10 },
+            { label: 'B', value: 90 },
+            { label: 'C', value: 30 }
+          ],
+          valueMin: 0,
+          valueMax: 100
+        }
+      },
+      layers: [
+        {
+          kind: 'series' as const,
+          id: 'chart',
+          anchor: { x: 0, y: 0 },
+          series: {
+            param: 'data',
+            area: { x: 400, y: 600, w: 2000, h: 800 },
+            valueRange: [0, 100],
+            dot: { radiusX: 20, radiusY: 20, fill: '#ff3366' },
+            connector: { dotSpacing: 40, radius: 4, fill: '#ff336680' },
+            label: {
+              font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 32 },
+              fill: '#ffffff',
+              align: 'center' as const,
+              offsetY: 40
+            },
+            marker: {
+              ellipse: { radiusX: 30, radiusY: 30, fill: '#ffffff' },
+              segmentDuration: 0.03,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            }
+          }
+        }
+      ]
+    }
+    const formats = validFormats(seriesTemplate)
+    // 24fps should be rejected because the marker keys collapse after expansion
+    const has24 = formats.some(f => f.fps === 24)
+    expect(has24).toBe(false)
+  })
+
+  // A1 - stagger delays quantised to whole frames
+  it('A1 stagger delay is quantised to whole frames at the chosen fps', () => {
+    const staggerTemplate: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-stagger-quant',
+      version: '1.0.0',
+      name: 'Stagger quantisation',
+      description: '',
+      category: 'lower-third',
+      status: 'stable',
+      tags: [],
+      fonts: [],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {},
+      layers: [
+        {
+          kind: 'text' as const,
+          id: 'title',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 200, y: 500 } }],
+          opacity: [
+            {
+              t: 0,
+              value: 0,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 0.5, value: 1 }
+          ],
+          text: 'Hello',
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 80 },
+          align: 'left' as const,
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff',
+          stagger: { delay: 0.03 }
+        }
+      ]
+    }
+    // At 50fps, 0.03s = 1.5 frames. Should round to 2 frames = 0.04s
+    const resolved = resolveTemplate(staggerTemplate, {}, FORMAT_4K)
+    const textLayer = resolved.layers.find(l => l.kind === 'text') as TextLayer
+    expect(textLayer.stagger).toBeDefined()
+    // 0.03 * 50 = 1.5 => round to 2 => 2/50 = 0.04
+    expect(textLayer.stagger!.delay).toBe(0.04)
+  })
+
   it('a region tint naming a colour param takes that param value; unknown names fall back to the base fill', () => {
     const template = {
       schemaVersion: 1 as const,

@@ -49,9 +49,7 @@ const KavanaghPage = React.lazy(() =>
   import('@features/Kavanagh').then(m => ({ default: m.KavanaghPage }))
 )
 const MotionMarketplacePage = React.lazy(() =>
-  import('@features/Motion').then(m => ({
-    default: m.MotionMarketplacePage
-  }))
+  import('@features/Motion').then(m => m.loadMotionMarketplacePage())
 )
 
 const log = createNamespacedLogger('AppRouter')

@@ -40,7 +40,7 @@ function makeTemplateJson(
         anchor: { x: 0, y: 0 },
         width: 100,
         height: 100,
-        fill: '#000',
+        fill: '#000000',
         radius: 0
       }
     ],
@@ -253,7 +253,7 @@ describe('L2.7 loadLibrary image path handling', () => {
           seed: 1,
           assembleStart: 0,
           assembleEnd: 1,
-          baseFill: '#000',
+          baseFill: '#000000',
           regionFills: {},
           pointRadius: 2,
           imageParam: 'image'
@@ -291,7 +291,7 @@ describe('L2.7 loadLibrary image path handling', () => {
           seed: 1,
           assembleStart: 0,
           assembleEnd: 1,
-          baseFill: '#000',
+          baseFill: '#000000',
           regionFills: {},
           pointRadius: 2,
           imageParam: 'image'

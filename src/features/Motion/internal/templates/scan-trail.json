@@ -11,11 +11,6 @@
   "duration": 4.28,
   "inEnd": 0.8,
   "outStart": 3.8,
-  "hold": {
-    "min": 1,
-    "max": 8,
-    "default": 3
-  },
   "params": {
     "data": {
       "kind": "numberList",

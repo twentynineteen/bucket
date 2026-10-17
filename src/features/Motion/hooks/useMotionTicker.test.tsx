@@ -11,8 +11,7 @@ import { useMotionTicker } from './useMotionTicker'
 
 // Mock the ticker module
 vi.mock('../internal/ticker', () => ({
-  subscribe: vi.fn(() => vi.fn()),
-  subscriberCount: vi.fn(() => 0)
+  subscribe: vi.fn(() => vi.fn())
 }))
 
 // Mock the loopTime module

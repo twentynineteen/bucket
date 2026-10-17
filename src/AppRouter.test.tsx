@@ -73,11 +73,14 @@ vi.mock('@features/Trello', () => ({
 }))
 
 vi.mock('@features/Motion', () => ({
-  MotionMarketplacePage: () => (
-    <div>
-      <h1>Motion marketplace</h1>
-    </div>
-  ),
+  loadMotionMarketplacePage: () =>
+    Promise.resolve({
+      default: () => (
+        <div>
+          <h1>Motion marketplace</h1>
+        </div>
+      )
+    }),
   MotionSection: () => (
     <div id="motion">
       <h2>Motion</h2>

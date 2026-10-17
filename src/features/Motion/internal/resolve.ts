@@ -243,6 +243,36 @@ function clampStaggerDelays(layers: Layer[], inEnd: number): Layer[] {
 }
 
 // ---------------------------------------------------------------------------
+// Stagger delay quantisation (A1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Quantise stagger delays to whole frames at the chosen fps.
+ *
+ * Fusion rounds stagger to whole frames; the preview and AE do not. Quantising
+ * here in `resolveTemplate` ensures all three targets agree on the delay.
+ */
+function quantiseStaggerDelays(layers: Layer[], fps: number): Layer[] {
+  const frameDuration = 1 / fps
+  return layers.map(layer => {
+    if (layer.kind === 'group') {
+      return {
+        ...layer,
+        children: quantiseStaggerDelays(layer.children, fps)
+      }
+    }
+    if (layer.kind === 'text' && layer.stagger && layer.stagger.delay > 0) {
+      const frames = Math.round(layer.stagger.delay * fps)
+      const quantised = Math.max(1, frames) * frameDuration
+      if (quantised !== layer.stagger.delay) {
+        return { ...layer, stagger: { delay: quantised } }
+      }
+    }
+    return layer
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Apply colour param bindings
 // ---------------------------------------------------------------------------
 
@@ -497,10 +527,15 @@ function scaleLayer(layer: Layer, factor: number): Layer {
   }
 }
 
-/** Scale numeric coordinates in an SVG path d string. */
+/**
+ * Scale numeric coordinates in an SVG path d string.
+ *
+ * The schema restricts `d` to absolute M, L, H, V and Z commands. Every
+ * numeric token in that grammar is a coordinate, so a blanket replacement
+ * is correct (unlike the old version which would also scale arc flags).
+ */
 function scalePathD(d: string, factor: number): string {
   if (factor === 1) return d
-  // Replace each number in the path data with its scaled version
   return d.replace(/-?\d+(\.\d+)?/g, match => {
     return String(parseFloat(match) * factor)
   })
@@ -744,14 +779,44 @@ const ALL_FPS = [24, 25, 30, 50, 60] as const
 
 /**
  * Return every format at which this template's keyframes do not collapse.
+ *
+ * S11: the check runs on expanded, hold-shifted layers (at the hold param's
+ * default value) so that series marker keys and shifted out-keys are covered.
  */
 export function validFormats(template: MotionTemplate): MotionFormat[] {
+  // Resolve values to defaults, apply text/colour, expand macros and hold-shift
+  // at the default hold value, so the expanded layers include series marker keys.
+  const resolvedValues = resolveValues(template, {})
+  let layers = applyTextValues(template.layers, template.params, resolvedValues)
+  layers = applyColourBindings(layers, template.params, resolvedValues)
+  layers = resolveRegionFills(layers, template.params, resolvedValues)
+  layers = expandTemplate(layers, template.params, resolvedValues)
+
+  // Apply hold shift at default value (delta = 0, no shift)
+  // Also check at the extremes of the hold range
+  const holdEntry = Object.entries(template.params).find(([, def]) => def.kind === 'hold')
+  const holdDeltas = [0]
+  if (holdEntry) {
+    const [, holdDef] = holdEntry
+    const def = holdDef as Extract<ParamDef, { kind: 'hold' }>
+    holdDeltas.push(def.min - def.default, def.max - def.default)
+  }
+
   const formats: MotionFormat[] = []
   for (const width of ALL_WIDTHS) {
     const height = width === 3840 ? 2160 : 1080
     for (const fps of ALL_FPS) {
-      const issue = checkCollapsingKeyframes(template.layers, fps)
-      if (!issue) {
+      let valid = true
+      for (const delta of holdDeltas) {
+        const shifted =
+          delta !== 0 ? applyHoldShift(layers, template.outStart, delta) : layers
+        const issue = checkCollapsingKeyframes(shifted, fps)
+        if (issue) {
+          valid = false
+          break
+        }
+      }
+      if (valid) {
         formats.push({
           width: width as 3840 | 1920,
           height: height as 2160 | 1080,
@@ -795,19 +860,20 @@ export function resolveTemplate(
   // 4. Expand macros (series, sweepFromParam)
   layers = expandTemplate(layers, template.params, resolvedValues)
 
-  // 5. Hold shift
-  const holdParam = Object.entries(template.params).find(([, def]) => def.kind === 'hold')
+  // 5. Hold shift (the hold param is the single source - S13)
+  const holdEntry = Object.entries(template.params).find(([, def]) => def.kind === 'hold')
   let holdDelta = 0
   let outStart = template.outStart
   let duration = template.duration
 
-  if (holdParam && template.hold) {
-    const [holdId] = holdParam
+  if (holdEntry) {
+    const [holdId, holdDef] = holdEntry
+    const def = holdDef as Extract<ParamDef, { kind: 'hold' }>
     const holdValue =
       typeof resolvedValues[holdId] === 'number'
         ? (resolvedValues[holdId] as number)
-        : template.hold.default
-    holdDelta = holdValue - template.hold.default
+        : def.default
+    holdDelta = holdValue - def.default
     layers = applyHoldShift(layers, template.outStart, holdDelta)
     outStart = template.outStart + holdDelta
     duration = template.duration + holdDelta
@@ -816,7 +882,10 @@ export function resolveTemplate(
   // 6. Scale to format
   layers = scaleLayers(layers, format)
 
-  // 7. Snap keyframes to frame grid
+  // 7. Quantise stagger delays to whole frames (A1)
+  layers = quantiseStaggerDelays(layers, format.fps)
+
+  // 8. Snap keyframes to frame grid
   layers = snapAllKeyframes(layers, format.fps)
 
   // Snap timing markers too
@@ -834,7 +903,7 @@ export function resolveTemplate(
     duration: snappedDuration,
     inEnd,
     outStart: snappedOutStart,
-    hasHold: !!holdParam,
+    hasHold: !!holdEntry,
     layers: asPrimitiveLayers(layers),
     originalTemplate: template,
     values: resolvedValues

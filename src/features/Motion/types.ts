@@ -268,7 +268,6 @@ export interface MotionTemplate {
   duration: number
   inEnd: number
   outStart: number
-  hold?: { min: number; max: number; default: number }
   params: Record<string, ParamDef>
   layers: Layer[]
 }

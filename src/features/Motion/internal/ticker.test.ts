@@ -4,7 +4,7 @@
  * Uses fake timers and a rAF stub - no real time.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { _reset, subscribe, subscriberCount } from './ticker'
+import { _reset, subscribe } from './ticker'
 
 // ---------------------------------------------------------------------------
 // rAF stub: a manual rAF that we control
@@ -106,21 +106,28 @@ describe('ticker', () => {
   })
 
   // P2.3: last subscriber unsubscribes stops rAF
+  // M5: test via behaviour (no ticks after unsubscribe) instead of subscriberCount
   it('p2_3_no_raf_after_last_unsubscribe', () => {
     const cb1 = vi.fn()
     const cb2 = vi.fn()
     const unsub1 = subscribe(cb1)
     const unsub2 = subscribe(cb2)
 
-    expect(subscriberCount()).toBe(2)
+    // First frame so they get initial callbacks
+    flushRaf(16.67)
+    const calls1Before = cb1.mock.calls.length
+    const calls2Before = cb2.mock.calls.length
 
     unsub1()
-    expect(subscriberCount()).toBe(1)
+
+    // Fire another frame - cb1 should not receive it
+    flushRaf(50)
+    expect(cb1.mock.calls.length).toBe(calls1Before)
+    expect(cb2.mock.calls.length).toBeGreaterThan(calls2Before)
 
     unsub2()
-    expect(subscriberCount()).toBe(0)
 
-    // No pending rAF
+    // No pending rAF after both unsubscribed
     flushRaf(100)
     expect(rafCallbacks.size).toBe(0)
   })

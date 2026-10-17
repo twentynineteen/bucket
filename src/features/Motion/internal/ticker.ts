@@ -152,8 +152,3 @@ export function subscribe(cb: TickerCallback): () => void {
     }
   }
 }
-
-/** How many subscribers are currently registered. For testing only. */
-export function subscriberCount(): number {
-  return subscribers.size
-}

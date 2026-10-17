@@ -45,7 +45,7 @@ function makeTemplateJson(id: string): string {
         anchor: { x: 0, y: 0 },
         width: 100,
         height: 100,
-        fill: '#000',
+        fill: '#000000',
         radius: 0
       }
     ]

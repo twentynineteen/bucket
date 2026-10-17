@@ -30,6 +30,42 @@ function createWrapper() {
 }
 
 // ---------------------------------------------------------------------------
+// M4 - prunePrefs is wired into the save path
+// ---------------------------------------------------------------------------
+describe('M4 prunePrefs wired into save', () => {
+  it('prunes favourites that reference templates no longer in the catalogue', async () => {
+    const prefsWithStaleFavourite = JSON.stringify({
+      libraryFolder: null,
+      defaultFormat: { width: 3840, height: 2160, fps: 50 },
+      favourites: ['existing-template', 'deleted-template'],
+      defaults: { 'lower-third': 'deleted-template' },
+      lastProjectFolder: null,
+      rememberedTargets: null
+    })
+    mockedRead.mockResolvedValue(prefsWithStaleFavourite)
+    mockedWrite.mockResolvedValue(undefined)
+
+    const { result } = renderHook(() => useMotionPrefs(), {
+      wrapper: createWrapper()
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    // Save with catalogue IDs that exclude the deleted template
+    const catalogueIds = new Set(['existing-template'])
+    await act(async () => {
+      await result.current.saveWithPrune(catalogueIds)
+    })
+
+    expect(mockedWrite).toHaveBeenCalledTimes(1)
+    const written = JSON.parse(mockedWrite.mock.calls[0][0])
+    // The deleted template should be pruned from favourites and defaults
+    expect(written.favourites).toEqual(['existing-template'])
+    expect(written.defaults).toEqual({})
+  })
+})
+
+// ---------------------------------------------------------------------------
 // L1.3 - Save writes to motion_prefs.json, never api_keys.json
 // ---------------------------------------------------------------------------
 describe('L1.3 useMotionPrefs save', () => {

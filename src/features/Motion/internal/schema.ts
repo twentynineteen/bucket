@@ -2,8 +2,9 @@
  * Motion template schema and parser (issue #327)
  *
  * Zod schema for the template JSON format. Cross-field validations that depend
- * on sibling fields (colour-animated-fill clash, image-requires-particles, etc.)
- * are applied in a superRefine on the top-level template object.
+ * on sibling fields (colour-animated-fill clash, image-requires-particles, hold
+ * range, etc.) are applied as named validator functions called after the base
+ * schema parse, not via superRefine.
  */
 import { z } from 'zod'
 import type { MotionTemplate } from '../types'
@@ -27,8 +28,18 @@ function keyframeSchema<V extends z.ZodType>(valueSchema: V) {
 }
 
 const numberKeyframeSchema = keyframeSchema(z.number())
-const stringKeyframeSchema = keyframeSchema(z.string())
 const pointKeyframeSchema = keyframeSchema(z.object({ x: z.number(), y: z.number() }))
+
+/** Hex colour: #rrggbb or #rrggbbaa (6 or 8 hex digits). */
+const hexColourSchema = z
+  .string()
+  .regex(
+    /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/,
+    'must be a hex colour (#rrggbb or #rrggbbaa)'
+  )
+
+/** Hex colour keyframe value. */
+const hexColourKeyframeSchema = keyframeSchema(hexColourSchema)
 
 /**
  * Validate keyframe ease rules: every keyframe except the last must have ease.
@@ -148,8 +159,8 @@ const textLayerSchema = z.object({
   align: z.enum(['left', 'center', 'right']),
   lineHeight: z.number().positive(),
   multiline: z.boolean(),
-  fill: z.string(),
-  fillAnimation: z.array(stringKeyframeSchema).optional(),
+  fill: hexColourSchema,
+  fillAnimation: z.array(hexColourKeyframeSchema).optional(),
   tracking: z.array(numberKeyframeSchema).optional(),
   stagger: staggerSchema.optional(),
   counter: counterSchema.optional(),
@@ -163,8 +174,8 @@ const rectLayerSchema = z.object({
   height: z.number().positive(),
   widthAnimation: z.array(numberKeyframeSchema).optional(),
   heightAnimation: z.array(numberKeyframeSchema).optional(),
-  fill: z.string(),
-  fillAnimation: z.array(stringKeyframeSchema).optional(),
+  fill: hexColourSchema,
+  fillAnimation: z.array(hexColourKeyframeSchema).optional(),
   radius: z.number().nonnegative()
 })
 
@@ -173,16 +184,16 @@ const ellipseLayerSchema = z.object({
   kind: z.literal('ellipse'),
   radiusX: z.number().positive(),
   radiusY: z.number().positive(),
-  fill: z.string(),
-  fillAnimation: z.array(stringKeyframeSchema).optional()
+  fill: hexColourSchema,
+  fillAnimation: z.array(hexColourKeyframeSchema).optional()
 })
 
 const pathLayerSchema = z.object({
   ...layerBase,
   kind: z.literal('path'),
   d: z.string(),
-  fill: z.string(),
-  fillAnimation: z.array(stringKeyframeSchema).optional()
+  fill: hexColourSchema,
+  fillAnimation: z.array(hexColourKeyframeSchema).optional()
 })
 
 const arcLayerSchema = z.object({
@@ -193,8 +204,8 @@ const arcLayerSchema = z.object({
   sweep: z.array(numberKeyframeSchema).min(1),
   startAngle: z.array(numberKeyframeSchema).min(1),
   sweepFromParam: z.object({ param: z.string(), max: z.number().positive() }).optional(),
-  fill: z.string(),
-  fillAnimation: z.array(stringKeyframeSchema).optional()
+  fill: hexColourSchema,
+  fillAnimation: z.array(hexColourKeyframeSchema).optional()
 })
 
 const particlesLayerSchema = z.object({
@@ -210,7 +221,7 @@ const particlesLayerSchema = z.object({
   seed: z.number().int(),
   assembleStart: z.number().nonnegative(),
   assembleEnd: z.number().positive(),
-  baseFill: z.string(),
+  baseFill: hexColourSchema,
   regionFills: z.record(z.string(), z.string()),
   pointRadius: z.number().positive(),
   imageParam: z.string().optional()
@@ -223,16 +234,16 @@ const seriesSpecSchema = z.object({
   dot: z.object({
     radiusX: z.number().positive(),
     radiusY: z.number().positive(),
-    fill: z.string()
+    fill: hexColourSchema
   }),
   connector: z.object({
     dotSpacing: z.number().positive(),
     radius: z.number().positive(),
-    fill: z.string()
+    fill: hexColourSchema
   }),
   label: z.object({
     font: fontSchema,
-    fill: z.string(),
+    fill: hexColourSchema,
     align: z.enum(['left', 'center', 'right']),
     offsetY: z.number()
   }),
@@ -240,7 +251,7 @@ const seriesSpecSchema = z.object({
     ellipse: z.object({
       radiusX: z.number().positive(),
       radiusY: z.number().positive(),
-      fill: z.string()
+      fill: hexColourSchema
     }),
     segmentDuration: z.number().positive(),
     ease: easeSchema
@@ -252,7 +263,7 @@ const seriesSpecSchema = z.object({
       hatch: z.object({
         spacing: z.number().positive(),
         angle: z.number(),
-        fill: z.string()
+        fill: hexColourSchema
       })
     })
     .optional()
@@ -313,13 +324,6 @@ const templateBaseSchema = z.object({
   duration: z.number().positive(),
   inEnd: z.number().nonnegative(),
   outStart: z.number().nonnegative(),
-  hold: z
-    .object({
-      min: z.number(),
-      max: z.number(),
-      default: z.number()
-    })
-    .optional(),
   params: z.record(z.string(), paramDefSchema),
   layers: z.array(layerSchema).min(1)
 })
@@ -365,9 +369,15 @@ function hasParticlesLayer(layers: unknown[]): boolean {
   return false
 }
 
-/** Check whether a path is closed (ends with Z or z). */
-function isClosedPath(d: string): boolean {
-  return /[Zz]\s*$/.test(d.trim())
+/** Check whether a path uses only the supported absolute commands. */
+function isSupportedPath(d: string): boolean {
+  const trimmed = d.trim()
+  // Must end with Z
+  if (!/Z\s*$/i.test(trimmed)) return false
+  // Must only contain M, L, H, V, Z commands (uppercase only) plus numbers
+  // Extract just the command letters
+  const commands = trimmed.replace(/[^a-zA-Z]/g, '')
+  return /^[MLHVZ]+$/.test(commands)
 }
 
 /** Collect all keyframe tracks in a layer for ease validation. */
@@ -487,6 +497,25 @@ function validateColourBindings(data: MotionTemplate): string[] {
   return errors
 }
 
+/**
+ * Validate hold param range: the minimum hold must not push outStart before inEnd.
+ * holdDelta = holdValue - holdDefault; outStart' = outStart + holdDelta.
+ * At minimum: outStart + (min - default) >= inEnd.
+ */
+function validateHoldRange(data: MotionTemplate): string[] {
+  const holdParam = Object.entries(data.params).find(([, def]) => def.kind === 'hold')
+  if (!holdParam) return []
+  const [, def] = holdParam
+  if (def.kind !== 'hold') return []
+  const minDelta = def.min - def.default
+  if (data.outStart + minDelta < data.inEnd) {
+    return [
+      `hold param min ${def.min} would push outStart (${data.outStart + minDelta}) before inEnd (${data.inEnd})`
+    ]
+  }
+  return []
+}
+
 /** Validate image params have a particles layer. */
 function validateImageParamRequiresParticles(data: MotionTemplate): string[] {
   const hasImageParam = Object.values(data.params).some(p => p.kind === 'image')
@@ -521,8 +550,10 @@ function validateLayerCrossFields(
 ): string[] {
   const errors: string[] = []
 
-  if (layer.kind === 'path' && typeof layer.d === 'string' && !isClosedPath(layer.d)) {
-    errors.push(`${path}.d: path must be closed (end with Z)`)
+  if (layer.kind === 'path' && typeof layer.d === 'string' && !isSupportedPath(layer.d)) {
+    errors.push(
+      `${path}.d: path must use only absolute M, L, H, V commands and end with Z`
+    )
   }
   if (layer.stagger && layer.kind !== 'text') {
     errors.push(`${path}.stagger: stagger is only allowed on text layers`)
@@ -600,7 +631,8 @@ export function parseTemplate(json: unknown): ParseResult {
     ...validateTiming(data),
     ...validatePrimaryTextParam(data),
     ...validateColourBindings(data),
-    ...validateImageParamRequiresParticles(data)
+    ...validateImageParamRequiresParticles(data),
+    ...validateHoldRange(data)
   ]
 
   // Per-layer checks
