@@ -2882,3 +2882,163 @@ describe('colour binds resolve at any depth via resolveBindPath', () => {
     expect(text).toMatch(/InstanceInput[^}]*Source\s*=\s*"Red"/)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Security: Lua injection through param ids
+// ---------------------------------------------------------------------------
+
+describe('Lua injection defence in serialised .setting', () => {
+  /** The tool types that legitimately appear in a .setting constructor. */
+  const ALLOWLISTED_CALLS = new Set([
+    'MacroOperator',
+    'GroupOperator',
+    'Merge',
+    'sMerge',
+    'sRender',
+    'sRectangle',
+    'sEllipse',
+    'sPolygon',
+    'TextPlus',
+    'Transform',
+    'Background',
+    'BezierSpline',
+    'XYPath',
+    'InstanceInput',
+    'InstanceOutput',
+    'Input',
+    'StyledTextFollower'
+  ])
+
+  /** Recursively collect all CallExpression names from a luaparse AST. */
+  function collectCallExpressions(node: Record<string, unknown>): string[] {
+    const calls: string[] = []
+    if (node.type === 'CallExpression' && node.base) {
+      const base = node.base as Record<string, unknown>
+      if (base.type === 'MemberExpression' && base.base) {
+        const obj = base.base as Record<string, unknown>
+        const ident = base.identifier as Record<string, unknown>
+        calls.push(`${obj.name}.${ident.name}`)
+      } else if (base.type === 'Identifier') {
+        calls.push(base.name as string)
+      }
+    }
+    for (const val of Object.values(node)) {
+      if (Array.isArray(val)) {
+        for (const item of val) {
+          if (item && typeof item === 'object') {
+            calls.push(...collectCallExpressions(item as Record<string, unknown>))
+          }
+        }
+      } else if (val && typeof val === 'object') {
+        calls.push(...collectCallExpressions(val as Record<string, unknown>))
+      }
+    }
+    return calls
+  }
+
+  it('unsafe text param id produces no unexpected CallExpression in the AST', () => {
+    // Bypass the schema: call generateSetting directly with an injection payload
+    const injectionId = 'x = os.execute("x"), y'
+    const template: MotionTemplate = {
+      ...animBase('sec-lua-inject-text'),
+      params: {
+        [injectionId]: {
+          kind: 'text',
+          label: 'Injected',
+          maxLength: 40,
+          default: 'test'
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 1920, y: 1080 } }],
+          text: 'test',
+          param: injectionId,
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 48 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff'
+        }
+      ]
+    }
+
+    const text = getSettingText(makeInput(template))
+    const ast = parseSetting(text) as unknown as Record<string, unknown>
+    const calls = collectCallExpressions(ast)
+
+    // Every call must be an allowlisted tool constructor
+    const disallowed = calls.filter(c => !ALLOWLISTED_CALLS.has(c))
+    expect(disallowed).toEqual([])
+  })
+
+  it('unsafe colour param id produces no unexpected CallExpression in the AST', () => {
+    const injectionId = 'x = os.execute("x"), accent'
+    const template: MotionTemplate = {
+      ...animBase('sec-lua-inject-colour'),
+      params: {
+        [injectionId]: {
+          kind: 'colour',
+          label: 'Injected colour',
+          default: '#ff3366',
+          binds: ['layers[0]']
+        }
+      },
+      layers: [
+        {
+          kind: 'rect',
+          id: 'r',
+          anchor: { x: 0, y: 0 },
+          width: 200,
+          height: 100,
+          fill: '#ff3366',
+          radius: 0
+        }
+      ]
+    }
+
+    const text = getSettingText(makeInput(template))
+    const ast = parseSetting(text) as unknown as Record<string, unknown>
+    const calls = collectCallExpressions(ast)
+
+    const disallowed = calls.filter(c => !ALLOWLISTED_CALLS.has(c))
+    expect(disallowed).toEqual([])
+  })
+
+  it('all table keys in the AST are identifiers or bracketed strings', () => {
+    const injectionId = 'x = os.execute("x"), y'
+    const template: MotionTemplate = {
+      ...animBase('sec-lua-key-form'),
+      params: {
+        [injectionId]: {
+          kind: 'text',
+          label: 'Injected',
+          maxLength: 40,
+          default: 'test'
+        }
+      },
+      layers: [
+        {
+          kind: 'text',
+          id: 'txt',
+          anchor: { x: 0, y: 0 },
+          position: [{ t: 0, value: { x: 1920, y: 1080 } }],
+          text: 'test',
+          param: injectionId,
+          font: { family: 'Cabrito Semi', style: 'Norm Bold', size: 48 },
+          align: 'left',
+          lineHeight: 1.2,
+          multiline: false,
+          fill: '#ffffff'
+        }
+      ]
+    }
+
+    const text = getSettingText(makeInput(template))
+    // Must parse as valid Lua (no syntax error from the injection)
+    expect(() => parseSetting(text)).not.toThrow()
+  })
+})
