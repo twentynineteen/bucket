@@ -39,6 +39,24 @@ export interface RenderOptions {
   ffmpegDirectory: string | null
 }
 
+/** Extract an error message from a Tauri error or plain Error. */
+function extractErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'kind' in err) {
+    return String((err as Record<string, unknown>).kind)
+  }
+  if (err instanceof Error) return err.message
+  return String(err)
+}
+
+/** Cancel a render, swallowing any errors during cleanup. */
+async function safeCancelRender(renderId: string): Promise<void> {
+  try {
+    await cancelRender(renderId)
+  } catch {
+    // Ignore cancel errors during cleanup
+  }
+}
+
 export function useRenderVideo(): UseRenderVideoResult {
   const [state, setState] = useState<RenderState>('idle')
   const [progress, setProgress] = useState(0)
@@ -86,11 +104,7 @@ export function useRenderVideo(): UseRenderVideoResult {
         // S7 fix: if cancel arrived while startRender was awaiting,
         // cancel the newly started render immediately.
         if (cancelledRef.current) {
-          try {
-            await cancelRender(renderId)
-          } catch {
-            // Ignore cancel errors
-          }
+          await safeCancelRender(renderId)
           renderIdRef.current = null
           return null
         }
@@ -122,30 +136,15 @@ export function useRenderVideo(): UseRenderVideoResult {
       }
     } catch (err: unknown) {
       // S7 fix: always cancel the render on error to clean up ffmpeg.
-      // If finishRender was already called, the render is done and
-      // there is nothing to cancel.
       if (renderIdRef.current && !finishedRef.current) {
-        try {
-          await cancelRender(renderIdRef.current)
-        } catch {
-          // Ignore cancel errors during cleanup
-        }
+        await safeCancelRender(renderIdRef.current)
         renderIdRef.current = null
       }
 
-      if (cancelledRef.current) {
-        return null
-      }
-
-      const message =
-        err && typeof err === 'object' && 'kind' in err
-          ? String((err as Record<string, unknown>).kind)
-          : err instanceof Error
-            ? err.message
-            : String(err)
+      if (cancelledRef.current) return null
 
       setState('error')
-      setError(message)
+      setError(extractErrorMessage(err))
       throw err
     }
   }, [])
