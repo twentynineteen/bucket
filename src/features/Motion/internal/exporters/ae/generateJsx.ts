@@ -206,67 +206,77 @@ function scaleD(
 // Transform (avlayer matchnames: ADBE Position, ADBE Scale, ADBE Rotate Z, ADBE Opacity)
 // ---------------------------------------------------------------------------
 
-function emitTransform(layer: PrimitiveLayer, le: string, lines: string[]): void {
-  const tg = le + '.property("ADBE Transform Group")'
-
-  // S5: set the layer anchor point from the template's anchor.
-  // The evaluator convention: world = T(position) * R(rotation) * S(scale) * T(-anchor).
-  // AE convention: world = T(position) * R(rotation) * S(scale) * T(-anchorPoint).
-  // So we set ADBE Anchor Point to the layer's anchor.
+/**
+ * S5: set the layer anchor point from the template's anchor.
+ * The evaluator convention: world = T(position) * R(rotation) * S(scale) * T(-anchor).
+ * AE convention: world = T(position) * R(rotation) * S(scale) * T(-anchorPoint).
+ * So we set ADBE Anchor Point to the layer's anchor.
+ */
+function emitAnchor(layer: PrimitiveLayer, tg: string, lines: string[]): void {
   if (layer.anchor && (layer.anchor.x !== 0 || layer.anchor.y !== 0)) {
     const ap = tg + '.property("ADBE Anchor Point")'
     lines.push(ap + '.setValue([' + layer.anchor.x + ', ' + layer.anchor.y + ']);')
   }
+}
 
-  if (layer.position && layer.position.length > 0) {
-    const pp = tg + '.property("ADBE Position")'
-    for (const kf of layer.position) {
-      lines.push(
-        pp + '.setValueAtTime(' + kf.t + ', [' + kf.value.x + ', ' + kf.value.y + ']);'
-      )
-    }
-    for (let j = 1; j <= layer.position.length; j++) {
-      lines.push(pp + '.setSpatialTangentsAtKey(' + j + ', [0, 0], [0, 0]);')
-    }
-    emitEase(
-      pp,
-      layer.position as Array<{
-        t: number
-        value: unknown
-        ease?: [number, number, number, number]
-      }>,
-      'ADBE Position',
-      i => posD(layer.position!, i),
-      lines
+function emitPositionTrack(layer: PrimitiveLayer, tg: string, lines: string[]): void {
+  if (!layer.position || layer.position.length === 0) return
+  const pp = tg + '.property("ADBE Position")'
+  for (const kf of layer.position) {
+    lines.push(
+      pp + '.setValueAtTime(' + kf.t + ', [' + kf.value.x + ', ' + kf.value.y + ']);'
     )
   }
+  for (let j = 1; j <= layer.position.length; j++) {
+    lines.push(pp + '.setSpatialTangentsAtKey(' + j + ', [0, 0], [0, 0]);')
+  }
+  emitEase(
+    pp,
+    layer.position as Array<{
+      t: number
+      value: unknown
+      ease?: [number, number, number, number]
+    }>,
+    'ADBE Position',
+    i => posD(layer.position!, i),
+    lines
+  )
+}
 
-  if (layer.scale && layer.scale.length > 0) {
-    const sp = tg + '.property("ADBE Scale")'
-    for (const kf of layer.scale) {
-      lines.push(
-        sp +
-          '.setValueAtTime(' +
-          kf.t +
-          ', [' +
-          kf.value.x * 100 +
-          ', ' +
-          kf.value.y * 100 +
-          ', 100]);'
-      )
-    }
-    emitEase(
-      sp,
-      layer.scale as Array<{
-        t: number
-        value: unknown
-        ease?: [number, number, number, number]
-      }>,
-      'ADBE Scale',
-      i => scaleD(layer.scale!, i),
-      lines
+function emitScaleTrack(layer: PrimitiveLayer, tg: string, lines: string[]): void {
+  if (!layer.scale || layer.scale.length === 0) return
+  const sp = tg + '.property("ADBE Scale")'
+  for (const kf of layer.scale) {
+    lines.push(
+      sp +
+        '.setValueAtTime(' +
+        kf.t +
+        ', [' +
+        kf.value.x * 100 +
+        ', ' +
+        kf.value.y * 100 +
+        ', 100]);'
     )
   }
+  emitEase(
+    sp,
+    layer.scale as Array<{
+      t: number
+      value: unknown
+      ease?: [number, number, number, number]
+    }>,
+    'ADBE Scale',
+    i => scaleD(layer.scale!, i),
+    lines
+  )
+}
+
+function emitTransform(layer: PrimitiveLayer, le: string, lines: string[]): void {
+  const tg = le + '.property("ADBE Transform Group")'
+
+  emitAnchor(layer, tg, lines)
+  emitPositionTrack(layer, tg, lines)
+  emitScaleTrack(layer, tg, lines)
 
   if (layer.rotation && layer.rotation.length > 0) {
     const rp = tg + '.property("ADBE Rotate Z")'
