@@ -2558,15 +2558,35 @@ describe('group opacity fades content through Foreground wiring', () => {
     const text = getSettingText(makeInput(template))
 
     // The blend Merge must have a Foreground SourceOp
-    const blendSection = text.match(/g_blend\s*=\s*Merge\s*\{([\s\S]*?)\n\s{12}\}/)
+    const blendSection = text.match(/g_blend\s*=\s*Merge\s*\{([\s\S]*?)\n {16}\}/)
     expect(blendSection).not.toBeNull()
     const blendBody = blendSection![1]
 
-    // Foreground must be wired (the content)
-    expect(blendBody).toMatch(/Foreground\s*=\s*Input/)
+    // Foreground SourceOp must be the child chain output (a shape sRender
+    // or group transform - whichever is the last output of the child chain)
+    const fgSourceOp = blendBody.match(
+      /Foreground\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
+    )
+    expect(fgSourceOp).not.toBeNull()
+    // Must NOT be the alpha_bg (that is the Background)
+    expect(fgSourceOp![1]).not.toBe('g_alpha_bg')
 
-    // Background must also be wired (the transparent base)
-    expect(blendBody).toMatch(/Background\s*=\s*Input/)
+    // Background SourceOp must be the transparent alpha_bg tool
+    const bgSourceOp = blendBody.match(
+      /Background\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/
+    )
+    expect(bgSourceOp).not.toBeNull()
+    expect(bgSourceOp![1]).toBe('g_alpha_bg')
+
+    // The alpha_bg tool must have TopLeftAlpha = 0
+    const alphaBgSection = text.match(
+      /g_alpha_bg\s*=\s*Background\s*\{([\s\S]*?)\n {16}\}/
+    )
+    expect(alphaBgSection).not.toBeNull()
+    expect(alphaBgSection![1]).toContain('TopLeftAlpha')
+    const alphaMatch = alphaBgSection![1].match(/TopLeftAlpha[^}]*Value\s*=\s*(\d+)/)
+    expect(alphaMatch).not.toBeNull()
+    expect(Number(alphaMatch![1])).toBe(0)
   })
 })
 
