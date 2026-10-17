@@ -61,6 +61,8 @@ test.describe('Motion visual regression', () => {
     const grid = page.getByRole('list', { name: 'Templates' })
     await expect(grid).toBeVisible()
 
+    // Park the cursor on the plain header so no hover style leaks into the baseline
+    await page.mouse.move(1438, 110)
     await page.waitForTimeout(100)
 
     await expect(page).toHaveScreenshot('motion-grid-light-1440.png', {
@@ -92,6 +94,8 @@ test.describe('Motion visual regression', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
 
+    // Park the cursor on the plain header so no hover style leaks into the baseline
+    await page.mouse.move(1438, 110)
     await page.waitForTimeout(100)
 
     await expect(dialog).toHaveScreenshot('motion-dialog-light-1440.png', {
