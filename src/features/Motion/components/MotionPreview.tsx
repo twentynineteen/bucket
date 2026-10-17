@@ -298,6 +298,10 @@ const MotionPreview: React.FC<MotionPreviewProps> = ({
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 3840 2160"
+        // Text is drawn at 3840 wide and scaled into a small card. Without exact
+        // glyph advances, Chromium on Linux and Windows rounds each one to whole
+        // pixels at that size and the letter spacing breaks.
+        textRendering="geometricPrecision"
         style={{ width: '100%', height: '100%', display: 'block' }}
       >
         {vectorStates.map(state => {

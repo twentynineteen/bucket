@@ -190,7 +190,7 @@ export function buildSvgString(
     }
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">${style}${elements.join('')}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" text-rendering="geometricPrecision">${style}${elements.join('')}</svg>`
 }
 
 /**
