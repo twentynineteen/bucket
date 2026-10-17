@@ -377,9 +377,7 @@ const ParamEditor: React.FC<ParamEditorProps> = ({
    * field cannot know about (line-count) are surfaced here.
    */
   const errorFor = (paramId: string): string | undefined => {
-    const match = paramErrors?.find(
-      e => e.paramId === paramId && e.message.includes('lines')
-    )
+    const match = paramErrors?.find(e => e.paramId === paramId && e.kind === 'lineCount')
     return match?.message
   }
 

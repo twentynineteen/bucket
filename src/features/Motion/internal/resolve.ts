@@ -45,6 +45,8 @@ function assertNever(x: never): never {
 export interface ParamError {
   paramId: string
   message: string
+  /** 'lineCount' marks the wrap error the param field cannot show itself. */
+  kind?: 'lineCount'
 }
 
 /** Validate a single text param. */
@@ -217,7 +219,8 @@ function validateWrapLineCount(
     if (lines > layer.maxLines) {
       errors.push({
         paramId: id,
-        message: `Needs ${lines} lines; this template fits ${layer.maxLines}.`
+        message: `Needs ${lines} lines; this template fits ${layer.maxLines}.`,
+        kind: 'lineCount'
       })
     }
   }
