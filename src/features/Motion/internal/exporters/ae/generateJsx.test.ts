@@ -2081,10 +2081,168 @@ describe('Sk7 - non-spatial multi-dim ease uses per-dimension signed speed', () 
       'height speed should be positive (growing)'
     ).toBeGreaterThan(0)
   })
+
+  it('misaligned width/height times: merged keys get correct per-key ease', () => {
+    // Width keys at t=0, t=1; height keys at t=0, t=0.5, t=1.
+    // Merged key list should have 3 keys at t=0, t=0.5, t=1.
+    // Ease on each key must reflect the segment it belongs to in each track.
+    const misalignedFixture: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-misaligned-rect-size',
+      version: '1.0.0',
+      name: 'misaligned rect size',
+      description: 'Misaligned width/height keyframe times',
+      category: 'lower-third',
+      status: 'stable',
+      tags: ['test'],
+      fonts: ['CabritoSemi-NorBol'],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {},
+      layers: [
+        {
+          kind: 'rect' as const,
+          id: 'misaligned-rect',
+          anchor: { x: 0, y: 0 },
+          width: 400,
+          height: 200,
+          fill: '#ffffff',
+          radius: 0,
+          widthAnimation: [
+            {
+              t: 0,
+              value: 400,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: 200 }
+          ],
+          heightAnimation: [
+            {
+              t: 0,
+              value: 200,
+              ease: [0.4, 0, 0.2, 1] as [number, number, number, number]
+            },
+            {
+              t: 0.5,
+              value: 300,
+              ease: [0.7, 0, 0.84, 0] as [number, number, number, number]
+            },
+            { t: 1, value: 250 }
+          ]
+        }
+      ]
+    }
+
+    const src = getJsxSrc(makeInput(misalignedFixture))
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 'misaligned-rect')
+    expect(layer).toBeDefined()
+
+    const sizeProp = layer!.properties['ADBE Vector Rect Size']
+    expect(sizeProp).toBeDefined()
+
+    // Must have 3 keys (union of width times {0,1} and height times {0,~0.5,1}).
+    // resolve snaps 0.5 to the nearest frame at 25 fps (= 0.52).
+    expect(sizeProp.keyframes).toHaveLength(3)
+
+    // Verify key times (frame-snapped)
+    const snapped05 = Math.round(0.5 * 25) / 25
+    expect(sizeProp.keyframes[0].time).toBe(0)
+    expect(sizeProp.keyframes[1].time).toBeCloseTo(snapped05, 5)
+    expect(sizeProp.keyframes[2].time).toBeCloseTo(1, 5)
+
+    // Key 1 (t=0): outEase must reflect both tracks.
+    // Width segment 0->1: dw = (200-400)/1 = -200
+    // Height segment 0->snapped05: dh = (300-200)/snapped05
+    // Width ease [0.16, 1, 0.3, 1], height ease [0.4, 0, 0.2, 1].
+    // Width dim speed at key 0: (y1/x1) * dw = (1/0.16) * (-200) = -1250
+    // Height dim speed at key 0: (y1/x1) * dh = (0/0.4) * dh = 0
+    const kf0 = sizeProp.keyframes[0]
+    expect(kf0.outEase).toBeDefined()
+    expect(kf0.outEase).toHaveLength(2)
+    expect(kf0.outEase![0].speed).toBeCloseTo(-1250, 0)
+    expect(kf0.outEase![1].speed).toBeCloseTo(0, 1)
+
+    // Key 2 (t=snapped05): height has a key here; width does not.
+    // Height incoming from segment 0: ease [0.4, 0, 0.2, 1],
+    //   inSpeed = ((1-y2)/(1-x2)) * dh = (0/0.8) * dh = 0
+    // Height outgoing from segment 1: ease [0.7, 0, 0.84, 0],
+    //   outSpeed = (0/0.7) * dh2 = 0
+    const kf1 = sizeProp.keyframes[1]
+    expect(kf1.outEase, 'key at mid-point should have outEase').toBeDefined()
+    expect(kf1.inEase, 'key at mid-point should have inEase').toBeDefined()
+
+    // Key 3 (t=1): inEase from both tracks' last segments.
+    const kf2 = sizeProp.keyframes[2]
+    expect(kf2.inEase, 'key at t=1 should have inEase').toBeDefined()
+  })
+
+  it('height-only animation gets eases', () => {
+    // Only heightAnimation with 2 keys, no widthAnimation.
+    // The merged key list has 2 keys, both from height. Ease must be emitted.
+    const heightOnlyFixture: MotionTemplate = {
+      schemaVersion: 1,
+      id: 'fixture-height-only-rect',
+      version: '1.0.0',
+      name: 'height only rect',
+      description: 'Height-only animation gets eases',
+      category: 'lower-third',
+      status: 'stable',
+      tags: ['test'],
+      fonts: ['CabritoSemi-NorBol'],
+      duration: 4,
+      inEnd: 1,
+      outStart: 3,
+      params: {},
+      layers: [
+        {
+          kind: 'rect' as const,
+          id: 'height-only-rect',
+          anchor: { x: 0, y: 0 },
+          width: 400,
+          height: 200,
+          fill: '#ffffff',
+          radius: 0,
+          heightAnimation: [
+            {
+              t: 0,
+              value: 200,
+              ease: [0.16, 1, 0.3, 1] as [number, number, number, number]
+            },
+            { t: 1, value: 400 }
+          ]
+        }
+      ]
+    }
+
+    const src = getJsxSrc(makeInput(heightOnlyFixture))
+    const stub = runInAEStub(src)
+
+    const layer = stub.comps[0].layers.find(l => l.name === 'height-only-rect')
+    expect(layer).toBeDefined()
+
+    const sizeProp = layer!.properties['ADBE Vector Rect Size']
+    expect(sizeProp).toBeDefined()
+    expect(sizeProp.keyframes).toHaveLength(2)
+
+    // Height grows: dh = (400-200)/1 = 200
+    // Width is static, dw = 0
+    // With ease [0.16, 1, 0.3, 1]: outSpeed_h = (1/0.16) * 200 = 1250
+    const kf0 = sizeProp.keyframes[0]
+    expect(kf0.outEase, 'height-only must get ease').toBeDefined()
+    expect(kf0.outEase).toHaveLength(2) // Rect Size is 2-dimensional
+    expect(kf0.outEase![0].speed, 'width speed should be 0 (static)').toBeCloseTo(0, 1)
+    expect(
+      kf0.outEase![1].speed,
+      'height speed should be positive (growing)'
+    ).toBeCloseTo(1250, 0)
+  })
 })
 
 // ---------------------------------------------------------------------------
-// Ar9 - assertNever in layer-kind switches
+// Ar9 - exhaustive layer-kind switches
 // ---------------------------------------------------------------------------
 
 describe('Ar9 - exhaustive layer-kind switches', () => {
