@@ -4,22 +4,8 @@
  * Generates a README.md with install and run steps per selected target,
  * required fonts, image credits, and Premiere routes.
  */
-import type { ExportInput, Layer, MotionTarget, MotionTemplate } from '../../types'
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function templateHasParticles(template: MotionTemplate): boolean {
-  function check(layers: Layer[]): boolean {
-    for (const layer of layers) {
-      if (layer.kind === 'particles') return true
-      if (layer.kind === 'group' && check(layer.children)) return true
-    }
-    return false
-  }
-  return check(template.layers)
-}
+import type { ExportInput, MotionTarget, MotionTemplate } from '../../types'
+import { hasParticles } from '../layers'
 
 function hasImageParam(template: MotionTemplate): boolean {
   return Object.values(template.params).some(def => def.kind === 'image')
@@ -100,7 +86,7 @@ function premiereSection(template: MotionTemplate): string {
   lines.push('## Premiere Pro')
   lines.push('')
 
-  const isParticle = templateHasParticles(template)
+  const isParticle = hasParticles(template.layers)
 
   if (!isParticle) {
     lines.push('Two routes to use this graphic in Premiere:')

@@ -26,6 +26,7 @@ import type {
   TextLayerState
 } from '../types'
 import { solveCubicBezier } from './bezier'
+import { parseHexColour } from './colour'
 import { formatCounter } from './expand'
 import { computeParticleState } from './particleState'
 
@@ -143,14 +144,6 @@ function interpolatePoint(
 // Colour interpolation (sRGB per-channel)
 // ---------------------------------------------------------------------------
 
-/** Parse #rrggbb to [r, g, b] in 0-255. */
-function parseHex(hex: string): [number, number, number] {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return [r, g, b]
-}
-
 /** Convert [r, g, b] 0-255 to #rrggbb. */
 function toHex(r: number, g: number, b: number): string {
   const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)))
@@ -181,8 +174,8 @@ function interpolateColour(
       const ease = track[i].ease
       const progress = ease ? solveCubicBezier(ease, localT) : localT
 
-      const [r0, g0, b0] = parseHex(track[i].value)
-      const [r1, g1, b1] = parseHex(track[i + 1].value)
+      const [r0, g0, b0] = parseHexColour(track[i].value)
+      const [r1, g1, b1] = parseHexColour(track[i + 1].value)
       return toHex(
         r0 + (r1 - r0) * progress,
         g0 + (g1 - g0) * progress,

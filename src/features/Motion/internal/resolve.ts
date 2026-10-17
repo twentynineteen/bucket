@@ -28,6 +28,7 @@ import type {
   TextLayer
 } from '../types'
 import { expandTemplate } from './expand'
+import { hasParticles } from './layers'
 
 /** Exhaustiveness check: the compiler proves this is never called. */
 function assertNever(x: never): never {
@@ -783,17 +784,6 @@ export function exportFolderName(templateId: string, slug: string): string {
 // ---------------------------------------------------------------------------
 // Target derivation
 // ---------------------------------------------------------------------------
-
-/** Walk layers recursively to check for particles. */
-function hasParticles(layers: Layer[]): boolean {
-  for (const layer of layers) {
-    if (layer.kind === 'particles') return true
-    if (layer.kind === 'group') {
-      if (hasParticles(layer.children)) return true
-    }
-  }
-  return false
-}
 
 /**
  * Derive the export targets a template supports.
