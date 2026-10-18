@@ -4,6 +4,10 @@
  * Serialises the SVG with fonts embedded as data URIs, composites
  * vector and particle layers onto a canvas, and encodes to PNG.
  *
+ * The SVG content comes from the shared buildSvgTree (issue #341),
+ * serialised to a string by serialiseSvgNodes. Adding a new layer kind
+ * only touches buildSvgTree - this file stays unchanged.
+ *
  * Canvas-dependent logic is isolated behind a seam so the unit tests
  * can run in jsdom (which has no canvas). The seam is:
  *   - `buildSvgString()`: pure, testable in jsdom
@@ -14,18 +18,11 @@ import type {
   LayerState,
   MotionFormat,
   ParticlesLayerState,
-  ResolvedTemplate,
-  ShapeLayerState,
-  TextLayerState
+  ResolvedTemplate
 } from '../types'
 import { evaluate } from './evaluate'
-import { staggerLineBreaks } from './staggerLineBreaks'
-import { arcPath, matrixStr } from './svgGeometry'
-
-/** Exhaustiveness check: the compiler proves this is never called. */
-function assertNever(x: never): never {
-  throw new Error(`Unexpected layer kind: ${(x as { kind: string }).kind}`)
-}
+import { serialiseSvgNodes } from './svgSerialise'
+import { buildSvgTree } from './svgTree'
 
 export interface FontData {
   family: string
@@ -42,101 +39,6 @@ function uint8ToBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode(bytes[i])
   }
   return btoa(binary)
-}
-
-function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-function renderShapeState(state: ShapeLayerState): string {
-  const transform = matrixStr(state.matrix)
-  const fill = escapeXml(state.fill)
-
-  if (state.kind === 'rect' && state.size) {
-    return `<rect x="0" y="0" width="${state.size.w}" height="${state.size.h}" rx="${state.radius ?? 0}" fill="${fill}" opacity="${state.opacity}" transform="${transform}" />`
-  }
-
-  if (state.kind === 'ellipse') {
-    const rx = state.radii?.rx ?? 0
-    const ry = state.radii?.ry ?? 0
-    return `<ellipse cx="0" cy="0" rx="${rx}" ry="${ry}" fill="${fill}" opacity="${state.opacity}" transform="${transform}" />`
-  }
-
-  if (state.kind === 'path' && state.d) {
-    return `<path d="${escapeXml(state.d)}" fill="${fill}" opacity="${state.opacity}" transform="${transform}" />`
-  }
-
-  if (state.kind === 'arc' && state.arc) {
-    const { innerRadius, outerRadius, sweep, startAngle } = state.arc
-    // Arc is centred at the origin (transform handles placement)
-    const d = arcPath(0, 0, innerRadius, outerRadius, startAngle, sweep)
-    if (!d) return ''
-    return `<path d="${d}" fill="${fill}" opacity="${state.opacity}" transform="${transform}" />`
-  }
-
-  assertNever(state.kind as never)
-}
-
-function alignToAnchor(align: 'left' | 'center' | 'right'): string {
-  switch (align) {
-    case 'center':
-      return 'middle'
-    case 'right':
-      return 'end'
-    default:
-      return 'start'
-  }
-}
-
-function renderTextState(state: TextLayerState): string {
-  const transform = matrixStr(state.matrix)
-  const fontFamily = `"${escapeXml(state.font.family)}"`
-  const fontSize = state.font.size
-  const fill = escapeXml(state.fill)
-  const anchor = alignToAnchor(state.align)
-
-  // Staggered text: each unit is its own tspan.
-  // xml:space="preserve" prevents SVG from collapsing a lone space tspan.
-  // staggerLineBreaks computes the dy multiplier per unit, handling
-  // consecutive \n (blank lines) correctly in both renderers.
-  if (state.units && state.units.length > 0) {
-    const lineAdvance = state.lineHeight * fontSize
-    const breaks = staggerLineBreaks(state.units)
-    const tspans = state.units
-      .map((u, i) => {
-        const dy = breaks[i]
-        if (dy === -1) return ''
-        let extra = ''
-        if (dy > 0) {
-          extra = ` x="0" dy="${dy * lineAdvance}"`
-        }
-        return `<tspan opacity="${u.opacity}" fill="${escapeXml(u.fill)}"${extra}>${escapeXml(u.text)}</tspan>`
-      })
-      .join('')
-    return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}" xml:space="preserve">${tspans}</text>`
-  }
-
-  // Multiline text: one tspan per line
-  if (state.multiline && state.text.includes('\n')) {
-    const lines = state.text.split('\n')
-    const lineAdvance = state.lineHeight * fontSize
-    const tspans = lines
-      .map((line, i) => {
-        if (i === 0) {
-          return `<tspan x="0">${escapeXml(line)}</tspan>`
-        }
-        return `<tspan x="0" dy="${lineAdvance}">${escapeXml(line)}</tspan>`
-      })
-      .join('')
-    return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${tspans}</text>`
-  }
-
-  // Plain text
-  return `<text font-family=${fontFamily} font-size="${fontSize}" fill="${fill}" opacity="${state.opacity}" text-anchor="${anchor}" transform="${transform}">${escapeXml(state.text)}</text>`
 }
 
 // ---------------------------------------------------------------------------
@@ -181,26 +83,10 @@ export function buildSvgString(
 
   const style = fontFaces ? `<defs><style>${fontFaces}</style></defs>` : ''
 
-  const elements: string[] = []
-  for (const state of states) {
-    switch (state.kind) {
-      case 'particles':
-        continue // Particles go on canvas
-      case 'text':
-        elements.push(renderTextState(state))
-        break
-      case 'rect':
-      case 'ellipse':
-      case 'path':
-      case 'arc':
-        elements.push(renderShapeState(state))
-        break
-      default:
-        assertNever(state)
-    }
-  }
+  const tree = buildSvgTree(states)
+  const body = serialiseSvgNodes(tree)
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" text-rendering="geometricPrecision">${style}${elements.join('')}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" text-rendering="geometricPrecision">${style}${body}</svg>`
 }
 
 /**
