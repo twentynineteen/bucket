@@ -8,6 +8,7 @@
 
 import type { Page } from '@playwright/test'
 import type { MockFile, SimulatedFileSet } from '../utils/large-file-simulator'
+import { stubGitHubReleases } from './mocks.fixture'
 
 export interface FailureInjection {
   /** Error message carried on the failed `file-transfer-complete` event */
@@ -141,6 +142,7 @@ export class TauriE2EMock {
    * ALL mock logic is in addInitScript to ensure it runs before React loads
    */
   async setup(): Promise<void> {
+    await stubGitHubReleases(this.page)
     const config = this.config
 
     // Add init script that runs before page scripts - includes ALL mock logic

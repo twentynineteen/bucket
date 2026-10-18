@@ -5,21 +5,12 @@
  * comparison. Asserts that the Name input's bounding box is below the
  * preview's bounding box and inside the dialog's visible scroll area.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { setupTauriMocks } from '../fixtures/mocks.fixture'
 import { installMotionMocks } from '../fixtures/motion.fixture'
 
-async function stubReleaseCheck(page: Page): Promise<void> {
-  await page.route('https://api.github.com/repos/*/*/releases/latest', route =>
-    route.fulfill({
-      json: { tag_name: 'v0.0.0', name: 'v0.0.0', body: '', html_url: '' }
-    })
-  )
-}
-
 test.describe('Motion dialog layout', () => {
   test('Name input is below the preview, not overlapped', async ({ page }) => {
-    await stubReleaseCheck(page)
     await setupTauriMocks(page)
     await installMotionMocks(page)
 
@@ -86,7 +77,6 @@ test.describe('Motion dialog layout', () => {
   })
 
   test('Export button is visible without scrolling', async ({ page }) => {
-    await stubReleaseCheck(page)
     await setupTauriMocks(page)
     await installMotionMocks(page)
 

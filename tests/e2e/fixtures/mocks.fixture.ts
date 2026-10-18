@@ -152,6 +152,48 @@ export interface TauriMockOptions {
 }
 
 /**
+ * Stub the GitHub release check that `useVersionCheck` fires on start-up.
+ *
+ * Routes every request to `api.github.com` so that no spec ever makes a real
+ * call. The release endpoint gets a realistic response; anything else is
+ * aborted, which surfaces immediately as a test failure rather than a silent
+ * network roundtrip.
+ *
+ * Every fixture that provisions a page for an e2e spec calls this, so
+ * individual specs do not need to. The per-spec `stubReleaseCheck` copies
+ * that preceded this were removed in issue #343.
+ */
+export async function stubGitHubReleases(page: Page): Promise<void> {
+  // Guard first: Playwright matches routes LIFO, so the specific release
+  // route registered after this one takes priority for its pattern. Anything
+  // that falls through to this catch-all is an unstubbed GitHub call and
+  // should fail the spec immediately.
+  await page.route('https://api.github.com/**', route => {
+    route.abort('blockedbyclient')
+    throw new Error(
+      `[e2e guard] Unexpected request to api.github.com: ${route.request().url()}. ` +
+        'Add a stub in stubGitHubReleases (mocks.fixture.ts) if this is intentional.'
+    )
+  })
+
+  // Stub the one endpoint the app actually hits. Registered after the
+  // catch-all so Playwright tries it first (LIFO).
+  await page.route('https://api.github.com/repos/*/*/releases/latest', route =>
+    route.fulfill({
+      json: {
+        tag_name: 'v0.0.0',
+        name: 'v0.0.0',
+        body: '',
+        html_url: '',
+        published_at: '2024-01-01T00:00:00Z',
+        prerelease: false,
+        draft: false
+      }
+    })
+  )
+}
+
+/**
  * Install the Tauri IPC mock for E2E tests.
  *
  * This serves the mock data declared above rather than returning `null` for
@@ -168,6 +210,7 @@ export async function setupTauriMocks(
   page: Page,
   options: TauriMockOptions = {}
 ): Promise<void> {
+  await stubGitHubReleases(page)
   const projects = options.projects ?? mockScanResults
   const config = {
     scanRoot: options.scanRoot ?? SCAN_ROOT,

@@ -14,20 +14,13 @@ import { installMotionMocks } from '../fixtures/motion.fixture'
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function stubReleaseCheck(page: Page): Promise<void> {
-  await page.route('https://api.github.com/repos/*/*/releases/latest', route =>
-    route.fulfill({
-      json: { tag_name: 'v0.0.0', name: 'v0.0.0', body: '', html_url: '' }
-    })
-  )
-}
-
 /**
  * Assert no request left localhost during the test. The GitHub release check
- * is routed locally by stubReleaseCheck but still fires the request event,
- * so we exclude it from the check.
+ * is stubbed centrally by stubGitHubReleases (called inside setupTauriMocks)
+ * and fulfilled locally by Playwright's route handler, but the request event
+ * still fires for it, so we exclude api.github.com.
  */
-function assertNoUnstubExternalRequests(page: Page): () => void {
+function assertNoExternalRequests(page: Page): () => void {
   const external: string[] = []
   page.on('request', req => {
     const url = req.url()
@@ -36,7 +29,7 @@ function assertNoUnstubExternalRequests(page: Page): () => void {
       if (
         parsed.hostname !== 'localhost' &&
         parsed.hostname !== '127.0.0.1' &&
-        !url.includes('api.github.com/repos')
+        parsed.hostname !== 'api.github.com'
       ) {
         external.push(url)
       }
@@ -47,13 +40,13 @@ function assertNoUnstubExternalRequests(page: Page): () => void {
   return () => expect(external).toEqual([])
 }
 
-/** Full setup: stub release check, install shared + motion mocks, freeze clock. */
+/** Full setup: install shared + motion mocks (which stub the GitHub release
+ *  check), freeze clock. */
 async function setupAll(
   page: Page,
   motionOptions?: Parameters<typeof installMotionMocks>[1]
 ): Promise<() => void> {
-  const assertNoExternal = assertNoUnstubExternalRequests(page)
-  await stubReleaseCheck(page)
+  const assertNoExternal = assertNoExternalRequests(page)
   await setupTauriMocks(page)
   await installMotionMocks(page, motionOptions)
   await page.addInitScript(() => {
