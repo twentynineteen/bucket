@@ -135,11 +135,21 @@ export default tseslint.config(
               allow: [{ to: { type: 'shared' } }]
             },
             {
-              // Features can import other features -- barrel-only restriction
+              // Features can import other features only through the barrel.
+              // Disallow any cross-feature import whose resolved path is not
+              // the barrel (index.ts / index.tsx). The default is 'allow', so
+              // barrel imports pass without an explicit allow entry.
               from: [{ type: 'feature' }],
-              allow: [
-                { to: { type: 'feature', captured: { featureName: '!{{featureName}}' } } }
-              ]
+              disallow: [
+                {
+                  to: {
+                    type: 'feature',
+                    captured: { featureName: '!{{featureName}}' },
+                    internalPath: '!index.{ts,tsx}'
+                  }
+                }
+              ],
+              message: 'Import other features through their barrel: @features/<Name>.'
             },
             {
               from: [{ type: 'shared' }],
