@@ -7,7 +7,7 @@ import { useAppendBreadcrumbs } from '@features/Baker'
 import { useFuzzySearch } from '@shared/hooks'
 import { queryKeys } from '@shared/lib'
 import { appStore } from '@shared/store'
-import { SproutUploadResponse } from '@shared/types'
+import type { Breadcrumb, SproutUploadResponse } from '@shared/types'
 import { logger } from '@shared/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
@@ -26,6 +26,58 @@ import { useTrelloBoards } from './useTrelloBoards'
 import { useTrelloCardDetails } from './useTrelloCardDetails'
 import { useVideoInfoBlock } from './useVideoInfoBlock'
 
+/** Re-group filtered cards back into their original list buckets. */
+function regroupFilteredCards(
+  filteredCards: TrelloCard[],
+  grouped: Record<string, TrelloCard[]>
+): Record<string, TrelloCard[]> {
+  const result: Record<string, TrelloCard[]> = {}
+  for (const card of filteredCards) {
+    for (const [listName, cards] of Object.entries(grouped)) {
+      if (cards.some(c => c.id === card.id)) {
+        if (!result[listName]) {
+          result[listName] = []
+        }
+        result[listName].push(card)
+      }
+    }
+  }
+  return result
+}
+
+/** Persist updated breadcrumbs to disk when the project path is known. */
+async function saveBreadcrumbsToFile(
+  currentBreadcrumbs: Breadcrumb | null,
+  updatedBreadcrumbs: Record<string, unknown>
+): Promise<void> {
+  if (
+    !currentBreadcrumbs ||
+    !currentBreadcrumbs.parentFolder ||
+    !currentBreadcrumbs.projectTitle
+  ) {
+    return
+  }
+  const breadcrumbsPath = `${currentBreadcrumbs.parentFolder}/${currentBreadcrumbs.projectTitle}/breadcrumbs.json`
+  try {
+    await writeBreadcrumbsFile(
+      breadcrumbsPath,
+      JSON.stringify(updatedBreadcrumbs, null, 2)
+    )
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    toast.error('Failed to save breadcrumbs: ' + errorMessage)
+    logger.error('Failed to write breadcrumbs file:', error)
+  }
+}
+
+const DEFAULT_BOARD_NAME = 'Small Projects'
+
+/** Read the most recent Sprout upload from the global store. */
+function getUploadedVideo(): SproutUploadResponse | null {
+  const latestUpload = appStore.getState()?.latestSproutUpload
+  return latestUpload ? { ...createDefaultSproutUploadResponse(), ...latestUpload } : null
+}
+
 export function useUploadTrello() {
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null)
 
@@ -36,16 +88,10 @@ export function useUploadTrello() {
   // Fetch all boards to get the selected board's name
   const { boards } = useTrelloBoards()
   const selectedBoard = boards.find(board => board.id === boardId)
-  const boardName = selectedBoard?.name || 'Small Projects'
+  const boardName = selectedBoard?.name || DEFAULT_BOARD_NAME
 
   // Flatten all cards for search
-  const allCards = useMemo(() => {
-    const cards: TrelloCard[] = []
-    Object.values(grouped).forEach(cardList => {
-      cards.push(...cardList)
-    })
-    return cards
-  }, [grouped])
+  const allCards = useMemo(() => Object.values(grouped).flat(), [grouped])
 
   // Use fuzzy search hook
   const {
@@ -58,24 +104,10 @@ export function useUploadTrello() {
   })
 
   // Re-group filtered cards by list
-  const filteredGrouped = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return grouped
-    }
-
-    const result: Record<string, TrelloCard[]> = {}
-    filteredCards.forEach(card => {
-      Object.entries(grouped).forEach(([listName, cards]) => {
-        if (cards.some(c => c.id === card.id)) {
-          if (!result[listName]) {
-            result[listName] = []
-          }
-          result[listName].push(card)
-        }
-      })
-    })
-    return result
-  }, [searchTerm, filteredCards, grouped])
+  const filteredGrouped = useMemo(
+    () => (searchTerm.trim() ? regroupFilteredCards(filteredCards, grouped) : grouped),
+    [searchTerm, filteredCards, grouped]
+  )
 
   const {
     card: selectedCardDetails,
@@ -85,29 +117,33 @@ export function useUploadTrello() {
     refetchMembers
   } = useTrelloCardDetails(selectedCard?.id ?? null, apiKey, token)
 
+  const hasCardCredentials = !!(selectedCard && selectedCard.id && apiKey && token)
+
   // Auto-sync card details when selection changes
   useQuery({
     queryKey: queryKeys.trello.cardDetailsSync(selectedCard?.id, apiKey, token),
     queryFn: async () => {
-      if (selectedCard && selectedCard.id && apiKey && token) {
+      if (hasCardCredentials) {
         refetchCard()
         refetchMembers()
       }
       return null
     },
-    enabled: !!(selectedCard && selectedCard.id && apiKey && token)
+    enabled: hasCardCredentials
   })
+
+  const cardNotFound = !!(selectedCard && !selectedCardDetails && !isCardLoading)
 
   // Validate card exists and reset if not found
   useQuery({
     queryKey: ['cardValidation', selectedCard?.id, selectedCardDetails, isCardLoading],
     queryFn: async () => {
-      if (selectedCard && !selectedCardDetails && !isCardLoading) {
+      if (cardNotFound) {
         setSelectedCard(null)
       }
       return null
     },
-    enabled: !!(selectedCard && !selectedCardDetails && !isCardLoading)
+    enabled: cardNotFound
   })
 
   const { getBreadcrumbsBlock, applyBreadcrumbsToCard } = useAppendBreadcrumbs(
@@ -116,16 +152,7 @@ export function useUploadTrello() {
   )
   const { applyVideoInfoToCard } = useAppendVideoInfo(apiKey, token)
 
-  // Get uploaded video from app state
-  const state = appStore.getState()
-  let uploadedVideo: SproutUploadResponse | null = null
-
-  if (state?.latestSproutUpload) {
-    uploadedVideo = {
-      ...createDefaultSproutUploadResponse(),
-      ...state.latestSproutUpload
-    }
-  }
+  const uploadedVideo = getUploadedVideo()
 
   // Parse card description
   const rawDescription = selectedCardDetails?.desc ?? ''
@@ -151,44 +178,21 @@ export function useUploadTrello() {
     const block = await getBreadcrumbsBlock(selectedCardDetails)
     if (block && selectedCardDetails) {
       await applyBreadcrumbsToCard(selectedCardDetails, block)
-
-      // Save the updated breadcrumbs to the local file if we have the path info
-      if (
-        currentBreadcrumbs &&
-        currentBreadcrumbs.parentFolder &&
-        currentBreadcrumbs.projectTitle
-      ) {
-        const breadcrumbsPath = `${currentBreadcrumbs.parentFolder}/${currentBreadcrumbs.projectTitle}/breadcrumbs.json`
-        try {
-          await writeBreadcrumbsFile(
-            breadcrumbsPath,
-            JSON.stringify(updatedBreadcrumbs, null, 2)
-          )
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error)
-          toast.error('Failed to save breadcrumbs: ' + errorMessage)
-          logger.error('Failed to write breadcrumbs file:', error)
-        }
-      }
-
-      // Refresh card details to show updated breadcrumbs
+      await saveBreadcrumbsToFile(currentBreadcrumbs, updatedBreadcrumbs)
       refetchCard()
     }
   }
 
   const handleAppendVideoInfo = async () => {
-    if (selectedCardDetails && uploadedVideo) {
-      await applyVideoInfoToCard(selectedCardDetails, uploadedVideo)
-      // Refresh card details to show updated video info
-      refetchCard()
-    }
+    if (!selectedCardDetails || !uploadedVideo) return
+    await applyVideoInfoToCard(selectedCardDetails, uploadedVideo)
+    refetchCard()
   }
 
   const handleOpenInTrello = async () => {
-    if (selectedCard) {
-      const url = new URL(`https://trello.com/c/${selectedCard.id}`)
-      await openExternalUrl(url.toString())
-    }
+    if (!selectedCard) return
+    const url = new URL(`https://trello.com/c/${selectedCard.id}`)
+    await openExternalUrl(url.toString())
   }
 
   const handleCloseDialog = () => {

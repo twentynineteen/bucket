@@ -124,6 +124,40 @@ interface InvokeSite {
 }
 
 /**
+ * Advance past a quoted string literal (single, double or backtick).
+ * Returns the index of the closing quote.
+ */
+function skipStringLiteral(source: string, start: number, quote: string): number {
+  let i = start + 1
+  while (i < source.length && source[i] !== quote) {
+    if (source[i] === '\\') i++
+    i++
+  }
+  return i
+}
+
+const OPEN_BRACKETS = new Set(['{', '[', '('])
+const CLOSE_BRACKETS = new Set(['}', ']', ')'])
+
+/**
+ * Try to read an identifier at position `i` as an explicit key (`key:`) or a
+ * shorthand property (`key,` / `key}`). Returns the key and how far to advance,
+ * or null when the token is unreadable (computed key, call, etc.).
+ */
+function tryReadKey(source: string, i: number): { key: string; advance: number } | null {
+  const rest = source.slice(i)
+  const explicit = /^([A-Za-z_$][\w$]*)\s*:/.exec(rest)
+  if (explicit) {
+    return { key: explicit[1], advance: explicit[0].length - 1 }
+  }
+  const shorthand = /^([A-Za-z_$][\w$]*)\s*(?=[,}])/.exec(rest)
+  if (shorthand) {
+    return { key: shorthand[1], advance: shorthand[1].length - 1 }
+  }
+  return null
+}
+
+/**
  * Reads the top-level keys of the object literal starting at `start`.
  *
  * Only positions where a key may legally appear are inspected -- the start of
@@ -145,20 +179,15 @@ function readObjectKeys(source: string, start: number): string[] | null {
     // Skip string and template literals wholesale -- their contents are never
     // keys, and an apostrophe inside one would otherwise desynchronise us.
     if (char === "'" || char === '"' || char === '`') {
-      const quote = char
-      i++
-      while (i < source.length && source[i] !== quote) {
-        if (source[i] === '\\') i++
-        i++
-      }
+      i = skipStringLiteral(source, i, char)
       continue
     }
 
-    if (char === '{' || char === '[' || char === '(') {
+    if (OPEN_BRACKETS.has(char)) {
       depth++
       continue
     }
-    if (char === '}' || char === ']' || char === ')') {
+    if (CLOSE_BRACKETS.has(char)) {
       depth--
       if (depth === 0) return keys
       continue
@@ -174,20 +203,11 @@ function readObjectKeys(source: string, start: number): string[] | null {
 
     if (source.startsWith('...', i)) return null
 
-    const rest = source.slice(i)
-    const explicit = /^([A-Za-z_$][\w$]*)\s*:/.exec(rest)
-    if (explicit) {
-      keys.push(explicit[1])
+    const parsed = tryReadKey(source, i)
+    if (parsed) {
+      keys.push(parsed.key)
       expectingKey = false
-      i += explicit[0].length - 1
-      continue
-    }
-
-    const shorthand = /^([A-Za-z_$][\w$]*)\s*(?=[,}])/.exec(rest)
-    if (shorthand) {
-      keys.push(shorthand[1])
-      expectingKey = false
-      i += shorthand[1].length - 1
+      i += parsed.advance
       continue
     }
 

@@ -35,6 +35,38 @@ import { useBreadcrumbsManager } from './hooks/useBreadcrumbsManager'
 import { useBreadcrumbsPreview } from './hooks/useBreadcrumbsPreview'
 import { useLiveBreadcrumbsReader } from './hooks/useLiveBreadcrumbsReader'
 import { useRepairBreadcrumbs } from './hooks/useRepairBreadcrumbs'
+import type { BatchUpdateResult } from './types'
+
+const ScanError: React.FC<{ error: string; onRetry: () => void }> = ({
+  error,
+  onRetry
+}) => (
+  <div className="border-destructive/20 bg-destructive/5 rounded-lg border p-3">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center">
+        <AlertTriangle className="text-destructive mr-2 h-4 w-4" />
+        <span className="text-destructive text-sm">{error}</span>
+      </div>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        Retry Scan
+      </Button>
+    </div>
+  </div>
+)
+
+const UpdateResults: React.FC<{ result: BatchUpdateResult }> = ({ result }) => (
+  <div className="border-success/20 bg-success/10 rounded-lg border p-3">
+    <div className="flex items-center">
+      <CheckCircle className="text-success mr-2 h-4 w-4 flex-shrink-0" />
+      <span className="text-success text-sm">
+        Update complete: {result.successful.length} successful, {result.failed.length}{' '}
+        failed
+        {result.created.length > 0 && ` • ${result.created.length} created`}
+        {result.updated.length > 0 && ` • ${result.updated.length} updated`}
+      </span>
+    </div>
+  </div>
+)
 
 const BakerPageContent: React.FC = () => {
   // Set breadcrumbs for navigation
@@ -295,19 +327,7 @@ const BakerPageContent: React.FC = () => {
         </div>
 
         {/* Inline Error Display */}
-        {error && (
-          <div className="border-destructive/20 bg-destructive/5 rounded-lg border p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <AlertTriangle className="text-destructive mr-2 h-4 w-4" />
-                <span className="text-destructive text-sm">{error}</span>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleStartScan}>
-                Retry Scan
-              </Button>
-            </div>
-          </div>
-        )}
+        {error && <ScanError error={error} onRetry={handleStartScan} />}
 
         {/* Preview Progress Indicator */}
         {scanResult?.projects && (
@@ -319,21 +339,7 @@ const BakerPageContent: React.FC = () => {
         )}
 
         {/* Update Results */}
-        {lastUpdateResult && (
-          <div className="border-success/20 bg-success/10 rounded-lg border p-3">
-            <div className="flex items-center">
-              <CheckCircle className="text-success mr-2 h-4 w-4 flex-shrink-0" />
-              <span className="text-success text-sm">
-                Update complete: {lastUpdateResult.successful.length} successful,{' '}
-                {lastUpdateResult.failed.length} failed
-                {lastUpdateResult.created.length > 0 &&
-                  ` • ${lastUpdateResult.created.length} created`}
-                {lastUpdateResult.updated.length > 0 &&
-                  ` • ${lastUpdateResult.updated.length} updated`}
-              </span>
-            </div>
-          </div>
-        )}
+        {lastUpdateResult && <UpdateResults result={lastUpdateResult} />}
       </div>
 
       {/* Workspace: project list + detail panel fill the remaining height */}

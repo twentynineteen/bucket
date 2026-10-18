@@ -23,6 +23,102 @@ import type { BreadcrumbsFile, BreadcrumbsPreview, ProjectFolder } from '../type
 // Concurrency limit for batch operations to prevent system overload
 const CONCURRENCY_LIMIT = 5
 
+/**
+ * Scans the current files for a project, falling back to breadcrumbs data or
+ * placeholder entries when the file system scan fails.
+ */
+async function scanFilesWithFallback(
+  projectPath: string,
+  currentBreadcrumbs: BreadcrumbsFile | null,
+  cameraCount: number
+): Promise<Array<{ camera: number; name: string; path: string }>> {
+  try {
+    return await bakerScanCurrentFiles(projectPath)
+  } catch (scanError) {
+    logger.warn(
+      `Failed to scan current files for ${projectPath}, falling back to breadcrumbs/placeholder:`,
+      scanError
+    )
+
+    if (currentBreadcrumbs?.files && currentBreadcrumbs.files.length > 0) {
+      return [...currentBreadcrumbs.files]
+    }
+
+    const placeholders: Array<{ camera: number; name: string; path: string }> = []
+    for (let camera = 1; camera <= cameraCount; camera++) {
+      const cameraPath = `${projectPath}/Footage/Camera ${camera}`
+      placeholders.push({
+        camera,
+        name: `Camera${camera}_Sample.mp4`,
+        path: `${cameraPath}/Camera${camera}_Sample.mp4`
+      })
+    }
+    return placeholders
+  }
+}
+
+/**
+ * Calculates the live folder size and patches the preview's diff to reflect any
+ * change from the recorded value. Mutates `preview` in place (matching the
+ * original inline logic).
+ */
+async function recalculateFolderSizeDiff(
+  preview: BreadcrumbsPreview,
+  currentBreadcrumbs: BreadcrumbsFile | null,
+  projectPath: string
+): Promise<void> {
+  try {
+    const currentFolderSize = await getFolderSize(projectPath)
+    preview.updated.folderSizeBytes = currentFolderSize
+
+    const existingChange = preview.diff.changes.find(c => c.field === 'folderSizeBytes')
+
+    if (existingChange) {
+      existingChange.newValue = currentFolderSize
+
+      if (!currentBreadcrumbs?.folderSizeBytes) {
+        existingChange.type = 'added'
+      } else if (currentBreadcrumbs.folderSizeBytes !== currentFolderSize) {
+        existingChange.type = 'modified'
+        existingChange.oldValue = currentBreadcrumbs.folderSizeBytes
+      } else {
+        existingChange.type = 'unchanged'
+      }
+    } else {
+      const changeType = !currentBreadcrumbs?.folderSizeBytes
+        ? 'added'
+        : currentBreadcrumbs.folderSizeBytes !== currentFolderSize
+          ? 'modified'
+          : 'unchanged'
+
+      preview.diff.changes.push({
+        type: changeType,
+        field: 'folderSizeBytes',
+        oldValue: currentBreadcrumbs?.folderSizeBytes,
+        newValue: currentFolderSize
+      })
+
+      if (changeType === 'added') {
+        preview.diff.summary.added++
+      } else if (changeType === 'modified') {
+        preview.diff.summary.modified++
+      }
+
+      if (changeType === 'added' || changeType === 'modified') {
+        preview.diff.hasChanges = true
+      }
+    }
+
+    const meaningfulDiff = compareBreadcrumbsMeaningful(
+      currentBreadcrumbs,
+      preview.updated
+    )
+    preview.meaningfulDiff = meaningfulDiff
+  } catch (sizeError) {
+    logger.warn(`Failed to calculate folder size for ${projectPath}:`, sizeError)
+  }
+}
+
 interface UseBreadcrumbsPreviewResult {
   // State
   previews: Map<string, BreadcrumbsPreview>
@@ -76,32 +172,11 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
         }
 
         // Scan actual file system for current state instead of using cached breadcrumbs
-        let actualFiles: Array<{ camera: number; name: string; path: string }> = []
-
-        try {
-          // Get actual current files from file system
-          actualFiles = await bakerScanCurrentFiles(projectPath)
-        } catch (scanError) {
-          logger.warn(
-            `Failed to scan current files for ${projectPath}, falling back to breadcrumbs/placeholder:`,
-            scanError
-          )
-
-          // Fallback: use existing breadcrumbs files if available
-          if (currentBreadcrumbs?.files && currentBreadcrumbs.files.length > 0) {
-            actualFiles = [...currentBreadcrumbs.files]
-          } else {
-            // Last resort: generate placeholder files for new breadcrumbs
-            for (let camera = 1; camera <= projectData.cameraCount; camera++) {
-              const cameraPath = `${projectPath}/Footage/Camera ${camera}`
-              actualFiles.push({
-                camera,
-                name: `Camera${camera}_Sample.mp4`,
-                path: `${cameraPath}/Camera${camera}_Sample.mp4`
-              })
-            }
-          }
-        }
+        const actualFiles = await scanFilesWithFallback(
+          projectPath,
+          currentBreadcrumbs,
+          projectData.cameraCount
+        )
 
         const preview = generateBreadcrumbsPreview(currentBreadcrumbs, projectPath, {
           files: actualFiles,
@@ -109,63 +184,7 @@ export function useBreadcrumbsPreview(): UseBreadcrumbsPreviewResult {
         })
 
         // Always calculate current folder size to detect changes
-        try {
-          const currentFolderSize = await getFolderSize(projectPath)
-          preview.updated.folderSizeBytes = currentFolderSize
-
-          // Update the diff to reflect folder size changes
-          const existingChange = preview.diff.changes.find(
-            c => c.field === 'folderSizeBytes'
-          )
-
-          if (existingChange) {
-            // Update existing change with current folder size
-            existingChange.newValue = currentFolderSize
-
-            // Recalculate the change type based on new value
-            if (!currentBreadcrumbs?.folderSizeBytes) {
-              existingChange.type = 'added'
-            } else if (currentBreadcrumbs.folderSizeBytes !== currentFolderSize) {
-              existingChange.type = 'modified'
-              existingChange.oldValue = currentBreadcrumbs.folderSizeBytes
-            } else {
-              existingChange.type = 'unchanged'
-            }
-          } else {
-            // Add new change entry
-            const changeType = !currentBreadcrumbs?.folderSizeBytes
-              ? 'added'
-              : currentBreadcrumbs.folderSizeBytes !== currentFolderSize
-                ? 'modified'
-                : 'unchanged'
-
-            preview.diff.changes.push({
-              type: changeType,
-              field: 'folderSizeBytes',
-              oldValue: currentBreadcrumbs?.folderSizeBytes,
-              newValue: currentFolderSize
-            })
-
-            if (changeType === 'added') {
-              preview.diff.summary.added++
-            } else if (changeType === 'modified') {
-              preview.diff.summary.modified++
-            }
-
-            if (changeType === 'added' || changeType === 'modified') {
-              preview.diff.hasChanges = true
-            }
-          }
-
-          // Also regenerate meaningful diff with the updated folder size
-          const meaningfulDiff = compareBreadcrumbsMeaningful(
-            currentBreadcrumbs,
-            preview.updated
-          )
-          preview.meaningfulDiff = meaningfulDiff
-        } catch (sizeError) {
-          logger.warn(`Failed to calculate folder size for ${projectPath}:`, sizeError)
-        }
+        await recalculateFolderSizeDiff(preview, currentBreadcrumbs, projectPath)
 
         setPreviews(prev => new Map(prev.set(projectPath, preview)))
         return preview

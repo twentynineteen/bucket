@@ -29,7 +29,8 @@
  */
 import { queryKeys } from '@shared/lib'
 import type { GetFoldersResponse, SproutFolder } from '@shared/types'
-import { Button, buttonVariants } from '@shared/ui/button'
+import { Button } from '@shared/ui/button'
+import { buttonVariants } from '@shared/ui/button-variants'
 import {
   DropdownMenu,
   DropdownMenuContent,

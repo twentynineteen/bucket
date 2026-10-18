@@ -12,6 +12,42 @@ import {
   updateTrelloCardDesc
 } from '../api'
 
+/** Format a numbered list of links (video or Trello card). */
+function formatLinkedItems(
+  items: ReadonlyArray<{ title: string; url: string }>,
+  label: string
+): string[] {
+  const lines: string[] = [`**${label}:** ${items.length} linked`]
+  items.forEach((item, index) => {
+    lines.push(`   ${index + 1}. [${item.title}](${item.url})`)
+  })
+  return lines
+}
+
+/** Group files by camera number and format as bullet lines. */
+function formatFilesByCamera(files: ReadonlyArray<{ camera: number }>): string[] {
+  const lines: string[] = [`**Files:** ${files.length} footage files total`]
+  const counts: Record<number, number> = {}
+  for (const file of files) {
+    counts[file.camera] = (counts[file.camera] || 0) + 1
+  }
+  Object.entries(counts)
+    .sort(([a], [b]) => parseInt(a) - parseInt(b))
+    .forEach(([camera, count]) => {
+      lines.push(`   • Camera ${camera}: ${count} files`)
+    })
+  return lines
+}
+
+/** Resolve the creator display name from the polymorphic createdBy field. */
+function resolveCreatorName(
+  createdBy: string | { data?: string } | undefined
+): string | null {
+  if (!createdBy) return null
+  if (typeof createdBy === 'string') return createdBy
+  return createdBy.data || 'Unknown User'
+}
+
 function formatBreadcrumbsForHumans(breadcrumbs: Breadcrumb): string {
   const lines = ['PROJECT DETAILS', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━']
 
@@ -44,11 +80,8 @@ function formatBreadcrumbsForHumans(breadcrumbs: Breadcrumb): string {
     lines.push(`**Location (as recorded):** ${breadcrumbs.parentFolder}`)
   }
 
-  if (breadcrumbs.createdBy) {
-    const creator =
-      typeof breadcrumbs.createdBy === 'string'
-        ? breadcrumbs.createdBy
-        : breadcrumbs.createdBy?.data || 'Unknown User'
+  const creator = resolveCreatorName(breadcrumbs.createdBy)
+  if (creator) {
     lines.push(`**Created by:** ${creator}`)
   }
 
@@ -56,41 +89,20 @@ function formatBreadcrumbsForHumans(breadcrumbs: Breadcrumb): string {
     lines.push(`**Created:** ${breadcrumbs.creationDateTime}`)
   }
 
-  // Add video links if present (Phase 004)
   if (breadcrumbs.videoLinks && breadcrumbs.videoLinks.length > 0) {
-    lines.push(`\n**Videos:** ${breadcrumbs.videoLinks.length} linked`)
-    breadcrumbs.videoLinks.forEach((video, index) => {
-      lines.push(`   ${index + 1}. [${video.title}](${video.url})`)
-    })
+    lines.push('', ...formatLinkedItems(breadcrumbs.videoLinks, 'Videos'))
   }
 
   if (breadcrumbs.trelloCardUrl) {
     lines.push(`\n**Trello Card:** ${breadcrumbs.trelloCardUrl}`)
   }
 
-  // Add Trello cards if present (Phase 004)
   if (breadcrumbs.trelloCards && breadcrumbs.trelloCards.length > 0) {
-    lines.push(`**Trello Cards:** ${breadcrumbs.trelloCards.length} linked`)
-    breadcrumbs.trelloCards.forEach((card, index) => {
-      lines.push(`   ${index + 1}. [${card.title}](${card.url})`)
-    })
+    lines.push(...formatLinkedItems(breadcrumbs.trelloCards, 'Trello Cards'))
   }
 
   if (breadcrumbs.files && breadcrumbs.files.length > 0) {
-    const totalFiles = breadcrumbs.files.length
-    lines.push(`**Files:** ${totalFiles} footage files total`)
-
-    // Group files by camera
-    const filesByCamera: Record<number, number> = {}
-    breadcrumbs.files.forEach(file => {
-      filesByCamera[file.camera] = (filesByCamera[file.camera] || 0) + 1
-    })
-
-    Object.entries(filesByCamera)
-      .sort(([a], [b]) => parseInt(a) - parseInt(b))
-      .forEach(([camera, count]) => {
-        lines.push(`   • Camera ${camera}: ${count} files`)
-      })
+    lines.push(...formatFilesByCamera(breadcrumbs.files))
   }
 
   return lines.join('\n')
