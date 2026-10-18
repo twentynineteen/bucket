@@ -928,6 +928,63 @@ describe('NavMain', () => {
   })
 
   // ==========================================
+  // Route-based Active State Tests
+  // ==========================================
+  describe('Route-based active state', () => {
+    const sidebarItems = [
+      {
+        title: 'Ingest footage',
+        url: '/ingest/build',
+        icon: Home,
+        items: [
+          { title: 'Build a project', url: '/ingest/build' },
+          { title: 'Baker', url: '/ingest/baker' }
+        ]
+      },
+      {
+        title: 'Motion graphics',
+        url: '/motion/marketplace',
+        icon: Settings,
+        items: [{ title: 'Marketplace', url: '/motion/marketplace' }]
+      },
+      {
+        title: 'Settings',
+        url: '/settings/general',
+        icon: Settings,
+        items: [
+          { title: 'General', url: '/settings/general' },
+          { title: 'AI Models', url: '/settings/general#ai-models' }
+        ]
+      }
+    ]
+
+    it('marks the current sub-item active, expands its group, and leaves other groups closed', () => {
+      render(
+        <MemoryRouter initialEntries={['/motion/marketplace']}>
+          <TooltipProvider>
+            <SidebarContext.Provider value={createSidebarContext()}>
+              <NavMain items={sidebarItems} />
+            </SidebarContext.Provider>
+          </TooltipProvider>
+        </MemoryRouter>
+      )
+
+      // Motion graphics group should be open (its sub-item matches the route)
+      const marketplaceLink = screen.getByRole('link', {
+        name: 'Marketplace'
+      })
+      expect(marketplaceLink).toBeInTheDocument()
+
+      // The current sub-item should have data-active="true"
+      expect(marketplaceLink).toHaveAttribute('data-active', 'true')
+
+      // Ingest footage group should NOT be open
+      expect(screen.queryByText('Build a project')).not.toBeInTheDocument()
+      expect(screen.queryByText('Baker')).not.toBeInTheDocument()
+    })
+  })
+
+  // ==========================================
   // Multiple Active Items Tests
   // ==========================================
   describe('Multiple Active Items', () => {
