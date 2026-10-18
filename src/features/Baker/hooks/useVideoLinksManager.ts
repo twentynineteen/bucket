@@ -53,6 +53,76 @@ const initialFormData: FormData = {
   sproutVideoId: ''
 }
 
+/**
+ * Resolves the final card name for a rename: prefers Sprout's processed
+ * duration (re-fetched once if the upload response predated processing),
+ * falls back to the local file probe, and omits the suffix if neither is
+ * available.
+ */
+async function resolveRenameCardName(
+  uploadedVideoTitle: string,
+  responseDuration: number | null,
+  responseId: string | null,
+  apiKey: string | null,
+  localDuration: number | null,
+  fetchVideoDetailsAsync: (args: {
+    videoUrl: string
+    apiKey: string
+  }) => Promise<{ duration: number }>
+): Promise<string> {
+  let duration = responseDuration
+
+  if (!duration && responseId && apiKey) {
+    try {
+      const details = await fetchVideoDetailsAsync({
+        videoUrl: `https://sproutvideo.com/videos/${responseId}`,
+        apiKey
+      })
+      if (details.duration > 0) {
+        duration = details.duration
+      }
+    } catch (error) {
+      logger.warn('Could not re-fetch Sprout video duration:', error)
+    }
+  }
+
+  if (!duration && localDuration && localDuration > 0) {
+    duration = localDuration
+  }
+
+  return duration
+    ? `${uploadedVideoTitle} (${formatDurationSuffix(duration)})`
+    : uploadedVideoTitle
+}
+
+/** Builds the proposed card name from the video title and known duration. */
+function buildProposedCardName(title: string, duration: number | null): string | null {
+  if (!title) return null
+  if (duration && duration > 0) {
+    return `${title} (${formatDurationSuffix(duration)})`
+  }
+  return title
+}
+
+/** Resolve the video title from the upload response, falling back to form input. */
+function resolveUploadedVideoTitle(
+  response: { title?: string } | null,
+  formTitle: string
+): string {
+  if (!response) return ''
+  return response.title?.trim() || formTitle.trim()
+}
+
+/** Build a VideoLink from form data, trimming whitespace. */
+function buildVideoLinkFromForm(formData: FormData): VideoLink {
+  return {
+    url: formData.url.trim(),
+    title: formData.title.trim(),
+    thumbnailUrl: formData.thumbnailUrl.trim() || undefined,
+    sproutVideoId: formData.sproutVideoId.trim() || undefined
+  }
+}
+
 export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps) {
   // Core data hooks
   const {
@@ -188,20 +258,13 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
         thumbnailUrl: details.assets.poster_frames[0] || '',
         sproutVideoId: details.id
       })
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to fetch video details'
-      setFetchError(errorMessage)
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : 'Failed to fetch video details')
     }
   }
 
   const handleAddVideo = () => {
-    const newLink: VideoLink = {
-      url: formData.url.trim(),
-      title: formData.title.trim(),
-      thumbnailUrl: formData.thumbnailUrl.trim() || undefined,
-      sproutVideoId: formData.sproutVideoId.trim() || undefined
-    }
+    const newLink = buildVideoLinkFromForm(formData)
 
     const errors = validateVideoLink(newLink)
     if (errors.length > 0) {
@@ -279,59 +342,19 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
   }
 
   // Title of the video as uploaded to Sprout (only meaningful after an upload)
-  const uploadedVideoTitle = response
-    ? response.title?.trim() || formData.title.trim()
-    : ''
+  const uploadedVideoTitle = resolveUploadedVideoTitle(response, formData.title)
 
   // Best duration known right now: Sprout's if processed, else the local file probe
   const knownDuration =
     response && response.duration > 0 ? response.duration : localDuration
 
-  const proposedCardName = uploadedVideoTitle
-    ? knownDuration && knownDuration > 0
-      ? `${uploadedVideoTitle} (${formatDurationSuffix(knownDuration)})`
-      : uploadedVideoTitle
-    : null
+  const proposedCardName = buildProposedCardName(uploadedVideoTitle, knownDuration)
 
   // Only offer a rename when at least one linked card would actually change
   const renameProposal =
     proposedCardName && trelloCards?.some(card => card.title !== proposedCardName)
       ? proposedCardName
       : null
-
-  /**
-   * Resolves the final card name for a rename: prefers Sprout's processed
-   * duration (re-fetched once if the upload response predated processing),
-   * falls back to the local file probe, and omits the suffix if neither is
-   * available.
-   */
-  const resolveRenameCardName = async (): Promise<string | null> => {
-    if (!uploadedVideoTitle) return null
-
-    let duration = response && response.duration > 0 ? response.duration : null
-
-    if (!duration && response?.id && apiKey) {
-      try {
-        const details = await fetchVideoDetailsAsync({
-          videoUrl: `https://sproutvideo.com/videos/${response.id}`,
-          apiKey
-        })
-        if (details.duration > 0) {
-          duration = details.duration
-        }
-      } catch (error) {
-        logger.warn('Could not re-fetch Sprout video duration:', error)
-      }
-    }
-
-    if (!duration && localDuration && localDuration > 0) {
-      duration = localDuration
-    }
-
-    return duration
-      ? `${uploadedVideoTitle} (${formatDurationSuffix(duration)})`
-      : uploadedVideoTitle
-  }
 
   const handleTrelloCardUpdate = async (
     selectedCardIndexes: number[],
@@ -346,7 +369,17 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
 
     const breadcrumbsBlock = generateBreadcrumbsBlock(breadcrumbsData)
 
-    const newCardName = options?.renameToVideoTitle ? await resolveRenameCardName() : null
+    const newCardName =
+      options?.renameToVideoTitle && uploadedVideoTitle
+        ? await resolveRenameCardName(
+            uploadedVideoTitle,
+            response && response.duration > 0 ? response.duration : null,
+            response?.id ?? null,
+            apiKey,
+            localDuration,
+            fetchVideoDetailsAsync
+          )
+        : null
 
     const updatePromises = selectedCardIndexes.map(async index => {
       const card = trelloCards[index]
@@ -374,6 +407,16 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     await Promise.all(updatePromises)
   }
 
+  const resetDialogState = () => {
+    setFormData(initialFormData)
+    setValidationErrors([])
+    setFetchError(null)
+    setAddMode('url')
+    resetUploadState()
+    videoProcessor.reset()
+    posterFrame.reset()
+  }
+
   const handleDialogOpenChange = (open: boolean) => {
     // Closing mid-poster-frame would tear down the in-flight request
     if (!open && posterFrameWorking) return
@@ -398,14 +441,15 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     setMessage(null)
 
     if (!open) {
-      setFormData(initialFormData)
-      setValidationErrors([])
-      setFetchError(null)
-      setAddMode('url')
-      resetUploadState()
-      videoProcessor.reset()
-      posterFrame.reset()
+      resetDialogState()
     }
+  }
+
+  const resetUrlTabState = () => {
+    resetUploadState()
+    setMessage(null)
+    videoProcessor.reset()
+    posterFrame.reset()
   }
 
   const handleTabChange = (value: string) => {
@@ -414,10 +458,7 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     setFetchError(null)
 
     if (value === 'url') {
-      resetUploadState()
-      setMessage(null)
-      videoProcessor.reset()
-      posterFrame.reset()
+      resetUrlTabState()
     }
   }
 

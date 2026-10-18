@@ -125,24 +125,25 @@ export default tseslint.config(
       'boundaries/ignore': ['**/*.test.*', '**/*.spec.*', '**/*.d.ts', '**/*.css']
     },
     rules: {
-      'boundaries/element-types': [
+      'boundaries/dependencies': [
         'error',
         {
           default: 'allow',
           rules: [
             {
-              from: ['feature'],
-              allow: ['shared']
+              from: [{ type: 'feature' }],
+              allow: [{ to: { type: 'shared' } }]
             },
             {
               // Features can import other features -- barrel-only restriction
-              from: ['feature'],
-              allow: [['feature', { featureName: '!${featureName}' }]]
+              from: [{ type: 'feature' }],
+              allow: [
+                { to: { type: 'feature', captured: { featureName: '!{{featureName}}' } } }
+              ]
             },
             {
-              from: ['shared'],
-              disallow: ['feature'],
-              importKind: 'value'
+              from: [{ type: 'shared' }],
+              disallow: [{ to: { type: 'feature' }, dependency: { kind: 'value' } }]
             }
           ]
         }

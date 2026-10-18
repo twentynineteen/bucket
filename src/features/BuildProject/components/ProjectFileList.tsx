@@ -111,6 +111,7 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({
   const useVirtualScroll = files.length >= VIRTUAL_SCROLLING_THRESHOLD
 
   // Initialize virtualizer for large lists
+  // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer returns unstable references by design; upstream TanStack Virtual fix required
   const virtualizer = useVirtualizer({
     count: files.length,
     getScrollElement: () => parentRef.current,
