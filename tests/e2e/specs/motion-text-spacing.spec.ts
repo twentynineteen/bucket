@@ -15,16 +15,7 @@ import { installMotionMocks } from '../fixtures/motion.fixture'
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function stubReleaseCheck(page: Page): Promise<void> {
-  await page.route('https://api.github.com/repos/*/*/releases/latest', route =>
-    route.fulfill({
-      json: { tag_name: 'v0.0.0', name: 'v0.0.0', body: '', html_url: '' }
-    })
-  )
-}
-
 async function setupAll(page: Page): Promise<void> {
-  await stubReleaseCheck(page)
   await setupTauriMocks(page)
   await installMotionMocks(page)
   // Freeze the clock at hold time so stagger animation is fully settled

@@ -16,21 +16,13 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Stub the GitHub release check to avoid 403s on shared CI IPs. */
-async function stubReleaseCheck(page: Page): Promise<void> {
-  await page.route('https://api.github.com/repos/*/*/releases/latest', route =>
-    route.fulfill({
-      json: { tag_name: 'v0.0.0', name: 'v0.0.0', body: '', html_url: '' }
-    })
-  )
-}
-
 /**
- * Assert no unstubbed request left localhost. The GitHub release check is
- * routed locally by stubReleaseCheck but Playwright's request event still
- * fires for it, so we exclude it.
+ * Assert no request left localhost. The GitHub release check is stubbed
+ * centrally by stubGitHubReleases (called inside setupTauriMocks) and
+ * fulfilled locally by Playwright's route handler, but the request event
+ * still fires for it, so we exclude api.github.com.
  */
-function assertNoUnstubExternalRequests(page: Page): () => void {
+function assertNoExternalRequests(page: Page): () => void {
   const external: string[] = []
   page.on('request', req => {
     const url = req.url()
@@ -39,7 +31,7 @@ function assertNoUnstubExternalRequests(page: Page): () => void {
       if (
         parsed.hostname !== 'localhost' &&
         parsed.hostname !== '127.0.0.1' &&
-        !url.includes('api.github.com/repos')
+        parsed.hostname !== 'api.github.com'
       ) {
         external.push(url)
       }
@@ -51,15 +43,15 @@ function assertNoUnstubExternalRequests(page: Page): () => void {
 }
 
 /**
- * Full setup: stub release check, install shared + motion mocks, freeze clock.
- * Call this before navigating. Returns assertion function for external requests.
+ * Full setup: install shared + motion mocks (which stub the GitHub release
+ * check), freeze clock. Call before navigating. Returns assertion function
+ * for external requests.
  */
 async function setupAll(
   page: Page,
   motionOptions?: Parameters<typeof installMotionMocks>[1]
 ): Promise<() => void> {
-  const assertNoExternal = assertNoUnstubExternalRequests(page)
-  await stubReleaseCheck(page)
+  const assertNoExternal = assertNoExternalRequests(page)
   await setupTauriMocks(page)
   await installMotionMocks(page, motionOptions)
   await page.addInitScript(() => {
@@ -569,8 +561,7 @@ test.describe('Motion Marketplace keyboard and reduced motion', () => {
   })
 
   test('T2.2 reduced motion pauses preview; hover resumes playback', async ({ page }) => {
-    const assertNoExternal = assertNoUnstubExternalRequests(page)
-    await stubReleaseCheck(page)
+    const assertNoExternal = assertNoExternalRequests(page)
     await setupTauriMocks(page)
     await installMotionMocks(page)
     // Do NOT set the frozen clock - let the real ticker run

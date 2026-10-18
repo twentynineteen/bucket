@@ -9,8 +9,13 @@
  * P5.4: Particle canvas compositing
  */
 import { expect, test } from '@playwright/test'
+import { stubGitHubReleases } from '../fixtures/mocks.fixture'
 
 test.describe('motion frame renderer', () => {
+  test.beforeEach(async ({ page }) => {
+    await stubGitHubReleases(page)
+  })
+
   // P5.3: single opaque rect frame
   test('p5_3_png_frame_has_correct_dimensions_and_alpha', async ({ page }) => {
     // Navigate to the app so Vite modules are available

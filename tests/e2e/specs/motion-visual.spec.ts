@@ -15,14 +15,6 @@ import { installMotionMocks } from '../fixtures/motion.fixture'
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function stubReleaseCheck(page: Page): Promise<void> {
-  await page.route('https://api.github.com/repos/*/*/releases/latest', route =>
-    route.fulfill({
-      json: { tag_name: 'v0.0.0', name: 'v0.0.0', body: '', html_url: '' }
-    })
-  )
-}
-
 async function gotoMarketplace(page: Page): Promise<void> {
   await page.goto('/')
   const group = page.getByRole('button', { name: /Motion graphics/i })
@@ -44,7 +36,6 @@ test.describe('Motion visual regression', () => {
   test('T4.1 grid screenshot at frozen clock, Light theme, 1440x900', async ({
     page
   }) => {
-    await stubReleaseCheck(page)
     await page.setViewportSize({ width: 1440, height: 900 })
     await setupTauriMocks(page)
     await installMotionMocks(page)
@@ -72,7 +63,6 @@ test.describe('Motion visual regression', () => {
   })
 
   test('T4.2 dialog screenshot at frozen clock, Light theme', async ({ page }) => {
-    await stubReleaseCheck(page)
     await page.setViewportSize({ width: 1440, height: 900 })
     await setupTauriMocks(page)
     await installMotionMocks(page)
