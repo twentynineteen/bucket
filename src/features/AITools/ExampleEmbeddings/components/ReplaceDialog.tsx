@@ -39,6 +39,122 @@ interface ReplaceData {
   embedding: number[]
 }
 
+/** Validates that both scripts are within the acceptable length range. */
+function validateContentLengths(beforeContent: string, afterContent: string): void {
+  if (beforeContent.trim().length < 50) {
+    throw new Error('Original script is too short (minimum 50 characters)')
+  }
+  if (afterContent.trim().length < 50) {
+    throw new Error('Formatted script is too short (minimum 50 characters)')
+  }
+  if (beforeContent.trim().length > 100_000) {
+    throw new Error('Original script is too long (maximum 100,000 characters)')
+  }
+  if (afterContent.trim().length > 100_000) {
+    throw new Error('Formatted script is too long (maximum 100,000 characters)')
+  }
+}
+
+const ReplaceSuccess: React.FC<{
+  example: ExampleWithMetadata
+  onClose: () => void
+}> = ({ example, onClose }) => (
+  <>
+    <DialogHeader>
+      <DialogTitle className="flex items-center gap-2">
+        <CheckCircle className="text-success h-5 w-5" />
+        Replace Successful!
+      </DialogTitle>
+      <DialogDescription>
+        Your script example has been updated in the library.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="space-y-4 py-4">
+      <div className="border-success/20 bg-success/10 rounded-md border p-4">
+        <p className="text-success text-sm font-medium">Replaced Example</p>
+        <p className="text-success/90 mt-1 text-lg font-semibold">{example.title}</p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-muted-foreground text-sm">
+          ✓ Example content updated in the database
+        </p>
+        <p className="text-muted-foreground text-sm">
+          ✓ Metadata preserved (title, category, tags, quality score)
+        </p>
+        <p className="text-muted-foreground text-sm">
+          ✓ New embedding generated for improved matching
+        </p>
+      </div>
+    </div>
+
+    <DialogFooter>
+      <Button type="button" onClick={onClose}>
+        Close
+      </Button>
+    </DialogFooter>
+  </>
+)
+
+const ModelStatus: React.FC<{
+  isCheckingModel: boolean
+  isModelReady: boolean
+  modelName: string | undefined
+  modelError: Error | null
+}> = ({ isCheckingModel, isModelReady, modelName, modelError }) => (
+  <div
+    className={`rounded-md border p-3 ${
+      isCheckingModel
+        ? 'border-info/20 bg-info/10'
+        : isModelReady
+          ? 'border-success/20 bg-success/10'
+          : 'border-destructive/20 bg-destructive/10'
+    }`}
+  >
+    <div className="flex items-center gap-2">
+      {isCheckingModel ? (
+        <>
+          <Loader2 className="text-info h-4 w-4 animate-spin" />
+          <span className="text-info text-sm">Checking embedding model...</span>
+        </>
+      ) : isModelReady ? (
+        <>
+          <CheckCircle className="text-success h-4 w-4" />
+          <span className="text-success text-sm">
+            Embedding model ready: <code className="font-mono">{modelName}</code>
+          </span>
+        </>
+      ) : (
+        <>
+          <AlertCircle className="text-destructive h-4 w-4" />
+          <div className="flex-1">
+            <p className="text-destructive text-sm font-medium">
+              Embedding model not available
+            </p>
+            {modelError && (
+              <p className="text-destructive/90 mt-1 text-xs">{modelError.message}</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  </div>
+)
+
+function submitButtonLabel(
+  isParsingDocx: boolean,
+  isGeneratingEmbedding: boolean,
+  isReplacing: boolean,
+  isModelReady: boolean
+): string {
+  if (isParsingDocx) return 'Parsing Document...'
+  if (isGeneratingEmbedding) return 'Generating Embedding...'
+  if (isReplacing) return 'Replacing...'
+  if (!isModelReady) return 'Model Not Ready'
+  return 'Replace'
+}
+
 export function ReplaceDialog({ open, example, onClose, onReplace }: ReplaceDialogProps) {
   const { parseFile: parseDocx, isLoading: isParsingDocx } = useDocxParser()
   const {
@@ -130,22 +246,7 @@ export function ReplaceDialog({ open, example, onClose, onReplace }: ReplaceDial
       const beforeContent = await parseFileContent(beforeFile)
       const afterContent = await parseFileContent(afterFile)
 
-      // Validate content length
-      if (beforeContent.trim().length < 50) {
-        throw new Error('Original script is too short (minimum 50 characters)')
-      }
-
-      if (afterContent.trim().length < 50) {
-        throw new Error('Formatted script is too short (minimum 50 characters)')
-      }
-
-      if (beforeContent.trim().length > 100_000) {
-        throw new Error('Original script is too long (maximum 100,000 characters)')
-      }
-
-      if (afterContent.trim().length > 100_000) {
-        throw new Error('Formatted script is too long (maximum 100,000 characters)')
-      }
+      validateContentLengths(beforeContent, afterContent)
 
       // Generate embedding from before content
       setIsGeneratingEmbedding(true)
@@ -217,45 +318,7 @@ export function ReplaceDialog({ open, example, onClose, onReplace }: ReplaceDial
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px]">
         {replaceSuccess ? (
-          // Success state
-          <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <CheckCircle className="text-success h-5 w-5" />
-                Replace Successful!
-              </DialogTitle>
-              <DialogDescription>
-                Your script example has been updated in the library.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              <div className="border-success/20 bg-success/10 rounded-md border p-4">
-                <p className="text-success text-sm font-medium">Replaced Example</p>
-                <p className="text-success/90 mt-1 text-lg font-semibold">
-                  {example.title}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-muted-foreground text-sm">
-                  ✓ Example content updated in the database
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  ✓ Metadata preserved (title, category, tags, quality score)
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  ✓ New embedding generated for improved matching
-                </p>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" onClick={handleClose}>
-                Close
-              </Button>
-            </DialogFooter>
-          </>
+          <ReplaceSuccess example={example} onClose={handleClose} />
         ) : (
           // Replace form
           <>
@@ -270,48 +333,12 @@ export function ReplaceDialog({ open, example, onClose, onReplace }: ReplaceDial
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 {/* Model availability status */}
-                <div
-                  className={`rounded-md border p-3 ${
-                    isCheckingModel
-                      ? 'border-info/20 bg-info/10'
-                      : isModelReady
-                        ? 'border-success/20 bg-success/10'
-                        : 'border-destructive/20 bg-destructive/10'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {isCheckingModel ? (
-                      <>
-                        <Loader2 className="text-info h-4 w-4 animate-spin" />
-                        <span className="text-info text-sm">
-                          Checking embedding model...
-                        </span>
-                      </>
-                    ) : isModelReady ? (
-                      <>
-                        <CheckCircle className="text-success h-4 w-4" />
-                        <span className="text-success text-sm">
-                          Embedding model ready:{' '}
-                          <code className="font-mono">{modelName}</code>
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="text-destructive h-4 w-4" />
-                        <div className="flex-1">
-                          <p className="text-destructive text-sm font-medium">
-                            Embedding model not available
-                          </p>
-                          {modelError && (
-                            <p className="text-destructive/90 mt-1 text-xs">
-                              {modelError.message}
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+                <ModelStatus
+                  isCheckingModel={isCheckingModel}
+                  isModelReady={isModelReady}
+                  modelName={modelName}
+                  modelError={modelError}
+                />
 
                 {/* Current example info */}
                 <div className="border-muted bg-muted/30 rounded-md border p-3">
@@ -391,15 +418,12 @@ export function ReplaceDialog({ open, example, onClose, onReplace }: ReplaceDial
                 </Button>
                 <Button type="submit" disabled={!canReplace}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isParsingDocx
-                    ? 'Parsing Document...'
-                    : isGeneratingEmbedding
-                      ? 'Generating Embedding...'
-                      : isReplacing
-                        ? 'Replacing...'
-                        : !isModelReady
-                          ? 'Model Not Ready'
-                          : 'Replace'}
+                  {submitButtonLabel(
+                    isParsingDocx,
+                    isGeneratingEmbedding,
+                    isReplacing,
+                    isModelReady
+                  )}
                 </Button>
               </DialogFooter>
             </form>

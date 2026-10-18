@@ -15,7 +15,7 @@ import {
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
-import { cn, formatBreadcrumbDateSimple } from '@shared/utils'
+import { cn, formatBreadcrumbDateSimple, formatFileSize } from '@shared/utils'
 import {
   AlertTriangle,
   Calendar,
@@ -42,7 +42,6 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { openInShell } from '../api'
 import { useVerifiedPaths } from '../hooks/useVerifiedPaths'
-import { formatFileSize } from '../internal/fieldUtils'
 import type {
   BreadcrumbsFile,
   BreadcrumbsPreview,
@@ -233,6 +232,57 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
 
 // Sub-components
 
+/**
+ * Copies a project path to the clipboard and toasts the verification state.
+ * Three-way: confirmed present, confirmed absent, or unverified.
+ */
+async function copyPathWithToast(
+  projectPath: string,
+  projectPresent: boolean | undefined
+): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(projectPath)
+    if (projectPresent === true) {
+      toast.success('Project path copied')
+    } else if (projectPresent === false) {
+      toast.warning('Project path copied, but it was not found on this machine')
+    } else {
+      toast.info('Project path copied. Bucket has not checked whether it still exists.')
+    }
+  } catch {
+    toast.error('Failed to copy path')
+  }
+}
+
+function cameraCountLabel(count: number): string {
+  if (count === 0) return 'No cameras'
+  return `${count} camera${count !== 1 ? 's' : ''}`
+}
+
+const DetailHeaderPills: React.FC<{
+  project: ProjectFolder
+  parentPresent: boolean | undefined
+  cameraCount: number | undefined
+}> = ({ project, parentPresent, cameraCount }) => (
+  <div className="flex flex-wrap gap-1.5">
+    <HeaderPill tone={project.isValid ? 'success' : 'destructive'}>
+      {project.isValid ? 'Valid structure' : 'Invalid structure'}
+    </HeaderPill>
+    <BreadcrumbsStatusPill project={project} />
+    {/*
+      Only ever rendered on a definite `false`. While the probe is in
+      flight `parentPresent` is undefined and nothing is claimed, so the
+      panel does not flash a wrong cause mid-check (#166 B5.6).
+    */}
+    {parentPresent === false && (
+      <HeaderPill tone="warning">Location not found</HeaderPill>
+    )}
+    {cameraCount !== undefined && (
+      <HeaderPill tone="muted">{cameraCountLabel(cameraCount)}</HeaderPill>
+    )}
+  </div>
+)
+
 interface DetailHeaderProps {
   projectPath: string
   project: ProjectFolder | null
@@ -260,25 +310,6 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({
   const parentPresent = isPresent(parentPath)
   const projectPresent = isPresent(projectPath)
 
-  const handleCopyPath = async () => {
-    try {
-      await navigator.clipboard.writeText(projectPath)
-      // Copying is never blocked. A path that does not resolve here is still
-      // the thing the user wants to send to whoever has the drive. What changes
-      // is the claim made about it: three states, so an unverified path is
-      // never confirmed as though it had been checked.
-      if (projectPresent === true) {
-        toast.success('Project path copied')
-      } else if (projectPresent === false) {
-        toast.warning('Project path copied, but it was not found on this machine')
-      } else {
-        toast.info('Project path copied. Bucket has not checked whether it still exists.')
-      }
-    } catch {
-      toast.error('Failed to copy path')
-    }
-  }
-
   return (
     <div className="border-border space-y-2 border-b p-4">
       <h3 className="text-foreground leading-snug font-semibold [overflow-wrap:anywhere]">
@@ -300,7 +331,7 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({
         </span>
         <button
           type="button"
-          onClick={handleCopyPath}
+          onClick={() => copyPathWithToast(projectPath, projectPresent)}
           title="Copy project path"
           className="hover:text-foreground hover:bg-accent flex-shrink-0 rounded p-0.5 transition-colors"
         >
@@ -308,27 +339,11 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({
         </button>
       </div>
       {project && (
-        <div className="flex flex-wrap gap-1.5">
-          <HeaderPill tone={project.isValid ? 'success' : 'destructive'}>
-            {project.isValid ? 'Valid structure' : 'Invalid structure'}
-          </HeaderPill>
-          <BreadcrumbsStatusPill project={project} />
-          {/*
-            Only ever rendered on a definite `false`. While the probe is in
-            flight `parentPresent` is undefined and nothing is claimed, so the
-            panel does not flash a wrong cause mid-check (#166 B5.6).
-          */}
-          {parentPresent === false && (
-            <HeaderPill tone="warning">Location not found</HeaderPill>
-          )}
-          {cameraCount !== undefined && (
-            <HeaderPill tone="muted">
-              {cameraCount === 0
-                ? 'No cameras'
-                : `${cameraCount} camera${cameraCount !== 1 ? 's' : ''}`}
-            </HeaderPill>
-          )}
-        </div>
+        <DetailHeaderPills
+          project={project}
+          parentPresent={parentPresent}
+          cameraCount={cameraCount}
+        />
       )}
     </div>
   )
@@ -416,6 +431,49 @@ function calloutNote(
   return undefined
 }
 
+const CalloutActions: React.FC<{
+  project: ProjectFolder
+  preview: BreadcrumbsPreview | null
+  isGeneratingPreview: boolean
+  onGeneratePreview: () => void | Promise<void>
+  onRepairProject?: (projectPath: string) => void
+}> = ({ project, preview, isGeneratingPreview, onGeneratePreview, onRepairProject }) => (
+  <>
+    {project.invalidBreadcrumbs && onRepairProject && (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onRepairProject(project.path)}
+        className="border-destructive/30 text-destructive hover:bg-destructive/10 flex-shrink-0 gap-1.5"
+      >
+        <Wrench className="h-3.5 w-3.5" />
+        Repair breadcrumbs
+      </Button>
+    )}
+    {!preview && (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onGeneratePreview}
+        disabled={isGeneratingPreview}
+        className="flex-shrink-0 gap-1.5"
+      >
+        {isGeneratingPreview ? (
+          <>
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            Checking…
+          </>
+        ) : (
+          <>
+            <Search className="h-3.5 w-3.5" />
+            Preview changes
+          </>
+        )}
+      </Button>
+    )}
+  </>
+)
+
 const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
   project,
   preview,
@@ -463,38 +521,13 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
           </p>
           <p className="text-muted-foreground text-xs">{subline}</p>
         </div>
-        {project.invalidBreadcrumbs && onRepairProject && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onRepairProject(project.path)}
-            className="border-destructive/30 text-destructive hover:bg-destructive/10 flex-shrink-0 gap-1.5"
-          >
-            <Wrench className="h-3.5 w-3.5" />
-            Repair breadcrumbs
-          </Button>
-        )}
-        {!preview && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onGeneratePreview}
-            disabled={isGeneratingPreview}
-            className="flex-shrink-0 gap-1.5"
-          >
-            {isGeneratingPreview ? (
-              <>
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                Checking…
-              </>
-            ) : (
-              <>
-                <Search className="h-3.5 w-3.5" />
-                Preview changes
-              </>
-            )}
-          </Button>
-        )}
+        <CalloutActions
+          project={project}
+          preview={preview}
+          isGeneratingPreview={isGeneratingPreview}
+          onGeneratePreview={onGeneratePreview}
+          onRepairProject={onRepairProject}
+        />
       </div>
 
       {changes && (
