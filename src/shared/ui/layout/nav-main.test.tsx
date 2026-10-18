@@ -331,6 +331,37 @@ describe('NavMain', () => {
   // Sidebar Collapsed State Tests
   // ==========================================
   describe('Sidebar Collapsed State', () => {
+    it('marks the current group header only in icon mode, never beside an active sub-item', () => {
+      const items = [
+        createMockItem({
+          title: 'Settings',
+          url: '/settings/general',
+          icon: Home,
+          items: [{ title: 'General', url: '/settings/general' }]
+        })
+      ]
+
+      // Expanded: the sub-item carries the marker, so the header must not
+      // repeat it on the row directly above.
+      const { unmount } = renderNavMain(items, 'expanded', '/settings/general')
+      expect(screen.getByRole('button', { name: /settings/i })).not.toHaveAttribute(
+        'data-active',
+        'true'
+      )
+      expect(screen.getByRole('link', { name: /general/i })).toHaveAttribute(
+        'data-active',
+        'true'
+      )
+      unmount()
+
+      // Icon mode: sub-items are hidden, so the header is the only marker
+      renderNavMain(items, 'collapsed', '/settings/general')
+      expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute(
+        'data-active',
+        'true'
+      )
+    })
+
     it('should render as Link when sidebar is collapsed', () => {
       const items = [
         createMockItem({
