@@ -2,28 +2,41 @@
  * React adapter for the SVG node tree (issue #341)
  *
  * Maps SvgNode[] to React elements for MotionPreview. Converts
- * SVG-native attribute names to React camelCase props.
+ * SVG-native attribute names to React camelCase props using a generic
+ * rule (camelCase on hyphens, xml:space -> xmlSpace) so new attributes
+ * added to svgTree.ts need no registry entry here.
  */
 import React from 'react'
 import type { SvgElement, SvgNode } from './svgTree'
 
 // ---------------------------------------------------------------------------
-// Attribute name mapping: SVG hyphenated -> React camelCase
+// Attribute name conversion: SVG hyphenated -> React camelCase
 // ---------------------------------------------------------------------------
 
-const ATTR_MAP: Record<string, string> = {
-  'font-family': 'fontFamily',
-  'font-size': 'fontSize',
-  'text-anchor': 'textAnchor',
-  'xml:space': 'xmlSpace',
-  'text-rendering': 'textRendering'
+/**
+ * Convert an SVG attribute name to its React prop name.
+ *
+ * Rules:
+ *  - Hyphenated names camelCase on each hyphen: font-family -> fontFamily
+ *  - xml:space is React's xmlSpace (the only xml:-prefixed attr we emit)
+ *  - Everything else passes through unchanged (fill, opacity, transform, ...)
+ */
+function svgAttrToReactProp(name: string): string {
+  // Handle xml: namespace prefix
+  if (name === 'xml:space') return 'xmlSpace'
+
+  // Hyphenated names: camelCase on each hyphen
+  if (name.includes('-')) {
+    return name.replace(/-([a-z])/g, (_, ch: string) => ch.toUpperCase())
+  }
+
+  return name
 }
 
 function toReactProps(attrs: Record<string, string | number>): Record<string, unknown> {
   const props: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(attrs)) {
-    const reactKey = ATTR_MAP[key] ?? key
-    props[reactKey] = value
+    props[svgAttrToReactProp(key)] = value
   }
   return props
 }
