@@ -234,7 +234,11 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
 
 /**
  * Copies a project path to the clipboard and toasts the verification state.
- * Three-way: confirmed present, confirmed absent, or unverified.
+ *
+ * Copying is never blocked. A path that does not resolve here is still
+ * the thing the user wants to send to whoever has the drive. What changes
+ * is the claim made about it: three states, so an unverified path is
+ * never confirmed as though it had been checked.
  */
 async function copyPathWithToast(
   projectPath: string,

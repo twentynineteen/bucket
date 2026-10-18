@@ -421,8 +421,12 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     // Closing mid-poster-frame would tear down the in-flight request
     if (!open && posterFrameWorking) return
 
-    // Dismissal cancels (#225 UP-24). Every dismissal route funnels through
-    // here, so Escape and an overlay click behave like the button.
+    // Dismissal cancels (#225 UP-24). The alternative - a dialog announcing that
+    // the upload continues in the background - needs a background progress
+    // surface the app does not have, so the user would be told a multi-gigabyte
+    // transfer is still running with nowhere to watch it and nothing to stop it.
+    // That is the orphaning defect with better wording. Every dismissal route
+    // funnels through here, so Escape and an overlay click behave like the button.
     if (!open && uploading) {
       void cancelUpload()
     }
@@ -431,7 +435,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
 
     // The message lives in the React Query cache, which resetUploadState does
     // not own, and the slot is shared by every Sprout transfer, including a
-    // replace started from a card (#282). Clear it on open as well as close.
+    // replace started from a card (#282). Clear it on open as well as close, or
+    // a previous run's text greets the next upload tab visit as though it were
+    // this dialog's own.
     setMessage(null)
 
     if (!open) {

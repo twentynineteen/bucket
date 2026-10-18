@@ -85,6 +85,8 @@ const TRANSFER_ERROR_MATCHERS: ReadonlyArray<{
   kind: ErrorKind
   code: string
   recoverable: boolean
+  /** Whether this error kind carries the file path as context. */
+  includePathContext: boolean
   getMessage: (original: string, filePath?: string) => string
 }> = [
   {
@@ -92,6 +94,7 @@ const TRANSFER_ERROR_MATCHERS: ReadonlyArray<{
     kind: ErrorKind.NotFound,
     code: 'FILE_NOT_FOUND',
     recoverable: false,
+    includePathContext: true,
     getMessage: (orig, fp) => (fp ? `File not found: ${fp}` : orig)
   },
   {
@@ -102,6 +105,7 @@ const TRANSFER_ERROR_MATCHERS: ReadonlyArray<{
     kind: ErrorKind.InsufficientSpace,
     code: 'DISK_FULL',
     recoverable: false,
+    includePathContext: true,
     getMessage: () => 'Not enough disk space to complete the transfer'
   },
   {
@@ -109,6 +113,7 @@ const TRANSFER_ERROR_MATCHERS: ReadonlyArray<{
     kind: ErrorKind.Cancelled,
     code: 'CANCELLED',
     recoverable: false,
+    includePathContext: false,
     getMessage: orig => orig
   },
   {
@@ -116,6 +121,7 @@ const TRANSFER_ERROR_MATCHERS: ReadonlyArray<{
     kind: ErrorKind.Timeout,
     code: 'STALLED',
     recoverable: true,
+    includePathContext: true,
     getMessage: (orig, fp) => (fp ? `Transfer stalled for file: ${fp}` : orig)
   },
   {
@@ -123,6 +129,7 @@ const TRANSFER_ERROR_MATCHERS: ReadonlyArray<{
     kind: ErrorKind.Permission,
     code: 'PERMISSION_DENIED',
     recoverable: false,
+    includePathContext: true,
     getMessage: (orig, fp) => (fp ? `Permission denied: ${fp}` : orig)
   }
 ]
@@ -141,7 +148,10 @@ function mapTransferError(errorMessage: string, filePath?: string): BuildProject
       'file-transfer',
       match.getMessage(errorMessage, filePath),
       match.recoverable,
-      { code: match.code, context: pathContext }
+      {
+        code: match.code,
+        context: match.includePathContext ? pathContext : undefined
+      }
     )
   }
 

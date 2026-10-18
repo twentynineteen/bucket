@@ -88,7 +88,7 @@ export function useUploadTrello() {
   // Fetch all boards to get the selected board's name
   const { boards } = useTrelloBoards()
   const selectedBoard = boards.find(board => board.id === boardId)
-  const boardName = selectedBoard?.name ?? DEFAULT_BOARD_NAME
+  const boardName = selectedBoard?.name || DEFAULT_BOARD_NAME
 
   // Flatten all cards for search
   const allCards = useMemo(() => Object.values(grouped).flat(), [grouped])
@@ -117,7 +117,7 @@ export function useUploadTrello() {
     refetchMembers
   } = useTrelloCardDetails(selectedCard?.id ?? null, apiKey, token)
 
-  const hasCardCredentials = !!(selectedCard && apiKey && token)
+  const hasCardCredentials = !!(selectedCard && selectedCard.id && apiKey && token)
 
   // Auto-sync card details when selection changes
   useQuery({
