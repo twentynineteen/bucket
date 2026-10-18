@@ -11,7 +11,7 @@ import { SidebarContext } from '@shared/ui/use-sidebar'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Home, Settings, Users, type LucideIcon } from 'lucide-react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useNavigate } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NavMain } from './nav-main'
 
@@ -21,14 +21,12 @@ const createMockItem = (
     title: string
     url: string
     icon?: LucideIcon
-    isActive?: boolean
     items?: { title: string; url: string }[]
   }> = {}
 ) => ({
   title: 'Dashboard',
   url: '/dashboard',
   icon: Home,
-  isActive: false,
   items: [],
   ...overrides
 })
@@ -49,13 +47,15 @@ const createSidebarContext = (
 // Wrapper component that provides all required contexts
 const TestWrapper = ({
   children,
-  sidebarState = 'expanded'
+  sidebarState = 'expanded',
+  route = '/'
 }: {
   children: React.ReactNode
   sidebarState?: 'expanded' | 'collapsed'
+  route?: string
 }) => {
   return (
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[route]}>
       <TooltipProvider>
         <SidebarContext.Provider value={createSidebarContext(sidebarState)}>
           {children}
@@ -68,12 +68,23 @@ const TestWrapper = ({
 // Helper to render with wrapper
 const renderNavMain = (
   items: Parameters<typeof NavMain>[0]['items'],
-  sidebarState: 'expanded' | 'collapsed' = 'expanded'
+  sidebarState: 'expanded' | 'collapsed' = 'expanded',
+  route: string = '/'
 ) => {
   return render(
-    <TestWrapper sidebarState={sidebarState}>
+    <TestWrapper sidebarState={sidebarState} route={route}>
       <NavMain items={items} />
     </TestWrapper>
+  )
+}
+
+// Helper component to trigger navigation inside the router context
+function NavigateButton({ to }: { to: string }) {
+  const navigate = useNavigate()
+  return (
+    <button data-testid="nav-trigger" onClick={() => navigate(to)}>
+      go to {to}
+    </button>
   )
 }
 
@@ -153,12 +164,11 @@ describe('NavMain', () => {
   // Sub-items (Children) Tests
   // ==========================================
   describe('Sub-items Rendering', () => {
-    it('should render sub-items when item has items array', () => {
+    it('should render sub-items when route matches a sub-item', () => {
       const items = [
         createMockItem({
           title: 'Settings',
           url: '/settings',
-          isActive: true,
           items: [
             { title: 'General', url: '/settings/general' },
             { title: 'Security', url: '/settings/security' }
@@ -166,19 +176,18 @@ describe('NavMain', () => {
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/settings/general')
 
-      // Sub-items should be visible when parent isActive=true (defaultOpen)
+      // Sub-items should be visible when the route matches a sub-item
       expect(screen.getByText('General')).toBeInTheDocument()
       expect(screen.getByText('Security')).toBeInTheDocument()
     })
 
-    it('should hide sub-items when parent is not active', () => {
+    it('should hide sub-items when route does not match any sub-item', () => {
       const items = [
         createMockItem({
           title: 'Settings',
           url: '/settings',
-          isActive: false,
           items: [
             { title: 'General', url: '/settings/general' },
             { title: 'Security', url: '/settings/security' }
@@ -188,7 +197,7 @@ describe('NavMain', () => {
 
       renderNavMain(items)
 
-      // Sub-items should be hidden when isActive=false
+      // Sub-items should be hidden when route does not match
       expect(screen.queryByText('General')).not.toBeInTheDocument()
       expect(screen.queryByText('Security')).not.toBeInTheDocument()
     })
@@ -198,7 +207,6 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Empty',
           url: '/empty',
-          isActive: true,
           items: []
         })
       ]
@@ -214,7 +222,6 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Settings',
           url: '/settings',
-          isActive: true,
           items: [
             { title: 'General', url: '/settings/general' },
             { title: 'Security', url: '/settings/security' }
@@ -222,7 +229,7 @@ describe('NavMain', () => {
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/settings/general')
 
       const generalLink = screen.getByRole('link', { name: 'General' })
       const securityLink = screen.getByRole('link', { name: 'Security' })
@@ -236,8 +243,7 @@ describe('NavMain', () => {
         {
           title: 'NoSubItems',
           url: '/no-sub-items',
-          icon: Home,
-          isActive: true
+          icon: Home
           // items property is undefined
         }
       ]
@@ -258,7 +264,6 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Settings',
           url: '/settings',
-          isActive: false,
           items: [
             { title: 'General', url: '/settings/general' },
             { title: 'Security', url: '/settings/security' }
@@ -286,12 +291,11 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Settings',
           url: '/settings',
-          isActive: true,
           items: [{ title: 'General', url: '/settings/general' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/settings/general')
 
       // Sub-items should initially be visible
       expect(screen.getByText('General')).toBeInTheDocument()
@@ -327,6 +331,37 @@ describe('NavMain', () => {
   // Sidebar Collapsed State Tests
   // ==========================================
   describe('Sidebar Collapsed State', () => {
+    it('marks the current group header only in icon mode, never beside an active sub-item', () => {
+      const items = [
+        createMockItem({
+          title: 'Settings',
+          url: '/settings/general',
+          icon: Home,
+          items: [{ title: 'General', url: '/settings/general' }]
+        })
+      ]
+
+      // Expanded: the sub-item carries the marker, so the header must not
+      // repeat it on the row directly above.
+      const { unmount } = renderNavMain(items, 'expanded', '/settings/general')
+      expect(screen.getByRole('button', { name: /settings/i })).not.toHaveAttribute(
+        'data-active',
+        'true'
+      )
+      expect(screen.getByRole('link', { name: /general/i })).toHaveAttribute(
+        'data-active',
+        'true'
+      )
+      unmount()
+
+      // Icon mode: sub-items are hidden, so the header is the only marker
+      renderNavMain(items, 'collapsed', '/settings/general')
+      expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute(
+        'data-active',
+        'true'
+      )
+    })
+
     it('should render as Link when sidebar is collapsed', () => {
       const items = [
         createMockItem({
@@ -379,56 +414,55 @@ describe('NavMain', () => {
   })
 
   // ==========================================
-  // isActive State Tests
+  // Route-driven Expansion Tests
   // ==========================================
-  describe('isActive State', () => {
-    it('should have collapsible defaultOpen=true when isActive is true', () => {
+  describe('Route-driven expansion', () => {
+    it('should expand the group when the route matches a sub-item', () => {
       const items = [
         createMockItem({
           title: 'Active',
           url: '/active',
-          isActive: true,
           items: [{ title: 'SubItem', url: '/active/sub' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/active/sub')
 
-      // Sub-items should be visible
+      // Sub-items should be visible because the route matches
       expect(screen.getByText('SubItem')).toBeInTheDocument()
     })
 
-    it('should have collapsible defaultOpen=false when isActive is false', () => {
+    it('should leave the group collapsed when the route does not match', () => {
       const items = [
         createMockItem({
           title: 'Inactive',
           url: '/inactive',
-          isActive: false,
           items: [{ title: 'SubItem', url: '/inactive/sub' }]
         })
       ]
 
       renderNavMain(items)
 
-      // Sub-items should be hidden
+      // Sub-items should be hidden when route does not match
       expect(screen.queryByText('SubItem')).not.toBeInTheDocument()
     })
 
-    it('should handle undefined isActive (defaults to false)', () => {
+    it('should leave the group collapsed when items is undefined', () => {
       const items = [
         {
           title: 'NoActive',
           url: '/no-active',
-          icon: Home,
-          items: [{ title: 'SubItem', url: '/no-active/sub' }]
-          // isActive is undefined
+          icon: Home
+          // items property is undefined
         }
       ]
 
       renderNavMain(items)
 
-      // Sub-items should be hidden (defaultOpen=undefined → false)
-      expect(screen.queryByText('SubItem')).not.toBeInTheDocument()
+      // Group trigger renders but no sub-items are visible
+      expect(screen.getByRole('button', { name: /noactive/i })).toBeInTheDocument()
+      // Only the top-level menu list, no sub-item list
+      expect(screen.getAllByRole('list')).toHaveLength(1)
     })
   })
 
@@ -493,28 +527,30 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Parent',
           url: '/parent',
-          isActive: true,
           items: [{ title: '', url: '/parent/empty' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/parent/empty')
 
       // Should render without crashing
       expect(screen.getByText('Parent')).toBeInTheDocument()
     })
 
-    it('should handle sub-item with empty url', () => {
+    it('should handle sub-item with empty url', async () => {
+      const user = userEvent.setup()
       const items = [
         createMockItem({
           title: 'Parent',
           url: '/parent',
-          isActive: true,
           items: [{ title: 'EmptyURL', url: '' }]
         })
       ]
 
       renderNavMain(items)
+
+      // Group is closed (empty URL does not match /), click to expand
+      await user.click(screen.getByRole('button', { name: /parent/i }))
 
       const link = screen.getByRole('link', { name: 'EmptyURL' })
       expect(link).toHaveAttribute('href', '/')
@@ -525,12 +561,11 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Test & <Script>',
           url: '/special',
-          isActive: true,
           items: [{ title: 'Sub "Item" \'Test\'', url: '/special/sub' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/special/sub')
 
       expect(screen.getByText('Test & <Script>')).toBeInTheDocument()
       expect(screen.getByText('Sub "Item" \'Test\'')).toBeInTheDocument()
@@ -570,7 +605,6 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Parent',
           url: '/parent',
-          isActive: true,
           items: Array.from({ length: 20 }, (_, i) => ({
             title: `SubItem ${i}`,
             url: `/parent/sub-${i}`
@@ -578,7 +612,7 @@ describe('NavMain', () => {
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/parent/sub-0')
 
       expect(screen.getByText('SubItem 0')).toBeInTheDocument()
       expect(screen.getByText('SubItem 19')).toBeInTheDocument()
@@ -614,12 +648,11 @@ describe('NavMain', () => {
         createMockItem({
           title: '日本語テスト 🎉',
           url: '/unicode',
-          isActive: true,
           items: [{ title: '中文子项目 ✨', url: '/unicode/sub' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/unicode/sub')
 
       expect(screen.getByText('日本語テスト 🎉')).toBeInTheDocument()
       expect(screen.getByText('中文子项目 ✨')).toBeInTheDocument()
@@ -650,12 +683,11 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Settings',
           url: '/settings',
-          isActive: true,
           items: [{ title: 'General', url: '/settings/general' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/settings/general')
 
       // Main menu should be a list
       const menus = screen.getAllByRole('list')
@@ -682,7 +714,6 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Parent',
           url: '/parent',
-          isActive: true,
           items: [
             { title: 'Child1', url: '/parent/child1' },
             { title: 'Child2', url: '/parent/child2' }
@@ -690,7 +721,7 @@ describe('NavMain', () => {
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/parent/child1')
 
       const links = screen.getAllByRole('link')
       expect(links.length).toBeGreaterThanOrEqual(2)
@@ -702,7 +733,6 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Keyboard',
           url: '/keyboard',
-          isActive: false,
           items: [{ title: 'SubItem', url: '/keyboard/sub' }]
         })
       ]
@@ -725,7 +755,6 @@ describe('NavMain', () => {
         createMockItem({
           title: 'SpaceKey',
           url: '/spacekey',
-          isActive: false,
           items: [{ title: 'SubItem', url: '/spacekey/sub' }]
         })
       ]
@@ -752,12 +781,11 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Absolute',
           url: '/absolute/path/to/page',
-          isActive: true,
           items: [{ title: 'Sub', url: '/absolute/path/to/page/sub' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/absolute/path/to/page/sub')
 
       const link = screen.getByRole('link', { name: 'Sub' })
       expect(link).toHaveAttribute('href', '/absolute/path/to/page/sub')
@@ -768,12 +796,11 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Query',
           url: '/query?param=value',
-          isActive: true,
           items: [{ title: 'Sub', url: '/query/sub?foo=bar&baz=qux' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/query/sub?foo=bar&baz=qux')
 
       const link = screen.getByRole('link', { name: 'Sub' })
       expect(link).toHaveAttribute('href', '/query/sub?foo=bar&baz=qux')
@@ -784,12 +811,11 @@ describe('NavMain', () => {
         createMockItem({
           title: 'Hash',
           url: '/hash#section',
-          isActive: true,
           items: [{ title: 'Sub', url: '/hash/sub#anchor' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/hash/sub#anchor')
 
       const link = screen.getByRole('link', { name: 'Sub' })
       expect(link).toHaveAttribute('href', '/hash/sub#anchor')
@@ -820,7 +846,6 @@ describe('NavMain', () => {
           title: 'Settings',
           url: '/settings/general',
           icon: Settings,
-          isActive: true,
           items: [
             { title: 'General', url: '/settings/general' },
             { title: 'AI Models', url: '/settings/general#ai-models' },
@@ -832,7 +857,7 @@ describe('NavMain', () => {
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/settings/general')
 
       // General should be the first link in the Settings section
       const generalLink = screen.getByRole('link', { name: 'General' })
@@ -846,7 +871,6 @@ describe('NavMain', () => {
           title: 'Settings',
           url: '/settings/general',
           icon: Settings,
-          isActive: true,
           items: [
             { title: 'General', url: '/settings/general' },
             { title: 'AI Models', url: '/settings/general#ai-models' },
@@ -858,7 +882,7 @@ describe('NavMain', () => {
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/settings/general')
 
       // All sub-items should be rendered
       expect(screen.getByText('General')).toBeInTheDocument()
@@ -875,7 +899,6 @@ describe('NavMain', () => {
           title: 'Settings',
           url: '/settings/general',
           icon: Settings,
-          isActive: true,
           items: [
             { title: 'General', url: '/settings/general' },
             { title: 'AI Models', url: '/settings/general#ai-models' },
@@ -884,7 +907,7 @@ describe('NavMain', () => {
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/settings/general')
 
       expect(screen.getByRole('link', { name: 'General' })).toHaveAttribute(
         'href',
@@ -906,7 +929,6 @@ describe('NavMain', () => {
           title: 'Settings',
           url: '/settings/general',
           icon: Settings,
-          isActive: true,
           items: [
             { title: 'General', url: '/settings/general' },
             { title: 'AI Models', url: '/settings/general#ai-models' }
@@ -914,7 +936,7 @@ describe('NavMain', () => {
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/settings/general')
 
       const generalLink = screen.getByRole('link', { name: 'General' })
       const aiModelsLink = screen.getByRole('link', { name: 'AI Models' })
@@ -928,61 +950,202 @@ describe('NavMain', () => {
   })
 
   // ==========================================
-  // Multiple Active Items Tests
+  // Route-based Active State Tests
   // ==========================================
-  describe('Multiple Active Items', () => {
-    it('should support multiple items with isActive=true', () => {
+  describe('Route-based active state', () => {
+    const sidebarItems = [
+      {
+        title: 'Ingest footage',
+        url: '/ingest/build',
+        icon: Home,
+        items: [
+          { title: 'Build a project', url: '/ingest/build' },
+          { title: 'Baker', url: '/ingest/baker' }
+        ]
+      },
+      {
+        title: 'Motion graphics',
+        url: '/motion/marketplace',
+        icon: Settings,
+        items: [{ title: 'Marketplace', url: '/motion/marketplace' }]
+      },
+      {
+        title: 'Settings',
+        url: '/settings/general',
+        icon: Settings,
+        items: [
+          { title: 'General', url: '/settings/general' },
+          { title: 'AI Models', url: '/settings/general#ai-models' }
+        ]
+      }
+    ]
+
+    it('marks the current sub-item active, expands its group, and leaves other groups closed', () => {
+      render(
+        <MemoryRouter initialEntries={['/motion/marketplace']}>
+          <TooltipProvider>
+            <SidebarContext.Provider value={createSidebarContext()}>
+              <NavMain items={sidebarItems} />
+            </SidebarContext.Provider>
+          </TooltipProvider>
+        </MemoryRouter>
+      )
+
+      // Motion graphics group should be open (its sub-item matches the route)
+      const marketplaceLink = screen.getByRole('link', {
+        name: 'Marketplace'
+      })
+      expect(marketplaceLink).toBeInTheDocument()
+
+      // The current sub-item should have data-active="true"
+      expect(marketplaceLink).toHaveAttribute('data-active', 'true')
+
+      // Ingest footage group should NOT be open
+      expect(screen.queryByText('Build a project')).not.toBeInTheDocument()
+      expect(screen.queryByText('Baker')).not.toBeInTheDocument()
+    })
+
+    it('opens the new group when the route changes after mount', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <MemoryRouter initialEntries={['/ingest/build']}>
+          <TooltipProvider>
+            <SidebarContext.Provider value={createSidebarContext()}>
+              <NavMain items={sidebarItems} />
+              <NavigateButton to="/settings/general" />
+            </SidebarContext.Provider>
+          </TooltipProvider>
+        </MemoryRouter>
+      )
+
+      // Ingest group should be open initially
+      expect(screen.getByText('Build a project')).toBeInTheDocument()
+
+      // Navigate to Settings
+      await user.click(screen.getByTestId('nav-trigger'))
+
+      // Settings group should now be open with General active
+      const generalLink = screen.getByRole('link', { name: 'General' })
+      expect(generalLink).toHaveAttribute('data-active', 'true')
+    })
+
+    it('keeps a manually opened group open after navigating elsewhere', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <MemoryRouter initialEntries={['/ingest/build']}>
+          <TooltipProvider>
+            <SidebarContext.Provider value={createSidebarContext()}>
+              <NavMain items={sidebarItems} />
+              <NavigateButton to="/settings/general" />
+            </SidebarContext.Provider>
+          </TooltipProvider>
+        </MemoryRouter>
+      )
+
+      // Manually open Motion graphics
+      await user.click(screen.getByRole('button', { name: /motion graphics/i }))
+      expect(screen.getByText('Marketplace')).toBeInTheDocument()
+
+      // Navigate to Settings
+      await user.click(screen.getByTestId('nav-trigger'))
+
+      // Motion graphics should still be open (user opened it)
+      expect(screen.getByText('Marketplace')).toBeInTheDocument()
+      // Settings should also be open now
+      expect(screen.getByRole('link', { name: 'General' })).toBeInTheDocument()
+    })
+
+    it('marks General active at /settings/general but not AI Models', () => {
+      render(
+        <MemoryRouter initialEntries={['/settings/general']}>
+          <TooltipProvider>
+            <SidebarContext.Provider value={createSidebarContext()}>
+              <NavMain items={sidebarItems} />
+            </SidebarContext.Provider>
+          </TooltipProvider>
+        </MemoryRouter>
+      )
+
+      const generalLink = screen.getByRole('link', { name: 'General' })
+      const aiModelsLink = screen.getByRole('link', { name: 'AI Models' })
+
+      expect(generalLink).toHaveAttribute('data-active', 'true')
+      expect(aiModelsLink).toHaveAttribute('data-active', 'false')
+    })
+
+    it('marks AI Models active at /settings/general#ai-models but not General', () => {
+      render(
+        <MemoryRouter initialEntries={['/settings/general#ai-models']}>
+          <TooltipProvider>
+            <SidebarContext.Provider value={createSidebarContext()}>
+              <NavMain items={sidebarItems} />
+            </SidebarContext.Provider>
+          </TooltipProvider>
+        </MemoryRouter>
+      )
+
+      const generalLink = screen.getByRole('link', { name: 'General' })
+      const aiModelsLink = screen.getByRole('link', { name: 'AI Models' })
+
+      expect(generalLink).toHaveAttribute('data-active', 'false')
+      expect(aiModelsLink).toHaveAttribute('data-active', 'true')
+    })
+  })
+
+  // ==========================================
+  // Multiple Groups Tests
+  // ==========================================
+  describe('Multiple Groups', () => {
+    it('should only expand the group whose sub-item matches the route', () => {
       const items = [
         createMockItem({
           title: 'Active1',
           url: '/active1',
-          isActive: true,
           items: [{ title: 'Sub1', url: '/active1/sub' }]
         }),
         createMockItem({
           title: 'Active2',
           url: '/active2',
-          isActive: true,
           items: [{ title: 'Sub2', url: '/active2/sub' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/active1/sub')
 
-      // Both should have their sub-items visible
+      // Only the matching group should be open
       expect(screen.getByText('Sub1')).toBeInTheDocument()
-      expect(screen.getByText('Sub2')).toBeInTheDocument()
+      expect(screen.queryByText('Sub2')).not.toBeInTheDocument()
     })
 
-    it('should allow independent toggling of multiple items', async () => {
+    it('should allow manual toggling of a non-active group', async () => {
       const user = userEvent.setup()
       const items = [
         createMockItem({
           title: 'First',
           url: '/first',
-          isActive: true,
           items: [{ title: 'FirstSub', url: '/first/sub' }]
         }),
         createMockItem({
           title: 'Second',
           url: '/second',
-          isActive: true,
           items: [{ title: 'SecondSub', url: '/second/sub' }]
         })
       ]
 
-      renderNavMain(items)
+      renderNavMain(items, 'expanded', '/first/sub')
 
-      // Both should be open initially
+      // First should be open, second closed
       expect(screen.getByText('FirstSub')).toBeInTheDocument()
-      expect(screen.getByText('SecondSub')).toBeInTheDocument()
+      expect(screen.queryByText('SecondSub')).not.toBeInTheDocument()
 
-      // Collapse first
-      const firstButton = screen.getByRole('button', { name: /first/i })
-      await user.click(firstButton)
+      // Manually expand the second group
+      const secondButton = screen.getByRole('button', { name: /second/i })
+      await user.click(secondButton)
 
-      // First should be collapsed, second should still be open
-      expect(screen.queryByText('FirstSub')).not.toBeInTheDocument()
+      // Both should now be open
+      expect(screen.getByText('FirstSub')).toBeInTheDocument()
       expect(screen.getByText('SecondSub')).toBeInTheDocument()
     })
   })
