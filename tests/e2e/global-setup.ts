@@ -33,6 +33,7 @@
  * the navigation budget in that file.
  */
 import { chromium, type FullConfig } from '@playwright/test'
+import { stubGitHubReleases } from './fixtures/mocks.fixture'
 
 /**
  * Budget for the cold server, deliberately separate from the per-test action
@@ -90,6 +91,8 @@ export default async function warmDevServer(config: FullConfig): Promise<void> {
   const browser = await chromium.launch()
   try {
     const page = await browser.newPage({ baseURL })
+    // The warm-up load runs the app's start-up release check too
+    await stubGitHubReleases(page)
     await page.goto('/', { timeout: Math.max(1, deadline - Date.now()) })
 
     // Answering with `index.html` proves nothing about the module graph, so wait

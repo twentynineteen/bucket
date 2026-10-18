@@ -168,8 +168,8 @@ export async function stubGitHubReleases(page: Page): Promise<void> {
   // route registered after this one takes priority for its pattern. Anything
   // that falls through to this catch-all is an unstubbed GitHub call and
   // should fail the spec immediately.
-  await page.route('https://api.github.com/**', route => {
-    route.abort('blockedbyclient')
+  await page.route('https://api.github.com/**', async route => {
+    await route.abort('blockedbyclient')
     throw new Error(
       `[e2e guard] Unexpected request to api.github.com: ${route.request().url()}. ` +
         'Add a stub in stubGitHubReleases (mocks.fixture.ts) if this is intentional.'
