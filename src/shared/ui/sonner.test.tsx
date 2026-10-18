@@ -41,7 +41,8 @@ const SONNER_SOURCE = path.resolve(__dirname, 'sonner.tsx')
  * callback to bypass automatic batching. With real timers the callback fires
  * on the event loop, and `waitFor` polls until it does - but under CPU load
  * the callback can be delayed long enough that `waitFor`'s 1000ms default
- * timeout is exceeded, which is the root cause of #344.
+ * timeout is exceeded. That is the likely cause of the timeouts in #344, which
+ * were seen twice under heavy parallel load but did not reproduce in 55 local runs.
  *
  * Fake timers make this deterministic: `vi.advanceTimersByTime(1)` fires the
  * queued callback synchronously, `flushSync` processes the state update, and
@@ -132,7 +133,7 @@ const expectToastVariablesDeclared = (container: Element) => {
 
 beforeEach(() => {
   // Fake timers make sonner's setTimeout(0) deterministic, eliminating the
-  // real-timer dependency that caused flaky timeouts under CPU load (#344).
+  // real-timer dependency behind the flaky timeouts under CPU load (#344).
   vi.useFakeTimers()
 
   themeHolder.value = { theme: 'light', resolvedTheme: 'light' }
