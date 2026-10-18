@@ -11,7 +11,7 @@ import { SidebarContext } from '@shared/ui/use-sidebar'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Home, Settings, Users, type LucideIcon } from 'lucide-react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useNavigate } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NavMain } from './nav-main'
 
@@ -75,6 +75,16 @@ const renderNavMain = (
     <TestWrapper sidebarState={sidebarState} route={route}>
       <NavMain items={items} />
     </TestWrapper>
+  )
+}
+
+// Helper component to trigger navigation inside the router context
+function NavigateButton({ to }: { to: string }) {
+  const navigate = useNavigate()
+  return (
+    <button data-testid="nav-trigger" onClick={() => navigate(to)}>
+      go to {to}
+    </button>
   )
 }
 
@@ -961,6 +971,97 @@ describe('NavMain', () => {
       // Ingest footage group should NOT be open
       expect(screen.queryByText('Build a project')).not.toBeInTheDocument()
       expect(screen.queryByText('Baker')).not.toBeInTheDocument()
+    })
+
+    it('opens the new group when the route changes after mount', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <MemoryRouter initialEntries={['/ingest/build']}>
+          <TooltipProvider>
+            <SidebarContext.Provider value={createSidebarContext()}>
+              <NavMain items={sidebarItems} />
+              <NavigateButton to="/settings/general" />
+            </SidebarContext.Provider>
+          </TooltipProvider>
+        </MemoryRouter>
+      )
+
+      // Ingest group should be open initially
+      expect(screen.getByText('Build a project')).toBeInTheDocument()
+
+      // Navigate to Settings
+      await user.click(screen.getByTestId('nav-trigger'))
+
+      // Settings group should now be open with General active
+      const generalLink = screen.getByRole('link', { name: 'General' })
+      expect(generalLink).toHaveAttribute('data-active', 'true')
+
+      // Ingest group sub-items should still be visible (not force-closed)
+      expect(screen.getByText('Build a project')).toBeInTheDocument()
+    })
+
+    it('keeps a manually opened group open after navigating elsewhere', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <MemoryRouter initialEntries={['/ingest/build']}>
+          <TooltipProvider>
+            <SidebarContext.Provider value={createSidebarContext()}>
+              <NavMain items={sidebarItems} />
+              <NavigateButton to="/settings/general" />
+            </SidebarContext.Provider>
+          </TooltipProvider>
+        </MemoryRouter>
+      )
+
+      // Manually open Motion graphics
+      await user.click(screen.getByRole('button', { name: /motion graphics/i }))
+      expect(screen.getByText('Marketplace')).toBeInTheDocument()
+
+      // Navigate to Settings
+      await user.click(screen.getByTestId('nav-trigger'))
+
+      // Motion graphics should still be open (user opened it)
+      expect(screen.getByText('Marketplace')).toBeInTheDocument()
+      // Settings should also be open now
+      expect(screen.getByRole('link', { name: 'General' })).toBeInTheDocument()
+    })
+
+    it('marks General active at /settings/general but not AI Models', () => {
+      render(
+        <MemoryRouter initialEntries={['/settings/general']}>
+          <TooltipProvider>
+            <SidebarContext.Provider value={createSidebarContext()}>
+              <NavMain items={sidebarItems} />
+            </SidebarContext.Provider>
+          </TooltipProvider>
+        </MemoryRouter>
+      )
+
+      const generalLink = screen.getByRole('link', { name: 'General' })
+      const aiModelsLink = screen.getByRole('link', { name: 'AI Models' })
+
+      expect(generalLink).toHaveAttribute('data-active', 'true')
+      expect(aiModelsLink).toHaveAttribute('data-active', 'false')
+    })
+
+    it('marks AI Models active at /settings/general#ai-models but not General', () => {
+      render(
+        <MemoryRouter initialEntries={['/settings/general#ai-models']}>
+          <TooltipProvider>
+            <SidebarContext.Provider value={createSidebarContext()}>
+              <NavMain items={sidebarItems} />
+            </SidebarContext.Provider>
+          </TooltipProvider>
+        </MemoryRouter>
+      )
+
+      const generalLink = screen.getByRole('link', { name: 'General' })
+      const aiModelsLink = screen.getByRole('link', { name: 'AI Models' })
+
+      expect(generalLink).toHaveAttribute('data-active', 'false')
+      expect(aiModelsLink).toHaveAttribute('data-active', 'true')
     })
   })
 
