@@ -16,10 +16,14 @@ import { describe, expect, test } from 'vitest'
 // ============================================================
 
 describe('UI Primitives (direct imports)', () => {
-  test('Button exports Button component and buttonVariants', async () => {
+  test('Button exports Button component', async () => {
     const mod = await import('@shared/ui/button')
     expect(mod.Button).toBeDefined()
     expect(typeof mod.Button).toBe('function')
+  })
+
+  test('buttonVariants exported from button-variants module', async () => {
+    const mod = await import('@shared/ui/button-variants')
     expect(mod.buttonVariants).toBeDefined()
     expect(typeof mod.buttonVariants).toBe('function')
   })

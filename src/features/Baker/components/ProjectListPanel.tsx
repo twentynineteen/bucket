@@ -81,80 +81,85 @@ interface ProjectStatusPillsProps {
   onRepairProject?: (projectPath: string) => void
 }
 
+/** Breadcrumbs state badge with optional stale-pulse animation. */
+const BreadcrumbsStatePill: React.FC<{
+  project: ProjectFolder
+  shouldReduceMotion: boolean
+}> = ({ project, shouldReduceMotion }) => {
+  if (!project.hasBreadcrumbs || project.invalidBreadcrumbs) return null
+  const pulseStale = !shouldReduceMotion && project.staleBreadcrumbs
+  return (
+    <motion.span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+        project.staleBreadcrumbs
+          ? 'bg-warning/20 text-warning'
+          : 'bg-success/20 text-success'
+      )}
+      animate={
+        pulseStale ? { scale: BAKER_ANIMATIONS.statusBadge.pulse.scale } : undefined
+      }
+      transition={pulseStale ? BAKER_ANIMATIONS.statusBadge.pulse.transition : undefined}
+    >
+      <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />
+      {project.staleBreadcrumbs ? 'Stale' : 'Current'}
+    </motion.span>
+  )
+}
+
+function cameraLabel(count: number): string {
+  if (count === 0) return 'No cameras'
+  return `${count} cam${count !== 1 ? 's' : ''}`
+}
+
 const ProjectStatusPills: React.FC<ProjectStatusPillsProps> = ({
   project,
   shouldReduceMotion,
   onRepairProject
-}) => {
-  const pulseStale = !shouldReduceMotion && project.staleBreadcrumbs
+}) => (
+  <div className="flex flex-wrap gap-1.5">
+    <StatusPill tone={project.isValid ? 'success' : 'destructive'}>
+      {project.isValid ? 'Valid' : 'Invalid'}
+    </StatusPill>
 
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      <StatusPill tone={project.isValid ? 'success' : 'destructive'}>
-        {project.isValid ? 'Valid' : 'Invalid'}
-      </StatusPill>
+    {project.invalidBreadcrumbs && <StatusPill tone="destructive">Invalid BC</StatusPill>}
 
-      {project.invalidBreadcrumbs && (
-        <StatusPill tone="destructive">Invalid BC</StatusPill>
-      )}
+    {project.invalidBreadcrumbs && onRepairProject && (
+      <button
+        type="button"
+        onClick={e => {
+          e.stopPropagation()
+          onRepairProject(project.path)
+        }}
+        className="border-destructive/30 text-destructive hover:bg-destructive/10 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors"
+      >
+        Repair
+      </button>
+    )}
 
-      {project.invalidBreadcrumbs && onRepairProject && (
-        <button
-          type="button"
-          onClick={e => {
-            e.stopPropagation()
-            onRepairProject(project.path)
-          }}
-          className="border-destructive/30 text-destructive hover:bg-destructive/10 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors"
-        >
-          Repair
-        </button>
-      )}
+    <BreadcrumbsStatePill project={project} shouldReduceMotion={shouldReduceMotion} />
 
-      {project.hasBreadcrumbs && !project.invalidBreadcrumbs && (
-        <motion.span
-          className={cn(
-            'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-            project.staleBreadcrumbs
-              ? 'bg-warning/20 text-warning'
-              : 'bg-success/20 text-success'
-          )}
-          animate={
-            pulseStale ? { scale: BAKER_ANIMATIONS.statusBadge.pulse.scale } : undefined
-          }
-          transition={
-            pulseStale ? BAKER_ANIMATIONS.statusBadge.pulse.transition : undefined
-          }
-        >
-          <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />
-          {project.staleBreadcrumbs ? 'Stale' : 'Current'}
-        </motion.span>
-      )}
-
-      {isMissingBreadcrumbs(project) && (
-        <StatusPill tone="muted" dot={false}>
-          No BC
-        </StatusPill>
-      )}
-
+    {isMissingBreadcrumbs(project) && (
       <StatusPill tone="muted" dot={false}>
-        {project.cameraCount === 0
-          ? 'No cameras'
-          : `${project.cameraCount} cam${project.cameraCount !== 1 ? 's' : ''}`}
+        No BC
       </StatusPill>
+    )}
 
-      {typeof project.folderSizeBytes === 'number' ? (
-        <StatusPill tone="muted" dot={false}>
-          {formatFileSize(project.folderSizeBytes)}
-        </StatusPill>
-      ) : (
-        <StatusPill tone="warning" dot={false}>
-          size n/a
-        </StatusPill>
-      )}
-    </div>
-  )
-}
+    <StatusPill tone="muted" dot={false}>
+      {cameraLabel(project.cameraCount)}
+    </StatusPill>
+
+    {typeof project.folderSizeBytes === 'number' ? (
+      <StatusPill tone="muted" dot={false}>
+        {formatFileSize(project.folderSizeBytes)}
+      </StatusPill>
+    ) : (
+      <StatusPill tone="warning" dot={false}>
+        size n/a
+      </StatusPill>
+    )}
+  </div>
+)
 
 interface ProjectListPanelProps {
   projects: ProjectFolder[]
@@ -231,6 +236,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
   const shouldAnimate = !shouldReduceMotion && !useVirtualScroll
 
   // Initialize virtualizer for large lists
+  // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer returns unstable references by design; upstream TanStack Virtual fix required
   const virtualizer = useVirtualizer({
     count: filteredProjects.length,
     getScrollElement: () => parentRef.current,
