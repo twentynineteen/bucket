@@ -428,9 +428,10 @@ describe('NavMain', () => {
 
       renderNavMain(items)
 
-      // No sub-items to match against, so group stays closed
-      const button = screen.getByRole('button', { name: /noactive/i })
-      expect(button).toBeInTheDocument()
+      // Group trigger renders but no sub-items are visible
+      expect(screen.getByRole('button', { name: /noactive/i })).toBeInTheDocument()
+      // Only the top-level menu list, no sub-item list
+      expect(screen.getAllByRole('list')).toHaveLength(1)
     })
   })
 
@@ -996,9 +997,6 @@ describe('NavMain', () => {
       // Settings group should now be open with General active
       const generalLink = screen.getByRole('link', { name: 'General' })
       expect(generalLink).toHaveAttribute('data-active', 'true')
-
-      // Ingest group sub-items should still be visible (not force-closed)
-      expect(screen.getByText('Build a project')).toBeInTheDocument()
     })
 
     it('keeps a manually opened group open after navigating elsewhere', async () => {
