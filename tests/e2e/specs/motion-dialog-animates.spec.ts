@@ -5,23 +5,14 @@
  * apart without __BUCKET_MOTION_CLOCK__, and asserts the preview content
  * changes between them - proving the ticker is running.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { setupTauriMocks } from '../fixtures/mocks.fixture'
 import { installMotionMocks } from '../fixtures/motion.fixture'
-
-async function stubReleaseCheck(page: Page): Promise<void> {
-  await page.route('https://api.github.com/repos/*/*/releases/latest', route =>
-    route.fulfill({
-      json: { tag_name: 'v0.0.0', name: 'v0.0.0', body: '', html_url: '' }
-    })
-  )
-}
 
 test.describe('Motion dialog animation', () => {
   test('preview content changes between two screenshots (ticker runs)', async ({
     page
   }) => {
-    await stubReleaseCheck(page)
     await setupTauriMocks(page)
     await installMotionMocks(page)
 

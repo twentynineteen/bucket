@@ -12,6 +12,7 @@
  * `sprout-folders.fixture.ts`, which documents it at its own header.
  */
 import type { Page } from '@playwright/test'
+import { stubGitHubReleases } from './mocks.fixture'
 
 /** What the mocked filesystem should do with the configured background folder. */
 export type FolderScenario =
@@ -64,6 +65,7 @@ export async function installBackgroundMocks(
   page: Page,
   options: BackgroundMockOptions = {}
 ): Promise<void> {
+  await stubGitHubReleases(page)
   const config = {
     scenario: options.scenario ?? 'ready',
     configured: options.configured ?? true,

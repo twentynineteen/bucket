@@ -12,6 +12,7 @@
  * real API by `docs/sprout-folder-picker-manual-verification.md`.
  */
 import type { Page } from '@playwright/test'
+import { stubGitHubReleases } from './mocks.fixture'
 
 export interface FolderNode {
   id: string
@@ -77,6 +78,7 @@ export async function setupSproutMocks(
   page: Page,
   options: SproutMockOptions
 ): Promise<void> {
+  await stubGitHubReleases(page)
   const config = {
     folders: options.folders,
     apiKey: options.apiKey ?? DEFAULT_KEY,
