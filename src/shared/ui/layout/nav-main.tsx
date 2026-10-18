@@ -114,7 +114,7 @@ export function NavMain({
                   <SidebarMenuButton
                     tooltip={item.title}
                     asChild={isCollapsed}
-                    isActive={groupIsActive}
+                    isActive={isCollapsed && groupIsActive}
                   >
                     {isCollapsed ? (
                       <Link to={item.url}>
