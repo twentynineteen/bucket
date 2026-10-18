@@ -107,14 +107,14 @@ A developer's explicit instruction overrides anything in this section.
 Prettier and ESLint run on commit (lefthook) and in CI. These rules fail the build, so review
 need not check them:
 
-| Rule                                                   | Check                             |
-| ------------------------------------------------------ | --------------------------------- |
-| `vi.mock()` targets a module that exists               | `bucket/vi-mock-resolves`         |
-| No counting the keys of an imported module             | `bucket/no-export-count`          |
-| No new files in legacy test locations                  | `scripts/check-test-locations.sh` |
-| Features import each other only via `@features/<Name>` | `no-restricted-imports`           |
-| Shared never imports features                          | `boundaries/element-types`        |
-| Barrels use named re-exports, not `export *`           | `no-restricted-syntax`            |
-| `src/shared/ui` has no barrel files                    | `no-restricted-syntax`            |
-| No direct `@tauri-apps` imports outside `api.ts`       | no-bypass contract tests          |
-| Formatting, import order, Tailwind class order         | Prettier with plugins             |
+| Rule                                                   | Check                                                                      |
+| ------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `vi.mock()` targets a module that exists               | `bucket/vi-mock-resolves`                                                  |
+| No counting the keys of an imported module             | `bucket/no-export-count`                                                   |
+| No new files in legacy test locations                  | `scripts/check-test-locations.sh`                                          |
+| Features import each other only via `@features/<Name>` | `boundaries/dependencies`, plus `no-restricted-imports` for the alias form |
+| Shared never imports features                          | `boundaries/dependencies`                                                  |
+| Barrels use named re-exports, not `export *`           | `no-restricted-syntax`                                                     |
+| `src/shared/ui` has no barrel files                    | `no-restricted-syntax`                                                     |
+| No direct `@tauri-apps` imports outside `api.ts`       | no-bypass contract tests                                                   |
+| Formatting, import order, Tailwind class order         | Prettier with plugins                                                      |

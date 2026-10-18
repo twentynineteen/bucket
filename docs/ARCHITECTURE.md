@@ -744,7 +744,8 @@ shared/
    - ❌ `@shared/hooks/` can't import from `@features/Baker/`
    - ✅ `@features/Baker/` can import from `@shared/hooks/`
 
-3. **Cross-feature imports go through barrels only** (enforced by ESLint `no-restricted-imports`)
+3. **Cross-feature imports go through barrels only** (enforced by ESLint `boundaries/dependencies` for alias and relative paths, and `no-restricted-imports` for the alias form)
+   - ❌ `import { X } from '../Trello/components/TrelloCardsManager'`
    - ❌ `import { X } from '@features/Trello/components/TrelloCardsManager'`
    - ✅ `import { TrelloCardsManager } from '@features/Trello'`
 

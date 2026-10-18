@@ -42,12 +42,18 @@ describe('cross-feature import boundary (#352)', () => {
 
   it('relative ../Other/internal/x: error', async () => {
     const code = `// eslint-disable-next-line @typescript-eslint/no-unused-vars\nimport { formatField } from '../Baker/internal/fieldUtils'\n`
-    expect(await boundaryError(code, 'src/features/Upload/probe.ts')).toBe(true)
+    // The boundaries rule itself must catch it, not an unrelated no-unknown
+    expect(await lintRules(code, 'src/features/Upload/probe.ts')).toContain(
+      'boundaries/dependencies'
+    )
   })
 
   it('relative ../Other/components/Y: error', async () => {
     const code = `// eslint-disable-next-line @typescript-eslint/no-unused-vars\nimport { AddVideoDialog } from '../Baker/components/AddVideoDialog'\n`
-    expect(await boundaryError(code, 'src/features/Upload/probe.ts')).toBe(true)
+    // The boundaries rule itself must catch it, not an unrelated no-unknown
+    expect(await lintRules(code, 'src/features/Upload/probe.ts')).toContain(
+      'boundaries/dependencies'
+    )
   })
 
   it('alias @features/Other/internal/x: error', async () => {
