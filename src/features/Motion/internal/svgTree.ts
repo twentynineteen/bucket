@@ -16,15 +16,20 @@ import { arcPath, matrixStr } from './svgGeometry'
 // ---------------------------------------------------------------------------
 
 /**
- * A typed SVG element node.
+ * Attribute map for an SVG element node.
  *
- * Attributes use SVG-native names (hyphenated: `font-family`, `text-anchor`,
- * `xml:space`). Values are stored unescaped - the serialiser handles escaping,
- * while the React adapter converts names to camelCase props.
+ * Uses SVG-native names (hyphenated: `font-family`, `text-anchor`,
+ * `xml:space`). Values are stored unescaped - the serialiser handles
+ * escaping, while the React adapter converts names to camelCase props.
+ *
+ * Never put `style` in attrs - React throws when it receives a style
+ * string instead of an object.
  */
+export type SvgAttrs = Record<string, string | number>
+
 export interface SvgElement {
   tag: string
-  attrs: Record<string, string | number>
+  attrs: SvgAttrs
   children: SvgNode[]
 }
 
@@ -130,7 +135,7 @@ function buildStaggerTspan(
 ): SvgElement | null {
   if (dy === -1) return null
 
-  const attrs: Record<string, string | number> = {
+  const attrs: SvgAttrs = {
     opacity: unit.opacity,
     fill: unit.fill
   }
@@ -144,8 +149,20 @@ function buildStaggerTspan(
 
 function buildText(state: TextLayerState): SvgElement {
   const transform = matrixStr(state.matrix)
+  // CSS quotes wrap the family name so both renderers produce byte-identical
+  // output regardless of whether the name contains spaces.
   const fontFamily = `"${state.font.family}"`
   const textAnchor = alignToAnchor(state.align)
+
+  // Shared base attrs for all three text branches
+  const base: SvgAttrs = {
+    'font-family': fontFamily,
+    'font-size': state.font.size,
+    fill: state.fill,
+    opacity: state.opacity,
+    'text-anchor': textAnchor,
+    transform
+  }
 
   // Staggered text: each unit is its own tspan
   if (state.units && state.units.length > 0) {
@@ -160,15 +177,7 @@ function buildText(state: TextLayerState): SvgElement {
 
     return {
       tag: 'text',
-      attrs: {
-        'font-family': fontFamily,
-        'font-size': state.font.size,
-        fill: state.fill,
-        opacity: state.opacity,
-        'text-anchor': textAnchor,
-        transform,
-        'xml:space': 'preserve'
-      },
+      attrs: { ...base, 'xml:space': 'preserve' },
       children
     }
   }
@@ -179,38 +188,16 @@ function buildText(state: TextLayerState): SvgElement {
     const lineAdvance = state.lineHeight * state.font.size
 
     const children: SvgNode[] = lines.map((line, i) => {
-      const attrs: Record<string, string | number> = { x: '0' }
+      const attrs: SvgAttrs = { x: '0' }
       if (i > 0) attrs.dy = String(lineAdvance)
       return { tag: 'tspan' as const, attrs, children: [line] }
     })
 
-    return {
-      tag: 'text',
-      attrs: {
-        'font-family': fontFamily,
-        'font-size': state.font.size,
-        fill: state.fill,
-        opacity: state.opacity,
-        'text-anchor': textAnchor,
-        transform
-      },
-      children
-    }
+    return { tag: 'text', attrs: base, children }
   }
 
   // Plain text
-  return {
-    tag: 'text',
-    attrs: {
-      'font-family': fontFamily,
-      'font-size': state.font.size,
-      fill: state.fill,
-      opacity: state.opacity,
-      'text-anchor': textAnchor,
-      transform
-    },
-    children: [state.text]
-  }
+  return { tag: 'text', attrs: base, children: [state.text] }
 }
 
 // ---------------------------------------------------------------------------

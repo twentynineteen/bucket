@@ -16,7 +16,7 @@ import type { SvgElement, SvgNode } from './svgTree'
  * Covers &, <, >, and " (the four characters that must be escaped in
  * XML attribute values and text content).
  */
-export function escapeXml(text: string): string {
+function escapeXml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -31,8 +31,7 @@ export function escapeXml(text: string): string {
 function serialiseAttr(key: string, value: string | number): string {
   // font-family values include CSS-level quotes (e.g. "Cabrito Semi").
   // The existing frame renderer uses those quotes as the XML attribute
-  // delimiters, so we reproduce that: write the value directly when it
-  // starts and ends with a double quote.
+  // delimiters, so we reproduce that to keep the output byte-identical.
   const str = String(value)
   if (key === 'font-family' && str.startsWith('"') && str.endsWith('"')) {
     // The inner value (between the CSS quotes) still gets escaped
