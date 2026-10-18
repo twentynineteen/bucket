@@ -12,9 +12,9 @@
 import '@testing-library/jest-dom'
 import fs from 'node:fs'
 import path from 'node:path'
-import { act, render, waitFor } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import { toast } from 'sonner'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Dialog, DialogContent, DialogTitle } from './dialog'
 import { Toaster } from './sonner'
 import { getAllThemeIds, THEMES, type ThemeId } from './theme/themes'
@@ -34,21 +34,33 @@ vi.mock('next-themes', () => ({
 
 const SONNER_SOURCE = path.resolve(__dirname, 'sonner.tsx')
 
-/** Fires a toast and waits for sonner's container to exist. */
+/**
+ * Fires a toast and returns sonner's container once the toast is in the DOM.
+ *
+ * Sonner adds toasts to React state inside a `setTimeout(0) + flushSync`
+ * callback to bypass automatic batching. With real timers the callback fires
+ * on the event loop, and `waitFor` polls until it does - but under CPU load
+ * the callback can be delayed long enough that `waitFor`'s 1000ms default
+ * timeout is exceeded. That is the likely cause of the timeouts in #344, which
+ * were seen twice under heavy parallel load but did not reproduce in 55 local runs.
+ *
+ * Fake timers make this deterministic: `vi.advanceTimersByTime(1)` fires the
+ * queued callback synchronously, `flushSync` processes the state update, and
+ * `act` flushes the resulting effects (including the Toast mount effect that
+ * sets `data-mounted`). No polling or real-timer dependency remains.
+ */
 const fireToastAndGetContainer = async (
   fire: () => void = () => toast('hello')
 ): Promise<HTMLElement> => {
   act(() => {
     fire()
+    vi.advanceTimersByTime(1)
   })
 
-  let container: HTMLElement | null = null
-  await waitFor(() => {
-    container = document.querySelector<HTMLElement>('[data-sonner-toaster]')
-    expect(container).not.toBeNull()
-  })
+  const container = document.querySelector<HTMLElement>('[data-sonner-toaster]')
+  expect(container).not.toBeNull()
 
-  return container as unknown as HTMLElement
+  return container as HTMLElement
 }
 
 /** Collapses whitespace so `style` attribute comparisons are formatting-proof. */
@@ -120,6 +132,10 @@ const expectToastVariablesDeclared = (container: Element) => {
 }
 
 beforeEach(() => {
+  // Fake timers make sonner's setTimeout(0) deterministic, eliminating the
+  // real-timer dependency behind the flaky timeouts under CPU load (#344).
+  vi.useFakeTimers()
+
   themeHolder.value = { theme: 'light', resolvedTheme: 'light' }
 
   // vite.config.ts sets `mockReset: true`, which strips the implementation off
@@ -135,6 +151,13 @@ beforeEach(() => {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn()
   })) as unknown as typeof window.matchMedia
+})
+
+afterEach(() => {
+  // Dismiss all toasts so sonner's global Observer does not replay stale
+  // toasts into the next test's fresh Toaster subscription.
+  toast.dismiss()
+  vi.useRealTimers()
 })
 
 // ==========================================================================
