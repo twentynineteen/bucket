@@ -403,8 +403,9 @@ evaluate.ts        Pure function: (resolved, t) -> LayerState[]
     |              Single source of truth for what every layer
     |              looks like at any time t
     |
-    +---> MotionPreview     SVG-based React preview (via evaluate)
-    +---> frameRenderer     Serialised SVG for the video renderer
+    +---> svgTree           Shared SVG node tree (one place for layer kinds)
+    |      +---> svgToReact      React elements for MotionPreview
+    |      +---> svgSerialise    Escaped SVG string for frameRenderer
     +---> ae/generateJsx    After Effects ExtendScript (.jsx)
     +---> fusion/           DaVinci Resolve Fusion macro (.setting)
     +---> prompt.ts         Human-readable prompt description
@@ -426,8 +427,10 @@ src-tauri/         motion/encoder.rs: ffmpeg stdin pipe for .mov
    `checkCollapsingKeyframes`).
 6. Add a case in `evaluate.ts` `walkLayers` (the `assertNever` default will
    not compile until you do).
-7. Add it to each exporter (`ae/generateJsx.ts`, `fusion/generateSetting.ts`,
-   `prompt.ts`, `frameRenderer.ts`, `MotionPreview.tsx`).
+7. Add the SVG case in `internal/svgTree.ts` (the `assertNever` default will
+   not compile until you do). This covers both the preview and the video
+   renderer. Then add it to the remaining exporters (`ae/generateJsx.ts`,
+   `fusion/generateSetting.ts`, `prompt.ts`).
 8. If it uses colour binds, ensure `bindPath.ts` can resolve paths to it.
 9. If it is not a particles layer, ensure it does not paint after a
    particles layer (the `validateParticlesLast` check walks the flattened
