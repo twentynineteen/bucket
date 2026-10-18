@@ -37,7 +37,6 @@ const data = {
       title: 'Ingest footage',
       url: '/ingest/build',
       icon: Save,
-      isActive: true,
       items: [
         {
           title: 'Build a project',
@@ -53,7 +52,6 @@ const data = {
       title: 'AI tools',
       url: '/ai-tools/script-formatter',
       icon: FileText,
-      isActive: false,
       items: [
         {
           title: 'Autocue script formatter',
@@ -69,7 +67,6 @@ const data = {
       title: 'Motion graphics',
       url: '/motion/marketplace',
       icon: Sparkles,
-      isActive: false,
       items: [
         {
           title: 'Marketplace',
@@ -81,7 +78,6 @@ const data = {
       title: 'Upload content',
       url: '/upload/sprout',
       icon: HardDriveUpload,
-      isActive: false,
       items: [
         {
           title: 'Sprout video',
@@ -107,7 +103,6 @@ const data = {
       title: 'Premiere Plugins',
       url: '/premiere/premiere-plugins',
       icon: Puzzle,
-      isActive: false,
       items: [
         {
           title: 'Premiere Plugin Manager',
@@ -119,7 +114,6 @@ const data = {
       title: 'Settings',
       url: '/settings/general',
       icon: Settings,
-      isActive: false,
       items: [
         {
           title: 'General',
