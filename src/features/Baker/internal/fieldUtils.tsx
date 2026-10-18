@@ -1,6 +1,11 @@
 /**
  * Field rendering utilities for BreadcrumbsViewer
  * Extracted from BreadcrumbsViewerEnhanced.tsx (DEBT-002)
+ *
+ * Only the Field component is exported. Helpers that do not need to leave this
+ * file (getChangeIcon, getChangeColor) are kept private so the module satisfies
+ * react-refresh/only-export-components. formatFileSize was a duplicate of the
+ * canonical copy in @shared/utils and has been removed (#345).
  */
 
 import type { FieldChange } from '@features/Baker'
@@ -8,15 +13,7 @@ import { formatFieldValue } from '@shared/utils'
 import { Edit, Minus, Plus } from 'lucide-react'
 import React from 'react'
 
-export const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-export const getChangeIcon = (type: string): React.ReactNode => {
+const getChangeIcon = (type: string): React.ReactNode => {
   switch (type) {
     case 'added':
       return <Plus className="text-success h-3 w-3" />
@@ -29,7 +26,7 @@ export const getChangeIcon = (type: string): React.ReactNode => {
   }
 }
 
-export const getChangeColor = (type: string): string => {
+const getChangeColor = (type: string): string => {
   switch (type) {
     case 'added':
       return 'bg-success/10 border-success/30'

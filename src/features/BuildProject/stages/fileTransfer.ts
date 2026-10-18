@@ -78,76 +78,87 @@ const DEFAULT_STALL_TIMEOUT_MS = 30000
 // =============================================================================
 
 /**
+ * Known transfer error patterns. The first match wins; order matters.
+ */
+const TRANSFER_ERROR_MATCHERS: ReadonlyArray<{
+  test: (lower: string) => boolean
+  kind: ErrorKind
+  code: string
+  recoverable: boolean
+  /** Whether this error kind carries the file path as context. */
+  includePathContext: boolean
+  getMessage: (original: string, filePath?: string) => string
+}> = [
+  {
+    test: s => s.includes('not found') || s.includes('does not exist'),
+    kind: ErrorKind.NotFound,
+    code: 'FILE_NOT_FOUND',
+    recoverable: false,
+    includePathContext: true,
+    getMessage: (orig, fp) => (fp ? `File not found: ${fp}` : orig)
+  },
+  {
+    test: s =>
+      s.includes('no space') ||
+      s.includes('disk full') ||
+      s.includes('insufficient space'),
+    kind: ErrorKind.InsufficientSpace,
+    code: 'DISK_FULL',
+    recoverable: false,
+    includePathContext: true,
+    getMessage: () => 'Not enough disk space to complete the transfer'
+  },
+  {
+    test: s => s.includes('cancelled') || s.includes('canceled'),
+    kind: ErrorKind.Cancelled,
+    code: 'CANCELLED',
+    recoverable: false,
+    includePathContext: false,
+    getMessage: orig => orig
+  },
+  {
+    test: s => s.includes('stall') || s.includes('timed out'),
+    kind: ErrorKind.Timeout,
+    code: 'STALLED',
+    recoverable: true,
+    includePathContext: true,
+    getMessage: (orig, fp) => (fp ? `Transfer stalled for file: ${fp}` : orig)
+  },
+  {
+    test: s => s.includes('permission') || s.includes('access denied'),
+    kind: ErrorKind.Permission,
+    code: 'PERMISSION_DENIED',
+    recoverable: false,
+    includePathContext: true,
+    getMessage: (orig, fp) => (fp ? `Permission denied: ${fp}` : orig)
+  }
+]
+
+/**
  * Maps error messages from the Rust backend to BuildProjectError instances
  */
 function mapTransferError(errorMessage: string, filePath?: string): BuildProjectError {
   const lowerError = errorMessage.toLowerCase()
+  const pathContext = filePath ? { path: filePath } : undefined
 
-  // File not found
-  if (lowerError.includes('not found') || lowerError.includes('does not exist')) {
+  const match = TRANSFER_ERROR_MATCHERS.find(m => m.test(lowerError))
+  if (match) {
     return new BuildProjectError(
-      ErrorKind.NotFound,
+      match.kind,
       'file-transfer',
-      filePath ? `File not found: ${filePath}` : errorMessage,
-      false,
-      { code: 'FILE_NOT_FOUND', context: filePath ? { path: filePath } : undefined }
-    )
-  }
-
-  // Disk full / insufficient space
-  if (
-    lowerError.includes('no space') ||
-    lowerError.includes('disk full') ||
-    lowerError.includes('insufficient space')
-  ) {
-    return new BuildProjectError(
-      ErrorKind.InsufficientSpace,
-      'file-transfer',
-      'Not enough disk space to complete the transfer',
-      false,
-      { code: 'DISK_FULL', context: filePath ? { path: filePath } : undefined }
-    )
-  }
-
-  // Cancelled
-  if (lowerError.includes('cancelled') || lowerError.includes('canceled')) {
-    return new BuildProjectError(
-      ErrorKind.Cancelled,
-      'file-transfer',
-      errorMessage,
-      false,
+      match.getMessage(errorMessage, filePath),
+      match.recoverable,
       {
-        code: 'CANCELLED'
+        code: match.code,
+        context: match.includePathContext ? pathContext : undefined
       }
-    )
-  }
-
-  // Stalled
-  if (lowerError.includes('stall') || lowerError.includes('timed out')) {
-    return new BuildProjectError(
-      ErrorKind.Timeout,
-      'file-transfer',
-      filePath ? `Transfer stalled for file: ${filePath}` : errorMessage,
-      true,
-      { code: 'STALLED', context: filePath ? { path: filePath } : undefined }
-    )
-  }
-
-  // Permission denied
-  if (lowerError.includes('permission') || lowerError.includes('access denied')) {
-    return new BuildProjectError(
-      ErrorKind.Permission,
-      'file-transfer',
-      filePath ? `Permission denied: ${filePath}` : errorMessage,
-      false,
-      { code: 'PERMISSION_DENIED', context: filePath ? { path: filePath } : undefined }
     )
   }
 
   // Generic I/O error
   return new BuildProjectError(ErrorKind.IO, 'file-transfer', errorMessage, true, {
     code: 'IO_ERROR',
-    context: filePath ? { path: filePath } : undefined
+    context: pathContext
   })
 }
 

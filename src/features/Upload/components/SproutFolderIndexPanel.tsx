@@ -64,6 +64,63 @@ const IndexActions: React.FC<{ index: ReturnType<typeof useSproutFolderIndex> }>
   </div>
 )
 
+/** Progress display while the folder crawl is running. */
+const BuildingState: React.FC<{ index: ReturnType<typeof useSproutFolderIndex> }> = ({
+  index
+}) => (
+  <div className="space-y-2">
+    <div className="flex items-center gap-2 text-sm">
+      <Loader2 className="h-4 w-4 animate-spin" />
+      <span>
+        Indexing… {index.progress?.folders ?? 0} folders found
+        {index.progress?.requests ? ` (${index.progress.requests} requests)` : ''}
+      </span>
+    </div>
+    <p className="text-muted-foreground text-xs">
+      Paced to stay well inside Sprout&apos;s request limit, so uploads keep working.
+      Progress is saved as it goes — cancelling keeps what has been found so far.
+    </p>
+    <Button variant="outline" size="sm" onClick={index.cancel}>
+      Cancel indexing
+    </Button>
+  </div>
+)
+
+function indexAgeSuffix(ageInDays: number | null): string {
+  if (ageInDays === 0) return ' today'
+  if (ageInDays !== null) {
+    return ` ${ageInDays} day${ageInDays === 1 ? '' : 's'} ago`
+  }
+  return ''
+}
+
+/** Summary and actions when the crawl is idle. */
+const IdleState: React.FC<{ index: ReturnType<typeof useSproutFolderIndex> }> = ({
+  index
+}) => (
+  <div className="space-y-2">
+    <p className="text-sm">
+      {index.index ? (
+        <>
+          <span className="font-medium">{index.folders.length} folders</span> indexed
+          {indexAgeSuffix(index.ageInDays)}
+          {index.index.partial ? ' — partial, so some folders may be missing' : ''}
+          {index.isStale ? ' — may be out of date' : ''}
+        </>
+      ) : (
+        'No folders indexed yet. Search will only cover folders you have opened.'
+      )}
+    </p>
+
+    <IndexActions index={index} />
+
+    <p className="text-muted-foreground text-xs">
+      Indexing takes a few minutes on a large account. Export it and a colleague can
+      import the same index in one step, without walking the tree again.
+    </p>
+  </div>
+)
+
 export const SproutFolderIndexPanel: React.FC<SproutFolderIndexPanelProps> = ({
   apiKey
 }) => {
@@ -86,52 +143,7 @@ export const SproutFolderIndexPanel: React.FC<SproutFolderIndexPanelProps> = ({
         requests.
       </p>
 
-      {index.isBuilding ? (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>
-              Indexing… {index.progress?.folders ?? 0} folders found
-              {index.progress?.requests ? ` (${index.progress.requests} requests)` : ''}
-            </span>
-          </div>
-          <p className="text-muted-foreground text-xs">
-            Paced to stay well inside Sprout&apos;s request limit, so uploads keep
-            working. Progress is saved as it goes — cancelling keeps what has been found
-            so far.
-          </p>
-          <Button variant="outline" size="sm" onClick={index.cancel}>
-            Cancel indexing
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <p className="text-sm">
-            {index.index ? (
-              <>
-                <span className="font-medium">{index.folders.length} folders</span>{' '}
-                indexed
-                {index.ageInDays === 0
-                  ? ' today'
-                  : index.ageInDays !== null
-                    ? ` ${index.ageInDays} day${index.ageInDays === 1 ? '' : 's'} ago`
-                    : ''}
-                {index.index.partial ? ' — partial, so some folders may be missing' : ''}
-                {index.isStale ? ' — may be out of date' : ''}
-              </>
-            ) : (
-              'No folders indexed yet. Search will only cover folders you have opened.'
-            )}
-          </p>
-
-          <IndexActions index={index} />
-
-          <p className="text-muted-foreground text-xs">
-            Indexing takes a few minutes on a large account. Export it and a colleague can
-            import the same index in one step, without walking the tree again.
-          </p>
-        </div>
-      )}
+      {index.isBuilding ? <BuildingState index={index} /> : <IdleState index={index} />}
 
       {index.transferMessage && (
         <p
