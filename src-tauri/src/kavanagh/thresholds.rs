@@ -67,6 +67,24 @@ pub const MEASURED_WEAKEST_PRESENCE: f32 = 0.933;
 /// video with no watermark at all.
 pub const MEASURED_STRONGEST_ABSENCE: f32 = 0.0135;
 
+// Guards a retune rather than the value: a default above the weakest measured
+// presence fails a render whose watermark is plainly visible, and one below the
+// strongest measured absence passes a video with no watermark at all. Both have
+// happened on real footage, so a bad retune fails the build.
+const _: () = assert!(
+    DEFAULT_MATCH_CONFIDENCE > MEASURED_STRONGEST_ABSENCE,
+    "a default at or below MEASURED_STRONGEST_ABSENCE passes an unbranded video"
+);
+const _: () = assert!(
+    DEFAULT_MATCH_CONFIDENCE < MEASURED_WEAKEST_PRESENCE,
+    "a default at or above MEASURED_WEAKEST_PRESENCE fails render 2, whose watermark is visible"
+);
+// The point of an override is working around a badly chosen default without
+// waiting for a release, which it cannot do if the default is at the edge of the
+// allowed range.
+const _: () = assert!(MATCH_CONFIDENCE_MIN < DEFAULT_MATCH_CONFIDENCE);
+const _: () = assert!(MATCH_CONFIDENCE_MAX > DEFAULT_MATCH_CONFIDENCE);
+
 /// Seconds between coarse samples in the single decode pass.
 ///
 /// Two seconds, matching the agreed design, because the blind spot inherent to
@@ -362,25 +380,6 @@ mod tests {
     }
 
     #[test]
-    fn the_default_sits_inside_the_measured_band() {
-        // Guards a retune rather than the value: a default above the weakest measured
-        // presence fails a render whose watermark is plainly visible, and one below
-        // the strongest measured absence passes a video with no watermark at all.
-        // Both have happened on real footage, which is why this is a test and not a
-        // comment.
-        assert!(
-            DEFAULT_MATCH_CONFIDENCE > MEASURED_STRONGEST_ABSENCE,
-            "a default at or below {} passes an unbranded video",
-            MEASURED_STRONGEST_ABSENCE
-        );
-        assert!(
-            DEFAULT_MATCH_CONFIDENCE < MEASURED_WEAKEST_PRESENCE,
-            "a default at or above {} fails render 2, whose watermark is visible",
-            MEASURED_WEAKEST_PRESENCE
-        );
-    }
-
-    #[test]
     fn a_threshold_above_the_measured_presence_carries_a_caveat() {
         // Above the weakest score a plainly visible watermark reached, so a failure at
         // this threshold may be the threshold rather than the render.
@@ -399,14 +398,5 @@ mod tests {
     #[test]
     fn the_calibrated_default_needs_no_caveat() {
         assert_eq!(threshold_caveat(DEFAULT_MATCH_CONFIDENCE), None);
-    }
-
-    #[test]
-    fn the_override_range_can_reach_either_side_of_the_default() {
-        // The point of an override is working around a badly chosen default without
-        // waiting for a release, which it cannot do if the default is at the edge of
-        // the allowed range.
-        assert!(MATCH_CONFIDENCE_MIN < DEFAULT_MATCH_CONFIDENCE);
-        assert!(MATCH_CONFIDENCE_MAX > DEFAULT_MATCH_CONFIDENCE);
     }
 }

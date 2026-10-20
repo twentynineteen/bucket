@@ -105,6 +105,10 @@ pub enum Fix {
 /// What [`read`] found.
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "returned once per call, never stored in bulk, so boxing buys nothing"
+)]
 pub enum Read {
     /// The project has no `breadcrumbs.json`.
     Missing,
@@ -264,6 +268,10 @@ pub enum ApplyOutcome {
     rename_all = "camelCase",
     rename_all_fields = "camelCase"
 )]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "returned once per call, never stored in bulk, so boxing buys nothing"
+)]
 pub enum PreviewOutcome {
     Previewed {
         project: String,
@@ -332,6 +340,10 @@ pub fn read(project: &Path) -> Read {
 }
 
 /// [`Read`], plus the original bytes a backup would need.
+#[expect(
+    clippy::large_enum_variant,
+    reason = "returned once per call, never stored in bulk, so boxing buys nothing"
+)]
 enum OnDisk {
     Missing,
     Found {
