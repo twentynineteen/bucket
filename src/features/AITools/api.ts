@@ -9,13 +9,7 @@ import { ModelFactory } from '@shared/services/ai/modelFactory'
 import { providerRegistry } from '@shared/services/ai/providerConfig'
 import { invoke } from '@tauri-apps/api/core'
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog'
-import {
-  mkdir,
-  readFile,
-  readTextFile,
-  writeFile,
-  writeTextFile
-} from '@tauri-apps/plugin-fs'
+import { mkdir, readFile, writeFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import type {
   ExampleWithMetadata,
   OllamaTagsResponse,
@@ -59,14 +53,6 @@ export async function searchSimilarScripts(
 
 // --- File Dialog ---
 
-export async function openScriptFileDialog(): Promise<string | null> {
-  const result = await openDialog({
-    multiple: false,
-    filters: [{ name: 'Text Files', extensions: ['txt'] }]
-  })
-  return typeof result === 'string' ? result : null
-}
-
 export async function openDocxFileDialog(): Promise<string | null> {
   const result = await openDialog({
     multiple: false,
@@ -90,10 +76,6 @@ export async function saveDocxDialog(defaultFilename: string): Promise<string | 
 }
 
 // --- File System ---
-
-export async function readScriptFile(path: string): Promise<string> {
-  return readTextFile(path)
-}
 
 export async function writeDocxFile(path: string, data: Uint8Array): Promise<void> {
   return writeFile(path, data)
@@ -150,10 +132,6 @@ export function createAIModel(config: {
   configuration: ProviderConfiguration
 }) {
   return ModelFactory.createModel(config)
-}
-
-export function listAIProviders() {
-  return providerRegistry.list()
 }
 
 export function getAIProvider(id: string) {

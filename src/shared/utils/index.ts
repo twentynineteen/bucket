@@ -14,8 +14,6 @@ export { createNamespacedLogger } from './logger'
 // App data paths (issue #167)
 /** Resolve a file inside the app data directory, relocating misplaced copies */
 export { resolveAppDataFile } from './appDataPath'
-/** Delete a misplaced file that nothing reads any more */
-export { removeMisplacedResidue } from './appDataPath'
 
 // Storage (API keys persistence)
 /** Persist API keys (Sprout Video, Trello) to secure local storage */

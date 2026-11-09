@@ -44,7 +44,7 @@ interface AppState {
 
 /** How many recent folders to keep. Enough to cover a working set, short
  * enough that the list stays scannable above the tree. */
-export const RECENT_SPROUT_FOLDER_LIMIT = 5
+const RECENT_SPROUT_FOLDER_LIMIT = 5
 
 // Create the Zustand store
 export const useAppStore = create<AppState>(set => ({

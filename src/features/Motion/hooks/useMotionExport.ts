@@ -45,7 +45,7 @@ export interface UseMotionExportResult {
   cancelRender: () => void
 }
 
-export interface ExportToProjectOptions {
+interface ExportToProjectOptions {
   entry: CatalogueEntry
   values: ParamValues
   format: MotionFormat
@@ -57,7 +57,7 @@ export interface ExportToProjectOptions {
   pickedImagePath?: string
 }
 
-export interface CopyPromptOptions {
+interface CopyPromptOptions {
   entry: CatalogueEntry
   values: ParamValues
   format: MotionFormat

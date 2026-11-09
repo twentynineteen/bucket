@@ -41,7 +41,7 @@ import type { SelectedSproutFolder } from '../types'
 import { folderIndexQueryKey, useSavedFolderIndex } from './useSavedFolderIndex'
 
 /** Suggest a rebuild past this age; folder structures drift slowly. */
-export const INDEX_STALE_AFTER_DAYS = 14
+const INDEX_STALE_AFTER_DAYS = 14
 
 export interface UseSproutFolderIndexResult {
   /** Indexed folders with breadcrumb paths, empty when there is no index. */

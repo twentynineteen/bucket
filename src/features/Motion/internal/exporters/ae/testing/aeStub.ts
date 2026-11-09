@@ -28,7 +28,7 @@ import vm from 'node:vm'
 // Public types
 // ---------------------------------------------------------------------------
 
-export interface AEStubCall {
+interface AEStubCall {
   method: string
   args: unknown[]
 }
@@ -39,7 +39,7 @@ export interface AEStubResult {
   alerts: string[]
 }
 
-export interface AEStubComp {
+interface AEStubComp {
   name: string
   width: number
   height: number
@@ -49,14 +49,14 @@ export interface AEStubComp {
   layers: AEStubLayer[]
 }
 
-export interface AEStubLayer {
+interface AEStubLayer {
   kind: string
   name: string
   properties: Record<string, AEStubProperty>
   essentialProperties?: string[]
 }
 
-export interface AEStubProperty {
+interface AEStubProperty {
   keyframes: AEStubKeyframe[]
   expression?: string
   value?: unknown

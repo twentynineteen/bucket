@@ -20,7 +20,7 @@ import {
 } from '../internal/frameRenderer'
 import type { MotionFormat, ResolvedTemplate } from '../types'
 
-export type RenderState = 'idle' | 'rendering' | 'cancelled' | 'error' | 'done'
+type RenderState = 'idle' | 'rendering' | 'cancelled' | 'error' | 'done'
 
 export interface UseRenderVideoResult {
   state: RenderState
@@ -31,7 +31,7 @@ export interface UseRenderVideoResult {
   cancel: () => void
 }
 
-export interface RenderOptions {
+interface RenderOptions {
   resolved: ResolvedTemplate
   format: MotionFormat
   outputPath: string

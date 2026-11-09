@@ -10,14 +10,6 @@ export type QueryKey =
     ]
   | readonly (string | number)[]
 
-export interface QueryConfiguration {
-  queryKey: QueryKey
-  staleTime: number
-  cacheTime: number
-  retry: number | boolean
-  refetchOnWindowFocus: boolean
-}
-
 export interface MutationConfiguration<
   TData = unknown,
   TVariables = unknown,
@@ -34,16 +26,6 @@ export interface MutationConfiguration<
     variables: TVariables,
     context: TContext | undefined
   ) => void
-}
-
-export type QueryDomain = 'projects' | 'trello' | 'files' | 'user' | 'settings' | 'upload'
-
-export interface LoadingState {
-  isLoading: boolean
-  isFetching: boolean
-  isRefetching: boolean
-  isLoadingError: boolean
-  progress?: number
 }
 
 export interface ProgressState {

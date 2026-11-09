@@ -18,7 +18,7 @@ import { AlertTriangle, FolderOpen, X } from 'lucide-react'
 import React, { useMemo } from 'react'
 import type { MotionFormat, MotionTarget, MotionTemplate } from '../types'
 
-export interface ExportPanelProps {
+interface ExportPanelProps {
   template: MotionTemplate
   format: MotionFormat
   onFormatChange: (format: MotionFormat) => void

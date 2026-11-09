@@ -29,34 +29,29 @@ export interface FormattingMetadata {
   paragraphs: Paragraph[]
 }
 
-export interface Range {
+interface Range {
   start: number // Character offset
   end: number // Character offset
   text: string
 }
 
-export interface Heading {
+interface Heading {
   level: 1 | 2 | 3 | 4 | 5 | 6
   text: string
   position: number
 }
 
-export interface ListItem {
+interface ListItem {
   type: 'ordered' | 'unordered'
   text: string
   level: number // Nesting level
   position: number
 }
 
-export interface Paragraph {
+interface Paragraph {
   text: string
   start: number
   end: number
-}
-
-export interface ValidationResult {
-  status: 'valid' | 'invalid' | 'corrupted'
-  errors: string[]
 }
 
 // ============================================================================
@@ -73,7 +68,7 @@ export interface AIModel {
   capabilities: ModelCapabilities
 }
 
-export interface ModelCapabilities {
+interface ModelCapabilities {
   supportsToolCalling: boolean
   supportsStreaming: boolean
   maxTokens: number
@@ -95,26 +90,6 @@ export interface AIProvider {
 export type ProviderType = 'ollama' | 'openai' | 'anthropic' | 'azure' | 'custom'
 
 // ============================================================================
-// Entity: ProcessingRequest (data-model.md section 3)
-// ============================================================================
-
-export interface ProcessingRequest {
-  id: string // UUID
-  documentId: string // FK to ScriptDocument
-  modelId: string // FK to AIModel
-  providerId: string // FK to AIProvider
-  status: ProcessingStatus
-  retryCount: number // min: 0, max: 3
-  submissionTimestamp: Date
-  completionTimestamp?: Date
-  errorMessage?: string
-  streamingProgress: number // 0-100
-}
-
-export type ProcessingStatus =
-  'pending' | 'in_progress' | 'streaming' | 'completed' | 'failed'
-
-// ============================================================================
 // Entity: ProcessedOutput (data-model.md section 4)
 // ============================================================================
 
@@ -130,7 +105,7 @@ export interface ProcessedOutput {
   examplesCount?: number // Number of similar examples used for RAG enhancement
 }
 
-export interface DiffData {
+interface DiffData {
   additions: Change[]
   deletions: Change[]
   modifications: Change[]
@@ -138,7 +113,7 @@ export interface DiffData {
   modifiedLineCount: number
 }
 
-export interface Change {
+interface Change {
   type: 'add' | 'delete' | 'modify'
   lineNumber: number
   originalText?: string
@@ -168,7 +143,7 @@ export interface ProviderConfiguration {
   timeout?: number // Request timeout in ms
 }
 
-export interface ConnectionValidationResult {
+interface ConnectionValidationResult {
   success: boolean
   errorMessage?: string
   /** Optional: a failed validation has no model count and no latency to report,
@@ -176,25 +151,6 @@ export interface ConnectionValidationResult {
    *  reads them through `?.` for that reason (#210). */
   modelsFound?: number
   latencyMs?: number
-}
-
-// ============================================================================
-// Entity: AutocuePrompt (data-model.md section 6)
-// ============================================================================
-
-export interface AutocuePrompt {
-  promptText: string
-  version: string // semver format
-  toolsConfig: ToolDefinition[]
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface ToolDefinition {
-  name: string
-  description: string
-  parameters: Record<string, unknown> // Zod schema as JSON
-  enabled: boolean
 }
 
 // ============================================================================
@@ -226,32 +182,6 @@ export const queryKeys = {
 // ============================================================================
 // Helper Types
 // ============================================================================
-
-export interface ScriptFormatterState {
-  currentDocument?: ScriptDocument
-  currentRequest?: ProcessingRequest
-  currentOutput?: ProcessedOutput
-  activeProvider?: AIProvider
-  availableModels: AIModel[]
-  isProcessing: boolean
-}
-
-// Tauri command return types
-export interface ParseResult {
-  textContent: string
-  htmlContent: string
-  formattingMetadata: FormattingMetadata
-}
-
-export interface DownloadPath {
-  path: string
-}
-
-export interface ConnectionStatus {
-  connected: boolean
-  message?: string
-  latencyMs?: number
-}
 
 // ============================================================================
 // Workflow Types

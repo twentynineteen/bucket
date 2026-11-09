@@ -315,9 +315,6 @@ export const counterFixture: MotionTemplate = {
 // Param-type fixtures
 // ---------------------------------------------------------------------------
 
-/** Template with a text param. Same as textFixture. */
-export const textParamFixture = textFixture
-
 /** Template with a colour param. */
 export const colourParamFixture: MotionTemplate = {
   ...base('fixture-colour'),
@@ -368,15 +365,6 @@ export const holdParamFixture: MotionTemplate = {
     }
   ]
 }
-
-/** Template with a numberList param. Same as seriesFixture. */
-export const numberListParamFixture = seriesFixture
-
-/** Template with a number param. Same as arcFixture. */
-export const numberParamFixture = arcFixture
-
-/** Template with an image param. Same as particlesFixture. */
-export const imageParamFixture = particlesFixture
 
 // ---------------------------------------------------------------------------
 // Group-of-groups fixture
@@ -463,16 +451,6 @@ export const layerKindFixtures: MotionTemplate[] = [
   particlesFixture,
   seriesFixture,
   counterFixture
-]
-
-/** Every param-type fixture. */
-export const paramTypeFixtures: MotionTemplate[] = [
-  textParamFixture,
-  colourParamFixture,
-  holdParamFixture,
-  numberListParamFixture,
-  numberParamFixture,
-  imageParamFixture
 ]
 
 /**
