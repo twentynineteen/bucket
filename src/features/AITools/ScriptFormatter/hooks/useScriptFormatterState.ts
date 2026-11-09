@@ -17,9 +17,6 @@ import { useScriptWorkflow } from './useScriptWorkflow'
 
 const log = createNamespacedLogger('ScriptFormatterState')
 
-// Re-export WorkflowStep type for backward compatibility
-export type { WorkflowStep } from '@shared/types'
-
 export function useScriptFormatterState() {
   // Use the new orchestration hook
   const workflow = useScriptWorkflow()

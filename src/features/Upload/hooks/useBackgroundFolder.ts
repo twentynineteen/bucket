@@ -18,7 +18,7 @@ import {
  * different problems with different fixes, and telling the user the wrong one
  * sent them to Settings to re-enter a path that was already correct.
  */
-export type BackgroundFolderStatus =
+type BackgroundFolderStatus =
   /** Settings have not loaded yet, so we do not know what is configured. */
   | 'unknown'
   /** Settings could not be read, so the configured folder is unknowable. */

@@ -8,7 +8,7 @@
  */
 
 /** The gap duration after the out phase before looping. */
-export const LOOP_GAP = 0.5
+const LOOP_GAP = 0.5
 
 /**
  * Convert elapsed wall-clock time into a template time.

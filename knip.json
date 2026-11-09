@@ -6,25 +6,20 @@
     "tests/setup/vitest-setup.ts",
     "tests/setup/msw-server.ts",
     "src/**/*.test.{ts,tsx}",
+    "tests/**/*.test.{ts,tsx}",
+    "tests/utils/*.ts",
     "eslint.config.js",
     "scripts/**/*.ts"
   ],
-  "project": ["src/**/*.{ts,tsx}"],
-  "ignore": ["src-tauri/**"],
+  "project": ["src/**/*.{ts,tsx,css}"],
+  "ignore": ["**/*.generated.ts"],
   "ignoreDependencies": [
-    "@tauri-apps/cli",
-    "@tauri-apps/api",
     "vite-plugin-monaco-editor",
     "@vitejs/plugin-react",
-    "vite-tsconfig-paths",
-    "lightningcss",
-    "@tailwindcss/postcss",
-    "postcss",
-    "tailwindcss",
-    "prettier-plugin-tailwindcss",
-    "@ianvs/prettier-plugin-sort-imports",
-    "babel-plugin-transform-import-meta"
+    "eslint-import-resolver-typescript"
   ],
+  "ignoreBinaries": ["dot"],
+  "exclude": ["duplicates"],
   "vite": false,
   "vitest": false,
   "eslint": false

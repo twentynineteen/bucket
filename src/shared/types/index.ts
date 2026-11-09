@@ -53,8 +53,6 @@ export type { AIModel } from './scriptFormatter'
 export type { WorkflowStep } from './scriptFormatter'
 /** AI provider type identifier -- openai, anthropic, ollama, local */
 export type { ProviderType } from './scriptFormatter'
-/** Result of testing an AI provider connection -- success, latency, error */
-export type { ConnectionValidationResult } from './scriptFormatter'
 /** Local storage keys for persisting script formatter preferences */
 export { STORAGE_KEYS } from './scriptFormatter'
 /** Query key factory for script formatter data fetching */
@@ -89,13 +87,5 @@ export type { ReplaceRequest } from './exampleEmbeddings'
 export type { ExampleMetadata } from './exampleEmbeddings'
 /** Source classification for an example -- bundled or user-uploaded */
 export type { ExampleSource } from './exampleEmbeddings'
-/** Error returned when an example upload fails */
-export type { UploadError } from './exampleEmbeddings'
-/** Error returned when an example deletion fails */
-export type { DeleteError } from './exampleEmbeddings'
-/** Error returned when an example replacement fails */
-export type { ReplaceError } from './exampleEmbeddings'
-/** Validation result for an uploaded script file -- valid, errors, warnings */
-export type { FileValidation } from './exampleEmbeddings'
 /** Enum of example categories for filtering and organization */
 export { ExampleCategory } from './exampleEmbeddings'

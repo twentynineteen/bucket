@@ -60,14 +60,3 @@ export interface ModelCreationOptions {
   maxRetries?: number
   timeout?: number
 }
-
-// ============================================================================
-// Streaming Options
-// ============================================================================
-
-export interface StreamingOptions {
-  onChunk?: (chunk: string) => void
-  onComplete?: () => void
-  onError?: (error: Error) => void
-  signal?: AbortSignal
-}

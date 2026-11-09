@@ -164,7 +164,8 @@ const ollamaAdapter: ProviderAdapter = {
     } catch (error) {
       logger.error('[Ollama] Failed to list models:', error)
       throw new Error(
-        `Failed to list Ollama models: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to list Ollama models: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { cause: error }
       )
     }
   }
@@ -306,7 +307,7 @@ providerRegistry.register(ollamaAdapter)
 // Default Configurations
 // ============================================================================
 
-export const DEFAULT_PROVIDER_CONFIGS: Record<string, Partial<ProviderConfiguration>> = {
+const DEFAULT_PROVIDER_CONFIGS: Record<string, Partial<ProviderConfiguration>> = {
   ollama: {
     serviceUrl: 'http://localhost:11434',
     connectionStatus: 'not-configured',
@@ -331,8 +332,4 @@ export function getDefaultConfig(providerId: string): ProviderConfiguration {
     timeout: defaults.timeout || 5 * SECONDS,
     ...defaults
   } as ProviderConfiguration
-}
-
-export function isProviderConfigured(config: ProviderConfiguration): boolean {
-  return config.connectionStatus === 'configured' && config.serviceUrl.length > 0
 }

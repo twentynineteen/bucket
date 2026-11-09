@@ -1,7 +1,6 @@
 import process from 'node:process'
 import react from '@vitejs/plugin-react'
 import monacoEditorPluginModule from 'vite-plugin-monaco-editor'
-import tsconfigPaths from 'vite-tsconfig-paths'
 // vitest/config, not vite: only this defineConfig knows about the `test` key.
 import { defineConfig } from 'vitest/config'
 
@@ -13,7 +12,6 @@ const host = process.env.TAURI_DEV_HOST
 export default defineConfig({
   plugins: [
     react(),
-    tsconfigPaths(),
     // Monaco editor plugin is not needed in the test environment and slows down
     // Vite worker module resolution, causing fetch timeouts in the test suite.
     ...(!process.env.VITEST
@@ -25,6 +23,10 @@ export default defineConfig({
         ]
       : [])
   ],
+  // Resolve the @features/@shared/@tests aliases from tsconfig paths
+  resolve: {
+    tsconfigPaths: true
+  },
   // prevent vite from obscuring rust errors
   clearScreen: false,
   // Tauri expects a fixed port, fail if that port is not available
@@ -58,8 +60,7 @@ export default defineConfig({
     // Tauri uses Chromium on Windows and WebKit on macOS and Linux
     target: process.env.TAURI_PLATFORM == 'windows' ? 'chrome105' : 'safari13',
     // don't minify for debug builds
-    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
-    cssMinify: !process.env.TAURI_DEBUG ? 'lightningcss' : false,
+    minify: !process.env.TAURI_DEBUG,
     // produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_DEBUG
   },

@@ -42,6 +42,9 @@ jobs:
       - name: Run Prettier check
         run: bun run prettier
 
+      - name: Run knip
+        run: bun run knip
+
       # The gate that was missing (issue #178). Nothing in CI ran tsc, and
       # tsconfig named an uninstalled `jest` type library, so tsc exited before
       # checking a single file and 487 type errors accumulated unseen. Neither

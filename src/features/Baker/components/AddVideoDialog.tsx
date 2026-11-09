@@ -47,30 +47,30 @@ import {
 import type { RefObject } from 'react'
 
 // Type definitions for grouped parameters
-export interface DialogState {
+interface DialogState {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   canAddVideo: boolean
 }
 
-export interface ModeState {
+interface ModeState {
   addMode: 'url' | 'upload'
   onTabChange: (value: string) => void
 }
 
-export interface FormData {
+interface FormData {
   url: string
   title: string
   thumbnailUrl: string
   sproutVideoId: string
 }
 
-export interface FormState {
+interface FormState {
   formData: FormData
   onFormFieldChange: (field: keyof FormData, value: string) => void
 }
 
-export interface UrlModeState {
+interface UrlModeState {
   onFetchDetails: () => void
   onAddVideo: () => void
   isFetchingVideo: boolean
@@ -78,7 +78,7 @@ export interface UrlModeState {
   fetchError: string | null
 }
 
-export interface UploadModeState {
+interface UploadModeState {
   selectedFile: string | null
   uploading: boolean
   progress: number
@@ -108,7 +108,7 @@ export interface UploadModeState {
   recentFolders: SelectedSproutFolder[]
 }
 
-export interface ErrorState {
+interface ErrorState {
   validationErrors: string[]
   addError: Error | null
 }

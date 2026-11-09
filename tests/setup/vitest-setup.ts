@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom/vitest'
 import nodeConsole from 'node:console'
 import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 
@@ -270,6 +270,9 @@ const mockBrowserApis = () => {
       return null
     }
     get rootMargin() {
+      return '0px'
+    }
+    get scrollMargin() {
       return '0px'
     }
     get thresholds() {

@@ -19,7 +19,7 @@ import React from 'react'
 import type { FilterCriteria } from '../internal/filters'
 import type { MotionCategory, MotionStatus, MotionTarget } from '../types'
 
-export interface FilterBarProps {
+interface FilterBarProps {
   criteria: FilterCriteria
   onChange: (criteria: FilterCriteria) => void
   categories: string[]

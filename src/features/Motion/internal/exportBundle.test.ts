@@ -66,7 +66,7 @@ describe('exportBundle', () => {
     expect(api.makeDir).toHaveBeenCalledWith('/p/Graphics/Motion')
 
     // Files should be written to a temp folder
-    const writeCalls = (api.writeText as ReturnType<typeof vi.fn>).mock.calls
+    const writeCalls = vi.mocked(api.writeText).mock.calls
     expect(writeCalls.length).toBeGreaterThan(0)
     // Every write path should start with the temp folder pattern
     for (const [path] of writeCalls) {
@@ -75,7 +75,7 @@ describe('exportBundle', () => {
 
     // Final rename should happen
     expect(api.renamePath).toHaveBeenCalledTimes(1)
-    const [from, to] = (api.renamePath as ReturnType<typeof vi.fn>).mock.calls[0]
+    const [from, to] = vi.mocked(api.renamePath).mock.calls[0]
     expect(from).toMatch(/\.tmp-lower-third-glide-/)
     expect(to).toBe('/p/Graphics/Motion/lower-third-glide-jane-doe')
 
@@ -124,8 +124,8 @@ describe('exportBundle', () => {
     const { tmpDir, motionDir } = await beginBundle(baseInput(), api)
     await commitBundle(baseInput(), api, tmpDir, motionDir)
 
-    const writeCalls = (api.writeText as ReturnType<typeof vi.fn>).mock.calls
-    const writtenNames = writeCalls.map(([path]: [string]) => path.split('/').pop())
+    const writeCalls = vi.mocked(api.writeText).mock.calls
+    const writtenNames = writeCalls.map(([path]) => path.split('/').pop())
 
     expect(writtenNames).toContain('lower-third-glide.jsx')
     expect(writtenNames).toContain('lower-third-glide-prompt.md')
@@ -133,7 +133,7 @@ describe('exportBundle', () => {
     expect(writtenNames).toContain('params.json')
 
     // Check params.json content
-    const paramsCall = writeCalls.find(([path]: [string]) => path.endsWith('params.json'))
+    const paramsCall = writeCalls.find(([path]) => path.endsWith('params.json'))
     expect(paramsCall).toBeDefined()
     const paramsJson = JSON.parse(paramsCall![1] as string)
     expect(paramsJson.templateId).toBe('lower-third-glide')
@@ -156,13 +156,13 @@ describe('exportBundle', () => {
 
     // Source image should be copied
     expect(api.copyFileTo).toHaveBeenCalledTimes(1)
-    const [from, to] = (api.copyFileTo as ReturnType<typeof vi.fn>).mock.calls[0]
+    const [from, to] = vi.mocked(api.copyFileTo).mock.calls[0]
     expect(from).toBe('/Users/e/runner.png')
     expect(to).toMatch(/source\.png$/)
 
     // params.json should have the image as "source.png" (relative), not absolute
-    const writeCalls = (api.writeText as ReturnType<typeof vi.fn>).mock.calls
-    const paramsCall = writeCalls.find(([path]: [string]) => path.endsWith('params.json'))
+    const writeCalls = vi.mocked(api.writeText).mock.calls
+    const paramsCall = writeCalls.find(([path]) => path.endsWith('params.json'))
     const paramsJson = JSON.parse(paramsCall![1] as string)
     // The image value in params.json should reference source.png, not an absolute path
     expect(JSON.stringify(paramsJson)).not.toContain('/Users/e/runner.png')
@@ -181,8 +181,8 @@ describe('exportBundle', () => {
     // motionDir should be the parent
     expect(motionDir).toBe('/p/Graphics/Motion')
     // Temp dir itself should also be created
-    const makeDirCalls = (api.makeDir as ReturnType<typeof vi.fn>).mock.calls
-    const tmpDirCreated = makeDirCalls.some(([path]: [string]) => path === tmpDir)
+    const makeDirCalls = vi.mocked(api.makeDir).mock.calls
+    const tmpDirCreated = makeDirCalls.some(([path]) => path === tmpDir)
     expect(tmpDirCreated).toBe(true)
   })
 
@@ -194,14 +194,14 @@ describe('exportBundle', () => {
     const result = await commitBundle(baseInput(), api, tmpDir, motionDir)
 
     // Files should be written to the provided temp dir
-    const writeCalls = (api.writeText as ReturnType<typeof vi.fn>).mock.calls
+    const writeCalls = vi.mocked(api.writeText).mock.calls
     for (const [path] of writeCalls) {
       expect(path).toContain(tmpDir)
     }
 
     // Rename from tmpDir to final
     expect(api.renamePath).toHaveBeenCalledTimes(1)
-    const [from, to] = (api.renamePath as ReturnType<typeof vi.fn>).mock.calls[0]
+    const [from, to] = vi.mocked(api.renamePath).mock.calls[0]
     expect(from).toBe(tmpDir)
     expect(to).toBe('/p/Graphics/Motion/lower-third-glide-jane-doe')
 
@@ -252,7 +252,7 @@ describe('exportBundle', () => {
     )
 
     expect(api.writeBytes).toHaveBeenCalledTimes(1)
-    const [path, bytes] = (api.writeBytes as ReturnType<typeof vi.fn>).mock.calls[0]
+    const [path, bytes] = vi.mocked(api.writeBytes).mock.calls[0]
     expect(path).toMatch(/lower-third-glide\.mov$/)
     expect(bytes).toEqual(new Uint8Array([0, 1, 2, 3]))
   })

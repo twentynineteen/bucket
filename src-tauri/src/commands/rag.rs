@@ -814,7 +814,7 @@ pub(crate) fn db_upload_example(
     // Insert embedding
     conn.execute(
         "INSERT INTO embeddings (script_id, embedding, dimension) VALUES (?, ?, ?)",
-        params![&new_id, &embedding_bytes, request.embedding.len()],
+        params![&new_id, &embedding_bytes, request.embedding.len() as i64],
     )
     .map_err(|e| format!("Failed to insert embedding: {}", e))?;
 

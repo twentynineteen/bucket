@@ -12,7 +12,7 @@
  * `sprout-folders.fixture.ts`, which documents it at its own header.
  */
 import type { Page } from '@playwright/test'
-import { stubGitHubReleases } from './mocks.fixture'
+import { installTauriIpcBase, stubGitHubReleases } from './mocks.fixture'
 
 /** What the mocked filesystem should do with the configured background folder. */
 export type FolderScenario =
@@ -66,6 +66,7 @@ export async function installBackgroundMocks(
   options: BackgroundMockOptions = {}
 ): Promise<void> {
   await stubGitHubReleases(page)
+  await installTauriIpcBase(page)
   const config = {
     scenario: options.scenario ?? 'ready',
     configured: options.configured ?? true,
@@ -84,7 +85,7 @@ export async function installBackgroundMocks(
 
   await page.addInitScript((cfg: typeof config) => {
     const win = window as unknown as {
-      __TAURI_INTERNALS__?: { invoke: (cmd: string, args?: unknown) => Promise<unknown> }
+      __TAURI_INTERNALS__: { invoke: (cmd: string, args?: unknown) => Promise<unknown> }
       __TAURI__?: unknown
       /** Every folder listing the app attempted, so tests can assert absence. */
       __backgroundListings__: string[]
@@ -264,17 +265,8 @@ export async function installBackgroundMocks(
       return null
     }
 
-    win.__TAURI_INTERNALS__ = {
-      invoke,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...({
-        metadata: {
-          windows: [{ label: 'main' }],
-          currentWindow: { label: 'main' }
-        }
-      } as any)
-    }
-    win.__TAURI__ = win.__TAURI_INTERNALS__
+    // The rest of the bridge comes from installTauriIpcBase
+    win.__TAURI_INTERNALS__.invoke = invoke
   }, config)
 }
 

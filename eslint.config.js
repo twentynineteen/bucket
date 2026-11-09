@@ -84,17 +84,19 @@ export default tseslint.config(
           project: './tsconfig.json'
         }
       },
-      'boundaries/elements': [
+      // App entry points are single files, not elements
+      'boundaries/files': [
         {
-          type: 'app',
+          category: 'app',
           pattern: [
             'src/App.tsx',
             'src/AppRouter.tsx',
             'src/index.tsx',
             'src/app/dashboard/page.tsx'
-          ],
-          mode: 'file'
-        },
+          ]
+        }
+      ],
+      'boundaries/elements': [
         {
           type: 'feature',
           pattern: ['src/features/*'],
@@ -129,38 +131,41 @@ export default tseslint.config(
         'error',
         {
           default: 'allow',
-          rules: [
+          policies: [
             {
-              from: [{ type: 'feature' }],
-              allow: [{ to: { type: 'shared' } }]
+              from: { element: { type: 'feature' } },
+              allow: { to: { element: { type: 'shared' } } }
             },
             {
               // Features can import other features only through the barrel.
               // Disallow any cross-feature import whose resolved path is not
               // the barrel (index.ts / index.tsx). The default is 'allow', so
               // barrel imports pass without an explicit allow entry.
-              from: [{ type: 'feature' }],
-              disallow: [
-                {
-                  to: {
+              from: { element: { type: 'feature' } },
+              disallow: {
+                to: {
+                  element: {
                     type: 'feature',
-                    captured: { featureName: '!{{featureName}}' },
-                    internalPath: '!index.{ts,tsx}'
+                    captured: { featureName: '!{{from.element.captured.featureName}}' },
+                    fileInternalPath: '!index.{ts,tsx}'
                   }
                 }
-              ],
+              },
               message: 'Import other features through their barrel: @features/<Name>.'
             },
             {
-              from: [{ type: 'shared' }],
-              disallow: [{ to: { type: 'feature' }, dependency: { kind: 'value' } }]
+              from: { element: { type: 'shared' } },
+              disallow: {
+                to: { element: { type: 'feature' } },
+                dependency: { kind: 'value' }
+              }
             }
           ]
         }
       ],
       // All boundary rules at error severity -- violations fail lint
       'boundaries/no-unknown-files': ['error'],
-      'boundaries/no-unknown': ['error']
+      'boundaries/no-unknown-dependencies': ['error']
     }
   },
   // Module conventions (CLAUDE.md, "Module rules"). A later block replaces an

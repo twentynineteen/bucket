@@ -33,7 +33,7 @@ export type { FootageFile }
 /**
  * Breadcrumb data structure for project metadata
  */
-export interface Breadcrumb {
+interface Breadcrumb {
   projectTitle: string
   numberOfCameras: number
   files: Array<{
@@ -59,7 +59,7 @@ export interface BuildProjectInput {
 }
 
 /** Every stage the machine can report, in workflow order. */
-export type BuildProjectStage =
+type BuildProjectStage =
   | 'idle'
   | 'validating'
   | 'creatingFolders'
@@ -626,6 +626,3 @@ export const buildProjectMachine = setup({
     }
   }
 })
-
-// Export the machine type for use with useMachine hook
-export type BuildProjectMachine = typeof buildProjectMachine

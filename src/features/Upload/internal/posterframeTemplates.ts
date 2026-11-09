@@ -117,10 +117,13 @@ export function resolvePosterframeLayout(
   }
 }
 
-/** The glyph-measuring subset of an opentype.js Font. */
+/**
+ * The glyph-measuring subset of an opentype.js Font. opentype.js types a
+ * glyph's advance width as optional; a glyph without one measures as zero.
+ */
 export interface WrapFont {
   unitsPerEm: number
-  stringToGlyphs: (text: string) => { advanceWidth: number }[]
+  stringToGlyphs: (text: string) => { advanceWidth?: number }[]
 }
 
 /**
@@ -146,7 +149,8 @@ export function wrapPosterframeTitle(
     let widthPx = 0
     for (const glyph of glyphs) {
       widthPx +=
-        glyph.advanceWidth * (layout.fontSize / font.unitsPerEm) + layout.letterSpacing
+        (glyph.advanceWidth ?? 0) * (layout.fontSize / font.unitsPerEm) +
+        layout.letterSpacing
     }
     if (widthPx > layout.maxWidth && line) {
       lines.push(line.trim())

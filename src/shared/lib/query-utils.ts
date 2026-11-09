@@ -10,14 +10,6 @@ export type QueryKey =
     ]
   | readonly (string | number)[]
 
-export interface QueryConfiguration {
-  queryKey: QueryKey
-  staleTime: number
-  cacheTime: number
-  retry: number | boolean
-  refetchOnWindowFocus: boolean
-}
-
 export interface MutationConfiguration<
   TData = unknown,
   TVariables = unknown,
@@ -26,23 +18,14 @@ export interface MutationConfiguration<
   mutationFn: (variables: TVariables) => Promise<TData>
   onMutate?: (variables: TVariables) => Promise<TContext>
   onSuccess?: (data: TData, variables: TVariables, context: TContext) => void
-  onError?: (error: Error, variables: TVariables, context: TContext) => void
+  // React Query passes no context to these when onMutate itself failed
+  onError?: (error: Error, variables: TVariables, context: TContext | undefined) => void
   onSettled?: (
     data: TData | undefined,
     error: Error | null,
     variables: TVariables,
-    context: TContext
+    context: TContext | undefined
   ) => void
-}
-
-export type QueryDomain = 'projects' | 'trello' | 'files' | 'user' | 'settings' | 'upload'
-
-export interface LoadingState {
-  isLoading: boolean
-  isFetching: boolean
-  isRefetching: boolean
-  isLoadingError: boolean
-  progress?: number
 }
 
 export interface ProgressState {

@@ -23,7 +23,7 @@ export function posterFrameFileStem(text: string): string {
 }
 
 /** Normalises an unknown rejection into the backend's error shape. */
-export function toPosterFrameError(error: unknown): PosterFrameError {
+function toPosterFrameError(error: unknown): PosterFrameError {
   if (error && typeof error === 'object' && 'message' in error) {
     const candidate = error as { status?: number | null; message?: unknown }
     return {
@@ -144,7 +144,7 @@ export function exportCanvasJpeg(
  * 0.5 is the floor: below that a 1080p frame looks worse than the
  * auto-generated still it replaces.
  */
-export const POSTER_FRAME_QUALITY_STEPS = [0.9, 0.8, 0.7, 0.6, 0.5]
+const POSTER_FRAME_QUALITY_STEPS = [0.9, 0.8, 0.7, 0.6, 0.5]
 
 /** The export could not be brought under the limit, even at the floor. */
 export class PosterFrameTooLargeError extends Error {

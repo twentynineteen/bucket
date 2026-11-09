@@ -167,5 +167,3 @@ export const SproutFolderIndexPanel: React.FC<SproutFolderIndexPanelProps> = ({
     </div>
   )
 }
-
-export default SproutFolderIndexPanel
