@@ -13,7 +13,12 @@
     // the form that did not work, and around 35 of the errors #178 cleared came
     // from that one trap (issue #210).
     "strictNullChecks": true,
-    "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
+    "types": [
+      "vite/client",
+      "node",
+      "vitest/globals",
+      "@testing-library/jest-dom/vitest"
+    ],
     "noEmit": true,
     // Third-party declarations are not ours to fix; monaco-editor's own .d.ts
     // files do not typecheck cleanly and would otherwise fail the gate.

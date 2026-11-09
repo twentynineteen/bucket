@@ -1,9 +1,30 @@
 // tests/unit/pages/BuildProject/ProjectFileList.test.tsx
 
 import ProjectFileList from '@features/BuildProject/components/ProjectFileList'
+import { FILE_LIST_ANIMATION } from '@shared/constants'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
+
+// Read duration and delay from the serialised shorthand: jsdom does not fill
+// the animation-delay longhand, and may print times in s or ms. In the
+// shorthand the first time is the duration and the second the delay.
+function animationTimesMs(animation: string): { duration: number; delay: number } {
+  const times = [...animation.matchAll(/(?:^|\s)(-?[\d.]+)(m?s)(?=\s|$)/g)].map(
+    ([, value, unit]) => parseFloat(value) * (unit === 's' ? 1000 : 1)
+  )
+  return { duration: times[0], delay: times[1] ?? 0 }
+}
+
+function expectStaggeredAnimation(items: NodeListOf<Element>) {
+  items.forEach((item, index) => {
+    const { style } = item as HTMLElement
+    const { duration, delay } = animationTimesMs(style.animation)
+    expect(style.animationName).toBe(FILE_LIST_ANIMATION.name)
+    expect(duration).toBe(FILE_LIST_ANIMATION.duration)
+    expect(delay).toBeCloseTo(index * FILE_LIST_ANIMATION.staggerDelay)
+  })
+}
 
 describe('ProjectFileList', () => {
   const mockFiles = [
@@ -307,11 +328,7 @@ describe('ProjectFileList', () => {
       const items = container.querySelectorAll('.group')
       expect(items).toHaveLength(3)
 
-      // Verify animation styles are applied (check that animation property exists and contains timing)
-      items.forEach(item => {
-        const style = window.getComputedStyle(item)
-        expect(style.animation).toContain('ms')
-      })
+      expectStaggeredAnimation(items)
     })
   })
 
@@ -399,10 +416,7 @@ describe('ProjectFileList', () => {
       // Should still have animation styles for lists under 50 items
       const items = container.querySelectorAll('.group')
       expect(items.length).toBeGreaterThan(0)
-      items.forEach(item => {
-        const style = window.getComputedStyle(item)
-        expect(style.animation).toContain('ms')
-      })
+      expectStaggeredAnimation(items)
     })
   })
 })
