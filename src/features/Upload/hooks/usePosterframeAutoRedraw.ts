@@ -1,9 +1,11 @@
 import { CACHE } from '@shared/constants'
 import { createQueryError, createQueryOptions, queryKeys, shouldRetry } from '@shared/lib'
-import { debounce } from '@shared/utils'
+import { createNamespacedLogger, debounce } from '@shared/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef } from 'react'
 import type { PosterframeTemplateId } from '../internal/posterframeTemplates'
+
+const log = createNamespacedLogger('PosterframeAutoRedraw')
 
 interface AutoRedrawProps {
   draw: (
@@ -82,8 +84,12 @@ export function usePosterframeAutoRedraw({
   // Trigger initial draw when image loads (even without title)
   useEffect(() => {
     if (imageUrl && !title.trim()) {
-      // Draw just the background image immediately when image is selected
-      draw(imageUrl, '', templateId)
+      // Draw just the background image immediately when image is selected.
+      // Nothing awaits this draw, so a background that fails to load is
+      // logged here rather than escaping as an unhandled rejection.
+      draw(imageUrl, '', templateId).catch(error => {
+        log.warn('Posterframe background failed to draw:', error)
+      })
     }
   }, [imageUrl, title, templateId, draw])
 
