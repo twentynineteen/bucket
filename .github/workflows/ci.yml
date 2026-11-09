@@ -206,7 +206,7 @@ jobs:
     # one environment. Updating @playwright/test in package.json updates this
     # tag in the same PR. The container ships Chromium, so the separate
     # `playwright install --with-deps` step is no longer needed (issue #338).
-    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    container: mcr.microsoft.com/playwright:v1.65.0-noble
     timeout-minutes: 25
     needs: [lint, test]
     steps:
