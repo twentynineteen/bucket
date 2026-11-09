@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 
 type Props = {
   apiKey: string
-  setApiKey: React.Dispatch<React.SetStateAction<string>>
+  setApiKey: (apiKey: string) => void
   onSave: () => void // Callback to save the API key
   id?: string // Optional ID for label association
   inputType?: 'text' | 'password' // Allow specifying input type (default: password for API keys)

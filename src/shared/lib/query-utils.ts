@@ -26,12 +26,13 @@ export interface MutationConfiguration<
   mutationFn: (variables: TVariables) => Promise<TData>
   onMutate?: (variables: TVariables) => Promise<TContext>
   onSuccess?: (data: TData, variables: TVariables, context: TContext) => void
-  onError?: (error: Error, variables: TVariables, context: TContext) => void
+  // React Query passes no context to these when onMutate itself failed
+  onError?: (error: Error, variables: TVariables, context: TContext | undefined) => void
   onSettled?: (
     data: TData | undefined,
     error: Error | null,
     variables: TVariables,
-    context: TContext
+    context: TContext | undefined
   ) => void
 }
 

@@ -1,5 +1,5 @@
 import { createNamespacedLogger } from '@shared/utils'
-import { QueryClient, QueryObserver } from '@tanstack/react-query'
+import { QueryClient, QueryObserver, type QueryKey } from '@tanstack/react-query'
 import React from 'react'
 
 const logger = createNamespacedLogger('Performance')
@@ -70,7 +70,7 @@ export class QueryPerformanceMonitor {
   /**
    * Called when a new query is added to the cache
    */
-  private onQueryAdded(query: { queryKey: unknown[] }) {
+  private onQueryAdded(query: { queryKey: QueryKey }) {
     const queryKey = JSON.stringify(query.queryKey)
     this.startTimes.set(queryKey, Date.now())
 
@@ -87,7 +87,7 @@ export class QueryPerformanceMonitor {
    * Called when a query state is updated
    */
   private onQueryUpdated(query: {
-    queryKey: unknown[]
+    queryKey: QueryKey
     state: {
       status: string
       dataUpdatedAt: number

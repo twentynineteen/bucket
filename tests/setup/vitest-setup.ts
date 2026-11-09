@@ -272,6 +272,9 @@ const mockBrowserApis = () => {
     get rootMargin() {
       return '0px'
     }
+    get scrollMargin() {
+      return '0px'
+    }
     get thresholds() {
       return [0]
     }
