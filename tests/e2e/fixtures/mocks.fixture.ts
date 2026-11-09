@@ -194,6 +194,53 @@ export async function stubGitHubReleases(page: Page): Promise<void> {
 }
 
 /**
+ * Install the parts of Tauri's IPC bridge that every page needs, whatever the
+ * spec mocks: callback registration, the event plugin's unlisten hook and
+ * window metadata. Fixtures then replace only `invoke`.
+ *
+ * Each fixture used to build this object by hand and most left pieces out,
+ * so every `listen()` threw on `transformCallback` and every unlisten on
+ * `unregisterListener`. Those rejections went unseen until Vite 8 started
+ * forwarding client errors to the terminal.
+ *
+ * Callbacks are kept in `__E2E_CALLBACKS__` so fixtures can fire events.
+ * Call before the fixture's own init script: init scripts run in order.
+ */
+export async function installTauriIpcBase(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const win = window as unknown as {
+      __TAURI__?: unknown
+      __TAURI_INTERNALS__?: unknown
+      __TAURI_EVENT_PLUGIN_INTERNALS__?: unknown
+      __E2E_CALLBACKS__: Record<number, (response: unknown) => void>
+    }
+    let nextCallbackId = 1
+    win.__E2E_CALLBACKS__ = {}
+    win.__TAURI_INTERNALS__ = {
+      invoke: async () => null,
+      transformCallback: (callback?: (response: unknown) => void) => {
+        const id = nextCallbackId++
+        if (callback) win.__E2E_CALLBACKS__[id] = callback
+        return id
+      },
+      unregisterCallback: (id: number) => {
+        delete win.__E2E_CALLBACKS__[id]
+      },
+      convertFileSrc: (filePath: string) => filePath,
+      metadata: {
+        windows: [{ label: 'main' }],
+        currentWindow: { label: 'main' },
+        currentWebview: { label: 'main', windowLabel: 'main' }
+      }
+    }
+    win.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+      unregisterListener: () => undefined
+    }
+    win.__TAURI__ = win.__TAURI_INTERNALS__
+  })
+}
+
+/**
  * Install the Tauri IPC mock for E2E tests.
  *
  * This serves the mock data declared above rather than returning `null` for
@@ -211,6 +258,7 @@ export async function setupTauriMocks(
   options: TauriMockOptions = {}
 ): Promise<void> {
   await stubGitHubReleases(page)
+  await installTauriIpcBase(page)
   const projects = options.projects ?? mockScanResults
   const config = {
     scanRoot: options.scanRoot ?? SCAN_ROOT,
@@ -229,20 +277,9 @@ export async function setupTauriMocks(
   }
 
   await page.addInitScript((cfg: typeof config) => {
-    type Internals = {
-      invoke: (cmd: string, args?: unknown) => Promise<unknown>
-      transformCallback: (callback?: (response: unknown) => void) => number
-      convertFileSrc: (filePath: string) => string
-      unregisterCallback: (id: number) => void
-      metadata: {
-        windows: Array<{ label: string }>
-        currentWindow: { label: string }
-      }
-    }
     const win = window as unknown as {
       __TAURI__?: unknown
-      __TAURI_INTERNALS__?: Internals
-      __E2E_CALLBACKS__: Record<number, (response: unknown) => void>
+      __TAURI_INTERNALS__: { invoke: (cmd: string, args?: unknown) => Promise<unknown> }
     }
 
     /** No trailing separator, matching the real appDataDir (issue #167). */
@@ -253,7 +290,6 @@ export async function setupTauriMocks(
       path === APP_DATA_DIR || path.startsWith(`${APP_DATA_DIR}/`)
 
     let nextId = 1
-    win.__E2E_CALLBACKS__ = {}
 
     // plugin:fs|read_text_file returns BYTES, which the plugin then decodes.
     // Returning a string yields garbage after Uint8Array.from().
@@ -374,23 +410,8 @@ export async function setupTauriMocks(
       }
     }
 
-    win.__TAURI_INTERNALS__ = {
-      invoke,
-      transformCallback: callback => {
-        const id = nextId++
-        if (callback) win.__E2E_CALLBACKS__[id] = callback
-        return id
-      },
-      convertFileSrc: filePath => filePath,
-      unregisterCallback: id => {
-        delete win.__E2E_CALLBACKS__[id]
-      },
-      metadata: {
-        windows: [{ label: 'main' }],
-        currentWindow: { label: 'main' }
-      }
-    }
-    win.__TAURI__ = win.__TAURI_INTERNALS__
+    // The rest of the bridge comes from installTauriIpcBase
+    win.__TAURI_INTERNALS__.invoke = invoke
   }, config)
 }
 
