@@ -25,12 +25,14 @@ export interface VerifiedPaths {
 }
 
 export function useVerifiedPaths(paths: string[]): VerifiedPaths {
+  // Keyed on the list's contents, not its identity: callers build the array
+  // inline on every render, so depending on identity would rebuild the query
+  // key - and refetch - on every render. NUL cannot occur in a path, so it is
+  // a safe separator.
+  const pathsKey = paths.join('\0')
   const unique = useMemo(
-    () => [...new Set(paths.filter(path => !!path))],
-    // Derived from the list's contents, not its identity: the caller builds the
-    // array inline from the parsed card on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [paths.join('\n')]
+    () => [...new Set(pathsKey.split('\0').filter(path => !!path))],
+    [pathsKey]
   )
 
   const { data } = useQuery({

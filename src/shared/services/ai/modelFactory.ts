@@ -44,7 +44,8 @@ export class ModelFactory {
       throw new Error(
         `Failed to create model "${modelId}" for provider "${providerId}": ${
           error instanceof Error ? error.message : 'Unknown error'
-        }`
+        }`,
+        { cause: error }
       )
     }
   }

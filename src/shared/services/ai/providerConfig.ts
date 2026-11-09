@@ -164,7 +164,8 @@ const ollamaAdapter: ProviderAdapter = {
     } catch (error) {
       logger.error('[Ollama] Failed to list models:', error)
       throw new Error(
-        `Failed to list Ollama models: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to list Ollama models: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { cause: error }
       )
     }
   }

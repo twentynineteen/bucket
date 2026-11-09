@@ -153,7 +153,8 @@ export function useUploadDialogForm({ onUpload, onClose }: UseUploadDialogFormPr
       } catch (embedError) {
         throw new Error(
           'Failed to generate embedding. ' +
-            (embedError instanceof Error ? embedError.message : String(embedError))
+            (embedError instanceof Error ? embedError.message : String(embedError)),
+          { cause: embedError }
         )
       } finally {
         setIsGeneratingEmbedding(false)

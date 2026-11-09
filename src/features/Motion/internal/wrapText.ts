@@ -144,7 +144,6 @@ function wrapSingleLine(
     } else {
       if (currentLine !== '') {
         result.push(currentLine.replace(/ +$/, ''))
-        currentLine = ''
       }
       currentLine = handleOverflowWord(token, width, font, measurer, result)
     }

@@ -25,7 +25,7 @@ let hasWarnedMissingRuntime = false
  * runs inside the webview, so this branch cannot be reached in production.
  */
 export function isTauriRuntime(): boolean {
-  let present = false
+  let present: boolean
 
   try {
     present = isTauri()
