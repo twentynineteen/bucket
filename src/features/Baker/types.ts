@@ -97,13 +97,6 @@ export interface ScanProgressEvent {
   projectsFound: number
 }
 
-export interface ScanDiscoveryEvent {
-  scanId: string
-  projectPath: string
-  isValid: boolean
-  errors: string[]
-}
-
 export interface ScanCompleteEvent {
   scanId: string
   result: ScanResult
@@ -112,35 +105,6 @@ export interface ScanCompleteEvent {
 export interface ScanErrorEvent {
   scanId: string
   error: ScanError
-}
-
-// Component prop interfaces - using type alias instead of empty interface
-export type BakerPageProps = Record<string, never>
-
-export interface FolderSelectorProps {
-  selectedFolder: string
-  onSelect: (folderPath: string) => void
-  disabled?: boolean
-}
-
-export interface ScanProgressProps {
-  scanResult: ScanResult | null
-  isScanning: boolean
-}
-
-export interface ProjectResultsProps {
-  projects: ProjectFolder[]
-  selectedProjects: string[]
-  onSelectionChange: (selectedPaths: string[]) => void
-  onPreviewBreadcrumbs: (projectPath: string) => void
-}
-
-export interface BatchActionsProps {
-  selectedProjects: string[]
-  onApplyChanges: () => void
-  onSelectAll: () => void
-  onClearSelection: () => void
-  disabled?: boolean
 }
 
 // Hook return type interfaces

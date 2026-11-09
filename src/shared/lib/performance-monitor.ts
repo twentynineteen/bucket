@@ -1,8 +1,4 @@
-import { createNamespacedLogger } from '@shared/utils'
 import { QueryClient, QueryObserver } from '@tanstack/react-query'
-import React from 'react'
-
-const logger = createNamespacedLogger('Performance')
 
 /**
  * Performance Monitoring Utilities for React Query
@@ -11,7 +7,7 @@ const logger = createNamespacedLogger('Performance')
  * and optimization insights for React Query operations.
  */
 
-export interface QueryPerformanceMetric {
+interface QueryPerformanceMetric {
   queryKey: string
   duration: number
   status: 'success' | 'error' | 'loading'
@@ -22,7 +18,7 @@ export interface QueryPerformanceMetric {
   errorType?: string
 }
 
-export interface AggregatedMetrics {
+interface AggregatedMetrics {
   totalQueries: number
   averageResponseTime: number
   cacheHitRate: number
@@ -39,7 +35,7 @@ export interface AggregatedMetrics {
 /**
  * Performance Monitor for React Query
  */
-export class QueryPerformanceMonitor {
+class QueryPerformanceMonitor {
   private queryClient: QueryClient
   private metrics: Map<string, QueryPerformanceMetric[]> = new Map()
   private observers: Map<string, QueryObserver> = new Map()
@@ -388,66 +384,12 @@ export class QueryPerformanceMonitor {
 /**
  * Performance insight interface
  */
-export interface PerformanceInsight {
+interface PerformanceInsight {
   type: 'info' | 'warning' | 'error'
   category: 'cache' | 'performance' | 'memory' | 'reliability'
   message: string
   impact: 'low' | 'medium' | 'high'
   recommendation: string
-}
-
-/**
- * React hook for accessing performance monitoring
- */
-export function useQueryPerformance(queryClient: QueryClient) {
-  const [monitor] = React.useState(() => new QueryPerformanceMonitor(queryClient))
-
-  React.useEffect(() => {
-    return () => {
-      monitor.clearMetrics()
-    }
-  }, [monitor])
-
-  return {
-    getMetrics: () => monitor.getAggregatedMetrics(),
-    getInsights: () => monitor.getPerformanceInsights(),
-    exportMetrics: () => monitor.exportMetrics(),
-    measureQuery: monitor.measureQueryPerformance.bind(monitor)
-  }
-}
-
-/**
- * Performance monitoring middleware for debugging
- */
-export function createPerformanceLogger() {
-  return {
-    onSuccess: (data: unknown, variables: unknown, context: { startTime?: number }) => {
-      const duration = Date.now() - (context.startTime || 0)
-      logger.log(`✅ Query succeeded in ${duration}ms`, {
-        variables,
-        dataSize: JSON.stringify(data).length
-      })
-    },
-    onError: (
-      error: { message: string },
-      variables: unknown,
-      context: { startTime?: number }
-    ) => {
-      const duration = Date.now() - (context.startTime || 0)
-      logger.log(`❌ Query failed after ${duration}ms`, {
-        error: error.message,
-        variables
-      })
-    },
-    onMutate: () => {
-      return { startTime: Date.now() }
-    }
-  }
-}
-
-// Export factory functions
-export const createPerformanceMonitor = (queryClient: QueryClient) => {
-  return new QueryPerformanceMonitor(queryClient)
 }
 
 // Singleton for global use
@@ -457,14 +399,3 @@ export const initializePerformanceMonitor = (queryClient: QueryClient) => {
   globalPerformanceMonitor = new QueryPerformanceMonitor(queryClient)
   return globalPerformanceMonitor
 }
-
-export const getPerformanceMonitor = (): QueryPerformanceMonitor => {
-  if (!globalPerformanceMonitor) {
-    throw new Error(
-      'Performance monitor not initialized. Call initializePerformanceMonitor() first.'
-    )
-  }
-  return globalPerformanceMonitor
-}
-
-export default QueryPerformanceMonitor

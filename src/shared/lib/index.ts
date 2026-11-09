@@ -29,10 +29,6 @@ export { createPaginatedQueryKey } from './query-keys'
 export { createTimeRangeQueryKey } from './query-keys'
 /** Create a query key scoped to a specific user for multi-tenant caching */
 export { createUserScopedQueryKey } from './query-keys'
-/** Query key factory type definition for extending with new domains */
-export type { QueryKeyFactory } from './query-keys'
-/** Invalidation rule mapping mutations to query key patterns */
-export type { InvalidationRule } from './query-keys'
 
 // Query client configuration
 /** Create the app's QueryClient -- the retry policy and defaults App.tsx installs */
@@ -49,14 +45,10 @@ export { createMutationOptions } from './query-utils'
 export { retryStrategies } from './query-utils'
 /** Determine if a failed query should be retried based on error type */
 export { shouldRetry } from './query-utils'
-/** The default retry predicate: never 4xx, never 429, retry 5xx and transport (#156) */
-export { shouldRetryRequest } from './query-utils'
 /** Calculate retry delay with exponential backoff and jitter */
 export { getRetryDelay } from './query-utils'
 /** Classify an error into a domain-specific error type */
 export { inferErrorType } from './query-utils'
-/** Whether the error carries a typed QueryError['type'] matching the expected category */
-export { hasErrorType } from './query-utils'
 /** True for HTTP 429 rate limits -- never retry these (#155 R4) */
 export { isRateLimited } from './query-utils'
 /** True for HTTP 401/403 auth failures, including Tauri's bare-string rejections */
@@ -67,49 +59,11 @@ export { createQueryError } from './query-utils'
 export { calculateProgress } from './query-utils'
 /** Query key type alias for React Query compatibility */
 export type { QueryKey } from './query-utils'
-/** Full query configuration with staleTime, cacheTime, retry, and callbacks */
-export type { QueryConfiguration } from './query-utils'
-/** Mutation configuration with optimistic update and rollback handlers */
-export type { MutationConfiguration } from './query-utils'
-/** Query domain identifier for organizing keys -- trello, sprout, baker, etc. */
-export type { QueryDomain } from './query-utils'
-/** Loading state enum -- idle, loading, success, error */
-export type { LoadingState } from './query-utils'
-/** Progress state with percentage, message, and estimated time remaining */
-export type { ProgressState } from './query-utils'
-/** Structured query error with type classification and retry metadata */
-export type { QueryError } from './query-utils'
-/** Retry configuration with max attempts, delay, and backoff strategy */
-export type { RetryConfiguration } from './query-utils'
 
 // Performance monitoring
-/** Monitor for tracking query execution time and cache hit rates */
-export { QueryPerformanceMonitor } from './performance-monitor'
-/** Hook for accessing query performance metrics in React components */
-export { useQueryPerformance } from './performance-monitor'
-/** Create a performance logger that outputs metrics to the console */
-export { createPerformanceLogger } from './performance-monitor'
-/** Create a QueryPerformanceMonitor instance with custom configuration */
-export { createPerformanceMonitor } from './performance-monitor'
 /** Initialize the global performance monitor singleton */
 export { initializePerformanceMonitor } from './performance-monitor'
-/** Get the current global performance monitor instance */
-export { getPerformanceMonitor } from './performance-monitor'
-/** Single query performance measurement with timing and cache status */
-export type { QueryPerformanceMetric } from './performance-monitor'
-/** Aggregated metrics across multiple queries -- averages, p95, cache rates */
-export type { AggregatedMetrics } from './performance-monitor'
-/** Performance insight with severity and recommendation for optimization */
-export type { PerformanceInsight } from './performance-monitor'
 
 // Prefetch strategies
-/** Manager for prefetching query data based on navigation and usage patterns */
-export { QueryPrefetchManager } from './prefetch-strategies'
-/** Create a QueryPrefetchManager instance with route-based prefetch rules */
-export { createPrefetchManager } from './prefetch-strategies'
 /** Initialize the global prefetch manager singleton */
 export { initializePrefetchManager } from './prefetch-strategies'
-/** Get the current global prefetch manager instance */
-export { getPrefetchManager } from './prefetch-strategies'
-/** Hook for triggering prefetch operations from React components */
-export { usePrefetch } from './prefetch-strategies'

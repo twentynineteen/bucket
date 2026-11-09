@@ -13,7 +13,7 @@
 import type { SproutFolder } from '@shared/types'
 
 /** Fetches the direct children of `parentId`; null means the account root. */
-export type FetchLevel = (parentId: string | null) => Promise<SproutFolder[]>
+type FetchLevel = (parentId: string | null) => Promise<SproutFolder[]>
 
 export interface CrawlProgress {
   /** Folders discovered so far. */
@@ -65,13 +65,13 @@ export interface CrawlResult {
   error?: string
 }
 
-export const DEFAULT_PACE_MS = 500
-export const DEFAULT_CHECKPOINT_EVERY = 100
-export const DEFAULT_MAX_FOLDERS = 20_000
+const DEFAULT_PACE_MS = 500
+const DEFAULT_CHECKPOINT_EVERY = 100
+const DEFAULT_MAX_FOLDERS = 20_000
 // One request per folder plus the root, so this must exceed the folder bound or
 // the request cap would stop a crawl the folder cap was sized to allow. A real
 // account here has ~1200 folders.
-export const DEFAULT_MAX_REQUESTS = 20_001
+const DEFAULT_MAX_REQUESTS = 20_001
 
 const defaultSleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 

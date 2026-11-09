@@ -7,7 +7,7 @@ import { AlertTriangle, X } from 'lucide-react'
 import React from 'react'
 import type { CatalogueIssue } from '../types'
 
-export interface CatalogueIssuesBannerProps {
+interface CatalogueIssuesBannerProps {
   issues: CatalogueIssue[]
   onDismiss: () => void
 }

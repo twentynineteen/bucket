@@ -26,7 +26,7 @@ import type {
   TextParamDef
 } from '../types'
 
-export interface ParamEditorProps {
+interface ParamEditorProps {
   template: MotionTemplate
   values: ParamValues
   onChange: (values: ParamValues) => void

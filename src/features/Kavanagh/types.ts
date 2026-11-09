@@ -16,7 +16,7 @@ export type FfmpegAvailability =
   | { status: 'notExecutable'; path: string }
 
 /** Which top corner a watermark occupies. */
-export type KavanaghCorner = 'topLeft' | 'topRight'
+type KavanaghCorner = 'topLeft' | 'topRight'
 
 /** Which stage of a run progress refers to. */
 export type KavanaghPhase = 'probe' | 'tail' | 'watermark' | 'refine'
@@ -27,7 +27,7 @@ export type KavanaghPhase = 'probe' | 'tail' | 'watermark' | 'refine'
  * Carries the best score seen inside it and which reference produced it, so a near
  * miss can be told from nothing at all without re-running anything.
  */
-export interface KavanaghGap {
+interface KavanaghGap {
   startSeconds: number
   endSeconds: number
   bestConfidence: number
@@ -35,14 +35,14 @@ export interface KavanaghGap {
 }
 
 /** A sample that found the mark in a corner other than the established one. */
-export interface KavanaghCornerChange {
+interface KavanaghCornerChange {
   atSeconds: number
   expected: KavanaghCorner
   found: KavanaghCorner
 }
 
 /** The stretch of the video the watermark was checked over. */
-export interface KavanaghSpan {
+interface KavanaghSpan {
   startSeconds: number
   endSeconds: number
   /** True when the end was assumed rather than measured from a dip to white. */
@@ -96,7 +96,7 @@ export interface KavanaghWatermarkReport {
  * from `problemMessages` on the report, written on the Rust side where the
  * tolerances live.
  */
-export type KavanaghTailProblem =
+type KavanaghTailProblem =
   | { kind: 'videoTooShort'; durationSeconds: number }
   | { kind: 'noWhitePeak' }
   | { kind: 'rampTooShort'; measuredSeconds: number }
@@ -125,8 +125,7 @@ export interface KavanaghTailAnalysis {
  * variant needs adding to the references folder (D8). `notFrozen` is a failure -
  * a tail that is not a held still is wrong whatever it correlates with.
  */
-export type KavanaghStingOutcome =
-  'matched' | 'unrecognised' | 'notFrozen' | 'poolUnavailable'
+type KavanaghStingOutcome = 'matched' | 'unrecognised' | 'notFrozen' | 'poolUnavailable'
 
 /** Everything the sting check measured. */
 export interface KavanaghStingReport {
@@ -149,7 +148,7 @@ export interface KavanaghStingReport {
  * catch rather than off the wire - but it is a distinct state to render, because
  * "not judged" and "judged bad" send an operator to different places (B7.4).
  */
-export type KavanaghVerdict = 'pass' | 'warning' | 'fail' | 'error'
+type KavanaghVerdict = 'pass' | 'warning' | 'fail' | 'error'
 
 /** Everything one run concluded, with each check's own result intact (B7.2). */
 export interface KavanaghCheckReport {

@@ -41,10 +41,10 @@ export interface TimingViolation {
 // ---------------------------------------------------------------------------
 
 /** 90% title-safe: 5% inset on each side. */
-export const TITLE_SAFE = { left: 192, right: 3648, top: 108, bottom: 2052 }
+const TITLE_SAFE = { left: 192, right: 3648, top: 108, bottom: 2052 }
 
 /** 93% action-safe: 3.5% inset on each side. */
-export const ACTION_SAFE = { left: 134.4, right: 3705.6, top: 75.6, bottom: 2084.4 }
+const ACTION_SAFE = { left: 134.4, right: 3705.6, top: 75.6, bottom: 2084.4 }
 
 // ---------------------------------------------------------------------------
 // Rule S3.1: in-duration 0.5-1 s
@@ -598,25 +598,5 @@ export function checkEntranceQuality(t: MotionTemplate): TimingViolation[] {
       rule: 'S3.7',
       message: 'no position or scale animation changes during entrance'
     }
-  ]
-}
-
-// ---------------------------------------------------------------------------
-// Run all rules
-// ---------------------------------------------------------------------------
-
-/**
- * Run all timing rules against a template and return all violations.
- * An empty array means the template passes every rule.
- */
-export function checkAllRules(t: MotionTemplate): TimingViolation[] {
-  return [
-    ...checkInDuration(t),
-    ...checkOutInRatio(t),
-    ...checkStaggerBudget(t),
-    ...checkTitleSafe(t),
-    ...checkTextBoxWidth(t),
-    ...checkEaseDirection(t),
-    ...checkEntranceQuality(t)
   ]
 }

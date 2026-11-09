@@ -10,7 +10,7 @@ import { useSystemTheme } from './useSystemTheme'
  * one of them and the bare catch below swallowed it. Vibrancy never applied
  * (#178).
  */
-export type MacOSEffect =
+type MacOSEffect =
   | 'Sidebar'
   | 'ContentBackground'
   | 'UnderWindowBackground'
