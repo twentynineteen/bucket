@@ -27,7 +27,7 @@ const AppearanceSection: React.FC = () => {
       <Accordion type="single" collapsible defaultValue="theme">
         <AccordionItem value="theme" className="border-b-0">
           <AccordionTrigger className="hover:no-underline">
-            Theme Selection
+            Theme selection
           </AccordionTrigger>
           <AccordionContent>
             <ThemeSelector label="" />

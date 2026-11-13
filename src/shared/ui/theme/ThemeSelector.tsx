@@ -26,6 +26,25 @@ import { useThemePreview } from './useThemePreview'
 function getThemeCardStyles(themeMetadata: ThemeMetadata, isSelected: boolean) {
   const { colorSwatch, isDark } = themeMetadata
 
+  // "System" is not a palette of its own, so its card takes the app's current
+  // surface colours. Painted in its dark swatch it looked selected on a light
+  // page even when another theme carried the tick.
+  if (themeMetadata.id === 'system') {
+    return {
+      card: {
+        backgroundColor: 'hsl(var(--card))',
+        borderColor: isSelected ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+        '--hover-border-color': 'hsl(var(--primary))'
+      } as React.CSSProperties,
+      text: { color: 'hsl(var(--foreground))' } as React.CSSProperties,
+      mutedText: { color: 'hsl(var(--muted-foreground))' } as React.CSSProperties,
+      check: {
+        backgroundColor: 'hsl(var(--primary))',
+        color: 'hsl(var(--primary-foreground))'
+      } as React.CSSProperties
+    }
+  }
+
   // Use the theme's own colors for the card styling
   const bgColor = `hsl(${colorSwatch.background})`
   const borderColor = isSelected

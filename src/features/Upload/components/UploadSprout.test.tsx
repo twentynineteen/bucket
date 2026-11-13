@@ -1,7 +1,7 @@
 /**
  * UploadSprout Page Tests
  *
- * Tests for the Upload to SproutVideo page including:
+ * Tests for the Upload to Sprout Video page including:
  * - Page layout and template structure matching BuildProject/Baker pattern
  * - Header rendering with title and description
  * - File selection functionality
@@ -208,9 +208,9 @@ describe('UploadSprout Page', () => {
       // one-line description directly under it in the same block.
       const titles = screen.getAllByRole('heading', { level: 1 })
       expect(titles).toHaveLength(1)
-      expect(titles[0]).toHaveTextContent('Upload to SproutVideo')
+      expect(titles[0]).toHaveTextContent('Upload to Sprout Video')
       expect(titles[0].parentElement).toHaveTextContent(
-        'Upload video files directly to your SproutVideo account'
+        'Upload video files directly to your Sprout Video account'
       )
     })
 
@@ -231,7 +231,7 @@ describe('UploadSprout Page', () => {
       renderUploadSprout()
 
       expect(
-        screen.getByRole('heading', { name: /Upload to SproutVideo/i })
+        screen.getByRole('heading', { name: /Upload to Sprout Video/i })
       ).toBeInTheDocument()
     })
 
@@ -239,7 +239,7 @@ describe('UploadSprout Page', () => {
       renderUploadSprout()
 
       expect(
-        screen.getByText(/Upload video files directly to your SproutVideo account/i)
+        screen.getByText(/Upload video files directly to your Sprout Video account/i)
       ).toBeInTheDocument()
     })
 
@@ -248,7 +248,7 @@ describe('UploadSprout Page', () => {
 
       // The Sprout icon should be present (lucide-react renders as svg)
       // The icon is a sibling of the div containing the heading, not a child
-      const header = screen.getByRole('heading', { name: /Upload to SproutVideo/i })
+      const header = screen.getByRole('heading', { name: /Upload to Sprout Video/i })
       const headerContainer = header.closest('.flex.items-center')
       const svg = headerContainer?.querySelector('svg')
       expect(svg).toBeInTheDocument()
@@ -325,7 +325,7 @@ describe('UploadSprout Page', () => {
 
       // If ErrorBoundary is working, the page should render without crashing
       expect(
-        screen.getByRole('heading', { name: /Upload to SproutVideo/i })
+        screen.getByRole('heading', { name: /Upload to Sprout Video/i })
       ).toBeInTheDocument()
     })
   })

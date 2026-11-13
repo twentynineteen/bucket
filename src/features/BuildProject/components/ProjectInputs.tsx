@@ -32,7 +32,7 @@ const ProjectInputs: React.FC<ProjectInputsProps> = ({
           id="project-title"
           value={title}
           onChange={e => onTitleChange(e.target.value)}
-          className="bg-secondary border-input text-foreground focus:ring-info focus:border-info hover:border-input/80 block w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:ring-2"
+          className="bg-background border-input text-foreground focus:ring-info focus:border-info hover:border-input/80 block w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:ring-2"
           placeholder="e.g. DBA - IB1234 - J Doe - Introductions 060626"
         />
         {showSanitizationWarning ? (
@@ -63,7 +63,7 @@ const ProjectInputs: React.FC<ProjectInputsProps> = ({
           min={PROJECT_LIMITS.MIN_CAMERAS}
           max={PROJECT_LIMITS.MAX_CAMERAS}
           step="1"
-          className="bg-secondary border-input text-foreground focus:ring-info focus:border-info hover:border-input/80 block w-full rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-200 focus:ring-2"
+          className="bg-background border-input text-foreground focus:ring-info focus:border-info hover:border-input/80 block w-full rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-200 focus:ring-2"
           placeholder={String(PROJECT_LIMITS.DEFAULT_CAMERAS)}
           value={numCameras}
           onChange={e => onNumCamerasChange(Number(e.target.value))}

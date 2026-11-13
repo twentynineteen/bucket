@@ -39,6 +39,23 @@ interface ChangeDiffListProps {
   basePath?: string
 }
 
+/**
+ * "Last Modified, Scanned By" as "Last modified, scanned by". Field names
+ * arrive in Title Case from the shared formatter; the rest of Baker's labels
+ * are sentence case, and this list sits right beside them.
+ */
+function sentenceCase(text: string): string {
+  return text.charAt(0) + text.slice(1).toLowerCase()
+}
+
+/** True for a file row (a path), false for a breadcrumbs field name. */
+const isPath = (label: string) => /[/\\]/.test(label)
+
+/** Paths relative to the project; field names in sentence case. */
+function displayLabel(label: string, basePath?: string): string {
+  return isPath(label) ? relativeLabel(label, basePath) : sentenceCase(label)
+}
+
 /** A row label with the project folder stripped from the front, when it is there. */
 function relativeLabel(label: string, basePath?: string): string {
   if (!basePath) return label
@@ -84,7 +101,7 @@ export const ChangeDiffList: React.FC<ChangeDiffListProps> = ({
             className="text-foreground min-w-0 flex-1 [overflow-wrap:anywhere]"
             title={row.label}
           >
-            {relativeLabel(row.label, basePath)}
+            {displayLabel(row.label, basePath)}
           </span>
           {row.detail && (
             <span className="text-muted-foreground flex-shrink-0 text-xs">
@@ -110,7 +127,7 @@ export const ChangeDiffList: React.FC<ChangeDiffListProps> = ({
             ~
           </span>
           <span className="text-muted-foreground min-w-0 flex-1 text-xs">
-            {maintenanceFields.join(', ')}
+            {sentenceCase(maintenanceFields.join(', '))}
           </span>
           <span className="text-muted-foreground flex-shrink-0 text-xs">
             routine update

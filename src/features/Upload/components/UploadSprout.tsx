@@ -188,8 +188,8 @@ const UploadSproutContent: React.FC = () => {
         {/* Header */}
         <PageHeader
           icon={<Sprout className="text-primary h-5 w-5 flex-shrink-0" />}
-          title="Upload to SproutVideo"
-          description="Upload video files directly to your SproutVideo account"
+          title="Upload to Sprout Video"
+          description="Upload video files directly to your Sprout Video account"
         />
 
         <div className="max-w-full space-y-4 px-6 py-4">

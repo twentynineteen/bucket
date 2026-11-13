@@ -101,7 +101,7 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({
       className="border-border space-y-4 rounded-lg border p-6 scroll-mt-16"
     >
       <div className="border-b pb-2">
-        <h3 className="text-foreground text-sm font-semibold">AI Models</h3>
+        <h3 className="text-foreground text-sm font-semibold">AI models</h3>
         <p className="text-muted-foreground text-sm">
           Configure AI provider settings for script formatting
         </p>

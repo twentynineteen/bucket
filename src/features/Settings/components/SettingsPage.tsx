@@ -29,7 +29,7 @@ const MotionSection = React.lazy(() =>
 const SettingsPageContent: React.FC = () => {
   useSettingsScroll()
 
-  useBreadcrumb([{ label: 'Settings', href: '/settings/general' }, { label: 'General' }])
+  useBreadcrumb([{ label: 'Settings' }])
 
   const { data: apiKeys = {}, isError: settingsUnavailable } = useQuery({
     ...createQueryOptions(

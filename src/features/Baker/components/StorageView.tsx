@@ -41,6 +41,86 @@ const MAX_TREEMAP_TILES = 24
 // the map answers "where is the space, and is it accounted for" at once.
 const LEGEND_ORDER: BreadcrumbsStatus[] = ['current', 'stale', 'missing', 'unparseable']
 
+/**
+ * Text inside a treemap tile, anchored top-left.
+ *
+ * A tile wide enough for words shows the name over the size, wrapping at word
+ * boundaries onto as many lines as its height allows. A tile too narrow for words shows
+ * the size alone, which always fits, so no name is cut mid-word and no
+ * labelled tile is left blank.
+ */
+const TileLabel: React.FC<{
+  name: string
+  size: string
+  width: number
+  height: number
+}> = ({ name, size, width, height }) => {
+  // Room inside the tile: lines of name above the size line, and characters
+  // per line at the 12px label size (6.8px is a safe average glyph width).
+  const maxLines = Math.min(Math.floor((height - 12 - 16) / 17), 4)
+  const charsPerLine = Math.floor((width - 20) / 6.8)
+  const lines = wrapWholeWords(name, charsPerLine, maxLines)
+
+  // Too narrow even for the size: leave the tile to its tooltip.
+  if (size.length > charsPerLine) return null
+
+  return (
+    <span className="block min-w-0 text-xs">
+      {lines.map((line, index) => (
+        <span key={index} className="block leading-snug font-medium whitespace-nowrap">
+          {line}
+        </span>
+      ))}
+      <span className="text-muted-foreground block tabular-nums">{size}</span>
+    </span>
+  )
+}
+
+/**
+ * Break a name into at most `maxLines` lines of whole words. If it does not
+ * all fit, the last line ends with an ellipsis after a complete word. Returns
+ * no lines when even one word cannot fit, so a name is never cut mid-word.
+ */
+function wrapWholeWords(name: string, charsPerLine: number, maxLines: number): string[] {
+  // A lone dash stays attached to the word before it ("Interview -"), so no
+  // line ever starts with one.
+  const words = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .reduce<string[]>((acc, word) => {
+      if (/^[-–]$/.test(word) && acc.length > 0) acc[acc.length - 1] += ` ${word}`
+      else acc.push(word)
+      return acc
+    }, [])
+  if (maxLines < 1 || words.some(word => word.length > charsPerLine)) return []
+
+  const lines: string[] = []
+  let rest = words
+  while (rest.length > 0 && lines.length < maxLines) {
+    let line = rest[0]
+    let used = 1
+    while (used < rest.length && `${line} ${rest[used]}`.length <= charsPerLine) {
+      line = `${line} ${rest[used]}`
+      used += 1
+    }
+    lines.push(line)
+    rest = rest.slice(used)
+  }
+  if (rest.length === 0) return lines
+
+  // Out of lines with words left over: end the last line on a whole word,
+  // dropping words until the ellipsis fits and no dangling dash is left.
+  let last = lines[lines.length - 1].split(' ')
+  while (
+    last.length > 1 &&
+    (`${last.join(' ')}…`.length > charsPerLine || /^[-–]$/.test(last[last.length - 1]))
+  ) {
+    last = last.slice(0, -1)
+  }
+  lines[lines.length - 1] = `${last.join(' ').replace(/\s[-–]$/, '')}…`
+  return lines
+}
+
 interface StorageViewProps {
   projects: ProjectFolder[]
   onProjectClick: (projectPath: string) => void
@@ -218,9 +298,9 @@ export const StorageView: React.FC<StorageViewProps> = ({
             const rect = treemapRects.find(r => r.key === entry.key)
             if (!rect || rect.width < 1 || rect.height < 1) return null
 
-            // Small tiles keep a truncated name: a blank tile cannot be
-            // identified at all, and the tooltip carries the full name.
-            const showLabel = rect.width >= 60 && rect.height >= 32
+            // Only a sliver too small for any text goes unlabelled; the
+            // tooltip and the list below still identify it.
+            const showLabel = rect.width >= 48 && rect.height >= 22
             return (
               <button
                 key={entry.key}
@@ -231,7 +311,9 @@ export const StorageView: React.FC<StorageViewProps> = ({
                 onClick={() => {
                   if (!entry.isAggregate) onProjectClick(entry.key)
                 }}
-                className={`absolute overflow-hidden rounded-md border-2 px-2 py-1.5 text-left transition-colors ${
+                className={`absolute flex items-start overflow-hidden rounded-md border-2 text-left transition-colors ${
+                  rect.width < 72 ? 'px-1 py-1' : 'px-2 py-1.5'
+                } ${
                   entry.status
                     ? STATUS_PRESENTATION[entry.status].tile
                     : 'border-background bg-muted/50 hover:bg-muted text-foreground'
@@ -244,24 +326,12 @@ export const StorageView: React.FC<StorageViewProps> = ({
                 }}
               >
                 {showLabel && (
-                  <span className="block text-xs font-medium">
-                    {/* The name gets as many lines as the tile's height leaves
-                        room for above the size, then is cut with an ellipsis. */}
-                    <span
-                      className={
-                        rect.height >= 100
-                          ? 'line-clamp-3 leading-snug [overflow-wrap:anywhere]'
-                          : rect.height >= 70
-                            ? 'line-clamp-2 leading-snug [overflow-wrap:anywhere]'
-                            : 'block truncate'
-                      }
-                    >
-                      {entry.label}
-                    </span>
-                    <span className="text-muted-foreground block truncate font-normal tabular-nums">
-                      {formatFileSize(entry.sizeBytes)}
-                    </span>
-                  </span>
+                  <TileLabel
+                    name={entry.label}
+                    size={formatFileSize(entry.sizeBytes)}
+                    width={rect.width}
+                    height={rect.height}
+                  />
                 )}
               </button>
             )
@@ -279,7 +349,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
               key={project.path}
               type="button"
               onClick={() => onProjectClick(project.path)}
-              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,1fr)_minmax(4rem,14rem)_4.5rem_3rem] items-center gap-4 border-b px-4 py-1.5 text-left transition-colors"
+              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,24rem)_minmax(4rem,1fr)_4.5rem_3rem] items-center gap-4 border-b px-4 py-1.5 text-left transition-colors"
             >
               <span className="flex min-w-0 items-center gap-2 text-sm">
                 <span

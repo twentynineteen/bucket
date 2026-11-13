@@ -248,18 +248,10 @@ const FilterChips: React.FC<{
                 : 'border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground'
             )}
           >
-            {chip.key === 'attention' ? (
-              // The long label only where the list is wide enough for all
-              // five chips on one row.
-              <>
-                <span className="hidden @[26rem]:inline">{chip.label}</span>
-                <span className="@[26rem]:hidden" aria-hidden="true">
-                  Attention
-                </span>
-              </>
-            ) : (
-              chip.label
-            )}{' '}
+            {/* One visible word at every width, short enough for all five
+                chips to share a row in a narrow list. The accessible name
+                keeps the full "Needs attention". */}
+            {chip.key === 'attention' ? 'Attention' : chip.label}{' '}
             <span className={isActive ? 'text-primary' : 'text-muted-foreground'}>
               {chip.count}
             </span>
