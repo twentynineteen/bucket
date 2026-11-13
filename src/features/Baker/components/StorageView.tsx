@@ -47,8 +47,19 @@ const LEGEND_ORDER: BreadcrumbsStatus[] = ['current', 'stale', 'missing', 'unpar
 // Projects that need attention always keep a tile of their own.
 const SMALL_SHARE = 0.025
 
-// Tiles narrower than this use tighter padding, leaving more room for text.
-const NARROW_TILE = 100
+// A project that needs attention is drawn at no less than this share of the
+// map, so its tile is always wide enough to carry its name. The tile is then
+// slightly larger than its true size; the size printed on it, its tooltip and
+// the list below all give the real figure.
+const MIN_ATTENTION_SHARE = 0.045
+
+/** Area a tile is given in the layout: its size, with the floor above. */
+function tileWeight(entry: TreemapEntry, totalBytes: number): number {
+  const needsAttention = entry.status !== null && entry.status !== 'current'
+  return needsAttention
+    ? Math.max(entry.sizeBytes, totalBytes * MIN_ATTENTION_SHARE)
+    : entry.sizeBytes
+}
 
 let labelContext: CanvasRenderingContext2D | null | undefined
 
@@ -84,10 +95,12 @@ const TileLabel: React.FC<{
   size: string
   width: number
   height: number
-}> = ({ name, size, width, height }) => {
+  /** For a grouped tile: the projects it stands for, listed under the size. */
+  members?: string[]
+}> = ({ name, size, width, height, members }) => {
   // Room inside the tile after its border and padding: the text width, and
   // how many 17px name lines fit above the 16px size line.
-  const textWidth = width - 4 - (width < NARROW_TILE ? 8 : 16)
+  const textWidth = width - 20
   // The size is dropped before the name is: a tile too narrow for "71.5 GB"
   // can still say which project it is, and the list below gives the size.
   const showSize = measureSize(size) <= textWidth
@@ -96,6 +109,13 @@ const TileLabel: React.FC<{
   const lines = fitTileName(name, textWidth, maxLines, measureLabel)
 
   if (!showSize && lines.length === 0) return null
+
+  // Whatever height is left under the size names the grouped projects.
+  const spareLines = Math.floor((height - 12 - sizeHeight - lines.length * 17) / 17)
+  const memberLines =
+    members && spareLines > 0
+      ? fitTileName(members.join(', '), textWidth, Math.min(spareLines, 3), measureSize)
+      : []
 
   return (
     <span className="block min-w-0 text-xs">
@@ -109,6 +129,14 @@ const TileLabel: React.FC<{
           {size}
         </span>
       )}
+      {memberLines.map((line, index) => (
+        <span
+          key={`member-${index}`}
+          className="text-muted-foreground block leading-snug whitespace-nowrap"
+        >
+          {line}
+        </span>
+      ))}
     </span>
   )
 }
@@ -234,11 +262,11 @@ export const StorageView: React.FC<StorageViewProps> = ({
   const treemapRects = useMemo(
     () =>
       computeTreemapLayout(
-        treemapEntries.map(e => ({ key: e.key, weight: e.sizeBytes })),
+        treemapEntries.map(e => ({ key: e.key, weight: tileWeight(e, totalSizedBytes) })),
         containerSize.width,
         containerSize.height
       ),
-    [treemapEntries, containerSize]
+    [treemapEntries, containerSize, totalSizedBytes]
   )
 
   const handleConfirmRefresh = async () => {
@@ -271,7 +299,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Toolbar: totals + refresh action */}
-      <div className="border-border flex flex-shrink-0 items-center justify-between border-b px-4 py-2.5">
+      <div className="border-border flex flex-shrink-0 items-center justify-between border-b px-6 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Size by project</span>
           {unsizedProjects.length > 0 && (
@@ -307,7 +335,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
       </div>
 
       {/* Treemap */}
-      <div className="min-h-0 flex-1 p-4">
+      <div className="min-h-0 flex-1 px-6 py-4">
         <div
           ref={containerRef}
           className="relative h-full w-full overflow-hidden rounded-lg"
@@ -327,9 +355,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
                 onClick={() => {
                   if (!entry.isAggregate) onProjectClick(entry.key)
                 }}
-                className={`absolute flex items-start overflow-hidden rounded-md border-2 text-left transition-colors ${
-                  rect.width < NARROW_TILE ? 'px-1 py-1' : 'px-2 py-1.5'
-                } ${
+                className={`absolute flex items-start overflow-hidden rounded-md border-2 px-2 py-1.5 text-left transition-colors ${
                   entry.status
                     ? STATUS_PRESENTATION[entry.status].tile
                     : 'border-background bg-muted/50 hover:bg-muted text-foreground'
@@ -347,6 +373,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
                     size={formatFileSize(entry.sizeBytes)}
                     width={rect.width}
                     height={rect.height}
+                    members={entry.members}
                   />
                 )}
               </button>
@@ -365,7 +392,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
               key={project.path}
               type="button"
               onClick={() => onProjectClick(project.path)}
-              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,24rem)_minmax(4rem,1fr)_4.5rem_3rem] items-center gap-4 border-b px-4 py-1.5 text-left transition-colors"
+              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,24rem)_minmax(4rem,1fr)_4.5rem_3rem] items-center gap-4 border-b px-6 py-1.5 text-left transition-colors"
             >
               <span className="flex min-w-0 items-center gap-2 text-sm">
                 <span
@@ -382,7 +409,9 @@ export const StorageView: React.FC<StorageViewProps> = ({
                   so the longest bar fills its track. */}
               <span className="bg-muted h-1.5 overflow-hidden rounded-full">
                 <span
-                  className="bg-foreground/50 block h-full rounded-full"
+                  className={`block h-full rounded-full ${
+                    STATUS_PRESENTATION[breadcrumbsStatus(project)].bar
+                  }`}
                   style={{
                     width: `${Math.max(((project.folderSizeBytes ?? 0) / largestBytes) * 100, 1)}%`
                   }}
@@ -405,7 +434,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
             key={project.path}
             type="button"
             onClick={() => onProjectClick(project.path)}
-            className="border-border hover:bg-accent/50 block w-full border-b px-4 py-2 text-left transition-colors"
+            className="border-border hover:bg-accent/50 block w-full border-b px-6 py-2 text-left transition-colors"
           >
             <div className="flex items-center justify-between gap-3">
               <span className="min-w-0 truncate text-sm">{project.name}</span>

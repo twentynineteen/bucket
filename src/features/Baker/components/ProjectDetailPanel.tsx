@@ -35,8 +35,7 @@ import {
   User,
   UserCheck,
   UserPlus,
-  Video,
-  Wrench
+  Video
 } from 'lucide-react'
 import React, { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -482,18 +481,11 @@ function calloutHeadline(project: ProjectFolder): string {
   return 'Breadcrumbs are stale'
 }
 
-function calloutSubline(
-  project: ProjectFolder,
-  pendingCount: number | null,
-  hasRoutineFields = false
-): string {
+function calloutSubline(project: ProjectFolder, pendingCount: number | null): string {
   if (pendingCount !== null) {
-    // Routine fields (last modified, scanned by) are listed but not counted,
-    // so the sentence says so and the number matches the rows above them.
-    const changes = `${pendingCount} change${pendingCount !== 1 ? 's' : ''}`
-    return hasRoutineFields
-      ? `${changes} and routine fields will be written when you update`
-      : `${changes} will be written when you update`
+    // Counts the changes listed below. The fields stamped on every write are
+    // shown under them with their own label and are not part of the count.
+    return `${pendingCount} change${pendingCount !== 1 ? 's' : ''} will be written when you update`
   }
   if (project.invalidBreadcrumbs) {
     return 'Repair rebuilds it and keeps a backup'
@@ -567,7 +559,6 @@ const CalloutActions: React.FC<{
         onClick={() => onRepairProject(project.path)}
         className="flex-shrink-0 gap-1.5"
       >
-        <Wrench className="hidden h-3.5 w-3.5 @md:block" />
         Repair breadcrumbs
       </Button>
     )}
@@ -601,11 +592,7 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
   const changes = preview ? buildProjectChangeRows(preview) : null
 
   const headline = calloutHeadline(project)
-  const subline = calloutSubline(
-    project,
-    changes ? changes.rows.length : null,
-    (changes?.maintenanceFields.length ?? 0) > 0
-  )
+  const subline = calloutSubline(project, changes ? changes.rows.length : null)
   // A missing file is something to create, not something that went wrong.
   const CalloutIcon = project.hasBreadcrumbs ? AlertTriangle : Info
   const note = calloutNote(project, changes?.isNewBreadcrumbs ?? false)

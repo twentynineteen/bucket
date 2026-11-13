@@ -33,6 +33,8 @@ interface StatusPresentation {
    * Missing is a hollow ring: there is no file, and it still needs action.
    */
   marker: string
+  /** Solid fill for the size bars in the storage list. */
+  bar: string
   /** Tile classes for the storage map: fill plus a readable label colour. */
   tile: string
 }
@@ -42,24 +44,28 @@ export const STATUS_PRESENTATION: Record<BreadcrumbsStatus, StatusPresentation> 
     label: 'Current',
     text: 'text-muted-foreground',
     marker: 'bg-success',
+    bar: 'bg-success/70',
     tile: 'border-background bg-success/15 hover:bg-success/25 text-foreground'
   },
   stale: {
     label: 'Stale',
     text: 'text-warning-text',
     marker: 'bg-warning',
+    bar: 'bg-warning',
     tile: 'border-background bg-warning/25 hover:bg-warning/35 text-foreground'
   },
   missing: {
     label: 'Missing',
     text: 'text-info-text',
     marker: 'border-info border-[1.5px] bg-transparent',
+    bar: 'bg-info',
     tile: 'border-info/70 bg-info/10 hover:bg-info/20 text-foreground border-dashed'
   },
   unparseable: {
     label: 'Unparseable',
     text: 'text-destructive',
     marker: 'bg-destructive',
+    bar: 'bg-destructive',
     tile: 'border-background bg-destructive/20 hover:bg-destructive/30 text-foreground'
   }
 }

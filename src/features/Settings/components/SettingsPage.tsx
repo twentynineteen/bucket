@@ -13,6 +13,7 @@ import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import React from 'react'
+import { useLocation } from 'react-router-dom'
 import { loadSettingsApiKeys } from '../api'
 import { useSettingsScroll } from '../hooks/useSettingsScroll'
 import AIModelsSection from './AIModelsSection'
@@ -26,10 +27,27 @@ const MotionSection = React.lazy(() =>
   import('@features/Motion').then(m => ({ default: m.MotionSection }))
 )
 
+/** Section names by URL hash, worded as in the sidebar. */
+const SECTION_LABELS: Record<string, string> = {
+  '#ai-models': 'AI models',
+  '#appearance': 'Appearance',
+  '#backgrounds': 'Backgrounds',
+  '#sproutvideo': 'Sprout Video',
+  '#trello': 'Trello',
+  '#kavanagh': 'Kavanagh',
+  '#motion': 'Motion'
+}
+
 const SettingsPageContent: React.FC = () => {
   useSettingsScroll()
 
-  useBreadcrumb([{ label: 'Settings' }])
+  // The breadcrumb names the section the URL points at, matching the item the
+  // sidebar highlights. Without a hash the page opens on its first section.
+  const { hash } = useLocation()
+  useBreadcrumb([
+    { label: 'Settings', href: '/settings/general' },
+    { label: SECTION_LABELS[hash] ?? SECTION_LABELS['#ai-models'] }
+  ])
 
   const { data: apiKeys = {}, isError: settingsUnavailable } = useQuery({
     ...createQueryOptions(
