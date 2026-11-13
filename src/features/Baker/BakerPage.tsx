@@ -442,7 +442,7 @@ const BakerPageContent: React.FC = () => {
           ) : (
             <div className="flex min-h-0 flex-1">
               {/* List column: the rows, then the batch footer for ticked rows */}
-              <div className="border-border w-[22rem] flex-shrink-0 border-r xl:w-[28rem]">
+              <div className="border-border w-[24rem] flex-shrink-0 border-r xl:w-[28rem]">
                 <ProjectListPanel
                   projects={scanResult.projects}
                   selectedProjects={selectedProjects}

@@ -39,7 +39,7 @@ export const CreateProjectStep: React.FC<CreateProjectStepProps> = ({
             3
           </div>
           <div>
-            <h2 className="text-foreground text-sm font-semibold">Create Project</h2>
+            <h2 className="text-foreground text-sm font-semibold">Create project</h2>
             {!showSuccess && (
               <p className="text-muted-foreground mt-0.5 text-xs">
                 Review and create your project
@@ -65,7 +65,7 @@ export const CreateProjectStep: React.FC<CreateProjectStepProps> = ({
               className="from-chart-4 to-chart-5 disabled:from-muted disabled:to-muted disabled:text-muted-foreground disabled:border-border bg-gradient-to-r px-6 py-2.5 font-semibold text-white shadow-md disabled:border disabled:opacity-100 disabled:shadow-none"
             >
               <FolderPlus className="h-4 w-4" />
-              {isLoading ? 'Creating Project...' : 'Create Project'}
+              {isLoading ? 'Creating project...' : 'Create project'}
             </Button>
             {isDisabled && (
               <span id="create-btn-requirements" className="sr-only">

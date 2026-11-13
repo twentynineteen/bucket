@@ -43,7 +43,7 @@ export const AddFootageStep: React.FC<AddFootageStepProps> = ({
             2
           </div>
           <div className="flex-1">
-            <h2 className="text-foreground text-sm font-semibold">Add Footage</h2>
+            <h2 className="text-foreground text-sm font-semibold">Add footage</h2>
             {!showSuccess && (
               <p className="text-muted-foreground mt-0.5 text-xs">
                 Select footage files and assign camera numbers
@@ -66,7 +66,7 @@ export const AddFootageStep: React.FC<AddFootageStepProps> = ({
               className="gap-1.5"
             >
               <Upload className="h-3.5 w-3.5" />
-              Select Files
+              Select files
             </Button>
             {files.length > 0 && (
               <Button

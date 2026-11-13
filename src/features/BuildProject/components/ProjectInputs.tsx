@@ -19,14 +19,14 @@ const ProjectInputs: React.FC<ProjectInputsProps> = ({
 }) => {
   return (
     <div className="flex flex-row gap-4">
-      {/* Project Title Input */}
+      {/* Project title Input */}
       <div className="flex-1">
         <label
           htmlFor="project-title"
           className="text-foreground mb-1.5 flex items-center gap-1.5 text-xs font-semibold"
         >
           <FileText className="text-primary h-3.5 w-3.5" />
-          Project Title
+          Project title
         </label>
         <input
           id="project-title"
@@ -48,14 +48,14 @@ const ProjectInputs: React.FC<ProjectInputsProps> = ({
         )}
       </div>
 
-      {/* Number of Cameras Input */}
+      {/* Number of cameras Input */}
       <div className="w-40 flex-shrink-0">
         <label
           htmlFor="number-input"
           className="text-foreground mb-1.5 flex items-center gap-1.5 text-xs font-semibold"
         >
           <Camera className="text-primary h-3.5 w-3.5" />
-          Number of Cameras
+          Number of cameras
         </label>
         <input
           type="number"

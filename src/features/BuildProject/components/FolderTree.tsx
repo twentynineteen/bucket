@@ -32,7 +32,7 @@ const FolderTree: React.FC<Props> = ({ onSelect, selectedFolder }) => {
         onClick={openFolderPicker}
         className="border-input bg-background text-foreground hover:bg-accent focus:ring-ring inline-flex flex-shrink-0 items-center justify-center gap-2 rounded-lg border px-5 py-2 text-sm font-semibold transition-colors duration-200 focus:ring-4 focus:outline-none"
       >
-        Select Destination
+        Select destination
       </button>
       {selectedFolder ? (
         <div className="bg-card border-border min-w-0 flex-1 overflow-hidden rounded-lg border px-3 py-2">

@@ -140,7 +140,7 @@ const BackgroundsSection: React.FC<BackgroundsSectionProps> = ({
       className="border-border space-y-4 rounded-lg border p-6 scroll-mt-16"
     >
       <div className="border-b pb-2">
-        <h3 className="text-foreground text-base font-semibold">Backgrounds</h3>
+        <h3 className="text-foreground text-sm font-semibold">Backgrounds</h3>
         <p className="text-muted-foreground text-sm">
           Set the default background folder for each posterframe template
         </p>

@@ -451,7 +451,7 @@ function calloutSubline(project: ProjectFolder, pendingCount: number | null): st
     return `${pendingCount} change${pendingCount !== 1 ? 's' : ''} will be written when you update, listed below`
   }
   if (project.invalidBreadcrumbs) {
-    return 'Repair rebuilds it from the folder and keeps a backup'
+    return 'Repair rebuilds it and keeps a backup'
   }
   if (!project.hasBreadcrumbs) {
     return 'This folder has no breadcrumbs.json yet'
@@ -488,7 +488,9 @@ const CalloutActions: React.FC<{
   onRepairProject,
   onUpdateProject
 }) => (
-  <>
+  // One group, so in a narrow panel the buttons drop below the text together
+  // and stay side by side.
+  <div className="flex flex-wrap items-center gap-2">
     {/* Preview is the secondary action; each state has exactly one primary:
         repair an unparseable file, otherwise review and write the update. */}
     {!preview && (
@@ -532,7 +534,7 @@ const CalloutActions: React.FC<{
         {project.hasBreadcrumbs ? 'Update this project' : 'Create breadcrumbs'}
       </Button>
     )}
-  </>
+  </div>
 )
 
 const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
@@ -633,7 +635,7 @@ const OverviewStats: React.FC<{
     },
     {
       icon: <HardDrive className="h-3 w-3" />,
-      label: 'Folder Size',
+      label: 'Folder size',
       value: sizeBytes ? formatFileSize(sizeBytes) : 'Unknown'
     }
   ]
@@ -642,7 +644,7 @@ const OverviewStats: React.FC<{
     stats.push(
       {
         icon: <User className="h-3 w-3" />,
-        label: 'Created By',
+        label: 'Created by',
         value: breadcrumbs.createdBy
       },
       {
@@ -656,14 +658,14 @@ const OverviewStats: React.FC<{
   if (breadcrumbs.lastModified) {
     stats.push({
       icon: <Calendar className="h-3 w-3" />,
-      label: 'Last Modified',
+      label: 'Last modified',
       value: formatDate(breadcrumbs.lastModified)
     })
   }
   if (breadcrumbs.scannedBy) {
     stats.push({
       icon: <Search className="h-3 w-3" />,
-      label: 'Scanned By',
+      label: 'Scanned by',
       value: breadcrumbs.scannedBy
     })
   }

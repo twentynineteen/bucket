@@ -40,7 +40,7 @@ export const BakerPreferences: React.FC<BakerPreferencesProps> = ({
           size="sm"
           aria-label="Settings"
           title="Baker settings"
-          className="text-muted-foreground flex-shrink-0 px-2"
+          className="flex-shrink-0 px-2"
         >
           <Settings className="h-4 w-4" />
         </Button>

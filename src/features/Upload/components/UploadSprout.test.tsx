@@ -201,12 +201,17 @@ describe('UploadSprout Page', () => {
       expect(container).toBeInTheDocument()
     })
 
-    it('should render the header section with proper styling', () => {
+    it('should open with the shared page header: the title as the only h1, then its description', () => {
       renderUploadSprout()
 
-      // Header should have standard template classes
-      const header = document.querySelector('.border-border.bg-card\\/50.border-b')
-      expect(header).toBeInTheDocument()
+      // PageHeader renders the page name as the page's only <h1>, with the
+      // one-line description directly under it in the same block.
+      const titles = screen.getAllByRole('heading', { level: 1 })
+      expect(titles).toHaveLength(1)
+      expect(titles[0]).toHaveTextContent('Upload to SproutVideo')
+      expect(titles[0].parentElement).toHaveTextContent(
+        'Upload video files directly to your SproutVideo account'
+      )
     })
 
     it('should render the main content section with standard padding', () => {

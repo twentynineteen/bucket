@@ -42,7 +42,7 @@ export const ProjectConfigurationStep: React.FC<ProjectConfigurationStepProps> =
           1
         </div>
         <div className="flex-1">
-          <h2 className="text-foreground text-sm font-semibold">Project Configuration</h2>
+          <h2 className="text-foreground text-sm font-semibold">Project configuration</h2>
           {!showSuccess && (
             <p className="text-muted-foreground mt-0.5 text-xs">
               Set project name, cameras, and destination folder

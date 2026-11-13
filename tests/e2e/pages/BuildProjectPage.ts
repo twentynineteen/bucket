@@ -57,7 +57,7 @@ export class BuildProjectPage {
     this.page = page
 
     // Page elements - using text content and roles for reliability
-    this.pageTitle = page.getByRole('heading', { name: 'Build a Project' })
+    this.pageTitle = page.getByRole('heading', { name: 'Build a project' })
     this.titleInput = page.getByPlaceholder(
       'e.g. DBA - IB1234 - J Doe - Introductions 060626'
     )
@@ -65,9 +65,9 @@ export class BuildProjectPage {
     this.folderSelector = page.getByRole('button', { name: /select destination/i })
 
     // Action buttons
-    this.selectFilesButton = page.getByRole('button', { name: 'Select Files' })
+    this.selectFilesButton = page.getByRole('button', { name: 'Select files' })
     this.clearAllButton = page.getByRole('button', { name: 'Clear' })
-    this.createProjectButton = page.getByRole('button', { name: 'Create Project' })
+    this.createProjectButton = page.getByRole('button', { name: 'Create project' })
 
     // Progress indicator - look for the percentage text
     this.progressContainer = page.locator('text=/\\d+\\.\\d+%/')
@@ -142,7 +142,7 @@ export class BuildProjectPage {
   }
 
   /**
-   * Click "Select Files" button
+   * Click "Select files" button
    * Note: In E2E tests, the file dialog is mocked
    */
   async clickSelectFiles(): Promise<void> {
@@ -168,7 +168,7 @@ export class BuildProjectPage {
   }
 
   /**
-   * Click "Create Project" button to start the operation
+   * Click "Create project" button to start the operation
    */
   async clickCreateProject(): Promise<void> {
     await this.createProjectButton.click()

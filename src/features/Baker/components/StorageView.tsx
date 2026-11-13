@@ -218,9 +218,9 @@ export const StorageView: React.FC<StorageViewProps> = ({
             const rect = treemapRects.find(r => r.key === entry.key)
             if (!rect || rect.width < 1 || rect.height < 1) return null
 
-            // A tile too small to hold its name shows none; the tooltip and
-            // the list below still identify it.
-            const showLabel = rect.width >= 110 && rect.height >= 40
+            // Small tiles keep a truncated name: a blank tile cannot be
+            // identified at all, and the tooltip carries the full name.
+            const showLabel = rect.width >= 60 && rect.height >= 32
             return (
               <button
                 key={entry.key}
@@ -245,10 +245,15 @@ export const StorageView: React.FC<StorageViewProps> = ({
               >
                 {showLabel && (
                   <span className="block text-xs font-medium">
-                    {/* Tall tiles give the name a second line before cutting it */}
+                    {/* The name gets as many lines as the tile's height leaves
+                        room for above the size, then is cut with an ellipsis. */}
                     <span
                       className={
-                        rect.height >= 64 ? 'line-clamp-2 leading-snug' : 'block truncate'
+                        rect.height >= 100
+                          ? 'line-clamp-3 leading-snug [overflow-wrap:anywhere]'
+                          : rect.height >= 70
+                            ? 'line-clamp-2 leading-snug [overflow-wrap:anywhere]'
+                            : 'block truncate'
                       }
                     >
                       {entry.label}
@@ -274,7 +279,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
               key={project.path}
               type="button"
               onClick={() => onProjectClick(project.path)}
-              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,17rem)_minmax(3rem,1fr)_4.5rem_3rem] items-center gap-4 border-b px-4 py-1.5 text-left transition-colors"
+              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,1fr)_minmax(4rem,14rem)_4.5rem_3rem] items-center gap-4 border-b px-4 py-1.5 text-left transition-colors"
             >
               <span className="flex min-w-0 items-center gap-2 text-sm">
                 <span

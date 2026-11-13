@@ -129,16 +129,16 @@ const BuildProject: React.FC = () => {
 
   return (
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
-      {/* Project Configuration & File Explorer */}
+      {/* Project configuration & File Explorer */}
       <div className="w-full max-w-full pb-4">
         {/* Header */}
         <PageHeader
-          title="Build a Project"
+          title="Build a project"
           description="Configure project settings, select footage files, and create organized folder structures"
         />
 
         <div className="max-w-full space-y-4 px-6 py-4">
-          {/* Step 1: Project Configuration */}
+          {/* Step 1: Project configuration */}
           <ProjectConfigurationStep
             showSuccess={showSuccess}
             title={title}

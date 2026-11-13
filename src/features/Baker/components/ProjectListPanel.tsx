@@ -151,7 +151,7 @@ const ProjectMetaLine: React.FC<ProjectMetaLineProps> = ({
 
       {/* In a narrow list the size sits here; a wide list gives it its own
           right-aligned column beside the name. */}
-      <span className="contents @[24rem]:hidden">
+      <span className="contents @[26rem]:hidden">
         <Separator />
         {typeof project.folderSizeBytes === 'number' ? (
           <span className="flex-shrink-0 tabular-nums">
@@ -231,11 +231,7 @@ const FilterChips: React.FC<{
   if (chips.length <= 1) return null
 
   return (
-    <div
-      className="-mx-3 flex gap-1 overflow-x-auto px-3 [scrollbar-width:none]"
-      role="group"
-      aria-label="Filter by state"
-    >
+    <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by state">
       {chips.map(chip => {
         const isActive = active === chip.key
         return (
@@ -244,14 +240,26 @@ const FilterChips: React.FC<{
             type="button"
             onClick={() => onChange(chip.key)}
             aria-pressed={isActive}
+            aria-label={`${chip.label} ${chip.count}`}
             className={cn(
-              'rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors',
+              'rounded-full border px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap transition-colors @[26rem]:px-2 @[26rem]:text-xs',
               isActive
                 ? 'border-primary/30 bg-primary/10 text-primary'
                 : 'border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground'
             )}
           >
-            {chip.label}{' '}
+            {chip.key === 'attention' ? (
+              // The long label only where the list is wide enough for all
+              // five chips on one row.
+              <>
+                <span className="hidden @[26rem]:inline">{chip.label}</span>
+                <span className="@[26rem]:hidden" aria-hidden="true">
+                  Attention
+                </span>
+              </>
+            ) : (
+              chip.label
+            )}{' '}
             <span className={isActive ? 'text-primary' : 'text-muted-foreground'}>
               {chip.count}
             </span>
@@ -400,11 +408,11 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
               {project.name}
             </p>
             {typeof project.folderSizeBytes === 'number' ? (
-              <span className="text-muted-foreground hidden flex-shrink-0 text-xs tabular-nums @[24rem]:inline">
+              <span className="text-muted-foreground hidden flex-shrink-0 text-xs tabular-nums @[26rem]:inline">
                 {formatFileSize(project.folderSizeBytes)}
               </span>
             ) : (
-              <span className="text-warning-text hidden flex-shrink-0 text-xs @[24rem]:inline">
+              <span className="text-warning-text hidden flex-shrink-0 text-xs @[26rem]:inline">
                 size n/a
               </span>
             )}

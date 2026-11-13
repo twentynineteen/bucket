@@ -49,7 +49,7 @@ describe('ProjectFileList', () => {
 
       expect(screen.getByText('No files selected yet')).toBeInTheDocument()
       expect(
-        screen.getByText('Click "Select Files" to add footage to your project')
+        screen.getByText('Click "Select files" to add footage to your project')
       ).toBeInTheDocument()
     })
 

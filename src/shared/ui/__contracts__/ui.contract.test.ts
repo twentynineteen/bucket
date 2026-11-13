@@ -179,6 +179,12 @@ describe('Layout sub-module (nested direct paths)', () => {
     expect(mod.default).toBeDefined() // ErrorBoundary is default export
     expect(mod.QueryErrorBoundary).toBeDefined()
   })
+
+  test('PageHeader exports PageHeader component', async () => {
+    const mod = await import('@shared/ui/layout/PageHeader')
+    expect(mod.PageHeader).toBeDefined()
+    expect(typeof mod.PageHeader).toBe('function')
+  })
 })
 
 describe('Formerly misplaced components (moved from utils)', () => {
