@@ -24,6 +24,7 @@ describe('BatchActions Component', () => {
   interface BarOptions {
     selected?: string[]
     needingUpdate?: number
+    toCreate?: number
     hiddenByFilter?: number
     isUpdating?: boolean
   }
@@ -31,6 +32,7 @@ describe('BatchActions Component', () => {
   const renderBar = ({
     selected = ['/path/to/project1'],
     needingUpdate = selected.length,
+    toCreate,
     hiddenByFilter,
     isUpdating = false
   }: BarOptions = {}) =>
@@ -38,6 +40,7 @@ describe('BatchActions Component', () => {
       <BatchActions
         selectedProjects={selected}
         needingUpdateCount={needingUpdate}
+        toCreateCount={toCreate}
         hiddenByFilterCount={hiddenByFilter}
         isUpdating={isUpdating}
         onClearSelection={mockOnClearSelection}
@@ -92,6 +95,21 @@ describe('BatchActions Component', () => {
       expect(
         screen.getByText('2 to update · 1 already current, skipped')
       ).toBeInTheDocument()
+    })
+
+    test('separates projects whose breadcrumbs will be created from those updated', () => {
+      renderBar({ selected: ['/a', '/b', '/c'], needingUpdate: 2, toCreate: 1 })
+
+      expect(
+        screen.getByText('1 to update · 1 to create · 1 already current, skipped')
+      ).toBeInTheDocument()
+    })
+
+    test('names only creation when every project needing work has no breadcrumbs', () => {
+      renderBar({ selected: ['/a', '/b'], needingUpdate: 2, toCreate: 2 })
+
+      expect(screen.getByText('2 to create')).toBeInTheDocument()
+      expect(screen.queryByText(/to update/)).not.toBeInTheDocument()
     })
 
     test('shows only the skipped count when every selected project is already current', () => {

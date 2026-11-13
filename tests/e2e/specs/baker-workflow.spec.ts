@@ -160,7 +160,9 @@ test.describe('Baker - breadcrumbs changes', () => {
     await page.getByRole('checkbox', { name: 'Select all shown projects' }).check()
 
     await expect(page.getByText('3 selected')).toBeVisible()
-    await expect(page.getByText('2 to update · 1 already current, skipped')).toBeVisible()
+    await expect(
+      page.getByText('1 to update · 1 to create · 1 already current, skipped')
+    ).toBeVisible()
 
     await page.getByRole('button', { name: 'Clear selection' }).click()
 
