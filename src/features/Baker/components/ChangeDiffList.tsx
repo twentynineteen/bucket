@@ -130,7 +130,7 @@ export const ChangeDiffList: React.FC<ChangeDiffListProps> = ({
             {sentenceCase(maintenanceFields.join(', '))}
           </span>
           <span className="text-muted-foreground flex-shrink-0 text-xs">
-            routine update
+            updated on every write
           </span>
         </div>
       )}

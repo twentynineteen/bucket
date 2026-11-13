@@ -28,7 +28,6 @@ import {
   FileAudio,
   FileVideo,
   FolderOpen,
-  HardDrive,
   Info,
   Loader2,
   RefreshCw,
@@ -202,11 +201,7 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
                 onRepairProject={onRepairProject}
                 onUpdateProject={onUpdateProject}
               />
-              <OverviewStats
-                breadcrumbs={breadcrumbs}
-                reconstructed={reconstructed}
-                scannedSizeBytes={project?.folderSizeBytes}
-              />
+              <OverviewStats breadcrumbs={breadcrumbs} reconstructed={reconstructed} />
               <FootageSummary files={breadcrumbs.files} />
               <LinkedResources
                 projectPath={projectPath}
@@ -295,7 +290,8 @@ const DetailHeaderPills: React.FC<{
   project: ProjectFolder
   parentPresent: boolean | undefined
   cameraCount: number | undefined
-}> = ({ project, parentPresent, cameraCount }) => (
+  sizeBytes: number | undefined
+}> = ({ project, parentPresent, cameraCount, sizeBytes }) => (
   <div className="flex flex-wrap items-center gap-1.5">
     {/* One status chip. Folder structure is only worth a chip when it is wrong. */}
     <BreadcrumbsStatusPill project={project} />
@@ -308,11 +304,15 @@ const DetailHeaderPills: React.FC<{
     {parentPresent === false && (
       <HeaderPill tone="warning">Location not found</HeaderPill>
     )}
-    {cameraCount !== undefined && (
-      <span className="text-muted-foreground text-xs">
-        {cameraCountLabel(cameraCount)}
-      </span>
-    )}
+    {/* The two facts every state has, on the status line: cameras and size */}
+    <span className="text-muted-foreground text-xs tabular-nums">
+      {[
+        cameraCount !== undefined ? cameraCountLabel(cameraCount) : null,
+        sizeBytes ? formatFileSize(sizeBytes) : null
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+    </span>
   </div>
 )
 
@@ -376,6 +376,9 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({
           project={project}
           parentPresent={parentPresent}
           cameraCount={cameraCount}
+          // The size the scan measured, as shown in the list row and storage
+          // map, falling back to the one recorded in the breadcrumbs.
+          sizeBytes={project.folderSizeBytes ?? breadcrumbs?.folderSizeBytes}
         />
       )}
     </div>
@@ -668,34 +671,24 @@ function formatOverviewDate(value: string): string {
 const OverviewStats: React.FC<{
   breadcrumbs: BreadcrumbsFile
   reconstructed?: boolean
-  /** Size measured by the scan; used when the breadcrumbs record none. */
-  scannedSizeBytes?: number
-}> = ({ breadcrumbs, reconstructed = false, scannedSizeBytes }) => {
-  // The list row and the storage map show the scanned size. Fall back to it
-  // here so one project never shows a size in one place and "Unknown" in another.
-  const sizeBytes = breadcrumbs.folderSizeBytes || scannedSizeBytes
+}> = ({ breadcrumbs, reconstructed = false }) => {
   const formatDate = formatOverviewDate
 
-  const stats: Array<{ icon: React.ReactNode; label: string; value: string }> = [
-    // No camera count here: the header states it and Footage lists each one.
-    {
-      icon: <HardDrive className="h-3 w-3" />,
-      label: 'Folder size',
-      value: sizeBytes ? formatFileSize(sizeBytes) : 'Unknown'
-    }
-  ]
+  // Who and when, in pairs: created / created by, last modified / scanned by.
+  // Camera count and folder size are in the header, beside the status.
+  const stats: Array<{ icon: React.ReactNode; label: string; value: string }> = []
 
   if (!reconstructed) {
     stats.push(
       {
-        icon: <User className="h-3 w-3" />,
-        label: 'Created by',
-        value: breadcrumbs.createdBy
-      },
-      {
         icon: <Calendar className="h-3 w-3" />,
         label: 'Created',
         value: formatDate(breadcrumbs.creationDateTime)
+      },
+      {
+        icon: <User className="h-3 w-3" />,
+        label: 'Created by',
+        value: breadcrumbs.createdBy
       }
     )
   }
@@ -715,11 +708,13 @@ const OverviewStats: React.FC<{
     })
   }
 
+  if (stats.length === 0) return null
+
   return (
-    // Columns follow the panel's own width, not the window's: three when there
-    // is room for a date on one line, otherwise two.
+    // Columns follow the panel's own width, not the window's: the four fields
+    // sit in one row when there is room, otherwise as two pairs.
     <div className="@container">
-      <dl className="grid grid-cols-2 gap-x-8 gap-y-3 @xl:grid-cols-3">
+      <dl className="grid grid-cols-2 gap-x-8 gap-y-3 @2xl:grid-cols-4">
         {stats.map(stat => (
           <div key={stat.label} className="min-w-0">
             <dt className="text-muted-foreground mb-0.5 flex items-center gap-1.5 text-xs">

@@ -30,6 +30,7 @@ import {
   STATUS_PRESENTATION,
   type BreadcrumbsStatus
 } from '../internal/projectStatus'
+import { fitTileName } from '../internal/tileLabel'
 import { computeTreemapLayout } from '../internal/treemapLayout'
 import type { ProjectFolder } from '../types'
 
@@ -41,13 +42,42 @@ const MAX_TREEMAP_TILES = 24
 // the map answers "where is the space, and is it accounted for" at once.
 const LEGEND_ORDER: BreadcrumbsStatus[] = ['current', 'stale', 'missing', 'unparseable']
 
+// A healthy project below this share of the total is too small to label as
+// its own tile; two or more of them are drawn as one "smaller projects" tile.
+// Projects that need attention always keep a tile of their own.
+const SMALL_SHARE = 0.025
+
+// Tiles narrower than this use tighter padding, leaving more room for text.
+const NARROW_TILE = 100
+
+let labelContext: CanvasRenderingContext2D | null | undefined
+
+/**
+ * Width of tile text as the browser will draw it (12px, in the page's font).
+ * Where there is no canvas (tests) it falls back to an average glyph width.
+ */
+function measureText(text: string, weight: 400 | 500): number {
+  if (labelContext === undefined) {
+    labelContext =
+      typeof document === 'undefined'
+        ? null
+        : document.createElement('canvas').getContext('2d')
+  }
+  if (!labelContext) return text.length * 6.8
+  labelContext.font = `${weight} 12px ${getComputedStyle(document.body).fontFamily}`
+  return labelContext.measureText(text).width
+}
+
+const measureLabel = (text: string) => measureText(text, 500)
+// Sizes are set in tabular figures, which run a little wider than measured.
+const measureSize = (text: string) => measureText(text, 400) * 1.1
+
 /**
  * Text inside a treemap tile, anchored top-left.
  *
- * A tile wide enough for words shows the name over the size, wrapping at word
- * boundaries onto as many lines as its height allows. A tile too narrow for words shows
- * the size alone, which always fits, so no name is cut mid-word and no
- * labelled tile is left blank.
+ * The name sits over the size and is fitted by `fitTileName`: whole words,
+ * an ellipsis after a complete word when it runs out of room, and a cut
+ * inside a word only as the last resort for naming a narrow tile.
  */
 const TileLabel: React.FC<{
   name: string
@@ -55,14 +85,17 @@ const TileLabel: React.FC<{
   width: number
   height: number
 }> = ({ name, size, width, height }) => {
-  // Room inside the tile: lines of name above the size line, and characters
-  // per line at the 12px label size (6.8px is a safe average glyph width).
-  const maxLines = Math.min(Math.floor((height - 12 - 16) / 17), 4)
-  const charsPerLine = Math.floor((width - 20) / 6.8)
-  const lines = wrapWholeWords(name, charsPerLine, maxLines)
+  // Room inside the tile after its border and padding: the text width, and
+  // how many 17px name lines fit above the 16px size line.
+  const textWidth = width - 4 - (width < NARROW_TILE ? 8 : 16)
+  // The size is dropped before the name is: a tile too narrow for "71.5 GB"
+  // can still say which project it is, and the list below gives the size.
+  const showSize = measureSize(size) <= textWidth
+  const sizeHeight = showSize ? 16 : 0
+  const maxLines = Math.min(Math.floor((height - 12 - sizeHeight) / 17), 3)
+  const lines = fitTileName(name, textWidth, maxLines, measureLabel)
 
-  // Too narrow even for the size: leave the tile to its tooltip.
-  if (size.length > charsPerLine) return null
+  if (!showSize && lines.length === 0) return null
 
   return (
     <span className="block min-w-0 text-xs">
@@ -71,54 +104,13 @@ const TileLabel: React.FC<{
           {line}
         </span>
       ))}
-      <span className="text-muted-foreground block tabular-nums">{size}</span>
+      {showSize && (
+        <span className="text-muted-foreground block whitespace-nowrap tabular-nums">
+          {size}
+        </span>
+      )}
     </span>
   )
-}
-
-/**
- * Break a name into at most `maxLines` lines of whole words. If it does not
- * all fit, the last line ends with an ellipsis after a complete word. Returns
- * no lines when even one word cannot fit, so a name is never cut mid-word.
- */
-function wrapWholeWords(name: string, charsPerLine: number, maxLines: number): string[] {
-  // A lone dash stays attached to the word before it ("Interview -"), so no
-  // line ever starts with one.
-  const words = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .reduce<string[]>((acc, word) => {
-      if (/^[-–]$/.test(word) && acc.length > 0) acc[acc.length - 1] += ` ${word}`
-      else acc.push(word)
-      return acc
-    }, [])
-  if (maxLines < 1 || words.some(word => word.length > charsPerLine)) return []
-
-  const lines: string[] = []
-  let rest = words
-  while (rest.length > 0 && lines.length < maxLines) {
-    let line = rest[0]
-    let used = 1
-    while (used < rest.length && `${line} ${rest[used]}`.length <= charsPerLine) {
-      line = `${line} ${rest[used]}`
-      used += 1
-    }
-    lines.push(line)
-    rest = rest.slice(used)
-  }
-  if (rest.length === 0) return lines
-
-  // Out of lines with words left over: end the last line on a whole word,
-  // dropping words until the ellipsis fits and no dangling dash is left.
-  let last = lines[lines.length - 1].split(' ')
-  while (
-    last.length > 1 &&
-    (`${last.join(' ')}…`.length > charsPerLine || /^[-–]$/.test(last[last.length - 1]))
-  ) {
-    last = last.slice(0, -1)
-  }
-  lines[lines.length - 1] = `${last.join(' ').replace(/\s[-–]$/, '')}…`
-  return lines
 }
 
 interface StorageViewProps {
@@ -132,8 +124,18 @@ interface TreemapEntry {
   label: string
   sizeBytes: number
   isAggregate: boolean
+  /** Names of the projects an aggregate tile stands for, for its tooltip. */
+  members?: string[]
   /** Null for the aggregate tile, which mixes projects in different states. */
   status: BreadcrumbsStatus | null
+}
+
+/** Full name, size and state; for a grouped tile, the projects it stands for. */
+function tileTooltip(entry: TreemapEntry): string {
+  const size = formatFileSize(entry.sizeBytes)
+  if (entry.members) return `${entry.label}, ${size}: ${entry.members.join(', ')}`
+  const state = entry.status ? `, ${STATUS_PRESENTATION[entry.status].label}` : ''
+  return `${entry.label}: ${size}${state}`
 }
 
 export const StorageView: React.FC<StorageViewProps> = ({
@@ -191,9 +193,24 @@ export const StorageView: React.FC<StorageViewProps> = ({
   )
 
   const treemapEntries = useMemo<TreemapEntry[]>(() => {
-    const top = sizedProjects.slice(0, MAX_TREEMAP_TILES)
-    const rest = sizedProjects.slice(MAX_TREEMAP_TILES)
-    const entries: TreemapEntry[] = top.map(p => ({
+    // Grouped into one tile: everything past the tile limit, and healthy
+    // projects too small to label. A project that needs attention is never
+    // grouped while it is within the tile limit.
+    const isSmallAndHealthy = (p: ProjectFolder) =>
+      breadcrumbsStatus(p) === 'current' &&
+      totalSizedBytes > 0 &&
+      (p.folderSizeBytes ?? 0) / totalSizedBytes < SMALL_SHARE
+
+    const withinLimit = sizedProjects.slice(0, MAX_TREEMAP_TILES)
+    const small = withinLimit.filter(isSmallAndHealthy)
+    // One small project gains nothing from being renamed "1 smaller project".
+    const grouped =
+      small.length >= 2
+        ? [...small, ...sizedProjects.slice(MAX_TREEMAP_TILES)]
+        : sizedProjects.slice(MAX_TREEMAP_TILES)
+    const own = withinLimit.filter(p => !grouped.includes(p))
+
+    const entries: TreemapEntry[] = own.map(p => ({
       key: p.path,
       label: p.name,
       sizeBytes: p.folderSizeBytes ?? 0,
@@ -201,17 +218,18 @@ export const StorageView: React.FC<StorageViewProps> = ({
       status: breadcrumbsStatus(p)
     }))
 
-    if (rest.length > 0) {
+    if (grouped.length > 0) {
       entries.push({
         key: '__other__',
-        label: `Other projects (${rest.length})`,
-        sizeBytes: rest.reduce((acc, p) => acc + (p.folderSizeBytes ?? 0), 0),
+        label: `${grouped.length} smaller project${grouped.length !== 1 ? 's' : ''}`,
+        sizeBytes: grouped.reduce((acc, p) => acc + (p.folderSizeBytes ?? 0), 0),
         isAggregate: true,
-        status: null
+        status: null,
+        members: grouped.map(p => p.name)
       })
     }
     return entries
-  }, [sizedProjects])
+  }, [sizedProjects, totalSizedBytes])
 
   const treemapRects = useMemo(
     () =>
@@ -305,14 +323,12 @@ export const StorageView: React.FC<StorageViewProps> = ({
               <button
                 key={entry.key}
                 type="button"
-                title={`${entry.label}: ${formatFileSize(entry.sizeBytes)}${
-                  entry.status ? `, ${STATUS_PRESENTATION[entry.status].label}` : ''
-                }`}
+                title={tileTooltip(entry)}
                 onClick={() => {
                   if (!entry.isAggregate) onProjectClick(entry.key)
                 }}
                 className={`absolute flex items-start overflow-hidden rounded-md border-2 text-left transition-colors ${
-                  rect.width < 72 ? 'px-1 py-1' : 'px-2 py-1.5'
+                  rect.width < NARROW_TILE ? 'px-1 py-1' : 'px-2 py-1.5'
                 } ${
                   entry.status
                     ? STATUS_PRESENTATION[entry.status].tile

@@ -14,11 +14,11 @@ export function ThemeToggle() {
       <SidebarMenuItem>
         <SidebarMenuButton
           onClick={() => navigate('/settings/general')}
-          tooltip="Customize theme in Settings"
+          tooltip="Customise theme in Settings"
           className="text-muted-foreground text-xs"
         >
           <Palette className="h-4 w-4" />
-          <span>Customize</span>
+          <span>Customise</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>

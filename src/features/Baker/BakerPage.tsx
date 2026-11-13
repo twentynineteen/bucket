@@ -380,7 +380,7 @@ const BakerPageContent: React.FC = () => {
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* One toolbar row: page title, scan folder and actions, preferences.
           The title and the toolbar used to be two stacked bands. */}
-      <PageHeader title="Baker" className="px-4 py-2">
+      <PageHeader title="Baker" className="py-2">
         <FolderSelector
           selectedFolder={selectedFolder}
           onFolderChange={setSelectedFolder}
@@ -401,7 +401,7 @@ const BakerPageContent: React.FC = () => {
 
       {/* Scan error, preview progress and the last update's result. The band
           takes no space while it has nothing to show. */}
-      <div className="border-border flex-shrink-0 space-y-2 border-b px-4 py-2 empty:hidden">
+      <div className="border-border flex-shrink-0 space-y-2 border-b px-6 py-2 empty:hidden">
         {/* Inline Error Display */}
         {error && <ScanError error={error} onRetry={handleStartScan} />}
 
@@ -421,7 +421,7 @@ const BakerPageContent: React.FC = () => {
       {/* Workspace: project list + detail panel fill the remaining height */}
       {scanResult?.projects ? (
         <>
-          <div className="border-border flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-1.5">
+          <div className="border-border flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b px-6 py-1.5">
             <ViewSwitch viewMode={viewMode} onChange={setViewMode} />
             {/* Live progress while a scan runs, the one-line summary after. */}
             <ScanResults

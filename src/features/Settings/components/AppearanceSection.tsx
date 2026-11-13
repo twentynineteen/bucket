@@ -21,7 +21,7 @@ const AppearanceSection: React.FC = () => {
       <div className="border-b pb-2">
         <h3 className="text-foreground text-sm font-semibold">Appearance</h3>
         <p className="text-muted-foreground text-sm">
-          Customize the visual theme and color scheme
+          Customise the visual theme and colour scheme
         </p>
       </div>
       <Accordion type="single" collapsible defaultValue="theme">

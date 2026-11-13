@@ -48,7 +48,7 @@ export const BakerPreferences: React.FC<BakerPreferencesProps> = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Baker Preferences</DialogTitle>
-          <DialogDescription>Configure scanning and update behavior</DialogDescription>
+          <DialogDescription>Configure scanning and update behaviour</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <label className="flex items-center justify-between">

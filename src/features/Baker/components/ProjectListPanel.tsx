@@ -178,7 +178,7 @@ const ProjectMetaLine: React.FC<ProjectMetaLineProps> = ({
             e.stopPropagation()
             onRepairProject(project.path)
           }}
-          className="text-destructive ml-auto flex-shrink-0 text-xs font-medium underline-offset-2 hover:underline"
+          className="text-foreground ml-auto flex-shrink-0 text-xs font-medium underline underline-offset-2 hover:no-underline"
         >
           Repair
         </button>

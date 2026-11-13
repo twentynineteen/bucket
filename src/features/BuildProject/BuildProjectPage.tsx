@@ -134,7 +134,7 @@ const BuildProject: React.FC = () => {
         {/* Header */}
         <PageHeader
           title="Build a project"
-          description="Configure project settings, select footage files, and create organized folder structures"
+          description="Configure project settings, select footage files, and create organised folder structures"
         />
 
         <div className="max-w-full space-y-4 px-6 py-4">
