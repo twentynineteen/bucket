@@ -192,7 +192,9 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
               />
               <OverviewStats
                 breadcrumbs={breadcrumbs}
-                reconstructed={project?.invalidBreadcrumbs ?? false}
+                reconstructed={
+                  project ? project.invalidBreadcrumbs || !project.hasBreadcrumbs : false
+                }
                 scannedSizeBytes={project?.folderSizeBytes}
               />
               <FootageSummary files={breadcrumbs.files} />
@@ -373,7 +375,10 @@ const BreadcrumbsStatusPill: React.FC<{ project: ProjectFolder }> = ({ project }
   // Same four words as the list rows, filter chips and storage legend.
   const status = breadcrumbsStatus(project)
   return (
-    <HeaderPill tone={STATUS_PILL_TONE[status]}>
+    <HeaderPill
+      tone={STATUS_PILL_TONE[status]}
+      marker={STATUS_PRESENTATION[status].marker}
+    >
       {STATUS_PRESENTATION[status].label}
     </HeaderPill>
   )
@@ -382,31 +387,42 @@ const BreadcrumbsStatusPill: React.FC<{ project: ProjectFolder }> = ({ project }
 const STATUS_PILL_TONE = {
   current: 'success',
   stale: 'warning',
-  missing: 'muted',
+  missing: 'info',
   unparseable: 'destructive'
 } as const
 
 const HEADER_PILL_TONES = {
   success: 'bg-success/20 text-success',
-  warning: 'bg-warning/20 text-warning',
+  warning: 'bg-warning/20 text-warning-text',
+  info: 'bg-info/15 text-info-text',
   destructive: 'bg-destructive/20 text-destructive',
   muted: 'bg-muted text-muted-foreground'
 } as const
 
 const HeaderPill: React.FC<{
   tone: keyof typeof HEADER_PILL_TONES
+  /** Marker classes; defaults to a solid dot in the pill's text colour. */
+  marker?: string
   children: React.ReactNode
-}> = ({ tone, children }) => (
+}> = ({ tone, marker = 'bg-current', children }) => (
   <span
     className={cn(
       'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
       HEADER_PILL_TONES[tone]
     )}
   >
-    <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />
+    <span className={cn('h-2 w-2 flex-shrink-0 rounded-full', marker)} />
     {children}
   </span>
 )
+
+/** Banner colours per state, matching the status chip above it. */
+const CALLOUT_TONE = {
+  current: { box: 'border-border bg-muted/30', text: 'text-foreground' },
+  stale: { box: 'border-warning/30 bg-warning/5', text: 'text-warning-text' },
+  missing: { box: 'border-info/30 bg-info/5', text: 'text-info-text' },
+  unparseable: { box: 'border-destructive/20 bg-destructive/5', text: 'text-destructive' }
+} as const
 
 const CountPill: React.FC<{ count: number }> = ({ count }) => (
   <span className="bg-muted-foreground/15 ml-1.5 rounded-full px-1.5 py-px text-[10px] font-semibold">
@@ -435,12 +451,12 @@ function calloutSubline(project: ProjectFolder, pendingCount: number | null): st
     return `${pendingCount} change${pendingCount !== 1 ? 's' : ''} will be written when you update, listed below`
   }
   if (project.invalidBreadcrumbs) {
-    return 'Repair rebuilds it from the folder contents and keeps the old file as a backup'
+    return 'Repair rebuilds it from the folder and keeps a backup'
   }
   if (!project.hasBreadcrumbs) {
-    return 'Creating one records the footage, cameras and size found in this folder'
+    return 'This folder has no breadcrumbs.json yet'
   }
-  return 'The folder contents have changed since the breadcrumbs were last written'
+  return 'Folder contents changed since the last update'
 }
 
 function calloutNote(
@@ -533,7 +549,7 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
     project.invalidBreadcrumbs || !project.hasBreadcrumbs || project.staleBreadcrumbs
   if (!needsAttention) return null
 
-  const isDestructive = project.invalidBreadcrumbs
+  const tone = CALLOUT_TONE[breadcrumbsStatus(project)]
   const changes = preview ? buildProjectChangeRows(preview) : null
 
   const headline = calloutHeadline(project)
@@ -544,27 +560,13 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
     <div className="space-y-2">
       <div
         className={cn(
-          'flex items-center gap-3 rounded-lg border p-3',
-          isDestructive
-            ? 'border-destructive/20 bg-destructive/5'
-            : 'border-warning/20 bg-warning/5'
+          'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border p-3',
+          tone.box
         )}
       >
-        <AlertTriangle
-          className={cn(
-            'h-4 w-4 flex-shrink-0',
-            isDestructive ? 'text-destructive' : 'text-warning'
-          )}
-        />
-        <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              'text-sm font-semibold',
-              isDestructive ? 'text-destructive' : 'text-warning'
-            )}
-          >
-            {headline}
-          </p>
+        <AlertTriangle className={cn('h-4 w-4 flex-shrink-0', tone.text)} />
+        <div className="min-w-48 flex-1">
+          <p className={cn('text-sm font-semibold', tone.text)}>{headline}</p>
           <p className="text-muted-foreground text-xs">{subline}</p>
         </div>
         <CalloutActions
@@ -719,6 +721,17 @@ const FootageSummary: React.FC<{ files?: FileInfo[] }> = ({ files }) => {
   )
 }
 
+/**
+ * A video title without the project's own name in front of it. Renders are
+ * usually named "<project> - Final v3"; inside the project's panel only
+ * "Final v3" tells the videos apart.
+ */
+function withoutProjectPrefix(title: string, projectTitle: string): string {
+  if (!projectTitle || !title.startsWith(projectTitle)) return title
+  const rest = title.slice(projectTitle.length).replace(/^[\s\-–:·]+/, '')
+  return rest || title
+}
+
 interface LinkedResourcesProps {
   projectPath: string
   breadcrumbs: BreadcrumbsFile
@@ -811,7 +824,7 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
               key={video.url}
               icon={<Video className="h-4 w-4" />}
               iconClass="bg-muted text-muted-foreground"
-              title={video.title}
+              title={withoutProjectPrefix(video.title, breadcrumbs.projectTitle)}
               subtitle={`Sprout Video${
                 video.uploadDate
                   ? ` · uploaded ${formatOverviewDate(video.uploadDate)}`
@@ -823,13 +836,13 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
 
           {showLegacy && legacyUrl && (
             <div className="border-warning/30 flex items-center gap-3 rounded-lg border border-dashed p-3">
-              <div className="bg-warning/15 text-warning flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">
+              <div className="bg-warning/15 text-warning-text flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">
                 <CreditCard className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
                   Legacy Trello card
-                  <span className="bg-warning/20 text-warning rounded-full px-2 py-0.5 text-xs font-medium">
+                  <span className="bg-warning/20 text-warning-text rounded-full px-2 py-0.5 text-xs font-medium">
                     Legacy
                   </span>
                 </p>
@@ -1102,7 +1115,7 @@ const FilesTab: React.FC<{ files?: FileInfo[] }> = ({ files }) => {
                         <AlertTriangle
                           role="img"
                           aria-label="Not found on this machine"
-                          className="text-warning h-4 w-4 flex-shrink-0"
+                          className="text-warning-text h-4 w-4 flex-shrink-0"
                         />
                       )}
                     </div>

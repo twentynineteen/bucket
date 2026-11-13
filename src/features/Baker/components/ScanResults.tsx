@@ -62,14 +62,14 @@ const AttentionCount: React.FC<{ count: number; onShow?: () => void }> = ({
 }) => {
   const text = `${count} ${count === 1 ? 'needs' : 'need'} attention`
   if (!onShow) {
-    return <span className="text-warning font-medium whitespace-nowrap">{text}</span>
+    return <span className="text-warning-text font-medium whitespace-nowrap">{text}</span>
   }
   return (
     <button
       type="button"
       onClick={onShow}
       title="Show only the projects that need attention"
-      className="text-warning font-medium whitespace-nowrap underline decoration-dotted underline-offset-2 hover:decoration-solid"
+      className="text-warning-text font-medium whitespace-nowrap underline decoration-dotted underline-offset-2 hover:decoration-solid"
     >
       {text}
     </button>

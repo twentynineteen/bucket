@@ -26,16 +26,11 @@ interface BatchActionsProps {
 }
 
 /** What will happen to the ticked projects, in the order it matters. */
-function selectionBreakdown(
-  selected: number,
-  needingUpdate: number,
-  hiddenByFilter: number
-): string {
+function selectionBreakdown(selected: number, needingUpdate: number): string {
   const current = selected - needingUpdate
   const parts: string[] = []
   if (needingUpdate > 0) parts.push(`${needingUpdate} to update`)
   if (current > 0) parts.push(`${current} already current, skipped`)
-  if (hiddenByFilter > 0) parts.push(`${hiddenByFilter} hidden by filter`)
   return parts.join(' · ')
 }
 
@@ -56,6 +51,12 @@ export const BatchActions: React.FC<BatchActionsProps> = ({
         <div className="flex items-baseline justify-between gap-2">
           <p className="text-foreground font-semibold">
             {selectedProjects.length} selected
+            {hiddenByFilterCount > 0 && (
+              <span className="text-muted-foreground font-normal">
+                {' '}
+                ({hiddenByFilterCount} hidden by filter)
+              </span>
+            )}
           </p>
           <button
             type="button"
@@ -66,11 +67,7 @@ export const BatchActions: React.FC<BatchActionsProps> = ({
           </button>
         </div>
         <p className="text-muted-foreground">
-          {selectionBreakdown(
-            selectedProjects.length,
-            needingUpdateCount,
-            hiddenByFilterCount
-          )}
+          {selectionBreakdown(selectedProjects.length, needingUpdateCount)}
         </p>
       </div>
       <Button

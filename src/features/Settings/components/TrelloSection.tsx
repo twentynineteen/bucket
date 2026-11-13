@@ -97,7 +97,7 @@ const TrelloSection: React.FC<TrelloSectionProps> = ({
       className="border-border space-y-4 rounded-lg border p-6 scroll-mt-16"
     >
       <div className="border-b pb-2">
-        <h3 className="text-foreground text-lg font-semibold">Trello</h3>
+        <h3 className="text-foreground text-base font-semibold">Trello</h3>
         <p className="text-muted-foreground text-sm">
           Configure Trello API integration for project management
         </p>

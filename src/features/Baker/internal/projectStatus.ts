@@ -46,15 +46,15 @@ export const STATUS_PRESENTATION: Record<BreadcrumbsStatus, StatusPresentation> 
   },
   stale: {
     label: 'Stale',
-    text: 'text-warning',
+    text: 'text-warning-text',
     marker: 'bg-warning',
     tile: 'border-background bg-warning/25 hover:bg-warning/35 text-foreground'
   },
   missing: {
     label: 'Missing',
-    text: 'text-warning',
-    marker: 'border-warning border-[1.5px] bg-transparent',
-    tile: 'border-warning/70 bg-warning/5 hover:bg-warning/15 text-foreground border-dashed'
+    text: 'text-info-text',
+    marker: 'border-info border-[1.5px] bg-transparent',
+    tile: 'border-info/70 bg-info/10 hover:bg-info/20 text-foreground border-dashed'
   },
   unparseable: {
     label: 'Unparseable',

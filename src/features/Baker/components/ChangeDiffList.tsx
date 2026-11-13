@@ -21,7 +21,7 @@ const SIGN_BY_TYPE: Record<ChangeRowType, string> = {
 
 const SIGN_CLASS_BY_TYPE: Record<ChangeRowType, string> = {
   added: 'text-success',
-  modified: 'text-warning',
+  modified: 'text-warning-text',
   removed: 'text-destructive'
 }
 
@@ -129,7 +129,7 @@ interface ChangeCountsProps {
 export const ChangeCounts: React.FC<ChangeCountsProps> = ({ counts }) => (
   <span className="inline-flex items-center gap-2 font-mono text-xs font-semibold">
     {counts.added > 0 && <span className="text-success">+{counts.added}</span>}
-    {counts.modified > 0 && <span className="text-warning">~{counts.modified}</span>}
+    {counts.modified > 0 && <span className="text-warning-text">~{counts.modified}</span>}
     {counts.removed > 0 && <span className="text-destructive">−{counts.removed}</span>}
   </span>
 )

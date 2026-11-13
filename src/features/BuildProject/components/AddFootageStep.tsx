@@ -61,7 +61,9 @@ export const AddFootageStep: React.FC<AddFootageStepProps> = ({
             <Button
               onClick={onSelectFiles}
               size="sm"
-              className="gap-1.5 shadow-sm hover:shadow"
+              // Outline: the one filled button on this page is Create Project.
+              variant="outline"
+              className="gap-1.5"
             >
               <Upload className="h-3.5 w-3.5" />
               Select Files

@@ -39,7 +39,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   >
     {icon}
     <div className={cn('min-w-0', children ? 'flex-shrink-0' : 'flex-1')}>
-      <h1 className="text-foreground text-base leading-tight font-semibold">{title}</h1>
+      <h1 className="text-foreground text-lg leading-tight font-semibold">{title}</h1>
       {description && (
         <p className="text-muted-foreground mt-0.5 text-xs text-pretty">{description}</p>
       )}

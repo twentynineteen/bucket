@@ -99,7 +99,12 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
       )}
 
       {hasResults && (
-        <Button onClick={onClearResults} variant="outline" size="sm" className="gap-1.5">
+        <Button
+          onClick={onClearResults}
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground gap-1.5"
+        >
           Clear results
         </Button>
       )}

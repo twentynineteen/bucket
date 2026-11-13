@@ -45,7 +45,7 @@ const cn = (...classes: (string | undefined | null | boolean)[]) => {
 
 export type ProjectStatusFilter =
   'all' | 'attention' | 'stale' | 'missing' | 'unparseable' | 'structure'
-type SortOrder = 'scan' | 'size'
+type SortOrder = 'scan' | 'status' | 'size'
 
 const FILTERS: ReadonlyArray<{
   key: ProjectStatusFilter
@@ -53,7 +53,7 @@ const FILTERS: ReadonlyArray<{
   matches: (project: ProjectFolder) => boolean
 }> = [
   { key: 'all', label: 'All', matches: () => true },
-  { key: 'attention', label: 'Attention', matches: needsAttention },
+  { key: 'attention', label: 'Needs attention', matches: needsAttention },
   { key: 'stale', label: 'Stale', matches: p => breadcrumbsStatus(p) === 'stale' },
   { key: 'missing', label: 'Missing', matches: p => breadcrumbsStatus(p) === 'missing' },
   {
@@ -87,6 +87,26 @@ function locationBelowRoot(projectPath: string, rootPath?: string): string | nul
     return parent.slice(root.length + 1)
   }
   return parent || null
+}
+
+/**
+ * Largest first; projects with unknown size sink to the bottom rather than
+ * masquerading as 0 bytes.
+ */
+function bySizeDescending(a: ProjectFolder, b: ProjectFolder): number {
+  const aSize = a.folderSizeBytes
+  const bSize = b.folderSizeBytes
+  if (aSize === undefined && bSize === undefined) return 0
+  if (aSize === undefined) return 1
+  if (bSize === undefined) return -1
+  return bSize - aSize
+}
+
+const STATUS_SEVERITY = { unparseable: 0, missing: 1, stale: 2, current: 3 } as const
+
+/** Projects that need work first: unparseable, then missing, stale, current. */
+function byStatusSeverity(a: ProjectFolder, b: ProjectFolder): number {
+  return STATUS_SEVERITY[breadcrumbsStatus(a)] - STATUS_SEVERITY[breadcrumbsStatus(b)]
 }
 
 /** Ticked when every shown row is ticked, a dash when only some are. */
@@ -129,6 +149,19 @@ const ProjectMetaLine: React.FC<ProjectMetaLineProps> = ({
       <Separator />
       <span className="flex-shrink-0">{cameraLabel(project.cameraCount)}</span>
 
+      {/* In a narrow list the size sits here; a wide list gives it its own
+          right-aligned column beside the name. */}
+      <span className="contents @[24rem]:hidden">
+        <Separator />
+        {typeof project.folderSizeBytes === 'number' ? (
+          <span className="flex-shrink-0 tabular-nums">
+            {formatFileSize(project.folderSizeBytes)}
+          </span>
+        ) : (
+          <span className="text-warning-text flex-shrink-0">size n/a</span>
+        )}
+      </span>
+
       {location && (
         <>
           <Separator />
@@ -156,6 +189,7 @@ const ProjectMetaLine: React.FC<ProjectMetaLineProps> = ({
 
 const SORT_OPTIONS: ReadonlyArray<{ key: SortOrder; label: string }> = [
   { key: 'scan', label: 'Scan order' },
+  { key: 'status', label: 'Status' },
   { key: 'size', label: 'Size' }
 ]
 
@@ -197,7 +231,11 @@ const FilterChips: React.FC<{
   if (chips.length <= 1) return null
 
   return (
-    <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by state">
+    <div
+      className="-mx-3 flex gap-1 overflow-x-auto px-3 [scrollbar-width:none]"
+      role="group"
+      aria-label="Filter by state"
+    >
       {chips.map(chip => {
         const isActive = active === chip.key
         return (
@@ -293,19 +331,9 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
           project.path.toLowerCase().includes(normalized))
     )
 
-    if (sortOrder === 'size') {
-      // Largest first; projects with unknown size sink to the bottom rather
-      // than masquerading as 0 bytes.
-      return [...filtered].sort((a, b) => {
-        const aSize = a.folderSizeBytes
-        const bSize = b.folderSizeBytes
-        if (aSize === undefined && bSize === undefined) return 0
-        if (aSize === undefined) return 1
-        if (bSize === undefined) return -1
-        return bSize - aSize
-      })
-    }
-
+    if (sortOrder === 'size') return [...filtered].sort(bySizeDescending)
+    // Array.prototype.sort is stable, so scan order is kept within each state.
+    if (sortOrder === 'status') return [...filtered].sort(byStatusSeverity)
     return filtered
   }, [projects, statusFilter, sortOrder, query])
 
@@ -372,11 +400,13 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
               {project.name}
             </p>
             {typeof project.folderSizeBytes === 'number' ? (
-              <span className="text-muted-foreground flex-shrink-0 text-xs tabular-nums">
+              <span className="text-muted-foreground hidden flex-shrink-0 text-xs tabular-nums @[24rem]:inline">
                 {formatFileSize(project.folderSizeBytes)}
               </span>
             ) : (
-              <span className="text-warning flex-shrink-0 text-xs">size n/a</span>
+              <span className="text-warning-text hidden flex-shrink-0 text-xs @[24rem]:inline">
+                size n/a
+              </span>
             )}
           </div>
 
@@ -433,7 +463,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="@container flex h-full flex-col">
       <div className="border-border space-y-2 border-b p-3">
         <div className="flex items-center gap-2.5">
           {onSelectMany && (

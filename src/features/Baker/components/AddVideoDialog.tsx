@@ -320,7 +320,7 @@ function UrlEntryContent({
           </Button>
         </div>
         {!urlMode.hasApiKey && form.formData.url && (
-          <p className="text-warning text-xs">
+          <p className="text-warning-text text-xs">
             Sprout Video API key not configured. Go to Settings to add it.
           </p>
         )}
@@ -419,7 +419,9 @@ function PosterFrameContent({
             Create branded poster frame
           </Label>
           {posterFrame.unavailableReason ? (
-            <p className="text-warning mt-1 text-xs">{posterFrame.unavailableReason}</p>
+            <p className="text-warning-text mt-1 text-xs">
+              {posterFrame.unavailableReason}
+            </p>
           ) : (
             <p className="text-muted-foreground mt-1 text-xs">
               Sets a branded thumbnail on Sprout Video instead of an auto-generated still.
@@ -479,7 +481,7 @@ function PosterFrameContent({
               disabled={posterFrame.status === 'working'}
             />
             {posterFrame.text.trim().length === 0 ? (
-              <p className="text-warning text-xs">Poster frame text is required.</p>
+              <p className="text-warning-text text-xs">Poster frame text is required.</p>
             ) : (
               <p className="text-muted-foreground text-xs">
                 Taken from the last part of the video title. Edit it to change the
@@ -502,7 +504,7 @@ function PosterFrameContent({
           {/* A warning, not a block: the layout scales by height and still
               renders, but the design assumes 16:9 (issue #189 B4.2). */}
           {posterFrame.offAspect && (
-            <p role="alert" className="text-warning text-xs">
+            <p role="alert" className="text-warning-text text-xs">
               This background is not 16:9, so the title text may sit oddly on the final
               thumbnail.
             </p>
@@ -673,7 +675,10 @@ function UploadContent({
             still a choice (#225 UP-26).
           */}
           {uploadMode.stallWarning && (
-            <p role="status" className="text-warning flex items-start gap-1.5 text-xs">
+            <p
+              role="status"
+              className="text-warning-text flex items-start gap-1.5 text-xs"
+            >
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>{uploadMode.stallWarning}</span>
             </p>

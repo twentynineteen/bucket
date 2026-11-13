@@ -177,7 +177,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Size by project</span>
           {unsizedProjects.length > 0 && (
-            <span className="bg-warning/20 text-warning rounded-full px-2 py-0.5 text-xs font-medium">
+            <span className="bg-warning/20 text-warning-text rounded-full px-2 py-0.5 text-xs font-medium">
               {unsizedProjects.length} size unavailable
             </span>
           )}
@@ -218,7 +218,9 @@ export const StorageView: React.FC<StorageViewProps> = ({
             const rect = treemapRects.find(r => r.key === entry.key)
             if (!rect || rect.width < 1 || rect.height < 1) return null
 
-            const showLabel = rect.width >= 60 && rect.height >= 32
+            // A tile too small to hold its name shows none; the tooltip and
+            // the list below still identify it.
+            const showLabel = rect.width >= 110 && rect.height >= 40
             return (
               <button
                 key={entry.key}
@@ -272,7 +274,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
               key={project.path}
               type="button"
               onClick={() => onProjectClick(project.path)}
-              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,20rem)_minmax(3rem,1fr)_9rem] items-center gap-4 border-b px-4 py-1.5 text-left transition-colors"
+              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,17rem)_minmax(3rem,1fr)_4.5rem_3rem] items-center gap-4 border-b px-4 py-1.5 text-left transition-colors"
             >
               <span className="flex min-w-0 items-center gap-2 text-sm">
                 <span
@@ -295,8 +297,13 @@ export const StorageView: React.FC<StorageViewProps> = ({
                   }}
                 />
               </span>
-              <span className="text-muted-foreground text-right text-xs tabular-nums">
-                {formatFileSize(project.folderSizeBytes ?? 0)} ·{' '}
+              <span className="text-foreground text-right text-xs font-medium tabular-nums">
+                {formatFileSize(project.folderSizeBytes ?? 0)}
+              </span>
+              <span
+                className="text-muted-foreground text-right text-xs tabular-nums"
+                title="Share of the scanned total"
+              >
                 {(share * 100).toFixed(1)}%
               </span>
             </button>
@@ -311,7 +318,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
           >
             <div className="flex items-center justify-between gap-3">
               <span className="min-w-0 truncate text-sm">{project.name}</span>
-              <span className="bg-warning/20 text-warning flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium">
+              <span className="bg-warning/20 text-warning-text flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium">
                 size unavailable
               </span>
             </div>

@@ -35,9 +35,14 @@ export const BakerPreferences: React.FC<BakerPreferencesProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
-          <Settings className="h-3.5 w-3.5" />
-          Settings
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="Settings"
+          title="Baker settings"
+          className="text-muted-foreground flex-shrink-0 px-2"
+        >
+          <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>
