@@ -18,6 +18,8 @@ interface BatchActionsProps {
   selectedProjects: string[]
   /** How many of the ticked projects are not already current. */
   needingUpdateCount: number
+  /** How many of those have no breadcrumbs file yet, so one is created. */
+  toCreateCount?: number
   /** How many ticked projects the list's current filter is not showing. */
   hiddenByFilterCount?: number
   isUpdating: boolean
@@ -26,10 +28,17 @@ interface BatchActionsProps {
 }
 
 /** What will happen to the ticked projects, in the order it matters. */
-function selectionBreakdown(selected: number, needingUpdate: number): string {
+function selectionBreakdown(
+  selected: number,
+  needingUpdate: number,
+  toCreate: number
+): string {
   const current = selected - needingUpdate
+  // A project with no breadcrumbs file gets one created, not updated.
+  const toUpdate = needingUpdate - toCreate
   const parts: string[] = []
-  if (needingUpdate > 0) parts.push(`${needingUpdate} to update`)
+  if (toUpdate > 0) parts.push(`${toUpdate} to update`)
+  if (toCreate > 0) parts.push(`${toCreate} to create`)
   if (current > 0) parts.push(`${current} already current, skipped`)
   return parts.join(' · ')
 }
@@ -37,6 +46,7 @@ function selectionBreakdown(selected: number, needingUpdate: number): string {
 export const BatchActions: React.FC<BatchActionsProps> = ({
   selectedProjects,
   needingUpdateCount,
+  toCreateCount = 0,
   hiddenByFilterCount = 0,
   isUpdating,
   onClearSelection,
@@ -67,7 +77,7 @@ export const BatchActions: React.FC<BatchActionsProps> = ({
           </button>
         </div>
         <p className="text-muted-foreground">
-          {selectionBreakdown(selectedProjects.length, needingUpdateCount)}
+          {selectionBreakdown(selectedProjects.length, needingUpdateCount, toCreateCount)}
         </p>
       </div>
       <Button

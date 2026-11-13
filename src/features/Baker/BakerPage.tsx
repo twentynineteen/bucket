@@ -36,7 +36,7 @@ import { useBreadcrumbsManager } from './hooks/useBreadcrumbsManager'
 import { useBreadcrumbsPreview } from './hooks/useBreadcrumbsPreview'
 import { useLiveBreadcrumbsReader } from './hooks/useLiveBreadcrumbsReader'
 import { useRepairBreadcrumbs } from './hooks/useRepairBreadcrumbs'
-import { needsAttention } from './internal/projectStatus'
+import { breadcrumbsStatus, needsAttention } from './internal/projectStatus'
 import type { BatchUpdateResult } from './types'
 
 const ScanError: React.FC<{ error: string; onRetry: () => void }> = ({
@@ -190,6 +190,14 @@ const BakerPageContent: React.FC = () => {
     () =>
       scanResult?.projects.filter(
         p => selectedProjects.includes(p.path) && needsAttention(p)
+      ).length ?? 0,
+    [scanResult, selectedProjects]
+  )
+
+  const selectedToCreate = useMemo(
+    () =>
+      scanResult?.projects.filter(
+        p => selectedProjects.includes(p.path) && breadcrumbsStatus(p) === 'missing'
       ).length ?? 0,
     [scanResult, selectedProjects]
   )
@@ -458,6 +466,7 @@ const BakerPageContent: React.FC = () => {
                     <BatchActions
                       selectedProjects={selectedProjects}
                       needingUpdateCount={selectedNeedingUpdate}
+                      toCreateCount={selectedToCreate}
                       hiddenByFilterCount={hiddenByFilterCount}
                       isUpdating={isUpdating}
                       onClearSelection={handleClearSelection}

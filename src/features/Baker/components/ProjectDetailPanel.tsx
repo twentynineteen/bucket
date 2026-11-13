@@ -517,20 +517,36 @@ const CalloutActions: React.FC<{
   onRepairProject?: (projectPath: string) => void
   /** Review and apply the pending breadcrumbs update for this one project. */
   onUpdateProject?: (projectPath: string) => void
+  /** Whether the previewed changes are listed, and the switch for it. */
+  showChanges: boolean
+  onToggleChanges: () => void
 }> = ({
   project,
   preview,
   isGeneratingPreview,
   onGeneratePreview,
   onRepairProject,
-  onUpdateProject
+  onUpdateProject,
+  showChanges,
+  onToggleChanges
 }) => (
   // One group, so in a narrow panel the buttons drop below the text together
   // and stay side by side.
   <div className="flex flex-wrap items-center gap-2">
     {/* Preview is the secondary action; each state has exactly one primary:
         repair an unparseable file, otherwise review and write the update. */}
-    {!preview && (
+    {preview ? (
+      // Once the changes are listed the same button folds them away again.
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onToggleChanges}
+        aria-expanded={showChanges}
+        className="flex-shrink-0"
+      >
+        {showChanges ? 'Hide changes' : 'Show changes'}
+      </Button>
+    ) : (
       <Button
         variant="outline"
         size="sm"
@@ -544,10 +560,7 @@ const CalloutActions: React.FC<{
             Checking…
           </>
         ) : (
-          <>
-            <Search className="hidden h-3.5 w-3.5 @md:block" />
-            Preview changes
-          </>
+          'Preview changes'
         )}
       </Button>
     )}
@@ -582,6 +595,9 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
   onRepairProject,
   onUpdateProject
 }) => {
+  // The previewed changes open listed; "Hide changes" folds them away.
+  const [showChanges, setShowChanges] = useState(true)
+
   if (!project) return null
 
   const needsAttention =
@@ -617,10 +633,12 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
           onGeneratePreview={onGeneratePreview}
           onRepairProject={onRepairProject}
           onUpdateProject={onUpdateProject}
+          showChanges={showChanges}
+          onToggleChanges={() => setShowChanges(shown => !shown)}
         />
       </div>
 
-      {changes && (
+      {changes && showChanges && (
         <div className="border-border rounded-lg border py-1.5">
           <ChangeDiffList
             rows={changes.rows}
