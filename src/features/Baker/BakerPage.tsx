@@ -25,7 +25,7 @@ import { BatchUpdateConfirmationDialog } from './components/BatchUpdateConfirmat
 import { FolderSelector } from './components/FolderSelector'
 import { PreviewProgress } from './components/PreviewProgress'
 import { ProjectDetailPanel } from './components/ProjectDetailPanel'
-import { ProjectListPanel } from './components/ProjectListPanel'
+import { ProjectListPanel, type ProjectStatusFilter } from './components/ProjectListPanel'
 import { RepairBreadcrumbsDialog } from './components/RepairBreadcrumbsDialog'
 import { ScanResults } from './components/ScanResults'
 import { StorageView } from './components/StorageView'
@@ -35,6 +35,7 @@ import { useBreadcrumbsManager } from './hooks/useBreadcrumbsManager'
 import { useBreadcrumbsPreview } from './hooks/useBreadcrumbsPreview'
 import { useLiveBreadcrumbsReader } from './hooks/useLiveBreadcrumbsReader'
 import { useRepairBreadcrumbs } from './hooks/useRepairBreadcrumbs'
+import { needsAttention } from './internal/projectStatus'
 import type { BatchUpdateResult } from './types'
 
 const ScanError: React.FC<{ error: string; onRetry: () => void }> = ({
@@ -128,7 +129,9 @@ const BakerPageContent: React.FC = () => {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([])
   const [showPreferences, setShowPreferences] = useState(false)
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
-  const [showBatchConfirmation, setShowBatchConfirmation] = useState(false)
+  // Projects whose pending changes are open in the review dialog, or null
+  const [reviewPaths, setReviewPaths] = useState<string[] | null>(null)
+  const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('projects')
   const [repairTarget, setRepairTarget] = useState<string | null>(null)
 
@@ -181,6 +184,21 @@ const BakerPageContent: React.FC = () => {
     () => scanResult?.projects.find(p => p.path === selectedProject) ?? null,
     [scanResult, selectedProject]
   )
+
+  const selectedNeedingUpdate = useMemo(
+    () =>
+      scanResult?.projects.filter(
+        p => selectedProjects.includes(p.path) && needsAttention(p)
+      ).length ?? 0,
+    [scanResult, selectedProjects]
+  )
+
+  const reviewedPaths = useMemo(() => reviewPaths ?? [], [reviewPaths])
+
+  const handleShowAttention = useCallback(() => {
+    setViewMode('projects')
+    setStatusFilter('attention')
+  }, [])
 
   const invalidBreadcrumbsPaths = useMemo(
     () => scanResult?.projects.filter(p => p.invalidBreadcrumbs).map(p => p.path) ?? [],
@@ -237,49 +255,60 @@ const BakerPageContent: React.FC = () => {
     })
   }, [])
 
-  const handleSelectAll = useCallback(() => {
-    if (scanResult?.projects) {
-      setSelectedProjects(scanResult.projects.map(p => p.path))
-    }
-  }, [scanResult])
-
   const handleClearSelection = useCallback(() => {
     setSelectedProjects([])
   }, [])
 
-  const handleApplyChanges = useCallback(async () => {
-    if (selectedProjects.length === 0) {
-      toast.warning('Please select projects to update')
-      return
-    }
+  // Opens the review dialog for a set of projects. Both routes to a write go
+  // through it: the ticked batch, and "Update this project" in the detail
+  // panel, which reviews one project without disturbing what is ticked.
+  const openReview = useCallback(
+    async (projectPaths: string[]) => {
+      if (projectPaths.length === 0) {
+        toast.warning('Please select projects to update')
+        return
+      }
 
-    // Generate previews for selected projects before showing confirmation dialog.
-    // Previews already generated from the detail panel are reused by the hook cache.
-    if (scanResult?.projects) {
-      const selectedProjectData = scanResult.projects.filter(p =>
-        selectedProjects.includes(p.path)
-      )
-      await generateBatchPreviews(selectedProjectData)
-    }
+      // Generate previews before showing the confirmation dialog. Previews
+      // already generated from the detail panel are reused by the hook cache.
+      if (scanResult?.projects) {
+        await generateBatchPreviews(
+          scanResult.projects.filter(p => projectPaths.includes(p.path))
+        )
+      }
 
-    setShowBatchConfirmation(true)
-  }, [selectedProjects, scanResult, generateBatchPreviews])
+      setReviewPaths(projectPaths)
+    },
+    [scanResult, generateBatchPreviews]
+  )
+
+  const handleApplyChanges = useCallback(
+    () => openReview(selectedProjects),
+    [openReview, selectedProjects]
+  )
+
+  const handleUpdateProject = useCallback(
+    (projectPath: string) => void openReview([projectPath]),
+    [openReview]
+  )
 
   const handleConfirmBatchUpdate = useCallback(async () => {
+    if (!reviewPaths) return
+
     try {
       // Update local breadcrumbs files first
-      await updateBreadcrumbs(selectedProjects, {
+      await updateBreadcrumbs(reviewPaths, {
         createMissing: preferences.createMissing,
         backupOriginals: preferences.backupOriginals
       })
 
       // Update Trello cards using extracted hook
-      const trelloErrors = await updateTrelloCards(selectedProjects)
+      const trelloErrors = await updateTrelloCards(reviewPaths)
 
-      // Clear selection and previews after update
-      setSelectedProjects([])
+      // Untick what was just written, and drop the previews
+      setSelectedProjects(prev => prev.filter(path => !reviewPaths.includes(path)))
       clearPreviews()
-      setShowBatchConfirmation(false)
+      setReviewPaths(null)
 
       // Show Trello errors if any occurred
       if (trelloErrors.length > 0) {
@@ -290,9 +319,9 @@ const BakerPageContent: React.FC = () => {
       }
     } catch (error) {
       toast.error(`Failed to update breadcrumbs: ${error}`)
-      setShowBatchConfirmation(false)
+      setReviewPaths(null)
     }
-  }, [selectedProjects, preferences, updateBreadcrumbs, updateTrelloCards, clearPreviews])
+  }, [reviewPaths, preferences, updateBreadcrumbs, updateTrelloCards, clearPreviews])
 
   const handleProjectClick = useCallback(
     async (projectPath: string) => {
@@ -397,6 +426,7 @@ const BakerPageContent: React.FC = () => {
               scanResult={scanResult}
               isScanning={isScanning}
               scanStartTime={scanStartTime}
+              onShowAttention={handleShowAttention}
             />
           </div>
 
@@ -408,17 +438,29 @@ const BakerPageContent: React.FC = () => {
               />
             </div>
           ) : (
-            <div className="relative flex min-h-0 flex-1">
-              <div className="border-border w-80 flex-shrink-0 border-r">
-                <ProjectListPanel
-                  projects={scanResult.projects}
+            <div className="flex min-h-0 flex-1">
+              {/* List column: the rows, then the batch footer for ticked rows */}
+              <div className="border-border flex w-80 flex-shrink-0 flex-col border-r">
+                <div className="min-h-0 flex-1">
+                  <ProjectListPanel
+                    projects={scanResult.projects}
+                    selectedProjects={selectedProjects}
+                    selectedProject={selectedProject}
+                    rootPath={scanResult.rootPath}
+                    statusFilter={statusFilter}
+                    onStatusFilterChange={setStatusFilter}
+                    onProjectSelection={handleProjectSelection}
+                    onSelectMany={handleSelectMany}
+                    onProjectClick={handleProjectClick}
+                    onRepairProject={handleRepairRequest}
+                  />
+                </div>
+                <BatchActions
                   selectedProjects={selectedProjects}
-                  selectedProject={selectedProject}
-                  rootPath={scanResult.rootPath}
-                  onProjectSelection={handleProjectSelection}
-                  onSelectMany={handleSelectMany}
-                  onProjectClick={handleProjectClick}
-                  onRepairProject={handleRepairRequest}
+                  needingUpdateCount={selectedNeedingUpdate}
+                  isUpdating={isUpdating}
+                  onClearSelection={handleClearSelection}
+                  onApplyChanges={handleApplyChanges}
                 />
               </div>
 
@@ -433,19 +475,11 @@ const BakerPageContent: React.FC = () => {
                   isGeneratingPreview={isGenerating}
                   onGeneratePreview={handleGeneratePreview}
                   onRepairProject={handleRepairRequest}
+                  onUpdateProject={handleUpdateProject}
                   trelloApiKey={apiKey}
                   trelloApiToken={token}
                 />
               </div>
-
-              <BatchActions
-                selectedProjects={selectedProjects}
-                totalProjects={scanResult.projects.length}
-                isUpdating={isUpdating}
-                onSelectAll={handleSelectAll}
-                onClearSelection={handleClearSelection}
-                onApplyChanges={handleApplyChanges}
-              />
             </div>
           )}
         </>
@@ -455,11 +489,11 @@ const BakerPageContent: React.FC = () => {
 
       {/* Batch Update Confirmation Dialog */}
       <BatchUpdateConfirmationDialog
-        isOpen={showBatchConfirmation}
-        onClose={() => setShowBatchConfirmation(false)}
+        isOpen={reviewPaths !== null}
+        onClose={() => setReviewPaths(null)}
         onConfirm={handleConfirmBatchUpdate}
-        selectedProjects={selectedProjects}
-        previews={selectedProjects
+        selectedProjects={reviewedPaths}
+        previews={reviewedPaths
           .map(path => getPreview(path))
           .filter((preview): preview is NonNullable<typeof preview> => preview !== null)}
         isLoading={isUpdating}

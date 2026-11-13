@@ -19,6 +19,8 @@ interface ScanResultsProps {
   scanResult: ScanResult | null
   isScanning: boolean
   scanStartTime: number | null
+  /** Called when the user clicks the "need attention" count. */
+  onShowAttention?: () => void
 }
 
 function formatElapsed(seconds: number): string {
@@ -50,10 +52,35 @@ const Dot: React.FC = () => (
   </span>
 )
 
+/**
+ * "6 need attention". With a handler it is a link that filters the project
+ * list down to exactly those projects.
+ */
+const AttentionCount: React.FC<{ count: number; onShow?: () => void }> = ({
+  count,
+  onShow
+}) => {
+  const text = `${count} ${count === 1 ? 'needs' : 'need'} attention`
+  if (!onShow) {
+    return <span className="text-warning font-medium whitespace-nowrap">{text}</span>
+  }
+  return (
+    <button
+      type="button"
+      onClick={onShow}
+      title="Show only the projects that need attention"
+      className="text-warning font-medium whitespace-nowrap underline decoration-dotted underline-offset-2 hover:decoration-solid"
+    >
+      {text}
+    </button>
+  )
+}
+
 export const ScanResults: React.FC<ScanResultsProps> = ({
   scanResult,
   isScanning,
-  scanStartTime
+  scanStartTime,
+  onShowAttention
 }) => {
   const [elapsed, setElapsed] = useState(0)
 
@@ -119,9 +146,7 @@ export const ScanResults: React.FC<ScanResultsProps> = ({
       </span>
       <Dot />
       {attentionCount > 0 ? (
-        <span className="text-warning font-medium whitespace-nowrap">
-          {attentionCount} {attentionCount === 1 ? 'needs' : 'need'} attention
-        </span>
+        <AttentionCount count={attentionCount} onShow={onShowAttention} />
       ) : (
         <span className="text-success font-medium whitespace-nowrap">All up to date</span>
       )}

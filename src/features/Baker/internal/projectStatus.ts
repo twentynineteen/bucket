@@ -2,9 +2,10 @@
  * The one place that decides what state a scanned project's breadcrumbs are in,
  * and how that state is worded and coloured.
  *
- * The project list, the scan summary and the storage map all show this state.
- * They used to derive it separately, which let the summary count stale projects
- * as healthy while the list flagged them.
+ * The project list, its filter chips, the scan summary, the detail header and
+ * the storage map all show this state. They used to derive and name it
+ * separately, which let the summary count stale projects as healthy while the
+ * list flagged them, and gave one state three different names.
  */
 
 import type { ProjectFolder } from '../types'
@@ -17,17 +18,17 @@ export function breadcrumbsStatus(project: ProjectFolder): BreadcrumbsStatus {
   return project.staleBreadcrumbs ? 'stale' : 'current'
 }
 
-/** True when applying changes would write something for this project. */
+/** True when the project has something to fix: its breadcrumbs or its structure. */
 export function needsAttention(project: ProjectFolder): boolean {
   return breadcrumbsStatus(project) !== 'current' || !project.isValid
 }
 
 interface StatusPresentation {
-  /** Short label for list rows and legends. */
+  /** The single word used for this state everywhere it appears. */
   label: string
-  /** Text colour class. */
+  /** Text colour class. Current is deliberately quiet: only exceptions get colour. */
   text: string
-  /** Solid fill class, for dots and legend swatches. */
+  /** Solid fill class, for dots, bars and legend swatches. */
   fill: string
   /** Tile classes for the storage map: fill plus a readable label colour. */
   tile: string
@@ -36,7 +37,7 @@ interface StatusPresentation {
 export const STATUS_PRESENTATION: Record<BreadcrumbsStatus, StatusPresentation> = {
   current: {
     label: 'Current',
-    text: 'text-success',
+    text: 'text-muted-foreground',
     fill: 'bg-success',
     tile: 'bg-success/15 hover:bg-success/25 text-foreground'
   },
@@ -47,10 +48,10 @@ export const STATUS_PRESENTATION: Record<BreadcrumbsStatus, StatusPresentation> 
     tile: 'bg-warning/25 hover:bg-warning/35 text-foreground'
   },
   missing: {
-    label: 'No breadcrumbs',
-    text: 'text-muted-foreground',
+    label: 'Missing',
+    text: 'text-foreground',
     fill: 'bg-muted-foreground',
-    tile: 'bg-muted hover:bg-muted/70 text-foreground'
+    tile: 'bg-muted-foreground/20 hover:bg-muted-foreground/30 text-foreground'
   },
   unparseable: {
     label: 'Unparseable',

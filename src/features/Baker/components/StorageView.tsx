@@ -262,19 +262,28 @@ export const StorageView: React.FC<StorageViewProps> = ({
               key={project.path}
               type="button"
               onClick={() => onProjectClick(project.path)}
-              className="border-border hover:bg-accent/50 relative block w-full border-b px-4 py-2 text-left transition-colors"
+              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,1fr)_minmax(4rem,12rem)_9rem] items-center gap-4 border-b px-4 py-1.5 text-left transition-colors"
             >
-              <div
-                className="bg-primary/10 absolute inset-y-0 left-0"
-                style={{ width: `${Math.max(share * 100, 0.5)}%` }}
-              />
-              <div className="relative flex items-center justify-between gap-3">
-                <span className="min-w-0 truncate text-sm">{project.name}</span>
-                <span className="text-muted-foreground flex-shrink-0 text-xs tabular-nums">
-                  {formatFileSize(project.folderSizeBytes ?? 0)} •{' '}
-                  {(share * 100).toFixed(1)}%
-                </span>
-              </div>
+              <span className="flex min-w-0 items-center gap-2 text-sm">
+                <span
+                  className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+                    STATUS_PRESENTATION[breadcrumbsStatus(project)].fill
+                  }`}
+                  title={STATUS_PRESENTATION[breadcrumbsStatus(project)].label}
+                />
+                <span className="truncate">{project.name}</span>
+              </span>
+              {/* Share of the scanned total, as a bar in its own column */}
+              <span className="bg-muted h-1.5 overflow-hidden rounded-full">
+                <span
+                  className="bg-foreground/50 block h-full rounded-full"
+                  style={{ width: `${Math.max(share * 100, 1)}%` }}
+                />
+              </span>
+              <span className="text-muted-foreground text-right text-xs tabular-nums">
+                {formatFileSize(project.folderSizeBytes ?? 0)} ·{' '}
+                {(share * 100).toFixed(1)}%
+              </span>
             </button>
           )
         })}

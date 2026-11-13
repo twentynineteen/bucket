@@ -87,7 +87,7 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
+      <SidebarGroupLabel>Tools</SidebarGroupLabel>
       <SidebarMenu>
         {items.map(item => {
           const groupIsActive = groupMatchesPathname(item.items, location.pathname)
