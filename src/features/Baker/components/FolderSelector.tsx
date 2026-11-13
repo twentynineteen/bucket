@@ -52,7 +52,7 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
         value={selectedFolder}
         readOnly
         title={selectedFolder || undefined}
-        className="h-8 min-w-0 flex-1 text-xs"
+        className="h-8 min-w-32 flex-1 text-xs"
       />
       <Button
         onClick={handleSelectFolder}
@@ -97,7 +97,7 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
 
       {hasResults && (
         <Button onClick={onClearResults} variant="outline" size="sm" className="gap-1.5">
-          Clear
+          Clear results
         </Button>
       )}
     </div>

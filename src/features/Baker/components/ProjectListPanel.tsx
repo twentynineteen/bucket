@@ -4,10 +4,13 @@
  * Fixed-width left panel showing the scanned projects with a text filter and
  * status filter chips. Part of the full-height master-detail layout.
  *
+ * Rows are two lines: the project name with its size, then its breadcrumbs
+ * state and camera count. The scan root is not repeated on every row; a
+ * project nested below the root shows only its location relative to it.
+ *
  * Animations:
  * - Staggered entrance animation when projects load
  * - Smooth hover effects on project rows
- * - Pulse animation for stale breadcrumb badges
  */
 
 import { BAKER_ANIMATIONS } from '@shared/constants'
@@ -16,11 +19,16 @@ import { Input } from '@shared/ui/input'
 import { formatFileSize } from '@shared/utils'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { motion } from 'framer-motion'
-import React, { useMemo, useState } from 'react'
+import { ArrowDownWideNarrow } from 'lucide-react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { breadcrumbsStatus, STATUS_PRESENTATION } from '../internal/projectStatus'
 import type { ProjectFolder } from '../types'
 
 // Threshold for enabling virtual scrolling (performance optimization for large lists)
 const VIRTUAL_SCROLLING_THRESHOLD = 50
+
+// Height of one row, for the virtualizer's first estimate.
+const ROW_HEIGHT_ESTIMATE = 54
 
 // Utility function for conditional class names
 const cn = (...classes: (string | undefined | null | boolean)[]) => {
@@ -30,10 +38,9 @@ const cn = (...classes: (string | undefined | null | boolean)[]) => {
 type StatusFilter = 'all' | 'stale' | 'nobc' | 'invalid'
 type SortOrder = 'scan' | 'size'
 
-const isStale = (project: ProjectFolder) =>
-  project.hasBreadcrumbs && !project.invalidBreadcrumbs && project.staleBreadcrumbs
+const isStale = (project: ProjectFolder) => breadcrumbsStatus(project) === 'stale'
 const isMissingBreadcrumbs = (project: ProjectFolder) =>
-  !project.hasBreadcrumbs && !project.invalidBreadcrumbs
+  breadcrumbsStatus(project) === 'missing'
 const isInvalid = (project: ProjectFolder) =>
   project.invalidBreadcrumbs || !project.isValid
 
@@ -50,122 +57,123 @@ const matchesStatus = (project: ProjectFolder, filter: StatusFilter): boolean =>
   }
 }
 
-interface StatusPillProps {
-  tone: 'success' | 'warning' | 'destructive' | 'muted'
-  dot?: boolean
-  children: React.ReactNode
-}
-
-const PILL_TONES: Record<StatusPillProps['tone'], string> = {
-  success: 'bg-success/20 text-success',
-  warning: 'bg-warning/20 text-warning',
-  destructive: 'bg-destructive/20 text-destructive',
-  muted: 'bg-muted text-muted-foreground'
-}
-
-const StatusPill: React.FC<StatusPillProps> = ({ tone, dot = true, children }) => (
-  <span
-    className={cn(
-      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-      PILL_TONES[tone]
-    )}
-  >
-    {dot && <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />}
-    {children}
-  </span>
-)
-
-interface ProjectStatusPillsProps {
-  project: ProjectFolder
-  shouldReduceMotion: boolean
-  onRepairProject?: (projectPath: string) => void
-}
-
-/** Breadcrumbs state badge with optional stale-pulse animation. */
-const BreadcrumbsStatePill: React.FC<{
-  project: ProjectFolder
-  shouldReduceMotion: boolean
-}> = ({ project, shouldReduceMotion }) => {
-  if (!project.hasBreadcrumbs || project.invalidBreadcrumbs) return null
-  const pulseStale = !shouldReduceMotion && project.staleBreadcrumbs
-  return (
-    <motion.span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-        project.staleBreadcrumbs
-          ? 'bg-warning/20 text-warning'
-          : 'bg-success/20 text-success'
-      )}
-      animate={
-        pulseStale ? { scale: BAKER_ANIMATIONS.statusBadge.pulse.scale } : undefined
-      }
-      transition={pulseStale ? BAKER_ANIMATIONS.statusBadge.pulse.transition : undefined}
-    >
-      <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />
-      {project.staleBreadcrumbs ? 'Stale' : 'Current'}
-    </motion.span>
-  )
-}
-
 function cameraLabel(count: number): string {
   if (count === 0) return 'No cameras'
   return `${count} cam${count !== 1 ? 's' : ''}`
 }
 
-const ProjectStatusPills: React.FC<ProjectStatusPillsProps> = ({
+/**
+ * Where a project sits below the scan root, or null when it is directly inside
+ * it. Without a known root the full parent folder is returned.
+ */
+function locationBelowRoot(projectPath: string, rootPath?: string): string | null {
+  const cut = Math.max(projectPath.lastIndexOf('/'), projectPath.lastIndexOf('\\'))
+  const parent = cut > 0 ? projectPath.slice(0, cut) : ''
+  if (!rootPath) return parent || null
+
+  const root = rootPath.replace(/[/\\]+$/, '')
+  if (parent === root) return null
+  if (parent.startsWith(root) && /[/\\]/.test(parent.charAt(root.length))) {
+    return parent.slice(root.length + 1)
+  }
+  return parent || null
+}
+
+interface ProjectMetaLineProps {
+  project: ProjectFolder
+  location: string | null
+  onRepairProject?: (projectPath: string) => void
+}
+
+const ProjectMetaLine: React.FC<ProjectMetaLineProps> = ({
   project,
-  shouldReduceMotion,
+  location,
   onRepairProject
-}) => (
-  <div className="flex flex-wrap gap-1.5">
-    <StatusPill tone={project.isValid ? 'success' : 'destructive'}>
-      {project.isValid ? 'Valid' : 'Invalid'}
-    </StatusPill>
+}) => {
+  const status = STATUS_PRESENTATION[breadcrumbsStatus(project)]
 
-    {project.invalidBreadcrumbs && <StatusPill tone="destructive">Invalid BC</StatusPill>}
+  return (
+    <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs">
+      <span className={cn('inline-flex flex-shrink-0 items-center gap-1', status.text)}>
+        <span className={cn('h-1.5 w-1.5 rounded-full', status.fill)} />
+        <span className="font-medium">{status.label}</span>
+      </span>
 
-    {project.invalidBreadcrumbs && onRepairProject && (
-      <button
-        type="button"
-        onClick={e => {
-          e.stopPropagation()
-          onRepairProject(project.path)
-        }}
-        className="border-destructive/30 text-destructive hover:bg-destructive/10 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors"
-      >
-        Repair
-      </button>
-    )}
+      {!project.isValid && (
+        <>
+          <span aria-hidden="true">·</span>
+          <span className="text-destructive flex-shrink-0 font-medium">
+            Invalid structure
+          </span>
+        </>
+      )}
 
-    <BreadcrumbsStatePill project={project} shouldReduceMotion={shouldReduceMotion} />
+      <span aria-hidden="true">·</span>
+      <span className="flex-shrink-0">{cameraLabel(project.cameraCount)}</span>
 
-    {isMissingBreadcrumbs(project) && (
-      <StatusPill tone="muted" dot={false}>
-        No BC
-      </StatusPill>
-    )}
+      {location && (
+        <>
+          <span aria-hidden="true">·</span>
+          <span className="min-w-0 truncate" title={location}>
+            {location}
+          </span>
+        </>
+      )}
 
-    <StatusPill tone="muted" dot={false}>
-      {cameraLabel(project.cameraCount)}
-    </StatusPill>
+      {project.invalidBreadcrumbs && onRepairProject && (
+        <button
+          type="button"
+          onClick={e => {
+            e.stopPropagation()
+            onRepairProject(project.path)
+          }}
+          className="border-destructive/30 text-destructive hover:bg-destructive/10 ml-auto flex-shrink-0 rounded-full border px-2 text-xs font-medium transition-colors"
+        >
+          Repair
+        </button>
+      )}
+    </div>
+  )
+}
 
-    {typeof project.folderSizeBytes === 'number' ? (
-      <StatusPill tone="muted" dot={false}>
-        {formatFileSize(project.folderSizeBytes)}
-      </StatusPill>
-    ) : (
-      <StatusPill tone="warning" dot={false}>
-        size n/a
-      </StatusPill>
-    )}
-  </div>
-)
+/** One button that flips the list between scan order and largest first. */
+const SortToggle: React.FC<{
+  sortOrder: SortOrder
+  onChange: (order: SortOrder) => void
+}> = ({ sortOrder, onChange }) => {
+  const bySize = sortOrder === 'size'
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(bySize ? 'scan' : 'size')}
+      aria-pressed={bySize}
+      title={
+        bySize
+          ? 'Sorted largest first. Click for scan order.'
+          : 'Sorted in scan order. Click for largest first.'
+      }
+      className={cn(
+        'ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium transition-colors',
+        bySize
+          ? 'bg-primary/10 text-primary'
+          : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+      )}
+    >
+      <ArrowDownWideNarrow className="h-3.5 w-3.5" />
+      {bySize ? 'Largest first' : 'Scan order'}
+    </button>
+  )
+}
 
 interface ProjectListPanelProps {
   projects: ProjectFolder[]
   selectedProjects: string[]
   selectedProject: string | null
+  /** Folder the scan started from; rows show locations relative to it. */
+  rootPath?: string
   onProjectSelection: (projectPath: string, isSelected: boolean) => void
+  /** Tick or untick several projects at once (the header's select-all). */
+  onSelectMany?: (projectPaths: string[], isSelected: boolean) => void
   onProjectClick: (projectPath: string) => void
   onRepairProject?: (projectPath: string) => void
 }
@@ -174,12 +182,15 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
   projects,
   selectedProjects,
   selectedProject,
+  rootPath,
   onProjectSelection,
+  onSelectMany,
   onProjectClick,
   onRepairProject
 }) => {
   const shouldReduceMotion = useReducedMotion()
   const parentRef = React.useRef<HTMLDivElement>(null)
+  const selectAllRef = useRef<HTMLInputElement>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [sortOrder, setSortOrder] = useState<SortOrder>('scan')
   const [query, setQuery] = useState('')
@@ -191,7 +202,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
         { key: 'stale' as const, label: 'Stale', count: projects.filter(isStale).length },
         {
           key: 'nobc' as const,
-          label: 'No BC',
+          label: 'Missing',
           count: projects.filter(isMissingBreadcrumbs).length
         },
         {
@@ -229,6 +240,21 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
     return filtered
   }, [projects, statusFilter, sortOrder, query])
 
+  // The header checkbox speaks for the rows currently shown, so "filter to
+  // Stale, then select all" selects exactly the stale projects.
+  const shownPaths = useMemo(() => filteredProjects.map(p => p.path), [filteredProjects])
+  const shownSelectedCount = useMemo(
+    () => shownPaths.filter(path => selectedProjects.includes(path)).length,
+    [shownPaths, selectedProjects]
+  )
+  const allShownSelected =
+    shownPaths.length > 0 && shownSelectedCount === shownPaths.length
+  const someShownSelected = shownSelectedCount > 0 && !allShownSelected
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someShownSelected
+  }, [someShownSelected])
+
   // Determine if we should use virtual scrolling based on list size
   const useVirtualScroll = filteredProjects.length >= VIRTUAL_SCROLLING_THRESHOLD
 
@@ -240,7 +266,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
   const virtualizer = useVirtualizer({
     count: filteredProjects.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 98, // Estimated height of each project item
+    estimateSize: () => ROW_HEIGHT_ESTIMATE,
     overscan: 5,
     enabled: useVirtualScroll,
     initialRect: { width: 320, height: 600 }
@@ -263,10 +289,11 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
     const isChecked = selectedProjects.includes(project.path)
 
     const content = (
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2.5">
         <input
           type="checkbox"
           checked={isChecked}
+          aria-label={`Select ${project.name}`}
           onChange={e => {
             e.stopPropagation()
             onProjectSelection(project.path, e.target.checked)
@@ -275,19 +302,38 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
           className="mt-0.5 flex-shrink-0"
         />
 
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <p className="line-clamp-2 text-sm leading-snug font-medium [overflow-wrap:anywhere]">
-            {project.name}
-          </p>
-          <p className="text-muted-foreground truncate text-xs">{project.path}</p>
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex items-baseline gap-2">
+            <p
+              className="min-w-0 flex-1 truncate text-sm leading-snug font-medium"
+              title={project.path}
+            >
+              {project.name}
+            </p>
+            {typeof project.folderSizeBytes === 'number' ? (
+              <span className="text-muted-foreground flex-shrink-0 text-xs tabular-nums">
+                {formatFileSize(project.folderSizeBytes)}
+              </span>
+            ) : (
+              <span className="text-warning flex-shrink-0 text-xs">size n/a</span>
+            )}
+          </div>
 
-          <ProjectStatusPills
+          <ProjectMetaLine
             project={project}
-            shouldReduceMotion={shouldReduceMotion}
+            location={locationBelowRoot(project.path, rootPath)}
             onRepairProject={onRepairProject}
           />
         </div>
       </div>
+    )
+
+    const rowClassName = cn(
+      'border-border cursor-pointer border-b px-3 py-2',
+      'transition-[background-color] duration-150 ease-out',
+      'hover:bg-accent/50',
+      'focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2',
+      isSelected && 'bg-accent shadow-[inset_2px_0_0_var(--color-primary)]'
     )
 
     // For virtual scrolling, use regular divs with CSS hover; otherwise use motion.div with entrance animations
@@ -296,13 +342,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
         <div
           key={project.path}
           style={virtualStyle}
-          className={cn(
-            'border-border cursor-pointer border-b p-3',
-            'transition-[background-color] duration-150 ease-out',
-            'hover:bg-accent/50',
-            'focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2',
-            isSelected && 'bg-accent'
-          )}
+          className={rowClassName}
           onClick={() => onProjectClick(project.path)}
           tabIndex={0}
           role="button"
@@ -317,13 +357,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
       <motion.div
         key={project.path}
         variants={shouldAnimate ? BAKER_ANIMATIONS.projectList.item : undefined}
-        className={cn(
-          'border-border cursor-pointer border-b p-3',
-          'transition-[background-color] duration-150 ease-out',
-          'hover:bg-accent/50',
-          'focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2',
-          isSelected && 'bg-accent'
-        )}
+        className={rowClassName}
         onClick={() => onProjectClick(project.path)}
         tabIndex={0}
         role="button"
@@ -337,13 +371,27 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
   return (
     <div className="flex h-full flex-col">
       <div className="border-border space-y-2 border-b p-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            Projects
-          </h2>
-          <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-semibold">
-            {projects.length}
+        <div className="flex items-center gap-2.5">
+          {onSelectMany && (
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={allShownSelected}
+              disabled={shownPaths.length === 0}
+              aria-label="Select all shown projects"
+              title="Select all shown projects"
+              onChange={e => onSelectMany(shownPaths, e.target.checked)}
+              className="flex-shrink-0"
+            />
+          )}
+          <h2 className="text-foreground text-sm font-semibold">Projects</h2>
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {filteredProjects.length === projects.length
+              ? projects.length
+              : `${filteredProjects.length} of ${projects.length}`}
           </span>
+
+          <SortToggle sortOrder={sortOrder} onChange={setSortOrder} />
         </div>
 
         <Input
@@ -353,54 +401,33 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
           className="h-8 text-xs"
         />
 
-        <div className="flex items-center gap-1.5">
-          <span className="text-muted-foreground text-xs">Sort:</span>
-          {(
-            [
-              { key: 'scan', label: 'Scan order' },
-              { key: 'size', label: 'Size' }
-            ] as const
-          ).map(option => (
-            <button
-              key={option.key}
-              type="button"
-              onClick={() => setSortOrder(option.key)}
-              className={cn(
-                'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
-                sortOrder === option.key
-                  ? 'border-primary/30 bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {filterChips.map(chip => (
-            <button
-              key={chip.key}
-              type="button"
-              onClick={() => setStatusFilter(chip.key)}
-              className={cn(
-                'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
-                statusFilter === chip.key
-                  ? 'border-primary/30 bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-              )}
-            >
-              {chip.label}{' '}
-              <span
-                className={
-                  statusFilter === chip.key ? 'text-primary' : 'text-muted-foreground'
-                }
+        {filterChips.length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            {filterChips.map(chip => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => setStatusFilter(chip.key)}
+                aria-pressed={statusFilter === chip.key}
+                className={cn(
+                  'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
+                  statusFilter === chip.key
+                    ? 'border-primary/30 bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                )}
               >
-                {chip.count}
-              </span>
-            </button>
-          ))}
-        </div>
+                {chip.label}{' '}
+                <span
+                  className={
+                    statusFilter === chip.key ? 'text-primary' : 'text-muted-foreground'
+                  }
+                >
+                  {chip.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {filteredProjects.length === 0 ? (
@@ -408,7 +435,11 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
           No projects match the current filter
         </div>
       ) : useVirtualScroll ? (
-        <div ref={parentRef} className="flex-1 overflow-y-auto" data-virtual-container>
+        <div
+          ref={parentRef}
+          className="min-h-0 flex-1 overflow-y-auto"
+          data-virtual-container
+        >
           <div
             style={{
               height: `${virtualizer.getTotalSize()}px`,
@@ -430,7 +461,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
         </div>
       ) : (
         <motion.div
-          className="flex-1 overflow-y-auto"
+          className="min-h-0 flex-1 overflow-y-auto"
           variants={shouldAnimate ? BAKER_ANIMATIONS.projectList.container : undefined}
           initial={shouldAnimate ? 'hidden' : false}
           animate={shouldAnimate ? 'show' : false}

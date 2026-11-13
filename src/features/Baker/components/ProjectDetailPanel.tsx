@@ -181,7 +181,10 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
                 onGeneratePreview={onGeneratePreview}
                 onRepairProject={onRepairProject}
               />
-              <OverviewStats breadcrumbs={breadcrumbs} />
+              <OverviewStats
+                breadcrumbs={breadcrumbs}
+                reconstructed={project?.invalidBreadcrumbs ?? false}
+              />
               <LinkedResources
                 projectPath={projectPath}
                 breadcrumbs={breadcrumbs}
@@ -547,8 +550,32 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
   )
 }
 
-const OverviewStats: React.FC<{ breadcrumbs: BreadcrumbsFile }> = ({ breadcrumbs }) => {
-  const formatDate = formatBreadcrumbDateSimple
+const OVERVIEW_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short'
+})
+
+/** Date and time to the minute, in the machine's own locale. */
+function formatOverviewDate(value: string): string {
+  const date = new Date(value)
+  // Missing and malformed values keep the shared formatter's wording.
+  return isNaN(date.getTime())
+    ? formatBreadcrumbDateSimple(value)
+    : OVERVIEW_DATE_FORMAT.format(date)
+}
+
+/**
+ * The project's recorded facts as a plain label/value list.
+ *
+ * `reconstructed` marks breadcrumbs rebuilt from the folder because the file on
+ * disk could not be parsed. Those have no real author or creation date (the
+ * reader fills in the current time), so neither is shown as though recorded.
+ */
+const OverviewStats: React.FC<{
+  breadcrumbs: BreadcrumbsFile
+  reconstructed?: boolean
+}> = ({ breadcrumbs, reconstructed = false }) => {
+  const formatDate = formatOverviewDate
 
   const stats: Array<{ icon: React.ReactNode; label: string; value: string }> = [
     {
@@ -562,18 +589,23 @@ const OverviewStats: React.FC<{ breadcrumbs: BreadcrumbsFile }> = ({ breadcrumbs
       value: breadcrumbs.folderSizeBytes
         ? formatFileSize(breadcrumbs.folderSizeBytes)
         : 'Unknown'
-    },
-    {
-      icon: <User className="h-3 w-3" />,
-      label: 'Created By',
-      value: breadcrumbs.createdBy
-    },
-    {
-      icon: <Calendar className="h-3 w-3" />,
-      label: 'Created',
-      value: formatDate(breadcrumbs.creationDateTime)
     }
   ]
+
+  if (!reconstructed) {
+    stats.push(
+      {
+        icon: <User className="h-3 w-3" />,
+        label: 'Created By',
+        value: breadcrumbs.createdBy
+      },
+      {
+        icon: <Calendar className="h-3 w-3" />,
+        label: 'Created',
+        value: formatDate(breadcrumbs.creationDateTime)
+      }
+    )
+  }
 
   if (breadcrumbs.lastModified) {
     stats.push({
@@ -591,19 +623,19 @@ const OverviewStats: React.FC<{ breadcrumbs: BreadcrumbsFile }> = ({ breadcrumbs
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
+    <dl className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-x-8 gap-y-3">
       {stats.map(stat => (
-        <div key={stat.label} className="bg-muted/40 border-border rounded-lg border p-3">
-          <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium">
+        <div key={stat.label} className="min-w-0">
+          <dt className="text-muted-foreground mb-0.5 flex items-center gap-1.5 text-xs">
             {stat.icon}
             {stat.label}
-          </div>
-          <p className="text-foreground text-sm font-medium [overflow-wrap:anywhere]">
+          </dt>
+          <dd className="text-foreground text-sm font-medium [overflow-wrap:anywhere]">
             {stat.value}
-          </p>
+          </dd>
         </div>
       ))}
-    </div>
+    </dl>
   )
 }
 
@@ -702,7 +734,7 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
               title={video.title}
               subtitle={`Sprout Video${
                 video.uploadDate
-                  ? ` · uploaded ${formatBreadcrumbDateSimple(video.uploadDate)}`
+                  ? ` · uploaded ${formatOverviewDate(video.uploadDate)}`
                   : ''
               }`}
               onOpen={() => openInShell(video.url)}

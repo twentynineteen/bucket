@@ -21,10 +21,15 @@ import {
 } from '@shared/ui/alert-dialog'
 import { Button } from '@shared/ui/button'
 import { formatFileSize } from '@shared/utils'
-import { HardDrive, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import React, { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useRefreshBreadcrumbSizes } from '../hooks/useRefreshBreadcrumbSizes'
+import {
+  breadcrumbsStatus,
+  STATUS_PRESENTATION,
+  type BreadcrumbsStatus
+} from '../internal/projectStatus'
 import { computeTreemapLayout } from '../internal/treemapLayout'
 import type { ProjectFolder } from '../types'
 
@@ -32,13 +37,9 @@ import type { ProjectFolder } from '../types'
 // aggregated into a single "Other projects" tile.
 const MAX_TREEMAP_TILES = 24
 
-// Tile fills cycle through the theme chart palette so adjacent tiles differ.
-const TILE_CLASSES = [
-  'bg-primary/80 hover:bg-primary',
-  'bg-primary/60 hover:bg-primary/80',
-  'bg-primary/45 hover:bg-primary/60',
-  'bg-primary/30 hover:bg-primary/45'
-]
+// Tile area is folder size; tile colour is the project's breadcrumbs state, so
+// the map answers "where is the space, and is it accounted for" at once.
+const LEGEND_ORDER: BreadcrumbsStatus[] = ['current', 'stale', 'missing', 'unparseable']
 
 interface StorageViewProps {
   projects: ProjectFolder[]
@@ -51,6 +52,8 @@ interface TreemapEntry {
   label: string
   sizeBytes: number
   isAggregate: boolean
+  /** Null for the aggregate tile, which mixes projects in different states. */
+  status: BreadcrumbsStatus | null
 }
 
 export const StorageView: React.FC<StorageViewProps> = ({
@@ -111,7 +114,8 @@ export const StorageView: React.FC<StorageViewProps> = ({
       key: p.path,
       label: p.name,
       sizeBytes: p.folderSizeBytes ?? 0,
-      isAggregate: false
+      isAggregate: false,
+      status: breadcrumbsStatus(p)
     }))
 
     if (rest.length > 0) {
@@ -119,7 +123,8 @@ export const StorageView: React.FC<StorageViewProps> = ({
         key: '__other__',
         label: `Other projects (${rest.length})`,
         sizeBytes: rest.reduce((acc, p) => acc + (p.folderSizeBytes ?? 0), 0),
-        isAggregate: true
+        isAggregate: true,
+        status: null
       })
     }
     return entries
@@ -167,16 +172,27 @@ export const StorageView: React.FC<StorageViewProps> = ({
       {/* Toolbar: totals + refresh action */}
       <div className="border-border flex flex-shrink-0 items-center justify-between border-b px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <HardDrive className="text-muted-foreground h-4 w-4" />
-          <span className="text-sm font-medium">
-            {formatFileSize(totalSizedBytes)} across {sizedProjects.length} project
-            {sizedProjects.length !== 1 ? 's' : ''}
-          </span>
+          <span className="text-sm font-medium">Size by project</span>
           {unsizedProjects.length > 0 && (
             <span className="bg-warning/20 text-warning rounded-full px-2 py-0.5 text-xs font-medium">
               {unsizedProjects.length} size unavailable
             </span>
           )}
+          <ul
+            className="text-muted-foreground ml-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+            aria-label="Tile colours"
+          >
+            {LEGEND_ORDER.filter(status =>
+              sizedProjects.some(p => breadcrumbsStatus(p) === status)
+            ).map(status => (
+              <li key={status} className="flex items-center gap-1.5">
+                <span
+                  className={`h-2 w-2 rounded-sm ${STATUS_PRESENTATION[status].fill}`}
+                />
+                {STATUS_PRESENTATION[status].label}
+              </li>
+            ))}
+          </ul>
         </div>
         <Button
           variant="outline"
@@ -195,7 +211,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
           ref={containerRef}
           className="relative h-full w-full overflow-hidden rounded-lg"
         >
-          {treemapEntries.map((entry, index) => {
+          {treemapEntries.map(entry => {
             const rect = treemapRects.find(r => r.key === entry.key)
             if (!rect || rect.width < 1 || rect.height < 1) return null
 
@@ -204,14 +220,16 @@ export const StorageView: React.FC<StorageViewProps> = ({
               <button
                 key={entry.key}
                 type="button"
-                title={`${entry.label} — ${formatFileSize(entry.sizeBytes)}`}
+                title={`${entry.label}: ${formatFileSize(entry.sizeBytes)}${
+                  entry.status ? `, ${STATUS_PRESENTATION[entry.status].label}` : ''
+                }`}
                 onClick={() => {
                   if (!entry.isAggregate) onProjectClick(entry.key)
                 }}
-                className={`absolute overflow-hidden rounded-sm border border-background p-1 text-left transition-colors ${
-                  entry.isAggregate
-                    ? 'bg-muted hover:bg-muted/80'
-                    : TILE_CLASSES[index % TILE_CLASSES.length]
+                className={`border-background absolute overflow-hidden rounded-md border-2 px-2 py-1.5 text-left transition-colors ${
+                  entry.status
+                    ? STATUS_PRESENTATION[entry.status].tile
+                    : 'bg-muted/50 hover:bg-muted text-foreground'
                 }`}
                 style={{
                   left: rect.x,
@@ -221,9 +239,9 @@ export const StorageView: React.FC<StorageViewProps> = ({
                 }}
               >
                 {showLabel && (
-                  <span className="block truncate text-xs font-medium text-primary-foreground">
+                  <span className="block truncate text-xs font-medium">
                     {entry.label}
-                    <span className="block truncate font-normal opacity-80">
+                    <span className="text-muted-foreground block truncate font-normal tabular-nums">
                       {formatFileSize(entry.sizeBytes)}
                     </span>
                   </span>

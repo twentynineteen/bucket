@@ -179,12 +179,6 @@ describe('Layout sub-module (nested direct paths)', () => {
     expect(mod.default).toBeDefined() // ErrorBoundary is default export
     expect(mod.QueryErrorBoundary).toBeDefined()
   })
-
-  test('TitleBar exports TitleBar component', async () => {
-    const mod = await import('@shared/ui/layout/TitleBar')
-    expect(mod.TitleBar).toBeDefined()
-    expect(typeof mod.TitleBar).toBe('function')
-  })
 })
 
 describe('Formerly misplaced components (moved from utils)', () => {

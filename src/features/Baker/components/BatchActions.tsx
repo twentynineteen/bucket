@@ -40,7 +40,7 @@ export const BatchActions: React.FC<BatchActionsProps> = ({
           Select All
         </Button>
         <Button variant="link" size="sm" onClick={onClearSelection}>
-          Clear
+          Clear selection
         </Button>
         <Button
           onClick={onApplyChanges}

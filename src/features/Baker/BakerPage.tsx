@@ -68,6 +68,57 @@ const UpdateResults: React.FC<{ result: BatchUpdateResult }> = ({ result }) => (
   </div>
 )
 
+type ViewMode = 'projects' | 'storage'
+
+const VIEW_MODES: ReadonlyArray<{ key: ViewMode; label: string }> = [
+  { key: 'projects', label: 'Projects' },
+  { key: 'storage', label: 'Storage' }
+]
+
+/** Segmented control switching the workspace between the list and the storage map. */
+const ViewSwitch: React.FC<{
+  viewMode: ViewMode
+  onChange: (mode: ViewMode) => void
+}> = ({ viewMode, onChange }) => (
+  <div className="bg-muted/60 flex flex-shrink-0 gap-0.5 rounded-lg p-0.5">
+    {VIEW_MODES.map(mode => (
+      <button
+        key={mode.key}
+        type="button"
+        onClick={() => onChange(mode.key)}
+        aria-pressed={viewMode === mode.key}
+        className={
+          viewMode === mode.key
+            ? 'bg-background text-foreground rounded-md px-3 py-1 text-xs font-semibold shadow-sm'
+            : 'text-muted-foreground hover:text-foreground rounded-md px-3 py-1 text-xs font-medium transition-colors'
+        }
+      >
+        {mode.label}
+      </button>
+    ))}
+  </div>
+)
+
+/** Shown in the workspace before a scan has produced any results. */
+const NoScanYet: React.FC<{ isScanning: boolean }> = ({ isScanning }) => (
+  <div className="text-muted-foreground flex flex-1 items-center justify-center">
+    <div className="text-center">
+      <FolderSearch className="mx-auto mb-3 h-12 w-12 opacity-50" />
+      <p className="text-foreground text-sm font-medium">
+        {isScanning
+          ? 'Scanning for projects…'
+          : 'Select a folder and start a scan to find projects'}
+      </p>
+      {!isScanning && (
+        <p className="mx-auto mt-1 max-w-sm text-xs">
+          Baker looks for BuildProject folders and checks that each one&apos;s breadcrumbs
+          file still matches what is on disk.
+        </p>
+      )}
+    </div>
+  </div>
+)
+
 const BakerPageContent: React.FC = () => {
   // Set breadcrumbs for navigation
   useBreadcrumb([{ label: 'Ingest footage', href: '/ingest/build' }, { label: 'Baker' }])
@@ -78,7 +129,7 @@ const BakerPageContent: React.FC = () => {
   const [showPreferences, setShowPreferences] = useState(false)
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [showBatchConfirmation, setShowBatchConfirmation] = useState(false)
-  const [viewMode, setViewMode] = useState<'projects' | 'storage'>('projects')
+  const [viewMode, setViewMode] = useState<ViewMode>('projects')
   const [repairTarget, setRepairTarget] = useState<string | null>(null)
 
   // Custom hooks - all business logic moved to hooks
@@ -176,6 +227,15 @@ const BakerPageContent: React.FC = () => {
     },
     []
   )
+
+  // The list header's select-all: ticks or unticks the rows currently shown,
+  // leaving any selection outside the active filter as it was.
+  const handleSelectMany = useCallback((projectPaths: string[], isSelected: boolean) => {
+    setSelectedProjects(prev => {
+      const others = prev.filter(path => !projectPaths.includes(path))
+      return isSelected ? [...others, ...projectPaths] : others
+    })
+  }, [])
 
   const handleSelectAll = useCallback(() => {
     if (scanResult?.projects) {
@@ -288,28 +348,11 @@ const BakerPageContent: React.FC = () => {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
-      {/* Header */}
-      <div className="border-border bg-card/50 flex-shrink-0 border-b px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-foreground text-2xl font-bold">Baker</h1>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              Scan directories for BuildProject folders and manage breadcrumbs files
-            </p>
-          </div>
-          <BakerPreferences
-            preferences={preferences}
-            onUpdatePreferences={updatePreferences}
-            onResetToDefaults={resetToDefaults}
-            isOpen={showPreferences}
-            onOpenChange={setShowPreferences}
-          />
-        </div>
-      </div>
-
-      {/* Scan toolbar: folder selection + inline scan stats */}
-      <div className="border-border bg-card/30 flex-shrink-0 space-y-2 border-b px-6 py-2.5">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      {/* One toolbar row: page title, scan folder and actions, preferences.
+          The title and the toolbar used to be two stacked bands. */}
+      <div className="border-border flex-shrink-0 space-y-2 border-b px-4 py-2">
+        <div className="flex items-center gap-3">
+          <h1 className="text-foreground flex-shrink-0 text-base font-semibold">Baker</h1>
           <FolderSelector
             selectedFolder={selectedFolder}
             onFolderChange={setSelectedFolder}
@@ -319,10 +362,12 @@ const BakerPageContent: React.FC = () => {
             isScanning={isScanning}
             hasResults={!!scanResult}
           />
-          <ScanResults
-            scanResult={scanResult}
-            isScanning={isScanning}
-            scanStartTime={scanStartTime}
+          <BakerPreferences
+            preferences={preferences}
+            onUpdatePreferences={updatePreferences}
+            onResetToDefaults={resetToDefaults}
+            isOpen={showPreferences}
+            onOpenChange={setShowPreferences}
           />
         </div>
 
@@ -345,26 +390,14 @@ const BakerPageContent: React.FC = () => {
       {/* Workspace: project list + detail panel fill the remaining height */}
       {scanResult?.projects ? (
         <>
-          <div className="border-border bg-card/20 flex flex-shrink-0 gap-1 border-b px-6 py-1.5">
-            {(
-              [
-                { key: 'projects', label: 'Projects' },
-                { key: 'storage', label: 'Storage' }
-              ] as const
-            ).map(mode => (
-              <button
-                key={mode.key}
-                type="button"
-                onClick={() => setViewMode(mode.key)}
-                className={
-                  viewMode === mode.key
-                    ? 'bg-primary/10 text-primary rounded-md px-3 py-1 text-xs font-semibold'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground rounded-md px-3 py-1 text-xs font-medium transition-colors'
-                }
-              >
-                {mode.label}
-              </button>
-            ))}
+          <div className="border-border flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-1.5">
+            <ViewSwitch viewMode={viewMode} onChange={setViewMode} />
+            {/* Live progress while a scan runs, the one-line summary after. */}
+            <ScanResults
+              scanResult={scanResult}
+              isScanning={isScanning}
+              scanStartTime={scanStartTime}
+            />
           </div>
 
           {viewMode === 'storage' ? (
@@ -381,7 +414,9 @@ const BakerPageContent: React.FC = () => {
                   projects={scanResult.projects}
                   selectedProjects={selectedProjects}
                   selectedProject={selectedProject}
+                  rootPath={scanResult.rootPath}
                   onProjectSelection={handleProjectSelection}
+                  onSelectMany={handleSelectMany}
                   onProjectClick={handleProjectClick}
                   onRepairProject={handleRepairRequest}
                 />
@@ -415,16 +450,7 @@ const BakerPageContent: React.FC = () => {
           )}
         </>
       ) : (
-        <div className="text-muted-foreground flex flex-1 items-center justify-center">
-          <div className="text-center">
-            <FolderSearch className="mx-auto mb-3 h-12 w-12 opacity-50" />
-            <p className="text-sm">
-              {isScanning
-                ? 'Scanning for projects…'
-                : 'Select a folder and start a scan to find projects'}
-            </p>
-          </div>
-        </div>
+        <NoScanYet isScanning={isScanning} />
       )}
 
       {/* Batch Update Confirmation Dialog */}
