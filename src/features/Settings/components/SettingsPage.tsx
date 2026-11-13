@@ -9,6 +9,7 @@ import { useBreadcrumb } from '@shared/hooks'
 import { createQueryError, createQueryOptions, queryKeys, shouldRetry } from '@shared/lib'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import React from 'react'
@@ -54,12 +55,10 @@ const SettingsPageContent: React.FC = () => {
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
       <div className="w-full max-w-full pb-4">
         {/* Header */}
-        <div className="border-border bg-card/50 border-b px-6 py-4">
-          <h1 className="text-foreground text-2xl font-bold">Settings</h1>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            Configure application settings, API integrations, and preferences
-          </p>
-        </div>
+        <PageHeader
+          title="Settings"
+          description="Configure application settings, API integrations, and preferences"
+        />
 
         <div className="max-w-full space-y-8 px-6 py-4">
           {/*

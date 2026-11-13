@@ -7,6 +7,7 @@
  * and opens MotionTemplateDialog (#337 placeholder) on card selection.
  */
 import { Button } from '@shared/ui/button'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { PackageSearch, RefreshCw, Star } from 'lucide-react'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useMotionCatalogue } from '../hooks/useMotionCatalogue'
@@ -142,20 +143,16 @@ const MotionMarketplacePage: React.FC = () => {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="border-border bg-card/50 flex-shrink-0 border-b px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-foreground text-2xl font-bold">Motion marketplace</h1>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              Browse, preview and export reusable motion graphics templates
-            </p>
-          </div>
+      <PageHeader
+        title="Motion marketplace"
+        description="Browse, preview and export reusable motion graphics templates"
+        actions={
           <Button variant="outline" size="sm" onClick={handleRescan}>
             <RefreshCw className="mr-2 h-3.5 w-3.5" />
             Rescan
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Filter bar */}
       <div className="border-border bg-card/30 flex-shrink-0 border-b px-6 py-2.5">

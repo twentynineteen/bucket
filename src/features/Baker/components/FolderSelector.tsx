@@ -68,7 +68,10 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
         onClick={onStartScan}
         disabled={!selectedFolder || isScanning || disabled}
         size="sm"
-        className="gap-1.5 shadow-sm hover:shadow"
+        // Filled only for the first scan. Once results exist the filled button
+        // on screen belongs to whatever the results call for.
+        variant={hasResults ? 'outline' : 'default'}
+        className="gap-1.5"
       >
         {isScanning ? (
           <>

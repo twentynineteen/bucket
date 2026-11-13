@@ -28,8 +28,11 @@ interface StatusPresentation {
   label: string
   /** Text colour class. Current is deliberately quiet: only exceptions get colour. */
   text: string
-  /** Solid fill class, for dots, bars and legend swatches. */
-  fill: string
+  /**
+   * Classes for the small marker beside the label (list dots, legend swatches).
+   * Missing is a hollow ring: there is no file, and it still needs action.
+   */
+  marker: string
   /** Tile classes for the storage map: fill plus a readable label colour. */
   tile: string
 }
@@ -38,25 +41,25 @@ export const STATUS_PRESENTATION: Record<BreadcrumbsStatus, StatusPresentation> 
   current: {
     label: 'Current',
     text: 'text-muted-foreground',
-    fill: 'bg-success',
-    tile: 'bg-success/15 hover:bg-success/25 text-foreground'
+    marker: 'bg-success',
+    tile: 'border-background bg-success/15 hover:bg-success/25 text-foreground'
   },
   stale: {
     label: 'Stale',
     text: 'text-warning',
-    fill: 'bg-warning',
-    tile: 'bg-warning/25 hover:bg-warning/35 text-foreground'
+    marker: 'bg-warning',
+    tile: 'border-background bg-warning/25 hover:bg-warning/35 text-foreground'
   },
   missing: {
     label: 'Missing',
-    text: 'text-foreground',
-    fill: 'bg-muted-foreground',
-    tile: 'bg-muted-foreground/20 hover:bg-muted-foreground/30 text-foreground'
+    text: 'text-warning',
+    marker: 'border-warning border-[1.5px] bg-transparent',
+    tile: 'border-warning/70 bg-warning/5 hover:bg-warning/15 text-foreground border-dashed'
   },
   unparseable: {
     label: 'Unparseable',
     text: 'text-destructive',
-    fill: 'bg-destructive',
-    tile: 'bg-destructive/20 hover:bg-destructive/30 text-foreground'
+    marker: 'bg-destructive',
+    tile: 'border-background bg-destructive/20 hover:bg-destructive/30 text-foreground'
   }
 }

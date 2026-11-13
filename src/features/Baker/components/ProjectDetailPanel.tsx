@@ -193,6 +193,7 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
               <OverviewStats
                 breadcrumbs={breadcrumbs}
                 reconstructed={project?.invalidBreadcrumbs ?? false}
+                scannedSizeBytes={project?.folderSizeBytes}
               />
               <FootageSummary files={breadcrumbs.files} />
               <LinkedResources
@@ -431,7 +432,7 @@ function calloutHeadline(project: ProjectFolder): string {
 
 function calloutSubline(project: ProjectFolder, pendingCount: number | null): string {
   if (pendingCount !== null) {
-    return `${pendingCount} pending change${pendingCount !== 1 ? 's' : ''} will be written on apply`
+    return `${pendingCount} change${pendingCount !== 1 ? 's' : ''} will be written when you update, listed below`
   }
   if (project.invalidBreadcrumbs) {
     return 'Repair rebuilds it from the folder contents and keeps the old file as a backup'
@@ -582,6 +583,7 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
             rows={changes.rows}
             maintenanceFields={changes.maintenanceFields}
             note={note}
+            basePath={project.path}
           />
         </div>
       )}
@@ -613,7 +615,12 @@ function formatOverviewDate(value: string): string {
 const OverviewStats: React.FC<{
   breadcrumbs: BreadcrumbsFile
   reconstructed?: boolean
-}> = ({ breadcrumbs, reconstructed = false }) => {
+  /** Size measured by the scan; used when the breadcrumbs record none. */
+  scannedSizeBytes?: number
+}> = ({ breadcrumbs, reconstructed = false, scannedSizeBytes }) => {
+  // The list row and the storage map show the scanned size. Fall back to it
+  // here so one project never shows a size in one place and "Unknown" in another.
+  const sizeBytes = breadcrumbs.folderSizeBytes || scannedSizeBytes
   const formatDate = formatOverviewDate
 
   const stats: Array<{ icon: React.ReactNode; label: string; value: string }> = [
@@ -625,9 +632,7 @@ const OverviewStats: React.FC<{
     {
       icon: <HardDrive className="h-3 w-3" />,
       label: 'Folder Size',
-      value: breadcrumbs.folderSizeBytes
-        ? formatFileSize(breadcrumbs.folderSizeBytes)
-        : 'Unknown'
+      value: sizeBytes ? formatFileSize(sizeBytes) : 'Unknown'
     }
   ]
 
@@ -662,19 +667,23 @@ const OverviewStats: React.FC<{
   }
 
   return (
-    <dl className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3">
-      {stats.map(stat => (
-        <div key={stat.label} className="min-w-0">
-          <dt className="text-muted-foreground mb-0.5 flex items-center gap-1.5 text-xs">
-            {stat.icon}
-            {stat.label}
-          </dt>
-          <dd className="text-foreground text-sm font-medium [overflow-wrap:anywhere]">
-            {stat.value}
-          </dd>
-        </div>
-      ))}
-    </dl>
+    // Columns follow the panel's own width, not the window's: three when there
+    // is room for a date on one line, otherwise two.
+    <div className="@container">
+      <dl className="grid grid-cols-2 gap-x-8 gap-y-3 @xl:grid-cols-3">
+        {stats.map(stat => (
+          <div key={stat.label} className="min-w-0">
+            <dt className="text-muted-foreground mb-0.5 flex items-center gap-1.5 text-xs">
+              {stat.icon}
+              {stat.label}
+            </dt>
+            <dd className="text-foreground text-sm font-medium [overflow-wrap:anywhere]">
+              {stat.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   )
 }
 

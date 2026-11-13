@@ -38,6 +38,8 @@ function confirmLabel(isLoading: boolean, changedCount: number): string {
 
 interface ProjectChangeBlockProps {
   projectName: string
+  /** Project folder; file rows are listed relative to it. */
+  projectPath: string
   changes: ProjectChangeRows
   isExpanded: boolean
   isRebuild: boolean
@@ -47,6 +49,7 @@ interface ProjectChangeBlockProps {
 
 const ProjectChangeBlock: React.FC<ProjectChangeBlockProps> = ({
   projectName,
+  projectPath,
   changes,
   isExpanded,
   isRebuild,
@@ -82,6 +85,7 @@ const ProjectChangeBlock: React.FC<ProjectChangeBlockProps> = ({
           rows={changes.rows}
           maintenanceFields={changes.maintenanceFields}
           note={note}
+          basePath={projectPath}
         />
       </div>
     )}
@@ -229,6 +233,7 @@ export const BatchUpdateConfirmationDialog: React.FC<
                   <ProjectChangeBlock
                     key={project.projectPath}
                     projectName={project.projectName}
+                    projectPath={project.projectPath}
                     changes={project.changes}
                     isExpanded={expandedPaths.has(project.projectPath)}
                     isRebuild={invalidBreadcrumbsPaths.includes(project.projectPath)}

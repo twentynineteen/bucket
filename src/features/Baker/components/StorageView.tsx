@@ -101,6 +101,9 @@ export const StorageView: React.FC<StorageViewProps> = ({
     [sizedProjects]
   )
 
+  // sizedProjects is sorted largest first; guard against a zero-byte maximum.
+  const largestBytes = Math.max(sizedProjects[0]?.folderSizeBytes ?? 0, 1)
+
   const refreshablePaths = useMemo(
     () =>
       projects.filter(p => p.hasBreadcrumbs && !p.invalidBreadcrumbs).map(p => p.path),
@@ -187,7 +190,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
             ).map(status => (
               <li key={status} className="flex items-center gap-1.5">
                 <span
-                  className={`h-2 w-2 rounded-sm ${STATUS_PRESENTATION[status].fill}`}
+                  className={`h-2 w-2 rounded-sm ${STATUS_PRESENTATION[status].marker}`}
                 />
                 {STATUS_PRESENTATION[status].label}
               </li>
@@ -226,10 +229,10 @@ export const StorageView: React.FC<StorageViewProps> = ({
                 onClick={() => {
                   if (!entry.isAggregate) onProjectClick(entry.key)
                 }}
-                className={`border-background absolute overflow-hidden rounded-md border-2 px-2 py-1.5 text-left transition-colors ${
+                className={`absolute overflow-hidden rounded-md border-2 px-2 py-1.5 text-left transition-colors ${
                   entry.status
                     ? STATUS_PRESENTATION[entry.status].tile
-                    : 'bg-muted/50 hover:bg-muted text-foreground'
+                    : 'border-background bg-muted/50 hover:bg-muted text-foreground'
                 }`}
                 style={{
                   left: rect.x,
@@ -239,8 +242,15 @@ export const StorageView: React.FC<StorageViewProps> = ({
                 }}
               >
                 {showLabel && (
-                  <span className="block truncate text-xs font-medium">
-                    {entry.label}
+                  <span className="block text-xs font-medium">
+                    {/* Tall tiles give the name a second line before cutting it */}
+                    <span
+                      className={
+                        rect.height >= 64 ? 'line-clamp-2 leading-snug' : 'block truncate'
+                      }
+                    >
+                      {entry.label}
+                    </span>
                     <span className="text-muted-foreground block truncate font-normal tabular-nums">
                       {formatFileSize(entry.sizeBytes)}
                     </span>
@@ -262,22 +272,27 @@ export const StorageView: React.FC<StorageViewProps> = ({
               key={project.path}
               type="button"
               onClick={() => onProjectClick(project.path)}
-              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,1fr)_minmax(4rem,12rem)_9rem] items-center gap-4 border-b px-4 py-1.5 text-left transition-colors"
+              className="border-border hover:bg-accent/50 grid w-full grid-cols-[minmax(0,20rem)_minmax(3rem,1fr)_9rem] items-center gap-4 border-b px-4 py-1.5 text-left transition-colors"
             >
               <span className="flex min-w-0 items-center gap-2 text-sm">
                 <span
-                  className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-                    STATUS_PRESENTATION[breadcrumbsStatus(project)].fill
+                  className={`h-2 w-2 flex-shrink-0 rounded-full ${
+                    STATUS_PRESENTATION[breadcrumbsStatus(project)].marker
                   }`}
                   title={STATUS_PRESENTATION[breadcrumbsStatus(project)].label}
                 />
-                <span className="truncate">{project.name}</span>
+                <span className="truncate" title={project.name}>
+                  {project.name}
+                </span>
               </span>
-              {/* Share of the scanned total, as a bar in its own column */}
+              {/* Size as a bar beside the name, scaled to the largest project
+                  so the longest bar fills its track. */}
               <span className="bg-muted h-1.5 overflow-hidden rounded-full">
                 <span
                   className="bg-foreground/50 block h-full rounded-full"
-                  style={{ width: `${Math.max(share * 100, 1)}%` }}
+                  style={{
+                    width: `${Math.max(((project.folderSizeBytes ?? 0) / largestBytes) * 100, 1)}%`
+                  }}
                 />
               </span>
               <span className="text-muted-foreground text-right text-xs tabular-nums">

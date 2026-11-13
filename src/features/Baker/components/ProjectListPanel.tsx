@@ -53,7 +53,7 @@ const FILTERS: ReadonlyArray<{
   matches: (project: ProjectFolder) => boolean
 }> = [
   { key: 'all', label: 'All', matches: () => true },
-  { key: 'attention', label: 'Needs attention', matches: needsAttention },
+  { key: 'attention', label: 'Attention', matches: needsAttention },
   { key: 'stale', label: 'Stale', matches: p => breadcrumbsStatus(p) === 'stale' },
   { key: 'missing', label: 'Missing', matches: p => breadcrumbsStatus(p) === 'missing' },
   {
@@ -89,6 +89,12 @@ function locationBelowRoot(projectPath: string, rootPath?: string): string | nul
   return parent || null
 }
 
+/** Ticked when every shown row is ticked, a dash when only some are. */
+function selectAllCheckState(shown: number, shownSelected: number) {
+  if (shown > 0 && shownSelected === shown) return true
+  return shownSelected > 0 ? ('indeterminate' as const) : false
+}
+
 const Separator: React.FC = () => <span aria-hidden="true">·</span>
 
 interface ProjectMetaLineProps {
@@ -107,7 +113,7 @@ const ProjectMetaLine: React.FC<ProjectMetaLineProps> = ({
   return (
     <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs">
       <span className={cn('inline-flex flex-shrink-0 items-center gap-1', status.text)}>
-        <span className={cn('h-1.5 w-1.5 rounded-full', status.fill)} />
+        <span className={cn('h-2 w-2 rounded-full', status.marker)} />
         <span className="font-medium">{status.label}</span>
       </span>
 
@@ -122,15 +128,6 @@ const ProjectMetaLine: React.FC<ProjectMetaLineProps> = ({
 
       <Separator />
       <span className="flex-shrink-0">{cameraLabel(project.cameraCount)}</span>
-
-      <Separator />
-      {typeof project.folderSizeBytes === 'number' ? (
-        <span className="flex-shrink-0 tabular-nums">
-          {formatFileSize(project.folderSizeBytes)}
-        </span>
-      ) : (
-        <span className="text-warning flex-shrink-0">size n/a</span>
-      )}
 
       {location && (
         <>
@@ -200,7 +197,7 @@ const FilterChips: React.FC<{
   if (chips.length <= 1) return null
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by state">
       {chips.map(chip => {
         const isActive = active === chip.key
         return (
@@ -210,7 +207,7 @@ const FilterChips: React.FC<{
             onClick={() => onChange(chip.key)}
             aria-pressed={isActive}
             className={cn(
-              'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
+              'rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors',
               isActive
                 ? 'border-primary/30 bg-primary/10 text-primary'
                 : 'border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground'
@@ -245,6 +242,11 @@ interface ProjectListPanelProps {
   onSelectMany?: (projectPaths: string[], isSelected: boolean) => void
   onProjectClick: (projectPath: string) => void
   onRepairProject?: (projectPath: string) => void
+  /**
+   * Rendered under the rows (the batch bar). It is told how many ticked
+   * projects the current filter is hiding, so it can say so.
+   */
+  footer?: (hiddenSelectedCount: number) => React.ReactNode
 }
 
 const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
@@ -257,7 +259,8 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
   onProjectSelection,
   onSelectMany,
   onProjectClick,
-  onRepairProject
+  onRepairProject,
+  footer
 }) => {
   const shouldReduceMotion = useReducedMotion()
   const parentRef = React.useRef<HTMLDivElement>(null)
@@ -313,13 +316,7 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
     () => shownPaths.filter(path => selectedProjects.includes(path)).length,
     [shownPaths, selectedProjects]
   )
-  const allShownSelected =
-    shownPaths.length > 0 && shownSelectedCount === shownPaths.length
-  const selectAllState = allShownSelected
-    ? true
-    : shownSelectedCount > 0
-      ? 'indeterminate'
-      : false
+  const selectAllState = selectAllCheckState(shownPaths.length, shownSelectedCount)
 
   // Determine if we should use virtual scrolling based on list size
   const useVirtualScroll = filteredProjects.length >= VIRTUAL_SCROLLING_THRESHOLD
@@ -365,12 +362,23 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
         />
 
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p
-            className="line-clamp-2 text-sm leading-snug font-medium [overflow-wrap:anywhere]"
-            title={project.path}
-          >
-            {project.name}
-          </p>
+          {/* Name wraps to two lines; size keeps its own right-aligned column
+              so sizes can be compared down the list. */}
+          <div className="flex items-baseline gap-3">
+            <p
+              className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug font-medium [overflow-wrap:anywhere]"
+              title={project.path}
+            >
+              {project.name}
+            </p>
+            {typeof project.folderSizeBytes === 'number' ? (
+              <span className="text-muted-foreground flex-shrink-0 text-xs tabular-nums">
+                {formatFileSize(project.folderSizeBytes)}
+              </span>
+            ) : (
+              <span className="text-warning flex-shrink-0 text-xs">size n/a</span>
+            )}
+          </div>
 
           <ProjectMetaLine
             project={project}
@@ -499,6 +507,8 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
           {filteredProjects.map((project, index) => renderProjectItem(project, index))}
         </motion.div>
       )}
+
+      {footer?.(selectedProjects.length - shownSelectedCount)}
     </div>
   )
 }

@@ -32,13 +32,28 @@ interface ChangeDiffListProps {
   /** Optional context line shown above the rows (e.g. "No breadcrumbs file — a new one will be created") */
   note?: string
   cap?: number
+  /**
+   * The project folder. File rows are shown relative to it, so each line reads
+   * "Footage/Camera 1/A001.MXF" and does not repeat the project's own path.
+   */
+  basePath?: string
+}
+
+/** A row label with the project folder stripped from the front, when it is there. */
+function relativeLabel(label: string, basePath?: string): string {
+  if (!basePath) return label
+  const base = basePath.replace(/[/\\]+$/, '')
+  return label.startsWith(base) && /[/\\]/.test(label.charAt(base.length))
+    ? label.slice(base.length + 1)
+    : label
 }
 
 export const ChangeDiffList: React.FC<ChangeDiffListProps> = ({
   rows,
   maintenanceFields = [],
   note,
-  cap = DEFAULT_ROW_CAP
+  cap = DEFAULT_ROW_CAP,
+  basePath
 }) => {
   const [expanded, setExpanded] = useState(false)
 
@@ -65,8 +80,11 @@ export const ChangeDiffList: React.FC<ChangeDiffListProps> = ({
           >
             {SIGN_BY_TYPE[row.type]}
           </span>
-          <span className="text-foreground min-w-0 flex-1 [overflow-wrap:anywhere]">
-            {row.label}
+          <span
+            className="text-foreground min-w-0 flex-1 [overflow-wrap:anywhere]"
+            title={row.label}
+          >
+            {relativeLabel(row.label, basePath)}
           </span>
           {row.detail && (
             <span className="text-muted-foreground flex-shrink-0 text-xs">

@@ -15,6 +15,7 @@ import {
 import { useBreadcrumb } from '@shared/hooks'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { logger } from '@shared/utils'
 import { AlertTriangle, CheckCircle, FolderSearch, RefreshCw } from 'lucide-react'
 import React, { useCallback, useMemo, useState } from 'react'
@@ -379,27 +380,28 @@ const BakerPageContent: React.FC = () => {
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* One toolbar row: page title, scan folder and actions, preferences.
           The title and the toolbar used to be two stacked bands. */}
-      <div className="border-border flex-shrink-0 space-y-2 border-b px-4 py-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-foreground flex-shrink-0 text-base font-semibold">Baker</h1>
-          <FolderSelector
-            selectedFolder={selectedFolder}
-            onFolderChange={setSelectedFolder}
-            onStartScan={handleStartScan}
-            onCancelScan={cancelScan}
-            onClearResults={handleClearResults}
-            isScanning={isScanning}
-            hasResults={!!scanResult}
-          />
-          <BakerPreferences
-            preferences={preferences}
-            onUpdatePreferences={updatePreferences}
-            onResetToDefaults={resetToDefaults}
-            isOpen={showPreferences}
-            onOpenChange={setShowPreferences}
-          />
-        </div>
+      <PageHeader title="Baker" className="px-4 py-2">
+        <FolderSelector
+          selectedFolder={selectedFolder}
+          onFolderChange={setSelectedFolder}
+          onStartScan={handleStartScan}
+          onCancelScan={cancelScan}
+          onClearResults={handleClearResults}
+          isScanning={isScanning}
+          hasResults={!!scanResult}
+        />
+        <BakerPreferences
+          preferences={preferences}
+          onUpdatePreferences={updatePreferences}
+          onResetToDefaults={resetToDefaults}
+          isOpen={showPreferences}
+          onOpenChange={setShowPreferences}
+        />
+      </PageHeader>
 
+      {/* Scan error, preview progress and the last update's result. The band
+          takes no space while it has nothing to show. */}
+      <div className="border-border flex-shrink-0 space-y-2 border-b px-4 py-2 empty:hidden">
         {/* Inline Error Display */}
         {error && <ScanError error={error} onRetry={handleStartScan} />}
 
@@ -440,27 +442,28 @@ const BakerPageContent: React.FC = () => {
           ) : (
             <div className="flex min-h-0 flex-1">
               {/* List column: the rows, then the batch footer for ticked rows */}
-              <div className="border-border flex w-80 flex-shrink-0 flex-col border-r">
-                <div className="min-h-0 flex-1">
-                  <ProjectListPanel
-                    projects={scanResult.projects}
-                    selectedProjects={selectedProjects}
-                    selectedProject={selectedProject}
-                    rootPath={scanResult.rootPath}
-                    statusFilter={statusFilter}
-                    onStatusFilterChange={setStatusFilter}
-                    onProjectSelection={handleProjectSelection}
-                    onSelectMany={handleSelectMany}
-                    onProjectClick={handleProjectClick}
-                    onRepairProject={handleRepairRequest}
-                  />
-                </div>
-                <BatchActions
+              <div className="border-border w-80 flex-shrink-0 border-r xl:w-[28rem]">
+                <ProjectListPanel
+                  projects={scanResult.projects}
                   selectedProjects={selectedProjects}
-                  needingUpdateCount={selectedNeedingUpdate}
-                  isUpdating={isUpdating}
-                  onClearSelection={handleClearSelection}
-                  onApplyChanges={handleApplyChanges}
+                  selectedProject={selectedProject}
+                  rootPath={scanResult.rootPath}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                  onProjectSelection={handleProjectSelection}
+                  onSelectMany={handleSelectMany}
+                  onProjectClick={handleProjectClick}
+                  onRepairProject={handleRepairRequest}
+                  footer={hiddenByFilterCount => (
+                    <BatchActions
+                      selectedProjects={selectedProjects}
+                      needingUpdateCount={selectedNeedingUpdate}
+                      hiddenByFilterCount={hiddenByFilterCount}
+                      isUpdating={isUpdating}
+                      onClearSelection={handleClearSelection}
+                      onApplyChanges={handleApplyChanges}
+                    />
+                  )}
                 />
               </div>
 
