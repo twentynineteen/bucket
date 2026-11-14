@@ -96,26 +96,11 @@ export function AppSidebar() {
 }
 ```
 
-#### Add Title Bar to App
+#### Title bar
 
-**File:** `src/App.tsx`
-
-```typescript
-import { TitleBar } from '@shared/ui/layout/TitleBar'
-import { useWindowState } from '@shared/hooks/useWindowState'
-
-const App: React.FC = () => {
-  // Persist window position and size
-  useWindowState()
-
-  return (
-    <Router>
-      <TitleBar />
-      <AppRouter />
-    </Router>
-  )
-}
-```
+There is no separate title bar component. The app's one header row,
+`AppHeader` in `src/app/dashboard/page.tsx`, is the window drag region. See
+[AppHeader](#appheader) below.
 
 ## Available Hooks
 
