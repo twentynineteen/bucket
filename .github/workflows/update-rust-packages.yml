@@ -22,7 +22,7 @@ jobs:
   # profile override, and 19 blocks sit behind cfg(target_os = "macos") - none
   # of which a Linux build ever compiled (issue #185).
   rust-test:
-    runs-on: macos-14 # Apple Silicon, matching the aarch64 target publish.yml ships
+    runs-on: macos-15 # Apple Silicon, matching the aarch64 target publish.yml ships
     timeout-minutes: 30
     steps:
       - name: Checkout
