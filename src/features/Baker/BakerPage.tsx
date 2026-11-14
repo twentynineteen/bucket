@@ -15,6 +15,7 @@ import {
 import { useBreadcrumb } from '@shared/hooks'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { logger } from '@shared/utils'
 import { AlertTriangle, CheckCircle, FolderSearch, RefreshCw } from 'lucide-react'
 import React, { useCallback, useMemo, useState } from 'react'
@@ -25,7 +26,7 @@ import { BatchUpdateConfirmationDialog } from './components/BatchUpdateConfirmat
 import { FolderSelector } from './components/FolderSelector'
 import { PreviewProgress } from './components/PreviewProgress'
 import { ProjectDetailPanel } from './components/ProjectDetailPanel'
-import { ProjectListPanel } from './components/ProjectListPanel'
+import { ProjectListPanel, type ProjectStatusFilter } from './components/ProjectListPanel'
 import { RepairBreadcrumbsDialog } from './components/RepairBreadcrumbsDialog'
 import { ScanResults } from './components/ScanResults'
 import { StorageView } from './components/StorageView'
@@ -35,6 +36,7 @@ import { useBreadcrumbsManager } from './hooks/useBreadcrumbsManager'
 import { useBreadcrumbsPreview } from './hooks/useBreadcrumbsPreview'
 import { useLiveBreadcrumbsReader } from './hooks/useLiveBreadcrumbsReader'
 import { useRepairBreadcrumbs } from './hooks/useRepairBreadcrumbs'
+import { breadcrumbsStatus } from './internal/projectStatus'
 import type { BatchUpdateResult } from './types'
 
 const ScanError: React.FC<{ error: string; onRetry: () => void }> = ({
@@ -68,6 +70,57 @@ const UpdateResults: React.FC<{ result: BatchUpdateResult }> = ({ result }) => (
   </div>
 )
 
+type ViewMode = 'projects' | 'storage'
+
+const VIEW_MODES: ReadonlyArray<{ key: ViewMode; label: string }> = [
+  { key: 'projects', label: 'Projects' },
+  { key: 'storage', label: 'Storage' }
+]
+
+/** Segmented control switching the workspace between the list and the storage map. */
+const ViewSwitch: React.FC<{
+  viewMode: ViewMode
+  onChange: (mode: ViewMode) => void
+}> = ({ viewMode, onChange }) => (
+  <div className="bg-muted/60 flex flex-shrink-0 gap-0.5 rounded-lg p-0.5">
+    {VIEW_MODES.map(mode => (
+      <button
+        key={mode.key}
+        type="button"
+        onClick={() => onChange(mode.key)}
+        aria-pressed={viewMode === mode.key}
+        className={
+          viewMode === mode.key
+            ? 'bg-background text-foreground rounded-md px-3 py-1 text-xs font-semibold shadow-sm'
+            : 'text-muted-foreground hover:text-foreground rounded-md px-3 py-1 text-xs font-medium transition-colors'
+        }
+      >
+        {mode.label}
+      </button>
+    ))}
+  </div>
+)
+
+/** Shown in the workspace before a scan has produced any results. */
+const NoScanYet: React.FC<{ isScanning: boolean }> = ({ isScanning }) => (
+  <div className="text-muted-foreground flex flex-1 items-center justify-center">
+    <div className="text-center">
+      <FolderSearch className="mx-auto mb-3 h-12 w-12 opacity-50" />
+      <p className="text-foreground text-sm font-medium">
+        {isScanning
+          ? 'Scanning for projects…'
+          : 'Select a folder and start a scan to find projects'}
+      </p>
+      {!isScanning && (
+        <p className="mx-auto mt-1 max-w-sm text-xs">
+          Baker looks for BuildProject folders and checks that each one&apos;s breadcrumbs
+          file still matches what is on disk.
+        </p>
+      )}
+    </div>
+  </div>
+)
+
 const BakerPageContent: React.FC = () => {
   // Set breadcrumbs for navigation
   useBreadcrumb([{ label: 'Ingest footage', href: '/ingest/build' }, { label: 'Baker' }])
@@ -77,8 +130,13 @@ const BakerPageContent: React.FC = () => {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([])
   const [showPreferences, setShowPreferences] = useState(false)
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
-  const [showBatchConfirmation, setShowBatchConfirmation] = useState(false)
-  const [viewMode, setViewMode] = useState<'projects' | 'storage'>('projects')
+  // Projects whose pending changes are open in the review dialog, or null
+  const [reviewPaths, setReviewPaths] = useState<string[] | null>(null)
+  // "Create breadcrumbs" on one project is an explicit request, so it creates
+  // the file whatever the batch preference says.
+  const [reviewCreatesMissing, setReviewCreatesMissing] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>('projects')
   const [repairTarget, setRepairTarget] = useState<string | null>(null)
 
   // Custom hooks - all business logic moved to hooks
@@ -131,6 +189,35 @@ const BakerPageContent: React.FC = () => {
     [scanResult, selectedProject]
   )
 
+  // What a write would do to the ticked projects. Only the breadcrumbs state
+  // counts here: a write does nothing about an invalid folder structure. With
+  // "Create missing breadcrumbs" off, the backend leaves a project that has no
+  // file alone, so those are counted apart.
+  const selectionCounts = useMemo(() => {
+    const counts = { needingUpdate: 0, toCreate: 0, creationOff: 0 }
+    for (const project of scanResult?.projects ?? []) {
+      if (!selectedProjects.includes(project.path)) continue
+      const status = breadcrumbsStatus(project)
+      if (status === 'current') continue
+      if (status !== 'missing') {
+        counts.needingUpdate += 1
+      } else if (preferences.createMissing) {
+        counts.needingUpdate += 1
+        counts.toCreate += 1
+      } else {
+        counts.creationOff += 1
+      }
+    }
+    return counts
+  }, [scanResult, selectedProjects, preferences.createMissing])
+
+  const reviewedPaths = useMemo(() => reviewPaths ?? [], [reviewPaths])
+
+  const handleShowAttention = useCallback(() => {
+    setViewMode('projects')
+    setStatusFilter('attention')
+  }, [])
+
   const invalidBreadcrumbsPaths = useMemo(
     () => scanResult?.projects.filter(p => p.invalidBreadcrumbs).map(p => p.path) ?? [],
     [scanResult]
@@ -143,6 +230,12 @@ const BakerPageContent: React.FC = () => {
       return
     }
 
+    // A new scan may be of another folder: ticks, previews and the filter
+    // belong to the results being replaced.
+    setSelectedProjects([])
+    clearPreviews()
+    setStatusFilter('all')
+
     try {
       await startScan(selectedFolder, {
         maxDepth: preferences.maxDepth,
@@ -153,7 +246,7 @@ const BakerPageContent: React.FC = () => {
     } catch (error) {
       logger.error('Failed to start scan:', error)
     }
-  }, [selectedFolder, preferences, startScan])
+  }, [selectedFolder, preferences, startScan, clearPreviews])
 
   const handleClearResults = useCallback(() => {
     clearResults()
@@ -162,6 +255,7 @@ const BakerPageContent: React.FC = () => {
     setSelectedProject(null)
     clearBreadcrumbs()
     clearPreviews()
+    setStatusFilter('all')
   }, [clearResults, clearUpdateResults, clearBreadcrumbs, clearPreviews])
 
   const handleProjectSelection = useCallback(
@@ -177,49 +271,76 @@ const BakerPageContent: React.FC = () => {
     []
   )
 
-  const handleSelectAll = useCallback(() => {
-    if (scanResult?.projects) {
-      setSelectedProjects(scanResult.projects.map(p => p.path))
-    }
-  }, [scanResult])
+  // The list header's select-all: ticks or unticks the rows currently shown,
+  // leaving any selection outside the active filter as it was.
+  const handleSelectMany = useCallback((projectPaths: string[], isSelected: boolean) => {
+    setSelectedProjects(prev => {
+      const others = prev.filter(path => !projectPaths.includes(path))
+      return isSelected ? [...others, ...projectPaths] : others
+    })
+  }, [])
 
   const handleClearSelection = useCallback(() => {
     setSelectedProjects([])
   }, [])
 
-  const handleApplyChanges = useCallback(async () => {
-    if (selectedProjects.length === 0) {
-      toast.warning('Please select projects to update')
-      return
-    }
+  // Opens the review dialog for a set of projects. Both routes to a write go
+  // through it: the ticked batch, and "Update this project" in the detail
+  // panel, which reviews one project without disturbing what is ticked.
+  const openReview = useCallback(
+    async (projectPaths: string[], createMissing: boolean) => {
+      if (projectPaths.length === 0) {
+        toast.warning('Please select projects to update')
+        return
+      }
 
-    // Generate previews for selected projects before showing confirmation dialog.
-    // Previews already generated from the detail panel are reused by the hook cache.
-    if (scanResult?.projects) {
-      const selectedProjectData = scanResult.projects.filter(p =>
-        selectedProjects.includes(p.path)
-      )
-      await generateBatchPreviews(selectedProjectData)
-    }
+      // Generate previews before showing the confirmation dialog. Previews
+      // already generated from the detail panel are reused by the hook cache.
+      if (scanResult?.projects) {
+        await generateBatchPreviews(
+          scanResult.projects.filter(p => projectPaths.includes(p.path))
+        )
+      }
 
-    setShowBatchConfirmation(true)
-  }, [selectedProjects, scanResult, generateBatchPreviews])
+      setReviewCreatesMissing(createMissing)
+      setReviewPaths(projectPaths)
+    },
+    [scanResult, generateBatchPreviews]
+  )
+
+  const handleApplyChanges = useCallback(
+    () => openReview(selectedProjects, preferences.createMissing),
+    [openReview, selectedProjects, preferences.createMissing]
+  )
+
+  const handleUpdateProject = useCallback(
+    (projectPath: string) => void openReview([projectPath], true),
+    [openReview]
+  )
 
   const handleConfirmBatchUpdate = useCallback(async () => {
+    if (!reviewPaths) return
+
     try {
       // Update local breadcrumbs files first
-      await updateBreadcrumbs(selectedProjects, {
-        createMissing: preferences.createMissing,
+      await updateBreadcrumbs(reviewPaths, {
+        createMissing: reviewCreatesMissing,
         backupOriginals: preferences.backupOriginals
       })
 
       // Update Trello cards using extracted hook
-      const trelloErrors = await updateTrelloCards(selectedProjects)
+      const trelloErrors = await updateTrelloCards(reviewPaths)
 
-      // Clear selection and previews after update
-      setSelectedProjects([])
+      // Untick what was just written, and drop the previews
+      setSelectedProjects(prev => prev.filter(path => !reviewPaths.includes(path)))
       clearPreviews()
-      setShowBatchConfirmation(false)
+      setReviewPaths(null)
+
+      // The scan result still holds the state from before the write.
+      await Promise.all(reviewPaths.map(path => refreshProject(path)))
+      if (selectedProject && reviewPaths.includes(selectedProject)) {
+        await readLiveBreadcrumbs(selectedProject)
+      }
 
       // Show Trello errors if any occurred
       if (trelloErrors.length > 0) {
@@ -230,9 +351,19 @@ const BakerPageContent: React.FC = () => {
       }
     } catch (error) {
       toast.error(`Failed to update breadcrumbs: ${error}`)
-      setShowBatchConfirmation(false)
+      setReviewPaths(null)
     }
-  }, [selectedProjects, preferences, updateBreadcrumbs, updateTrelloCards, clearPreviews])
+  }, [
+    reviewPaths,
+    reviewCreatesMissing,
+    preferences.backupOriginals,
+    updateBreadcrumbs,
+    updateTrelloCards,
+    clearPreviews,
+    refreshProject,
+    selectedProject,
+    readLiveBreadcrumbs
+  ])
 
   const handleProjectClick = useCallback(
     async (projectPath: string) => {
@@ -288,44 +419,30 @@ const BakerPageContent: React.FC = () => {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
-      {/* Header */}
-      <div className="border-border bg-card/50 flex-shrink-0 border-b px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-foreground text-2xl font-bold">Baker</h1>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              Scan directories for BuildProject folders and manage breadcrumbs files
-            </p>
-          </div>
-          <BakerPreferences
-            preferences={preferences}
-            onUpdatePreferences={updatePreferences}
-            onResetToDefaults={resetToDefaults}
-            isOpen={showPreferences}
-            onOpenChange={setShowPreferences}
-          />
-        </div>
-      </div>
+      {/* One toolbar row: page title, scan folder and actions, preferences.
+          The title and the toolbar used to be two stacked bands. */}
+      <PageHeader title="Baker" className="py-2">
+        <FolderSelector
+          selectedFolder={selectedFolder}
+          onFolderChange={setSelectedFolder}
+          onStartScan={handleStartScan}
+          onCancelScan={cancelScan}
+          onClearResults={handleClearResults}
+          isScanning={isScanning}
+          hasResults={!!scanResult}
+        />
+        <BakerPreferences
+          preferences={preferences}
+          onUpdatePreferences={updatePreferences}
+          onResetToDefaults={resetToDefaults}
+          isOpen={showPreferences}
+          onOpenChange={setShowPreferences}
+        />
+      </PageHeader>
 
-      {/* Scan toolbar: folder selection + inline scan stats */}
-      <div className="border-border bg-card/30 flex-shrink-0 space-y-2 border-b px-6 py-2.5">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <FolderSelector
-            selectedFolder={selectedFolder}
-            onFolderChange={setSelectedFolder}
-            onStartScan={handleStartScan}
-            onCancelScan={cancelScan}
-            onClearResults={handleClearResults}
-            isScanning={isScanning}
-            hasResults={!!scanResult}
-          />
-          <ScanResults
-            scanResult={scanResult}
-            isScanning={isScanning}
-            scanStartTime={scanStartTime}
-          />
-        </div>
-
+      {/* Scan error, preview progress and the last update's result. The band
+          takes no space while it has nothing to show. */}
+      <div className="border-border flex-shrink-0 space-y-2 border-b px-6 py-2 empty:hidden">
         {/* Inline Error Display */}
         {error && <ScanError error={error} onRetry={handleStartScan} />}
 
@@ -345,26 +462,15 @@ const BakerPageContent: React.FC = () => {
       {/* Workspace: project list + detail panel fill the remaining height */}
       {scanResult?.projects ? (
         <>
-          <div className="border-border bg-card/20 flex flex-shrink-0 gap-1 border-b px-6 py-1.5">
-            {(
-              [
-                { key: 'projects', label: 'Projects' },
-                { key: 'storage', label: 'Storage' }
-              ] as const
-            ).map(mode => (
-              <button
-                key={mode.key}
-                type="button"
-                onClick={() => setViewMode(mode.key)}
-                className={
-                  viewMode === mode.key
-                    ? 'bg-primary/10 text-primary rounded-md px-3 py-1 text-xs font-semibold'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground rounded-md px-3 py-1 text-xs font-medium transition-colors'
-                }
-              >
-                {mode.label}
-              </button>
-            ))}
+          <div className="border-border flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b px-6 py-1.5">
+            <ViewSwitch viewMode={viewMode} onChange={setViewMode} />
+            {/* Live progress while a scan runs, the one-line summary after. */}
+            <ScanResults
+              scanResult={scanResult}
+              isScanning={isScanning}
+              scanStartTime={scanStartTime}
+              onShowAttention={handleShowAttention}
+            />
           </div>
 
           {viewMode === 'storage' ? (
@@ -375,15 +481,32 @@ const BakerPageContent: React.FC = () => {
               />
             </div>
           ) : (
-            <div className="relative flex min-h-0 flex-1">
-              <div className="border-border w-80 flex-shrink-0 border-r">
+            <div className="flex min-h-0 flex-1">
+              {/* List column: the rows, then the batch footer for ticked rows */}
+              <div className="border-border w-[24rem] flex-shrink-0 border-r xl:w-[28rem]">
                 <ProjectListPanel
                   projects={scanResult.projects}
                   selectedProjects={selectedProjects}
                   selectedProject={selectedProject}
+                  rootPath={scanResult.rootPath}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
                   onProjectSelection={handleProjectSelection}
+                  onSelectMany={handleSelectMany}
                   onProjectClick={handleProjectClick}
                   onRepairProject={handleRepairRequest}
+                  footer={hiddenByFilterCount => (
+                    <BatchActions
+                      selectedProjects={selectedProjects}
+                      needingUpdateCount={selectionCounts.needingUpdate}
+                      toCreateCount={selectionCounts.toCreate}
+                      creationOffCount={selectionCounts.creationOff}
+                      hiddenByFilterCount={hiddenByFilterCount}
+                      isUpdating={isUpdating}
+                      onClearSelection={handleClearSelection}
+                      onApplyChanges={handleApplyChanges}
+                    />
+                  )}
                 />
               </div>
 
@@ -398,42 +521,25 @@ const BakerPageContent: React.FC = () => {
                   isGeneratingPreview={isGenerating}
                   onGeneratePreview={handleGeneratePreview}
                   onRepairProject={handleRepairRequest}
+                  onUpdateProject={handleUpdateProject}
                   trelloApiKey={apiKey}
                   trelloApiToken={token}
                 />
               </div>
-
-              <BatchActions
-                selectedProjects={selectedProjects}
-                totalProjects={scanResult.projects.length}
-                isUpdating={isUpdating}
-                onSelectAll={handleSelectAll}
-                onClearSelection={handleClearSelection}
-                onApplyChanges={handleApplyChanges}
-              />
             </div>
           )}
         </>
       ) : (
-        <div className="text-muted-foreground flex flex-1 items-center justify-center">
-          <div className="text-center">
-            <FolderSearch className="mx-auto mb-3 h-12 w-12 opacity-50" />
-            <p className="text-sm">
-              {isScanning
-                ? 'Scanning for projects…'
-                : 'Select a folder and start a scan to find projects'}
-            </p>
-          </div>
-        </div>
+        <NoScanYet isScanning={isScanning} />
       )}
 
       {/* Batch Update Confirmation Dialog */}
       <BatchUpdateConfirmationDialog
-        isOpen={showBatchConfirmation}
-        onClose={() => setShowBatchConfirmation(false)}
+        isOpen={reviewPaths !== null}
+        onClose={() => setReviewPaths(null)}
         onConfirm={handleConfirmBatchUpdate}
-        selectedProjects={selectedProjects}
-        previews={selectedProjects
+        selectedProjects={reviewedPaths}
+        previews={reviewedPaths
           .map(path => getPreview(path))
           .filter((preview): preview is NonNullable<typeof preview> => preview !== null)}
         isLoading={isUpdating}

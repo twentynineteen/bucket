@@ -1,66 +1,110 @@
 /**
  * Batch Actions Component
  *
- * Floating action bar for batch update operations. Appears centered at the
- * bottom of the workspace only while at least one project is selected, so it
- * never consumes layout space during inspection.
+ * Footer of the project list, shown only while at least one project is ticked.
+ * It sits directly under the rows it acts on, says how many of them actually
+ * have something to write, and opens the review dialog. Nothing is written
+ * from here.
+ *
+ * It used to float over the detail panel, where it covered the last list row
+ * and sat away from the selection it belonged to.
  */
 
 import { Button } from '@shared/ui/button'
-import { CheckCircle, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import React from 'react'
 
 interface BatchActionsProps {
   selectedProjects: string[]
-  totalProjects: number
+  /** How many of the ticked projects are not already current. */
+  needingUpdateCount: number
+  /** How many of those have no breadcrumbs file yet, so one is created. */
+  toCreateCount?: number
+  /** How many have no file and are left alone because creating one is off. */
+  creationOffCount?: number
+  /** How many ticked projects the list's current filter is not showing. */
+  hiddenByFilterCount?: number
   isUpdating: boolean
-  onSelectAll: () => void
   onClearSelection: () => void
   onApplyChanges: () => void
 }
 
+/** What will happen to the ticked projects, in the order it matters. */
+function selectionBreakdown(
+  selected: number,
+  needingUpdate: number,
+  toCreate: number,
+  creationOff: number
+): string {
+  const current = selected - needingUpdate - creationOff
+  // A project with no breadcrumbs file gets one created, not updated.
+  const toUpdate = needingUpdate - toCreate
+  const parts: string[] = []
+  if (toUpdate > 0) parts.push(`${toUpdate} to update`)
+  if (toCreate > 0) parts.push(`${toCreate} to create`)
+  if (creationOff > 0) parts.push(`${creationOff} missing, creation is off in Settings`)
+  if (current > 0) parts.push(`${current} already current`)
+  return parts.join(' · ')
+}
+
 export const BatchActions: React.FC<BatchActionsProps> = ({
   selectedProjects,
-  totalProjects,
+  needingUpdateCount,
+  toCreateCount = 0,
+  creationOffCount = 0,
+  hiddenByFilterCount = 0,
   isUpdating,
-  onSelectAll,
   onClearSelection,
   onApplyChanges
 }) => {
-  if (totalProjects === 0 || selectedProjects.length === 0) return null
+  if (selectedProjects.length === 0) return null
 
   return (
-    <div className="absolute bottom-5 left-1/2 z-10 -translate-x-1/2">
-      <div className="bg-popover border-border flex items-center gap-2 rounded-2xl border py-2 pr-2 pl-4 shadow-lg">
-        <span className="text-sm whitespace-nowrap">
-          <span className="text-primary font-semibold">{selectedProjects.length}</span> of{' '}
-          {totalProjects} selected
-        </span>
-        <Button variant="link" size="sm" onClick={onSelectAll}>
-          Select All
-        </Button>
-        <Button variant="link" size="sm" onClick={onClearSelection}>
-          Clear
-        </Button>
-        <Button
-          onClick={onApplyChanges}
-          disabled={isUpdating}
-          size="sm"
-          className="gap-1.5 shadow-sm hover:shadow"
-        >
-          {isUpdating ? (
-            <>
-              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-              Updating...
-            </>
-          ) : (
-            <>
-              <CheckCircle className="h-3.5 w-3.5" />
-              Apply Changes
-            </>
+    // The upward shadow marks the edge the rows scroll under.
+    <div className="border-border bg-card z-10 flex-shrink-0 space-y-2 border-t p-3 shadow-[0_-6px_12px_-6px_rgb(0_0_0/0.18)]">
+      <div className="space-y-0.5 text-xs">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-foreground font-semibold">
+            {selectedProjects.length} selected
+            {hiddenByFilterCount > 0 && (
+              <span className="text-muted-foreground font-normal">
+                {' '}
+                ({hiddenByFilterCount} hidden by filter)
+              </span>
+            )}
+          </p>
+          <button
+            type="button"
+            onClick={onClearSelection}
+            className="text-muted-foreground hover:text-foreground flex-shrink-0 font-medium underline-offset-2 hover:underline"
+          >
+            Clear selection
+          </button>
+        </div>
+        <p className="text-muted-foreground">
+          {selectionBreakdown(
+            selectedProjects.length,
+            needingUpdateCount,
+            toCreateCount,
+            creationOffCount
           )}
-        </Button>
+        </p>
       </div>
+      <Button
+        onClick={onApplyChanges}
+        disabled={isUpdating}
+        size="sm"
+        className="w-full gap-1.5"
+      >
+        {isUpdating ? (
+          <>
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            Updating...
+          </>
+        ) : (
+          'Review and update breadcrumbs'
+        )}
+      </Button>
     </div>
   )
 }

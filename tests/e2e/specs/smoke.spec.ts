@@ -95,7 +95,7 @@ test.describe('Smoke Tests', () => {
     })
 
     await page.goto('/ingest/build')
-    await expect(page.getByRole('heading', { name: 'Build a Project' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Build a project' })).toBeVisible()
 
     const readLog = () =>
       page.evaluate(

@@ -19,6 +19,7 @@ import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Label } from '@shared/ui/label'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import {
   Select,
   SelectContent,
@@ -414,12 +415,10 @@ const PosterframeContent: React.FC = () => {
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
       <div className="w-full max-w-full pb-4">
         {/* Header */}
-        <div className="border-border bg-card/50 border-b px-6 py-4">
-          <h1 className="text-foreground text-2xl font-bold">Posterframe</h1>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            Create custom thumbnails with branded backgrounds and video titles
-          </p>
-        </div>
+        <PageHeader
+          title="Posterframe"
+          description="Create custom thumbnails with branded backgrounds and video titles"
+        />
 
         <div className="max-w-full space-y-4 px-6 py-4">
           {/* Two-column layout */}

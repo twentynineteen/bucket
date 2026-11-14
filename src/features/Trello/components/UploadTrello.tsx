@@ -9,6 +9,7 @@ import { useBreadcrumb } from '@shared/hooks'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { AlertTriangle, RefreshCw, Search } from 'lucide-react'
 import React from 'react'
 import { useUploadTrello } from '../hooks/useUploadTrello'
@@ -79,17 +80,11 @@ const UploadTrelloContent: React.FC = () => {
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
       <div className="w-full max-w-full pb-4">
         {/* Header */}
-        <div className="border-border bg-card/50 border-b px-6 py-4">
-          <div className="flex items-center gap-3">
-            <TrelloIcon className="text-primary h-6 w-6" />
-            <div>
-              <h1 className="text-foreground text-2xl font-bold">Trello: {boardName}</h1>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                Browse Trello cards and append breadcrumbs or video information
-              </p>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          icon={<TrelloIcon className="text-primary h-5 w-5 flex-shrink-0" />}
+          title={<>Trello: {boardName}</>}
+          description="Browse Trello cards and append breadcrumbs or video information"
+        />
 
         <div className="max-w-full space-y-4 px-6 py-4">
           {/* Step 1: Search Cards */}

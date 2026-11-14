@@ -9,6 +9,7 @@
 import { useBreadcrumb } from '@shared/hooks'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@shared/ui/tabs'
 import { AlertTriangle, Download, RefreshCw, Upload } from 'lucide-react'
 import React, { useState } from 'react'
@@ -205,15 +206,11 @@ const ExampleEmbeddingsContent: React.FC = () => {
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
       <div className="w-full max-w-full pb-4">
         {/* Header */}
-        <div className="border-border bg-card/50 border-b px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-foreground text-2xl font-bold">Example Embeddings</h1>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                Manage script examples for AI-powered autocue formatting
-              </p>
-            </div>
-            <div className="flex gap-2">
+        <PageHeader
+          title="Example Embeddings"
+          description="Manage script examples for AI-powered autocue formatting"
+          actions={
+            <>
               <Button variant="outline" size="sm" onClick={handleDownloadAll}>
                 <Download className="mr-2 h-4 w-4" />
                 Download All
@@ -222,9 +219,9 @@ const ExampleEmbeddingsContent: React.FC = () => {
                 <Upload className="mr-2 h-4 w-4" />
                 Upload Example
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         <div className="max-w-full space-y-4 px-6 py-4">
           {/* Example Library */}

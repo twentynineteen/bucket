@@ -31,6 +31,13 @@ async function openBaker(page: Page) {
   await expect(page.getByRole('heading', { level: 1, name: 'Baker' })).toBeVisible()
 }
 
+/** A project's row in the list: a button that holds the project's name. */
+function rowFor(page: Page, projectName: string) {
+  return page
+    .getByRole('button')
+    .filter({ has: page.getByText(projectName, { exact: true }) })
+}
+
 /** Pick the scan root and run a scan, then wait for the results to land. */
 async function runScan(page: Page) {
   await openBaker(page)
@@ -78,10 +85,30 @@ test.describe('Baker - scan results', () => {
     await expect(page.getByText(STALE_PROJECT, { exact: true })).toBeVisible()
     await expect(page.getByText(NO_BREADCRUMBS_PROJECT, { exact: true })).toBeVisible()
 
-    // One project of each breadcrumbs state, per the scan fixture.
-    await expect(page.getByText('Current', { exact: true })).toHaveCount(1)
-    await expect(page.getByText('Stale', { exact: true })).toHaveCount(1)
-    await expect(page.getByText('No BC', { exact: true })).toHaveCount(1)
+    // One project of each breadcrumbs state, per the scan fixture. Each row
+    // carries one status word on its meta line.
+    await expect(rowFor(page, CURRENT_PROJECT).getByText('Current')).toBeVisible()
+    await expect(rowFor(page, STALE_PROJECT).getByText('Stale')).toBeVisible()
+    await expect(rowFor(page, NO_BREADCRUMBS_PROJECT).getByText('Missing')).toBeVisible()
+  })
+
+  test('summarises the scan in one sentence and links to what needs attention', async ({
+    page
+  }) => {
+    await runScan(page)
+
+    // Two of the three fixture projects (stale, missing) need attention.
+    await expect(page.getByText('3 projects', { exact: true })).toBeVisible()
+    await expect(page.getByText(/folders? scanned/)).toBeVisible()
+    await page.getByRole('button', { name: '2 need attention' }).click()
+
+    await expect(page.getByText(STALE_PROJECT, { exact: true })).toBeVisible()
+    await expect(page.getByText(NO_BREADCRUMBS_PROJECT, { exact: true })).toBeVisible()
+    await expect(page.getByText(CURRENT_PROJECT, { exact: true })).toBeHidden()
+    await expect(page.getByRole('button', { name: /^Needs attention/ })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
   })
 
   test('filters the list by name, and says so when nothing matches', async ({ page }) => {
@@ -110,17 +137,51 @@ test.describe('Baker - scan results', () => {
 })
 
 test.describe('Baker - breadcrumbs changes', () => {
-  test('offers a batch apply once projects are selected, and counts them', async ({
+  test('offers a batch update once projects are ticked, and says what it will do', async ({
     page
   }) => {
     await runScan(page)
 
-    await expect(page.getByRole('button', { name: 'Apply Changes' })).toBeHidden()
+    const review = page.getByRole('button', { name: 'Review and update breadcrumbs' })
+    await expect(review).toBeHidden()
 
-    await page.getByRole('checkbox').first().check()
+    await page.getByRole('checkbox', { name: `Select ${STALE_PROJECT}` }).check()
 
-    await expect(page.getByRole('button', { name: 'Apply Changes' })).toBeVisible()
-    await expect(page.getByText('of 3 selected')).toBeVisible()
+    await expect(review).toBeVisible()
+    await expect(page.getByText('1 selected')).toBeVisible()
+    await expect(page.getByText('1 to update', { exact: true })).toBeVisible()
+  })
+
+  test('selects every shown project from the list header, and skips the current one', async ({
+    page
+  }) => {
+    await runScan(page)
+
+    await page.getByRole('checkbox', { name: 'Select all shown projects' }).check()
+
+    await expect(page.getByText('3 selected')).toBeVisible()
+    await expect(
+      page.getByText('1 to update · 1 to create · 1 already current')
+    ).toBeVisible()
+
+    await page.getByRole('button', { name: 'Clear selection' }).click()
+
+    await expect(
+      page.getByRole('button', { name: 'Review and update breadcrumbs' })
+    ).toBeHidden()
+  })
+
+  test('selects only the shown projects, and says how many ticked ones the filter hides', async ({
+    page
+  }) => {
+    await runScan(page)
+
+    await page.getByRole('checkbox', { name: `Select ${CURRENT_PROJECT}` }).check()
+    await page.getByRole('button', { name: /^Stale/ }).click()
+    await page.getByRole('checkbox', { name: 'Select all shown projects' }).check()
+
+    await expect(page.getByText('2 selected')).toBeVisible()
+    await expect(page.getByText('(1 hidden by filter)')).toBeVisible()
   })
 
   test('names the reason a project needs a change before writing anything', async ({
@@ -130,10 +191,11 @@ test.describe('Baker - breadcrumbs changes', () => {
 
     await page.getByText(NO_BREADCRUMBS_PROJECT, { exact: true }).click()
 
-    await expect(page.getByText('No breadcrumbs file', { exact: true })).toBeVisible()
     await expect(
-      page.getByText('Applying changes will create one for this project')
+      page.getByText('Breadcrumbs file is missing', { exact: true })
     ).toBeVisible()
+    await expect(page.getByText('This folder has no breadcrumbs.json yet')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Create breadcrumbs' })).toBeVisible()
   })
 
   test('reviews a batch in a dialog rather than writing on the first click', async ({
@@ -141,8 +203,8 @@ test.describe('Baker - breadcrumbs changes', () => {
   }) => {
     await runScan(page)
 
-    await page.getByRole('checkbox').first().check()
-    await page.getByRole('button', { name: 'Apply Changes' }).click()
+    await page.getByRole('checkbox', { name: `Select ${STALE_PROJECT}` }).check()
+    await page.getByRole('button', { name: 'Review and update breadcrumbs' }).click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()

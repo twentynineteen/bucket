@@ -21,7 +21,7 @@ const SIGN_BY_TYPE: Record<ChangeRowType, string> = {
 
 const SIGN_CLASS_BY_TYPE: Record<ChangeRowType, string> = {
   added: 'text-success',
-  modified: 'text-warning',
+  modified: 'text-warning-text',
   removed: 'text-destructive'
 }
 
@@ -32,13 +32,45 @@ interface ChangeDiffListProps {
   /** Optional context line shown above the rows (e.g. "No breadcrumbs file — a new one will be created") */
   note?: string
   cap?: number
+  /**
+   * The project folder. File rows are shown relative to it, so each line reads
+   * "Footage/Camera 1/A001.MXF" and does not repeat the project's own path.
+   */
+  basePath?: string
+}
+
+/**
+ * "Last Modified, Scanned By" as "Last modified, scanned by". Field names
+ * arrive in Title Case from the shared formatter; the rest of Baker's labels
+ * are sentence case, and this list sits right beside them.
+ */
+function sentenceCase(text: string): string {
+  return text.charAt(0) + text.slice(1).toLowerCase()
+}
+
+/** True for a file row (a path), false for a breadcrumbs field name. */
+const isPath = (label: string) => /[/\\]/.test(label)
+
+/** Paths relative to the project; field names in sentence case. */
+function displayLabel(label: string, basePath?: string): string {
+  return isPath(label) ? relativeLabel(label, basePath) : sentenceCase(label)
+}
+
+/** A row label with the project folder stripped from the front, when it is there. */
+function relativeLabel(label: string, basePath?: string): string {
+  if (!basePath) return label
+  const base = basePath.replace(/[/\\]+$/, '')
+  return label.startsWith(base) && /[/\\]/.test(label.charAt(base.length))
+    ? label.slice(base.length + 1)
+    : label
 }
 
 export const ChangeDiffList: React.FC<ChangeDiffListProps> = ({
   rows,
   maintenanceFields = [],
   note,
-  cap = DEFAULT_ROW_CAP
+  cap = DEFAULT_ROW_CAP,
+  basePath
 }) => {
   const [expanded, setExpanded] = useState(false)
 
@@ -65,8 +97,11 @@ export const ChangeDiffList: React.FC<ChangeDiffListProps> = ({
           >
             {SIGN_BY_TYPE[row.type]}
           </span>
-          <span className="text-foreground min-w-0 flex-1 [overflow-wrap:anywhere]">
-            {row.label}
+          <span
+            className="text-foreground min-w-0 flex-1 [overflow-wrap:anywhere]"
+            title={row.label}
+          >
+            {displayLabel(row.label, basePath)}
           </span>
           {row.detail && (
             <span className="text-muted-foreground flex-shrink-0 text-xs">
@@ -92,10 +127,10 @@ export const ChangeDiffList: React.FC<ChangeDiffListProps> = ({
             ~
           </span>
           <span className="text-muted-foreground min-w-0 flex-1 text-xs">
-            {maintenanceFields.join(', ')}
+            {sentenceCase(maintenanceFields.join(', '))}
           </span>
           <span className="text-muted-foreground flex-shrink-0 text-xs">
-            routine update
+            updated on every write
           </span>
         </div>
       )}
@@ -111,7 +146,7 @@ interface ChangeCountsProps {
 export const ChangeCounts: React.FC<ChangeCountsProps> = ({ counts }) => (
   <span className="inline-flex items-center gap-2 font-mono text-xs font-semibold">
     {counts.added > 0 && <span className="text-success">+{counts.added}</span>}
-    {counts.modified > 0 && <span className="text-warning">~{counts.modified}</span>}
+    {counts.modified > 0 && <span className="text-warning-text">~{counts.modified}</span>}
     {counts.removed > 0 && <span className="text-destructive">−{counts.removed}</span>}
   </span>
 )

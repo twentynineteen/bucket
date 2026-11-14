@@ -96,26 +96,11 @@ export function AppSidebar() {
 }
 ```
 
-#### Add Title Bar to App
+#### Title bar
 
-**File:** `src/App.tsx`
-
-```typescript
-import { TitleBar } from '@shared/ui/layout/TitleBar'
-import { useWindowState } from '@shared/hooks/useWindowState'
-
-const App: React.FC = () => {
-  // Persist window position and size
-  useWindowState()
-
-  return (
-    <Router>
-      <TitleBar />
-      <AppRouter />
-    </Router>
-  )
-}
-```
+There is no separate title bar component. The app's one header row,
+`AppHeader` in `src/app/dashboard/page.tsx`, is the window drag region. See
+[AppHeader](#appheader) below.
 
 ## Available Hooks
 
@@ -199,28 +184,21 @@ function App() {
 
 ## Components
 
-### TitleBar
+### AppHeader
 
-Custom title bar component for macOS overlay mode.
+The single top row of the window: sidebar toggle and breadcrumbs. It replaced
+a fixed `TitleBar` component that sat over the page header and hid it.
 
-**Location:** `src/shared/ui/layout/TitleBar.tsx`
+**Location:** `AppHeader` in `src/app/dashboard/page.tsx`
 
 **Features:**
 
-- Only renders on macOS
-- Draggable window area
-- 80px left padding for traffic lights
-- Fixed positioning at top of window
-- Semi-transparent background with backdrop blur
-
-**Customization:**
-
-```typescript
-// Edit src/shared/ui/layout/TitleBar.tsx to add custom elements
-<div style={{ WebkitAppRegion: 'no-drag' }}>
-  {/* Add custom controls, search, etc. */}
-</div>
-```
+- Renders on every platform, 40px tall (`--header-height`)
+- The bar itself carries `data-tauri-drag-region`; the controls inside it stay
+  clickable
+- 80px left padding on macOS for the traffic lights
+- In normal flow at the top of the layout, not fixed
+- Solid background: a blurred, translucent bar makes window dragging stutter
 
 ## Troubleshooting
 
@@ -305,7 +283,7 @@ Custom title bar component for macOS overlay mode.
 2. Remove `transparent: true` from window config
 3. Change `titleBarStyle` to `"Visible"` (standard macOS title bar)
 4. Remove vibrancy effects (or accept they won't work)
-5. Remove custom TitleBar component
+5. Remove the macOS traffic-light padding from `AppHeader`
 6. Test thoroughly with new configuration
 
 ### Alternative Approach (App Store Compatible):
@@ -417,7 +395,7 @@ This provides a standard macOS window without custom styling but is App Store co
 
 ### Components
 
-- `src/shared/ui/layout/TitleBar.tsx` - Custom title bar
+- `src/app/dashboard/page.tsx` - `AppHeader`, the header row and drag region
 - `src/shared/ui/layout/app-sidebar.tsx` - Sidebar with vibrancy
 
 ### Hooks

@@ -13,7 +13,6 @@ import React from 'react'
 import { BrowserRouter as Router } from 'react-router-dom'
 import AppRouter from './AppRouter'
 import { QueryErrorBoundary } from './shared/ui/layout/ErrorBoundary'
-import { TitleBar } from './shared/ui/layout/TitleBar'
 import { Toaster } from './shared/ui/sonner'
 
 // The app component acts as the main routing generator for the application.
@@ -67,7 +66,6 @@ const App: React.FC = () => {
       <QueryClientProvider client={queryClient}>
         <QueryErrorBoundary>
           <Router>
-            <TitleBar />
             {/* The Suspense + chunk-error boundary now live inside the dashboard
                 Page, around the routed Outlet (#278), so the navigation shell
                 stays mounted while a lazy route chunk loads. */}

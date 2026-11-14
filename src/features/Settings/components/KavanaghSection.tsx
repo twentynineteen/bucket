@@ -113,7 +113,7 @@ const KavanaghSection: React.FC<KavanaghSectionProps> = ({
       className="border-border scroll-mt-16 space-y-4 rounded-lg border p-6"
     >
       <div className="border-b pb-2">
-        <h3 className="text-foreground text-lg font-semibold">Kavanagh</h3>
+        <h3 className="text-foreground text-sm font-semibold">Kavanagh</h3>
         <p className="text-muted-foreground text-sm">
           Reference images and ffmpeg location for video QC checks
         </p>

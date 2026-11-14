@@ -17,6 +17,7 @@
 import { useApiKeys, useBreadcrumb } from '@shared/hooks'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { logger } from '@shared/utils'
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react'
 import React from 'react'
@@ -78,13 +79,10 @@ const KavanaghContent: React.FC = () => {
   return (
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
       <div className="w-full max-w-full pb-4">
-        <div className="border-border bg-card/50 border-b px-6 py-4">
-          <h1 className="text-foreground text-2xl font-bold">Kavanagh</h1>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            Check that a render carries its watermark throughout, and closes with a dip to
-            white into an approved logo sting.
-          </p>
-        </div>
+        <PageHeader
+          title="Kavanagh"
+          description="Check that a render carries its watermark throughout, and closes with a dip to white into an approved logo sting."
+        />
 
         <div className="space-y-6 px-6 py-6">
           <PrerequisitesSection

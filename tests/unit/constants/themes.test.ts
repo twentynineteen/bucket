@@ -212,8 +212,8 @@ describe('themes constants', () => {
     it('has correct group labels', () => {
       const groups = getGroupedThemes()
       expect(groups[0].label).toBe('System')
-      expect(groups[1].label).toBe('Light Themes')
-      expect(groups[2].label).toBe('Dark Themes')
+      expect(groups[1].label).toBe('Light themes')
+      expect(groups[2].label).toBe('Dark themes')
     })
 
     it('groups system theme separately', () => {

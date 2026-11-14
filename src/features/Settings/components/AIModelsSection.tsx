@@ -101,7 +101,7 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({
       className="border-border space-y-4 rounded-lg border p-6 scroll-mt-16"
     >
       <div className="border-b pb-2">
-        <h3 className="text-foreground text-lg font-semibold">AI Models</h3>
+        <h3 className="text-foreground text-sm font-semibold">AI models</h3>
         <p className="text-muted-foreground text-sm">
           Configure AI provider settings for script formatting
         </p>
@@ -117,6 +117,8 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({
           <ApiKeyInput
             saveDisabled={settingsUnavailable}
             id="ollama-url-input"
+            inputType="text"
+            placeholder="http://localhost:11434"
             apiKey={ollamaUrl || 'http://localhost:11434'}
             setApiKey={handleOllamaUrlChange}
             onSave={handleSaveOllamaUrl}
@@ -125,12 +127,13 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({
             <Button
               onClick={handleTestConnection}
               disabled={connectionStatus.status === 'testing'}
-              className="flex items-center gap-2 rounded border px-3 py-1"
+              variant="outline"
+              className="flex items-center gap-2"
             >
               {connectionStatus.status === 'testing' && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              {connectionStatus.status === 'testing' ? 'Testing...' : 'Test Connection'}
+              {connectionStatus.status === 'testing' ? 'Testing...' : 'Test connection'}
             </Button>
 
             {connectionStatus.status === 'success' && (

@@ -1,5 +1,6 @@
 import { useBreadcrumb, useTrelloApiKeys, useUsername } from '@shared/hooks'
 import { Button } from '@shared/ui/button'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { createNamespacedLogger } from '@shared/utils'
 import { useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
@@ -128,19 +129,16 @@ const BuildProject: React.FC = () => {
 
   return (
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
-      {/* Project Configuration & File Explorer */}
+      {/* Project configuration & File Explorer */}
       <div className="w-full max-w-full pb-4">
         {/* Header */}
-        <div className="border-border bg-card/50 border-b px-6 py-4">
-          <h1 className="text-foreground text-2xl font-bold">Build a Project</h1>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            Configure project settings, select footage files, and create organized folder
-            structures
-          </p>
-        </div>
+        <PageHeader
+          title="Build a project"
+          description="Configure project settings, select footage files, and create organised folder structures"
+        />
 
         <div className="max-w-full space-y-4 px-6 py-4">
-          {/* Step 1: Project Configuration */}
+          {/* Step 1: Project configuration */}
           <ProjectConfigurationStep
             showSuccess={showSuccess}
             title={title}
@@ -184,10 +182,12 @@ const BuildProject: React.FC = () => {
           )}
         </div>
 
-        {/* Progress Bar */}
-        <div className="mt-4 px-6">
-          <ProgressBar progress={progress.percentage} completed={isComplete} />
-        </div>
+        {/* Progress Bar: only once a build has started, never an idle 0.0% */}
+        {(isBuilding || isComplete || progress.percentage > 0) && (
+          <div className="mt-4 px-6">
+            <ProgressBar progress={progress.percentage} completed={isComplete} />
+          </div>
+        )}
 
         {/* Success Message & Post-completion Actions */}
         <SuccessSection
