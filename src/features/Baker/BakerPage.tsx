@@ -36,7 +36,7 @@ import { useBreadcrumbsManager } from './hooks/useBreadcrumbsManager'
 import { useBreadcrumbsPreview } from './hooks/useBreadcrumbsPreview'
 import { useLiveBreadcrumbsReader } from './hooks/useLiveBreadcrumbsReader'
 import { useRepairBreadcrumbs } from './hooks/useRepairBreadcrumbs'
-import { breadcrumbsStatus, needsAttention } from './internal/projectStatus'
+import { breadcrumbsStatus } from './internal/projectStatus'
 import type { BatchUpdateResult } from './types'
 
 const ScanError: React.FC<{ error: string; onRetry: () => void }> = ({
@@ -132,6 +132,9 @@ const BakerPageContent: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   // Projects whose pending changes are open in the review dialog, or null
   const [reviewPaths, setReviewPaths] = useState<string[] | null>(null)
+  // "Create breadcrumbs" on one project is an explicit request, so it creates
+  // the file whatever the batch preference says.
+  const [reviewCreatesMissing, setReviewCreatesMissing] = useState(false)
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('projects')
   const [repairTarget, setRepairTarget] = useState<string | null>(null)
@@ -186,21 +189,27 @@ const BakerPageContent: React.FC = () => {
     [scanResult, selectedProject]
   )
 
-  const selectedNeedingUpdate = useMemo(
-    () =>
-      scanResult?.projects.filter(
-        p => selectedProjects.includes(p.path) && needsAttention(p)
-      ).length ?? 0,
-    [scanResult, selectedProjects]
-  )
-
-  const selectedToCreate = useMemo(
-    () =>
-      scanResult?.projects.filter(
-        p => selectedProjects.includes(p.path) && breadcrumbsStatus(p) === 'missing'
-      ).length ?? 0,
-    [scanResult, selectedProjects]
-  )
+  // What a write would do to the ticked projects. Only the breadcrumbs state
+  // counts here: a write does nothing about an invalid folder structure. With
+  // "Create missing breadcrumbs" off, the backend leaves a project that has no
+  // file alone, so those are counted apart.
+  const selectionCounts = useMemo(() => {
+    const counts = { needingUpdate: 0, toCreate: 0, creationOff: 0 }
+    for (const project of scanResult?.projects ?? []) {
+      if (!selectedProjects.includes(project.path)) continue
+      const status = breadcrumbsStatus(project)
+      if (status === 'current') continue
+      if (status !== 'missing') {
+        counts.needingUpdate += 1
+      } else if (preferences.createMissing) {
+        counts.needingUpdate += 1
+        counts.toCreate += 1
+      } else {
+        counts.creationOff += 1
+      }
+    }
+    return counts
+  }, [scanResult, selectedProjects, preferences.createMissing])
 
   const reviewedPaths = useMemo(() => reviewPaths ?? [], [reviewPaths])
 
@@ -221,6 +230,12 @@ const BakerPageContent: React.FC = () => {
       return
     }
 
+    // A new scan may be of another folder: ticks, previews and the filter
+    // belong to the results being replaced.
+    setSelectedProjects([])
+    clearPreviews()
+    setStatusFilter('all')
+
     try {
       await startScan(selectedFolder, {
         maxDepth: preferences.maxDepth,
@@ -231,7 +246,7 @@ const BakerPageContent: React.FC = () => {
     } catch (error) {
       logger.error('Failed to start scan:', error)
     }
-  }, [selectedFolder, preferences, startScan])
+  }, [selectedFolder, preferences, startScan, clearPreviews])
 
   const handleClearResults = useCallback(() => {
     clearResults()
@@ -240,6 +255,7 @@ const BakerPageContent: React.FC = () => {
     setSelectedProject(null)
     clearBreadcrumbs()
     clearPreviews()
+    setStatusFilter('all')
   }, [clearResults, clearUpdateResults, clearBreadcrumbs, clearPreviews])
 
   const handleProjectSelection = useCallback(
@@ -272,7 +288,7 @@ const BakerPageContent: React.FC = () => {
   // through it: the ticked batch, and "Update this project" in the detail
   // panel, which reviews one project without disturbing what is ticked.
   const openReview = useCallback(
-    async (projectPaths: string[]) => {
+    async (projectPaths: string[], createMissing: boolean) => {
       if (projectPaths.length === 0) {
         toast.warning('Please select projects to update')
         return
@@ -286,18 +302,19 @@ const BakerPageContent: React.FC = () => {
         )
       }
 
+      setReviewCreatesMissing(createMissing)
       setReviewPaths(projectPaths)
     },
     [scanResult, generateBatchPreviews]
   )
 
   const handleApplyChanges = useCallback(
-    () => openReview(selectedProjects),
-    [openReview, selectedProjects]
+    () => openReview(selectedProjects, preferences.createMissing),
+    [openReview, selectedProjects, preferences.createMissing]
   )
 
   const handleUpdateProject = useCallback(
-    (projectPath: string) => void openReview([projectPath]),
+    (projectPath: string) => void openReview([projectPath], true),
     [openReview]
   )
 
@@ -307,7 +324,7 @@ const BakerPageContent: React.FC = () => {
     try {
       // Update local breadcrumbs files first
       await updateBreadcrumbs(reviewPaths, {
-        createMissing: preferences.createMissing,
+        createMissing: reviewCreatesMissing,
         backupOriginals: preferences.backupOriginals
       })
 
@@ -318,6 +335,12 @@ const BakerPageContent: React.FC = () => {
       setSelectedProjects(prev => prev.filter(path => !reviewPaths.includes(path)))
       clearPreviews()
       setReviewPaths(null)
+
+      // The scan result still holds the state from before the write.
+      await Promise.all(reviewPaths.map(path => refreshProject(path)))
+      if (selectedProject && reviewPaths.includes(selectedProject)) {
+        await readLiveBreadcrumbs(selectedProject)
+      }
 
       // Show Trello errors if any occurred
       if (trelloErrors.length > 0) {
@@ -330,7 +353,17 @@ const BakerPageContent: React.FC = () => {
       toast.error(`Failed to update breadcrumbs: ${error}`)
       setReviewPaths(null)
     }
-  }, [reviewPaths, preferences, updateBreadcrumbs, updateTrelloCards, clearPreviews])
+  }, [
+    reviewPaths,
+    reviewCreatesMissing,
+    preferences.backupOriginals,
+    updateBreadcrumbs,
+    updateTrelloCards,
+    clearPreviews,
+    refreshProject,
+    selectedProject,
+    readLiveBreadcrumbs
+  ])
 
   const handleProjectClick = useCallback(
     async (projectPath: string) => {
@@ -465,8 +498,9 @@ const BakerPageContent: React.FC = () => {
                   footer={hiddenByFilterCount => (
                     <BatchActions
                       selectedProjects={selectedProjects}
-                      needingUpdateCount={selectedNeedingUpdate}
-                      toCreateCount={selectedToCreate}
+                      needingUpdateCount={selectionCounts.needingUpdate}
+                      toCreateCount={selectionCounts.toCreate}
+                      creationOffCount={selectionCounts.creationOff}
                       hiddenByFilterCount={hiddenByFilterCount}
                       isUpdating={isUpdating}
                       onClearSelection={handleClearSelection}

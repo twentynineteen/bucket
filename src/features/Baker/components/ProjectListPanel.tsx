@@ -317,8 +317,12 @@ const ProjectListPanelComponent: React.FC<ProjectListPanelProps> = ({
         key: filter.key,
         label: filter.label,
         count: projects.filter(filter.matches).length
-      })).filter(chip => chip.key === 'all' || chip.count > 0),
-    [projects]
+      })).filter(
+        // The active chip stays even at zero, so a filter that a repair or
+        // rescan has emptied can still be seen and switched off.
+        chip => chip.key === 'all' || chip.count > 0 || chip.key === statusFilter
+      ),
+    [projects, statusFilter]
   )
 
   const filteredProjects = useMemo(() => {

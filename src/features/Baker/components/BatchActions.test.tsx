@@ -25,6 +25,7 @@ describe('BatchActions Component', () => {
     selected?: string[]
     needingUpdate?: number
     toCreate?: number
+    creationOff?: number
     hiddenByFilter?: number
     isUpdating?: boolean
   }
@@ -33,6 +34,7 @@ describe('BatchActions Component', () => {
     selected = ['/path/to/project1'],
     needingUpdate = selected.length,
     toCreate,
+    creationOff,
     hiddenByFilter,
     isUpdating = false
   }: BarOptions = {}) =>
@@ -41,6 +43,7 @@ describe('BatchActions Component', () => {
         selectedProjects={selected}
         needingUpdateCount={needingUpdate}
         toCreateCount={toCreate}
+        creationOffCount={creationOff}
         hiddenByFilterCount={hiddenByFilter}
         isUpdating={isUpdating}
         onClearSelection={mockOnClearSelection}
@@ -89,19 +92,17 @@ describe('BatchActions Component', () => {
       expect(screen.queryByText(/already current/)).not.toBeInTheDocument()
     })
 
-    test('says how many selected projects are already current and will be skipped', () => {
+    test('says how many selected projects are already current', () => {
       renderBar({ selected: ['/a', '/b', '/c'], needingUpdate: 2 })
 
-      expect(
-        screen.getByText('2 to update · 1 already current, skipped')
-      ).toBeInTheDocument()
+      expect(screen.getByText('2 to update · 1 already current')).toBeInTheDocument()
     })
 
     test('separates projects whose breadcrumbs will be created from those updated', () => {
       renderBar({ selected: ['/a', '/b', '/c'], needingUpdate: 2, toCreate: 1 })
 
       expect(
-        screen.getByText('1 to update · 1 to create · 1 already current, skipped')
+        screen.getByText('1 to update · 1 to create · 1 already current')
       ).toBeInTheDocument()
     })
 
@@ -112,11 +113,26 @@ describe('BatchActions Component', () => {
       expect(screen.queryByText(/to update/)).not.toBeInTheDocument()
     })
 
-    test('shows only the skipped count when every selected project is already current', () => {
+    test('shows only the current count when every selected project is already current', () => {
       renderBar({ selected: ['/a', '/b'], needingUpdate: 0 })
 
-      expect(screen.getByText('2 already current, skipped')).toBeInTheDocument()
+      expect(screen.getByText('2 already current')).toBeInTheDocument()
       expect(screen.queryByText(/to update/)).not.toBeInTheDocument()
+    })
+
+    test('says which projects have no file and are left alone because creation is off', () => {
+      renderBar({
+        selected: ['/a', '/b', '/c'],
+        needingUpdate: 1,
+        toCreate: 0,
+        creationOff: 1
+      })
+
+      expect(
+        screen.getByText(
+          '1 to update · 1 missing, creation is off in Settings · 1 already current'
+        )
+      ).toBeInTheDocument()
     })
 
     test('says how many selected projects the active filter is hiding', () => {

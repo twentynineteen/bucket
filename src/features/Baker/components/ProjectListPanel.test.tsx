@@ -879,6 +879,25 @@ describe('ProjectListPanel status chips', () => {
 
       expect(visibleProjectNames()).toEqual(['Outdated', 'Homeless', 'Broken'])
     })
+
+    it('keeps the active chip and All when the filter no longer matches anything', async () => {
+      const user = userEvent.setup()
+      const onStatusFilterChange = vi.fn()
+      renderPanel({
+        projects: [project({ name: 'Alpha' })],
+        statusFilter: 'stale',
+        onStatusFilterChange
+      })
+
+      expect(screen.getByRole('button', { name: /^Stale 0$/ })).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
+
+      await user.click(screen.getByRole('button', { name: /^All \d+$/ }))
+
+      expect(onStatusFilterChange).toHaveBeenCalledWith('all')
+    })
   })
 })
 

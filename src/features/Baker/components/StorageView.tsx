@@ -27,6 +27,7 @@ import { toast } from 'sonner'
 import { useRefreshBreadcrumbSizes } from '../hooks/useRefreshBreadcrumbSizes'
 import {
   breadcrumbsStatus,
+  needsAttention,
   STATUS_PRESENTATION,
   type BreadcrumbsStatus
 } from '../internal/projectStatus'
@@ -54,20 +55,30 @@ const SMALL_SHARE = 0.025
 // and the list below give the real figure.
 const MIN_ATTENTION_SHARE = 0.045
 
+// All the boosts together take no more than this share of the map. Past it
+// the floor shrinks, so many small flagged projects cannot crowd out the
+// folders that hold the space.
+const MAX_BOOSTED_SHARE = 0.3
+
 /** Area a tile is given in the layout: its size, with the capped floor above. */
 function tileWeight(
   entry: TreemapEntry,
   totalBytes: number,
   entries: TreemapEntry[]
 ): number {
-  const needsAttention = entry.status !== null && entry.status !== 'current'
-  if (!needsAttention) return entry.sizeBytes
+  const isFlagged = (e: TreemapEntry) => e.status !== null && e.status !== 'current'
+  if (!isFlagged(entry)) return entry.sizeBytes
+
+  const floorShare = Math.min(
+    MIN_ATTENTION_SHARE,
+    MAX_BOOSTED_SHARE / entries.filter(isFlagged).length
+  )
 
   const larger = entries
     .filter(other => other.sizeBytes > entry.sizeBytes)
     .map(other => other.sizeBytes)
   const ceiling = larger.length > 0 ? Math.min(...larger) * 0.98 : Infinity
-  const boosted = Math.min(totalBytes * MIN_ATTENTION_SHARE, ceiling)
+  const boosted = Math.min(totalBytes * floorShare, ceiling)
   return Math.max(entry.sizeBytes, boosted)
 }
 
@@ -235,7 +246,7 @@ export const StorageView: React.FC<StorageViewProps> = ({
     // projects too small to label. A project that needs attention is never
     // grouped while it is within the tile limit.
     const isSmallAndHealthy = (p: ProjectFolder) =>
-      breadcrumbsStatus(p) === 'current' &&
+      !needsAttention(p) &&
       totalSizedBytes > 0 &&
       (p.folderSizeBytes ?? 0) / totalSizedBytes < SMALL_SHARE
 

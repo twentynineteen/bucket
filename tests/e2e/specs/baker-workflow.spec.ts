@@ -161,7 +161,7 @@ test.describe('Baker - breadcrumbs changes', () => {
 
     await expect(page.getByText('3 selected')).toBeVisible()
     await expect(
-      page.getByText('1 to update · 1 to create · 1 already current, skipped')
+      page.getByText('1 to update · 1 to create · 1 already current')
     ).toBeVisible()
 
     await page.getByRole('button', { name: 'Clear selection' }).click()

@@ -20,8 +20,10 @@ export function useSettingsScroll(): void {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
       } else {
-        // No hash - scroll to top of page
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+        // No hash - scroll to top. Routes scroll inside the app shell's
+        // region; the window itself does not move.
+        const region = document.querySelector('[data-route-scroll-region]')
+        ;(region ?? window).scrollTo({ top: 0, behavior: 'smooth' })
       }
     }, 100)
   }, [location.hash, location.key])
