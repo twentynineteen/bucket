@@ -34,43 +34,60 @@ docker pull "$IMAGE"
 SNAP_DIR="tests/e2e/specs/motion-visual.spec.ts-snapshots"
 mkdir -p "$SNAP_DIR"
 
-# Run the visual tests with --update-snapshots inside the container.
-# The container runs as root, so we fix ownership after.
-# The anonymous /work/node_modules volume keeps the container's Linux install
-# from overwriting the host's macOS node_modules (native binaries differ).
+# Run the visual tests with --update-snapshots inside the container, set up the
+# way the e2e-tests job in .github/workflows/ci.yml sets it up, so a baseline
+# made here is the render CI compares against.
+#
+# The checkout is mounted read-only at /src and copied to /work inside the
+# container. The app is not served straight from the bind mount: over a Docker
+# Desktop mount the first Tailwind compile missed classes from files it had not
+# yet read, and the page rendered with a header 11px too short (issue #368).
+# Only the snapshot directory is mounted writable, at /out.
 docker run --rm \
-  -v "$REPO_ROOT:/work" \
-  -v /work/node_modules \
-  -w /work \
+  -v "$REPO_ROOT:/src:ro" \
+  -v "$REPO_ROOT/$SNAP_DIR:/out" \
+  -e CI=1 \
+  -e E2E_HOST=127.0.0.1 \
   "$IMAGE" \
   bash -c "
-    # Install bun
+    set -euo pipefail
+
+    # The image ships browsers but not unzip, which the Bun installer needs.
+    apt-get update -qq
+    apt-get install -y -qq --no-install-recommends unzip >/dev/null
+
+    mkdir -p /work
+    tar -C /src \
+      --exclude=./node_modules \
+      --exclude=./.git \
+      --exclude=./dist \
+      --exclude=./src-tauri/target \
+      --exclude=./test-results \
+      --exclude=./playwright-report \
+      -cf - . | tar -C /work -xf -
+    cd /work
+
+    # The prepare script runs 'lefthook install', which needs a git repository.
+    git init -q
+
     curl -fsSL https://bun.sh/install | bash
     export PATH=\$HOME/.bun/bin:\$PATH
 
-    # Install deps
     bun install --frozen-lockfile
 
-    # Run only the motion-visual spec with --update-snapshots
     bunx playwright test tests/e2e/specs/motion-visual.spec.ts \
       --project=e2e \
       --update-snapshots \
       --reporter=list
 
-    # Fix ownership so the host user can edit the files
-    chown -R $(id -u):$(id -g) '$SNAP_DIR' 2>/dev/null || true
+    cp '$SNAP_DIR'/*-linux.png /out/
+
+    # The container runs as root: hand the files back to the host user.
+    chown $(id -u):$(id -g) /out/*-linux.png 2>/dev/null || true
   "
 
-# Verify baselines were generated
-if ls "$SNAP_DIR"/*-linux.png 1>/dev/null 2>&1; then
-  echo ""
-  echo "Baselines generated:"
-  ls -la "$SNAP_DIR"/*-linux.png
-  echo ""
-  echo "Run the script a second time to verify byte-identical output."
-else
-  echo ""
-  echo "WARNING: No *-linux.png baselines found in $SNAP_DIR."
-  echo "The visual tests may have been skipped or failed."
-  echo "Check the Playwright output above for details."
-fi
+echo ""
+echo "Baselines generated:"
+ls -la "$SNAP_DIR"/*-linux.png
+echo ""
+echo "Run the script a second time to verify byte-identical output."
