@@ -18,7 +18,7 @@ import {
 } from '@shared/ui/dialog'
 import { cn } from '@shared/utils'
 import { AlertTriangle, CheckCircle, ChevronRight, Clock } from 'lucide-react'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import type { BreadcrumbsPreview } from '../types'
 import {
   buildProjectChangeRows,
@@ -88,6 +88,50 @@ const ProjectChangeBlock: React.FC<ProjectChangeBlockProps> = ({
   </div>
 )
 
+// A stable default, so a missing prop does not look like new previews on every render
+const NO_PREVIEWS: BreadcrumbsPreview[] = []
+
+/**
+ * Which projects are expanded. Resets whenever the dialog opens or new
+ * previews arrive: every changed project expands when there are few enough,
+ * none otherwise. Adjusted during render rather than in an effect, so the
+ * dialog never paints the previous expansion first.
+ */
+function useExpandedProjects(
+  isOpen: boolean,
+  previews: BreadcrumbsPreview[],
+  changedPaths: string[]
+) {
+  const autoExpanded = () =>
+    changedPaths.length <= AUTO_EXPAND_THRESHOLD
+      ? new Set(changedPaths)
+      : new Set<string>()
+
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() =>
+    isOpen ? autoExpanded() : new Set()
+  )
+
+  const [expandedFor, setExpandedFor] = useState({ isOpen, previews })
+  if (expandedFor.isOpen !== isOpen || expandedFor.previews !== previews) {
+    setExpandedFor({ isOpen, previews })
+    if (isOpen) setExpandedPaths(autoExpanded())
+  }
+
+  const toggleProject = (projectPath: string) => {
+    setExpandedPaths(prev => {
+      const next = new Set(prev)
+      if (next.has(projectPath)) {
+        next.delete(projectPath)
+      } else {
+        next.add(projectPath)
+      }
+      return next
+    })
+  }
+
+  return { expandedPaths, toggleProject }
+}
+
 interface BatchUpdateConfirmationDialogProps {
   isOpen: boolean
   onClose: () => void
@@ -106,7 +150,7 @@ export const BatchUpdateConfirmationDialog: React.FC<
   onClose,
   onConfirm,
   selectedProjects,
-  previews = [],
+  previews = NO_PREVIEWS,
   isLoading = false,
   invalidBreadcrumbsPaths = []
 }) => {
@@ -133,29 +177,11 @@ export const BatchUpdateConfirmationDialog: React.FC<
   const estimatedDuration =
     selectedProjects.length > 10 ? '2-3 minutes' : 'Less than 1 minute'
 
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    if (!isOpen) return
-    setExpandedPaths(
-      projectsWithChanges.length <= AUTO_EXPAND_THRESHOLD
-        ? new Set(projectsWithChanges.map(project => project.projectPath))
-        : new Set()
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, previews])
-
-  const toggleProject = (projectPath: string) => {
-    setExpandedPaths(prev => {
-      const next = new Set(prev)
-      if (next.has(projectPath)) {
-        next.delete(projectPath)
-      } else {
-        next.add(projectPath)
-      }
-      return next
-    })
-  }
+  const { expandedPaths, toggleProject } = useExpandedProjects(
+    isOpen,
+    previews,
+    projectsWithChanges.map(project => project.projectPath)
+  )
 
   const noteFor = (projectPath: string, isNewBreadcrumbs: boolean) => {
     if (invalidBreadcrumbsPaths.includes(projectPath)) {

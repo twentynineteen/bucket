@@ -18,6 +18,7 @@
  * updated for the template parameter (issue #189).
  */
 import { act, renderHook } from '@testing-library/react'
+import type { Font } from 'opentype.js'
 import { afterEach, beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
 import { loadFont } from '../internal/loadFont'
 import { usePosterframeCanvas } from './usePosterframeCanvas'
@@ -177,7 +178,7 @@ describe('usePosterframeCanvas', () => {
       unitsPerEm: 1000,
       ascender: 800,
       stringToGlyphs: vi.fn(() => [])
-    }
+    } as unknown as Font
     vi.mocked(loadFont).mockResolvedValue(fakeFont)
 
     const { result } = renderHook(() => usePosterframeCanvas())
@@ -242,7 +243,7 @@ describe('usePosterframeCanvas - classic paint geometry (#189 B4.1, B1.5)', () =
             return { fill: null, stroke: null, draw: vi.fn() }
           }
         }))
-    }
+    } as unknown as Font
     return { font, getPathCalls }
   }
 

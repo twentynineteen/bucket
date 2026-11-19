@@ -39,7 +39,7 @@ import type {
  * deadline is rearmed by every progress event, which is what stops it killing a
  * healthy upload of a very large file over a slow connection. See issue #204.
  */
-export const BACKEND_SILENCE_TIMEOUT_MS = 150_000
+const BACKEND_SILENCE_TIMEOUT_MS = 150_000
 
 export type UploadOutcome =
   { kind: 'complete'; video: SproutUploadResponse } | { kind: 'cancelled' }

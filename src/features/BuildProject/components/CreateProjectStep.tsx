@@ -62,7 +62,7 @@ export const CreateProjectStep: React.FC<CreateProjectStepProps> = ({
                     : undefined
               }
               animationStyle="glow"
-              className="from-chart-4 to-chart-5 disabled:from-muted disabled:to-muted bg-gradient-to-r px-6 py-2.5 font-semibold text-white shadow-md"
+              className="from-chart-4 to-chart-5 disabled:from-muted disabled:to-muted disabled:text-muted-foreground bg-gradient-to-r px-6 py-2.5 font-semibold text-white shadow-md"
             >
               <FolderPlus className="h-4 w-4" />
               {isLoading ? 'Creating Project...' : 'Create Project'}

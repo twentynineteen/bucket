@@ -165,8 +165,9 @@ async function streamAIResponse(
 
   const streamResult = streamText({
     model,
+    // AI SDK 7 rejects system messages inside `messages`
+    instructions: systemPrompt,
     messages: [
-      { role: 'system', content: systemPrompt },
       {
         role: 'user',
         content: `Format this script for autocue/teleprompter reading. Preserve ALL the original words and content exactly as written - DO NOT rewrite, paraphrase, or change the meaning. ONLY add formatting (line breaks, bold, pauses). Output ONLY the formatted script with no preamble, introduction, or explanation.

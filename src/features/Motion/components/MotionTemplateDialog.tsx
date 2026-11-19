@@ -46,7 +46,7 @@ import MotionPreview from './MotionPreview'
 import ParamEditor from './ParamEditor'
 import PreviewStage from './PreviewStage'
 
-export interface MotionTemplateDialogProps {
+interface MotionTemplateDialogProps {
   template: CatalogueEntry
   open: boolean
   onOpenChange: (open: boolean) => void

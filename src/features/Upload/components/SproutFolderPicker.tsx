@@ -526,5 +526,3 @@ export const SproutFolderPicker: React.FC<SproutFolderPickerProps> = ({
     </DropdownMenu>
   )
 }
-
-export default SproutFolderPicker

@@ -63,7 +63,7 @@ function savePreferences(preferences: KavanaghUploadPreferences): void {
 }
 
 /** Why an upload is being held back. */
-export interface KavanaghBlock {
+interface KavanaghBlock {
   /** The report behind the block, or null when the run never produced one. */
   report: KavanaghCheckReport | null
   /** Set when the run could not judge the video at all (B7.4). */

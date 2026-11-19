@@ -13,6 +13,18 @@ import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePosterframeAutoRedraw } from './usePosterframeAutoRedraw'
 
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
+vi.mock('@shared/utils', async importOriginal => ({
+  ...(await importOriginal<typeof import('@shared/utils')>()),
+  createNamespacedLogger: () => ({
+    log: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn,
+    error: vi.fn()
+  })
+}))
+
 function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } }
@@ -189,8 +201,9 @@ describe('usePosterframeAutoRedraw - input changes', () => {
     await waitFor(() => expect(draw).toHaveBeenCalledWith(IMAGE, '', 'classic'))
   })
 
-  it('survives a rejecting draw', async () => {
-    draw.mockRejectedValueOnce(new Error('Canvas draw failed'))
+  it('reports a background that fails to draw instead of leaving it unhandled', async () => {
+    const failure = new Error('Posterframe image failed to load: blob:background')
+    draw.mockRejectedValueOnce(failure)
 
     renderHook(
       () =>
@@ -203,6 +216,6 @@ describe('usePosterframeAutoRedraw - input changes', () => {
       { wrapper }
     )
 
-    await waitFor(() => expect(draw).toHaveBeenCalled())
+    await waitFor(() => expect(warn).toHaveBeenCalledWith(expect.any(String), failure))
   })
 })

@@ -89,7 +89,7 @@ export function registeredCommands(): string[] {
 }
 
 /** How readable a call site's command name is. */
-export type InvokeKind =
+type InvokeKind =
   /** A static string literal naming a command in `generate_handler![...]`. */
   | 'static'
   /** A `plugin:...` name, routed by a Tauri plugin rather than the handler list. */

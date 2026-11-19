@@ -37,8 +37,6 @@ interface UploadDialogProps {
   onUpload: (data: UploadData) => Promise<void>
 }
 
-export { type UploadData }
-
 export function UploadDialog({ open, onClose, onUpload }: UploadDialogProps) {
   const {
     beforeFile,

@@ -70,29 +70,10 @@ export interface ThemeSelectorProps {
  */
 export function ThemeSelector({ label = 'Theme', className }: ThemeSelectorProps) {
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
   const groupedThemes = React.useMemo(() => getGroupedThemes(), [])
   const { startPreview, stopPreview } = useThemePreview({
     activeTheme: theme || 'system'
   })
-
-  // Avoid hydration mismatch
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return (
-      <div className={className}>
-        {label && <Label className="mb-3 block">{label}</Label>}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-muted h-24 animate-pulse rounded-lg" />
-          ))}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className={className}>

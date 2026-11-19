@@ -22,25 +22,25 @@ import TrelloCardList from '../internal/TrelloCardList'
 import type { TrelloCard } from '../types'
 
 // Type definitions for grouped parameters
-export interface DialogState {
+interface DialogState {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   canAddCard: boolean
   hasApiCredentials: boolean
 }
 
-export interface ModeState {
+interface ModeState {
   addMode: 'url' | 'select'
   onAddModeChange: (mode: 'url' | 'select') => void
 }
 
-export interface UrlModeState {
+interface UrlModeState {
   cardUrl: string
   onCardUrlChange: (url: string) => void
   onFetchAndAdd: () => void
 }
 
-export interface SelectModeState {
+interface SelectModeState {
   searchTerm: string
   onSearchTermChange: (term: string) => void
   filteredGrouped: Record<string, TrelloCard[]>
@@ -48,12 +48,12 @@ export interface SelectModeState {
   isBoardLoading: boolean
 }
 
-export interface CommonState {
+interface CommonState {
   isFetchingCard: boolean
   onClose: () => void
 }
 
-export interface ErrorState {
+interface ErrorState {
   validationErrors: string[]
   addError: Error | null
   fetchError: Error | null

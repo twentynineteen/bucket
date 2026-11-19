@@ -14,7 +14,7 @@ const logger = createNamespacedLogger('Prefetch')
  * Provides intelligent prefetching strategies to improve perceived performance
  * by loading data before it's needed by components.
  */
-export class QueryPrefetchManager {
+class QueryPrefetchManager {
   private queryClient: QueryClient
 
   constructor(queryClient: QueryClient) {
@@ -288,31 +288,10 @@ export class QueryPrefetchManager {
   }
 }
 
-// Export factory function
-export const createPrefetchManager = (queryClient: QueryClient) => {
-  return new QueryPrefetchManager(queryClient)
-}
-
-// Export singleton for global use
+// Singleton for global use
 let globalPrefetchManager: QueryPrefetchManager | null = null
 
 export const initializePrefetchManager = (queryClient: QueryClient) => {
   globalPrefetchManager = new QueryPrefetchManager(queryClient)
   return globalPrefetchManager
 }
-
-export const getPrefetchManager = (): QueryPrefetchManager => {
-  if (!globalPrefetchManager) {
-    throw new Error(
-      'Prefetch manager not initialized. Call initializePrefetchManager() first.'
-    )
-  }
-  return globalPrefetchManager
-}
-
-// React hooks for components
-export const usePrefetch = () => {
-  return getPrefetchManager()
-}
-
-export default QueryPrefetchManager

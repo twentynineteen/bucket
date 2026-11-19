@@ -117,6 +117,8 @@ const AIModelsSection: React.FC<AIModelsSectionProps> = ({
           <ApiKeyInput
             saveDisabled={settingsUnavailable}
             id="ollama-url-input"
+            inputType="text"
+            placeholder="http://localhost:11434"
             apiKey={ollamaUrl || 'http://localhost:11434'}
             setApiKey={handleOllamaUrlChange}
             onSave={handleSaveOllamaUrl}

@@ -12,7 +12,7 @@
  * real API by `docs/sprout-folder-picker-manual-verification.md`.
  */
 import type { Page } from '@playwright/test'
-import { stubGitHubReleases } from './mocks.fixture'
+import { installTauriIpcBase, stubGitHubReleases } from './mocks.fixture'
 
 export interface FolderNode {
   id: string
@@ -79,6 +79,7 @@ export async function setupSproutMocks(
   options: SproutMockOptions
 ): Promise<void> {
   await stubGitHubReleases(page)
+  await installTauriIpcBase(page)
   const config = {
     folders: options.folders,
     apiKey: options.apiKey ?? DEFAULT_KEY,
@@ -89,7 +90,7 @@ export async function setupSproutMocks(
 
   await page.addInitScript((cfg: typeof config) => {
     const win = window as unknown as {
-      __TAURI_INTERNALS__?: { invoke: (cmd: string, args?: unknown) => Promise<unknown> }
+      __TAURI_INTERNALS__: { invoke: (cmd: string, args?: unknown) => Promise<unknown> }
       __TAURI__?: unknown
       __sproutFolderCalls__: Array<{ parentId: string | null; at: number }>
     }
@@ -181,17 +182,8 @@ export async function setupSproutMocks(
       return null
     }
 
-    win.__TAURI_INTERNALS__ = {
-      invoke,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...({
-        metadata: {
-          windows: [{ label: 'main' }],
-          currentWindow: { label: 'main' }
-        }
-      } as any)
-    }
-    win.__TAURI__ = win.__TAURI_INTERNALS__
+    // The rest of the bridge comes from installTauriIpcBase
+    win.__TAURI_INTERNALS__.invoke = invoke
   }, config)
 }
 

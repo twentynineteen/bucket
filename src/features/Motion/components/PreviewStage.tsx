@@ -12,7 +12,7 @@
  */
 import React from 'react'
 
-export interface PreviewStageProps {
+interface PreviewStageProps {
   children: React.ReactNode
   /** Ref callback forwarded to the root div (used by useMotionTicker). */
   containerRef?: React.RefCallback<HTMLElement>

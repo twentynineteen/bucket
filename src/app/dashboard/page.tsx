@@ -19,7 +19,7 @@ import { Outlet } from 'react-router-dom'
 // The Page component acts as the main provider of layout for this application
 // Child components are loaded underneath the header, via the Outlet component
 
-export const Page: React.FC = () => {
+const Page: React.FC = () => {
   const { breadcrumbs } = useBreadcrumbStore()
   return (
     <SidebarProvider>

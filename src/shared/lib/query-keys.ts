@@ -195,8 +195,6 @@ export const queryKeys = {
   }
 } as const
 
-export type QueryKeyFactory = typeof queryKeys
-
 export interface InvalidationRule {
   trigger: QueryKey
   invalidates: QueryKey[]

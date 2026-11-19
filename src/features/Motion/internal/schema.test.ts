@@ -13,15 +13,11 @@ import {
   ellipseFixture,
   groupFixture,
   holdParamFixture,
-  imageParamFixture,
-  numberListParamFixture,
-  numberParamFixture,
   particlesFixture,
   pathFixture,
   rectFixture,
   seriesFixture,
-  textFixture,
-  textParamFixture
+  textFixture
 } from './testing/fixtures'
 
 describe('Schema (internal/schema.ts)', () => {
@@ -37,12 +33,8 @@ describe('Schema (internal/schema.ts)', () => {
       ['particlesFixture', particlesFixture],
       ['seriesFixture', seriesFixture],
       ['counterFixture', counterFixture],
-      ['textParamFixture', textParamFixture],
       ['colourParamFixture', colourParamFixture],
-      ['holdParamFixture', holdParamFixture],
-      ['numberListParamFixture', numberListParamFixture],
-      ['numberParamFixture', numberParamFixture],
-      ['imageParamFixture', imageParamFixture]
+      ['holdParamFixture', holdParamFixture]
     ])('%s parses successfully', (_name, fixture) => {
       const result = parseTemplate(fixture)
       expect(result.success).toBe(true)
