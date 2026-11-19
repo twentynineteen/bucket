@@ -168,7 +168,9 @@ export function SetPosterFrameDialog({
                   disabled={working}
                 />
                 {textMissing ? (
-                  <p className="text-warning text-xs">Poster frame text is required.</p>
+                  <p className="text-warning-text text-xs">
+                    Poster frame text is required.
+                  </p>
                 ) : (
                   <p className="text-muted-foreground text-xs">
                     Taken from the last part of the video title. Edit it to change the
@@ -191,7 +193,7 @@ export function SetPosterFrameDialog({
               {/* A warning, not a block: the layout scales by height and still
                   renders, but the design assumes 16:9 (issue #189 B4.2). */}
               {posterFrame.offAspect && (
-                <p role="alert" className="text-warning text-xs">
+                <p role="alert" className="text-warning-text text-xs">
                   This background is not 16:9, so the title text may sit oddly on the
                   final thumbnail.
                 </p>

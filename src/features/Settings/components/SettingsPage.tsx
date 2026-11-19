@@ -9,9 +9,11 @@ import { useBreadcrumb } from '@shared/hooks'
 import { createQueryError, createQueryOptions, queryKeys, shouldRetry } from '@shared/lib'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import React from 'react'
+import { useLocation } from 'react-router-dom'
 import { loadSettingsApiKeys } from '../api'
 import { useSettingsScroll } from '../hooks/useSettingsScroll'
 import AIModelsSection from './AIModelsSection'
@@ -25,10 +27,27 @@ const MotionSection = React.lazy(() =>
   import('@features/Motion').then(m => ({ default: m.MotionSection }))
 )
 
+/** Section names by URL hash, worded as in the sidebar. */
+const SECTION_LABELS: Record<string, string> = {
+  '#ai-models': 'AI models',
+  '#appearance': 'Appearance',
+  '#backgrounds': 'Backgrounds',
+  '#sproutvideo': 'Sprout Video',
+  '#trello': 'Trello',
+  '#kavanagh': 'Kavanagh',
+  '#motion': 'Motion'
+}
+
 const SettingsPageContent: React.FC = () => {
   useSettingsScroll()
 
-  useBreadcrumb([{ label: 'Settings', href: '/settings/general' }, { label: 'General' }])
+  // The breadcrumb names the section the URL points at, matching the item the
+  // sidebar highlights. Without a hash the page opens on its first section.
+  const { hash } = useLocation()
+  useBreadcrumb([
+    { label: 'Settings', href: '/settings/general' },
+    { label: SECTION_LABELS[hash] ?? SECTION_LABELS['#ai-models'] }
+  ])
 
   const { data: apiKeys = {}, isError: settingsUnavailable } = useQuery({
     ...createQueryOptions(
@@ -54,12 +73,10 @@ const SettingsPageContent: React.FC = () => {
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
       <div className="w-full max-w-full pb-4">
         {/* Header */}
-        <div className="border-border bg-card/50 border-b px-6 py-4">
-          <h1 className="text-foreground text-2xl font-bold">Settings</h1>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            Configure application settings, API integrations, and preferences
-          </p>
-        </div>
+        <PageHeader
+          title="Settings"
+          description="Configure application settings, API integrations, and preferences"
+        />
 
         <div className="max-w-full space-y-8 px-6 py-4">
           {/*

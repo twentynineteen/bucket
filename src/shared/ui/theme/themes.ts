@@ -280,7 +280,7 @@ export const getGroupedThemes = (): ThemeGroup[] => {
       themes: [THEMES.system]
     },
     {
-      label: 'Light Themes',
+      label: 'Light themes',
       themes: [
         THEMES.light,
         THEMES['catppuccin-latte'],
@@ -291,7 +291,7 @@ export const getGroupedThemes = (): ThemeGroup[] => {
       ]
     },
     {
-      label: 'Dark Themes',
+      label: 'Dark themes',
       themes: [
         THEMES.dark,
         THEMES.dracula,

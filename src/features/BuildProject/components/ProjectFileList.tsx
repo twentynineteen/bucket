@@ -134,7 +134,7 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({
             No files selected yet
           </h3>
           <p className="text-muted-foreground text-center text-xs">
-            Click &quot;Select Files&quot; to add footage to your project
+            Click &quot;Select files&quot; to add footage to your project
           </p>
         </div>
       </div>

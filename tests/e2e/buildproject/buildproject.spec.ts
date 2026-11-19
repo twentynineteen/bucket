@@ -203,7 +203,7 @@ test.describe('BuildProject Edge Cases', () => {
     await buildPage.clickSelectFiles()
 
     // With empty title, the Create Project button should be disabled
-    const createButton = page.getByRole('button', { name: 'Create Project' })
+    const createButton = page.getByRole('button', { name: 'Create project' })
     await expect(createButton).toBeDisabled()
 
     // Success message should NOT appear since we can't proceed

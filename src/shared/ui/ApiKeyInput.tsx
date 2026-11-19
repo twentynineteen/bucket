@@ -37,9 +37,11 @@ const ApiKeyInput: React.FC<Props> = ({
         placeholder={placeholder}
         style={{ flex: 1 }}
       />
-      {/* Button to toggle visibility, only for secrets */}
+      {/* Visibility toggle: only for secrets, and never the filled button. A
+          plain-text value (a URL) has nothing to reveal. */}
       {isSecret && (
         <Button
+          variant="outline"
           onClick={() => setShowApiKey(prev => !prev)}
           style={{ marginLeft: '8px' }}
         >
