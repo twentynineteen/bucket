@@ -121,8 +121,10 @@ fn encode_embedding(embedding: &[f32]) -> Vec<u8> {
 
 /// Decode the blob the way `blob_to_vec_f32` in `rag.rs` does: 4-byte little-endian chunks.
 fn decode_embedding(blob: &[u8]) -> Vec<f32> {
-    blob.chunks_exact(4)
-        .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+    blob.as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| f32::from_le_bytes(*chunk))
         .collect()
 }
 
