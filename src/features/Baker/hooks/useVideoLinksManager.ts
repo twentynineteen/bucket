@@ -138,7 +138,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     addError
   } = useBreadcrumbsVideoLinks({ projectPath })
 
-  const { trelloCards } = useBreadcrumbsTrelloCards({ projectPath })
+  const { trelloCards, updateTrelloCardAsync } = useBreadcrumbsTrelloCards({
+    projectPath
+  })
   const { apiKey } = useSproutVideoApiKey()
   const { apiKey: trelloApiKey, apiToken: trelloToken } = useTrelloApiKeys()
   const { fetchVideoDetailsAsync, isFetching: isFetchingVideo } = useSproutVideoApi()
@@ -401,6 +403,14 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
           trelloApiKey,
           trelloToken
         )
+        // Record the new name in breadcrumbs as well. Without this the file
+        // keeps the title the card had when it was linked, and Baker goes on
+        // showing a name it has itself just replaced (#371).
+        await updateTrelloCardAsync({
+          ...card,
+          title: newCardName,
+          lastFetched: new Date().toISOString()
+        })
       }
     })
 

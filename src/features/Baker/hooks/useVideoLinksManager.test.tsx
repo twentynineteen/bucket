@@ -17,6 +17,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import React, { type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as bakerApi from '../api'
 import * as cardPosterFrameModule from './useCardPosterFrame'
 import * as replaceVideoModule from './useReplaceVideo'
 import { useVideoLinksManager } from './useVideoLinksManager'
@@ -30,6 +31,16 @@ vi.mock('@features/Trello', async importOriginal => ({
 }))
 vi.mock('./useCardPosterFrame')
 vi.mock('./useReplaceVideo')
+// The hook imports these two relatively, so the '@features/Baker' mock below
+// does not reach them. Unmocked, the card update goes out to api.trello.com.
+vi.mock('./useAppendBreadcrumbs', async importOriginal => ({
+  ...(await importOriginal<typeof import('./useAppendBreadcrumbs')>()),
+  updateTrelloCardWithBreadcrumbs: vi.fn()
+}))
+vi.mock('../api', async importOriginal => ({
+  ...(await importOriginal<typeof import('../api')>()),
+  bakerReadBreadcrumbs: vi.fn()
+}))
 
 vi.mock('@shared/hooks', async importOriginal => ({
   ...(await importOriginal<typeof import('@shared/hooks')>()),
@@ -317,5 +328,54 @@ describe('UPLOAD-05: starting an upload clears the previous message', () => {
     await waitFor(() => {
       expect(cachedMessage(queryClient)).toBeNull()
     })
+  })
+})
+
+describe('#371: renaming a linked Trello card records the new name in breadcrumbs', () => {
+  it('writes the new title over the linked card once Trello has accepted the rename', async () => {
+    const linked = {
+      url: 'https://trello.com/c/5f1e2d3c4b5a69788796a5b4',
+      cardId: '5f1e2d3c4b5a69788796a5b4',
+      title: 'TLE Filming filmed on Wed 30 Sep 2026',
+      boardName: 'Small Projects'
+    }
+    const updateTrelloCardAsync = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(bakerApi.bakerReadBreadcrumbs).mockResolvedValue({
+      projectTitle: 'Demo'
+    } as Awaited<ReturnType<typeof bakerApi.bakerReadBreadcrumbs>>)
+    vi.mocked(trelloModule.useBreadcrumbsTrelloCards).mockReturnValue({
+      trelloCards: [linked],
+      updateTrelloCardAsync
+    } as unknown as ReturnType<typeof trelloModule.useBreadcrumbsTrelloCards>)
+    vi.mocked(uploadModule.useFileUpload).mockReturnValue({
+      selectedFile: '/renders/WBS_intro.mp4',
+      uploading: false,
+      response: {
+        id: 'v1',
+        title: 'MOD101 - A Lecturer - Module overview',
+        duration: 305
+      },
+      localDuration: null,
+      selectFile: vi.fn(),
+      uploadFile: mockUploadFile,
+      resetUploadState: vi.fn()
+    } as unknown as ReturnType<typeof uploadModule.useFileUpload>)
+
+    const { result } = await renderManager()
+    await act(async () => {
+      await result.current.handleTrelloCardUpdate([0], { renameToVideoTitle: true })
+    })
+
+    const newName = 'MOD101 - A Lecturer - Module overview (5:05mins)'
+    expect(trelloModule.updateTrelloCard).toHaveBeenCalledWith(
+      linked.cardId,
+      { name: newName },
+      'trello-key',
+      'trello-token'
+    )
+    expect(updateTrelloCardAsync).toHaveBeenCalledTimes(1)
+    expect(updateTrelloCardAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ ...linked, title: newName })
+    )
   })
 })

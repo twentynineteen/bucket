@@ -4,6 +4,7 @@
  */
 
 import type { BreadcrumbsFile, TrelloCard } from '@features/Baker'
+import { applyBreadcrumbsChange } from '@features/Breadcrumbs'
 import { logger } from '@shared/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -61,6 +62,33 @@ export function useBreadcrumbsTrelloCards({
     }
   })
 
+  // Mutation: Replace a linked card's details in place (#371).
+  //
+  // One write, so the card keeps its place in the list and is never missing
+  // from the file part-way through. Refreshing by removing the card and adding
+  // it back is two writes that can land out of order on a slow volume, which
+  // deleted the card instead of updating it.
+  const updateTrelloCard = useMutation({
+    mutationFn: async (trelloCard: TrelloCard) => {
+      const [outcome] = await applyBreadcrumbsChange([projectPath], {
+        kind: 'updateTrelloCard',
+        card: trelloCard
+      })
+      if (outcome.status === 'failed') {
+        throw new Error(outcome.message)
+      }
+      return outcome.file
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['breadcrumbs', 'trelloCards', projectPath]
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['breadcrumbs', projectPath]
+      })
+    }
+  })
+
   // Mutation: Remove Trello card
   const removeTrelloCard = useMutation({
     mutationFn: async (cardIndex: number) => {
@@ -91,7 +119,8 @@ export function useBreadcrumbsTrelloCards({
     }
   })
 
-  const isUpdating = addTrelloCard.isPending || removeTrelloCard.isPending
+  const isUpdating =
+    addTrelloCard.isPending || updateTrelloCard.isPending || removeTrelloCard.isPending
   const isFetchingDetails = fetchCardDetails.isPending
 
   return {
@@ -102,6 +131,8 @@ export function useBreadcrumbsTrelloCards({
     refetch,
     addTrelloCard: addTrelloCard.mutate,
     addTrelloCardAsync: addTrelloCard.mutateAsync,
+    /** Replaces the linked card with the same `cardId`, keeping its position. */
+    updateTrelloCardAsync: updateTrelloCard.mutateAsync,
     removeTrelloCard: removeTrelloCard.mutate,
     removeTrelloCardAsync: removeTrelloCard.mutateAsync,
     fetchCardDetails: fetchCardDetails.mutate,

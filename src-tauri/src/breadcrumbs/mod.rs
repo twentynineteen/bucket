@@ -163,6 +163,13 @@ pub enum Change {
     AddTrelloCard {
         card: TrelloCard,
     },
+    /// Replaces the linked card that has this card's ID, keeping its place in
+    /// the list. This is how a card's title follows a rename on Trello: one
+    /// write under the file lock, where removing and re-adding the card are
+    /// two writes that can land in the wrong order and lose it (#371).
+    UpdateTrelloCard {
+        card: TrelloCard,
+    },
     RemoveTrelloCard {
         card_id: String,
     },
@@ -677,6 +684,19 @@ fn edit(project: &Path, change: &Change, file: &mut Breadcrumbs) -> Result<bool,
                 });
             }
             file.trello_cards.push(card.clone());
+        }
+        Change::UpdateTrelloCard { card } => {
+            let linked = file
+                .trello_cards
+                .iter_mut()
+                .find(|c| c.card_id == card.card_id)
+                .ok_or_else(|| ChangeError::CardNotLinked {
+                    card_id: card.card_id.clone(),
+                })?;
+            if linked == card {
+                return Ok(false);
+            }
+            *linked = card.clone();
         }
         Change::RemoveTrelloCard { card_id } => {
             let before = file.trello_cards.len();
