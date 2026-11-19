@@ -169,6 +169,15 @@ fn all_changes() -> Vec<(&'static str, Change)> {
             },
         ),
         (
+            "updateTrelloCard",
+            Change::UpdateTrelloCard {
+                card: TrelloCard {
+                    title: "Renamed on Trello".to_string(),
+                    ..card("carda001")
+                },
+            },
+        ),
+        (
             "removeTrelloCard",
             Change::RemoveTrelloCard {
                 card_id: "carda001".to_string(),
@@ -902,6 +911,36 @@ fn b6_3_remove_trello_card_drops_only_that_card() {
 }
 
 #[test]
+fn b6_3_update_trello_card_replaces_that_card_in_place() {
+    let fx = Fixture::bare();
+    fx.write_json(&well_formed(
+        &fx,
+        json!({
+            "videoLinks": links_json(&["https://v/a"]),
+            "trelloCards": cards_json(&["carda001", "cardb002", "cardc003"])
+        }),
+    ));
+    let renamed = TrelloCard {
+        title: "Renamed on Trello".to_string(),
+        board_name: Some("Small Projects".to_string()),
+        last_fetched: Some("2026-11-19T14:00:00Z".to_string()),
+        ..card("cardb002")
+    };
+
+    let file = fx
+        .apply_one(&Change::UpdateTrelloCard {
+            card: renamed.clone(),
+        })
+        .unwrap();
+
+    // Same three cards in the same order: a refresh must never drop or move one.
+    let expected = vec![card("carda001"), renamed, card("cardc003")];
+    assert_eq!(file.trello_cards, expected);
+    assert_eq!(found(&fx).0.trello_cards, expected);
+    assert_eq!(urls(&file), vec!["https://v/a"]);
+}
+
+#[test]
 fn b6_3_missing_targets_fail_and_leave_the_file_alone() {
     let fx = linked_project();
     let before = fx.bytes();
@@ -913,6 +952,14 @@ fn b6_3_missing_targets_fail_and_leave_the_file_alone() {
     assert_eq!(
         fx.apply_one(&Change::ReorderVideoLinks { from: 0, to: 9 }),
         Err(ChangeError::IndexOutOfRange { index: 9 })
+    );
+    assert_eq!(
+        fx.apply_one(&Change::UpdateTrelloCard {
+            card: card("nothere1")
+        }),
+        Err(ChangeError::CardNotLinked {
+            card_id: "nothere1".into()
+        })
     );
     assert_eq!(
         fx.apply_one(&Change::RemoveTrelloCard {

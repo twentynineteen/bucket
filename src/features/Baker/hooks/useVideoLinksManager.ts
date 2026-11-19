@@ -138,7 +138,9 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
     addError
   } = useBreadcrumbsVideoLinks({ projectPath })
 
-  const { trelloCards } = useBreadcrumbsTrelloCards({ projectPath })
+  const { trelloCards, updateTrelloCardAsync } = useBreadcrumbsTrelloCards({
+    projectPath
+  })
   const { apiKey } = useSproutVideoApiKey()
   const { apiKey: trelloApiKey, apiToken: trelloToken } = useTrelloApiKeys()
   const { fetchVideoDetailsAsync, isFetching: isFetchingVideo } = useSproutVideoApi()
@@ -401,6 +403,25 @@ export function useVideoLinksManager({ projectPath }: UseVideoLinksManagerProps)
           trelloApiKey,
           trelloToken
         )
+        // Record the new name in breadcrumbs as well. Without this the file
+        // keeps the title the card had when it was linked, and Baker goes on
+        // showing a name it has itself just replaced (#371).
+        //
+        // Trello has already taken the rename by this point, so a failed write
+        // here is reported as that half alone, with the way to recover.
+        try {
+          await updateTrelloCardAsync({
+            ...card,
+            title: newCardName,
+            lastFetched: new Date().toISOString()
+          })
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error)
+          throw new Error(
+            `The card was renamed on Trello, but the new title could not be saved to breadcrumbs (${reason}). Refresh the card on the Trello tab to try again.`,
+            { cause: error }
+          )
+        }
       }
     })
 
