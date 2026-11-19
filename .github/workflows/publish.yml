@@ -100,10 +100,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-14' # Apple Silicon runner for native arm64 builds
+          - platform: 'macos-15' # Apple Silicon runner for native arm64 builds
             args: '--target aarch64-apple-darwin'
             target: 'aarch64-apple-darwin'
-          - platform: 'macos-14' # Intel builds on Apple Silicon runner with cross-compilation
+          - platform: 'macos-15' # Intel builds on Apple Silicon runner with cross-compilation
             args: '--target x86_64-apple-darwin'
             target: 'x86_64-apple-darwin'
 
