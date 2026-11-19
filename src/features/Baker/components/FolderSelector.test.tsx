@@ -7,57 +7,21 @@
  * Test Categories:
  * 1. Rendering (2 tests)
  * 2. Folder Selection (3 tests)
- * 3. Scan Controls (3 tests)
+ * 3. Scan Controls (5 tests)
  * 4. Button States (2 tests)
  *
- * Total: 10 tests
+ * Total: 12 tests
  */
 
-import { logger } from '@shared/utils/logger'
-import { open } from '@tauri-apps/plugin-dialog'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
 import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
-import { FolderSelector } from '../../../src/features/Baker/components/FolderSelector'
+import { openFolderDialog } from '../api'
+import { FolderSelector } from './FolderSelector'
 
-// Mock Tauri dialog
-vi.mock('@tauri-apps/plugin-dialog', () => ({
-  open: vi.fn()
-}))
-
-// Mock framer-motion to avoid animation issues in tests
-vi.mock('framer-motion', () => ({
-  motion: new Proxy(
-    {},
-    {
-      get: (_, prop) => {
-        const Component = React.forwardRef<any, any>((props, ref) => {
-          const { children, ...rest } = props
-          return React.createElement(prop as string, { ...rest, ref }, children)
-        })
-        Component.displayName = `motion.${String(prop)}`
-        return Component
-      }
-    }
-  ),
-  AnimatePresence: ({ children }: any) => children
-}))
-
-// Mock logger
-vi.mock('@shared/utils/logger', () => ({
-  logger: {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-    debug: vi.fn()
-  },
-  createNamespacedLogger: vi.fn(() => ({
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-    debug: vi.fn()
-  }))
+// Mock the feature's API boundary: the native folder dialog is Tauri-only.
+vi.mock('../api', () => ({
+  openFolderDialog: vi.fn()
 }))
 
 describe('FolderSelector Component', () => {
@@ -132,7 +96,7 @@ describe('FolderSelector Component', () => {
     test('opens folder dialog when Browse button clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      ;(open as any).mockResolvedValue('/Users/test/SelectedFolder')
+      vi.mocked(openFolderDialog).mockResolvedValue('/Users/test/SelectedFolder')
 
       render(
         <FolderSelector
@@ -150,18 +114,14 @@ describe('FolderSelector Component', () => {
       await user.click(screen.getByRole('button', { name: /browse/i }))
 
       // Assert
-      expect(open).toHaveBeenCalledWith({
-        directory: true,
-        multiple: false,
-        title: 'Select folder to scan for projects'
-      })
+      expect(openFolderDialog).toHaveBeenCalledWith('Select folder to scan for projects')
     })
 
     test('calls onFolderChange when folder selected', async () => {
       // Arrange
       const user = userEvent.setup()
       const selectedPath = '/Users/test/SelectedFolder'
-      ;(open as any).mockResolvedValue(selectedPath)
+      vi.mocked(openFolderDialog).mockResolvedValue(selectedPath)
 
       render(
         <FolderSelector
@@ -185,7 +145,7 @@ describe('FolderSelector Component', () => {
     test('handles folder dialog cancellation gracefully', async () => {
       // Arrange
       const user = userEvent.setup()
-      ;(open as any).mockResolvedValue(null) // User cancelled
+      vi.mocked(openFolderDialog).mockResolvedValue(null) // User cancelled
 
       render(
         <FolderSelector
@@ -208,7 +168,7 @@ describe('FolderSelector Component', () => {
   })
 
   // =================================================================
-  // Test Category 3: Scan Controls (3 tests)
+  // Test Category 3: Scan Controls (5 tests)
   // =================================================================
 
   describe('Scan Controls', () => {
@@ -260,7 +220,53 @@ describe('FolderSelector Component', () => {
       expect(mockOnCancelScan).toHaveBeenCalledTimes(1)
     })
 
-    test('shows Clear button and triggers onClearResults when hasResults', async () => {
+    test('hides "Clear results" until there are results to clear', () => {
+      // Arrange & Act
+      render(
+        <FolderSelector
+          selectedFolder="/Users/test/Projects"
+          onFolderChange={mockOnFolderChange}
+          onStartScan={mockOnStartScan}
+          onCancelScan={mockOnCancelScan}
+          onClearResults={mockOnClearResults}
+          isScanning={false}
+          hasResults={false}
+        />
+      )
+
+      // Assert
+      expect(screen.queryByRole('button', { name: /clear/i })).not.toBeInTheDocument()
+    })
+
+    test('the first scan is the filled button and Rescan is an outline button', () => {
+      // Arrange
+      const props = {
+        selectedFolder: '/Users/test/Projects',
+        onFolderChange: mockOnFolderChange,
+        onStartScan: mockOnStartScan,
+        onCancelScan: mockOnCancelScan,
+        onClearResults: mockOnClearResults,
+        isScanning: false
+      }
+
+      // Act - first scan: no results yet
+      const { rerender } = render(<FolderSelector {...props} hasResults={false} />)
+
+      // Assert - the primary action carries the filled primary background
+      const startButton = screen.getByRole('button', { name: /start scan/i })
+      expect(startButton).toHaveClass('bg-primary')
+      expect(startButton).not.toHaveClass('border')
+
+      // Act - results exist: the filled button on screen belongs to the results
+      rerender(<FolderSelector {...props} hasResults={true} />)
+
+      // Assert - outline variant: a border and no primary fill
+      const rescanButton = screen.getByRole('button', { name: /rescan/i })
+      expect(rescanButton).toHaveClass('border')
+      expect(rescanButton).not.toHaveClass('bg-primary')
+    })
+
+    test('shows "Clear results" and triggers onClearResults when hasResults', async () => {
       // Arrange
       const user = userEvent.setup()
       render(
@@ -275,8 +281,8 @@ describe('FolderSelector Component', () => {
         />
       )
 
-      // Assert - Clear button should be visible, and the scan button reads Rescan
-      const clearButton = screen.getByRole('button', { name: /^clear$/i })
+      // Assert - the clear button is labelled "Clear results", and the scan button reads Rescan
+      const clearButton = screen.getByRole('button', { name: 'Clear results' })
       expect(clearButton).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /rescan/i })).toBeInTheDocument()
 

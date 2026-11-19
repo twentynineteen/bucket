@@ -18,7 +18,7 @@ const getChangeIcon = (type: string): React.ReactNode => {
     case 'added':
       return <Plus className="text-success h-3 w-3" />
     case 'modified':
-      return <Edit className="text-warning h-3 w-3" />
+      return <Edit className="text-warning-text h-3 w-3" />
     case 'removed':
       return <Minus className="text-destructive h-3 w-3" />
     default:

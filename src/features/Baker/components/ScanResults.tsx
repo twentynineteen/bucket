@@ -1,19 +1,26 @@
 /**
  * Scan Results Component
  *
- * Compact inline scan stats strip shown in the scan toolbar. Displays live
- * progress with an elapsed timer during a scan and a results summary after.
+ * Compact inline scan summary. Displays live progress with an elapsed timer
+ * during a scan, and afterwards one sentence: how many projects were found, how
+ * many need attention, their total size, and what the scan covered.
+ *
+ * Every figure carries its own words. The previous strip showed breadcrumbs
+ * state as three bare numbers told apart only by colour.
  */
 
 import { formatFileSize } from '@shared/utils'
 import { RefreshCw } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
+import { needsAttention } from '../internal/projectStatus'
 import type { ScanResult } from '../types'
 
 interface ScanResultsProps {
   scanResult: ScanResult | null
   isScanning: boolean
   scanStartTime: number | null
+  /** Called when the user clicks the "need attention" count. */
+  onShowAttention?: () => void
 }
 
 function formatElapsed(seconds: number): string {
@@ -24,6 +31,8 @@ function formatElapsed(seconds: number): string {
   }
   return `${seconds}s`
 }
+
+const plural = (count: number, word: string) => `${word}${count !== 1 ? 's' : ''}`
 
 const Stat: React.FC<{ label: string; children: React.ReactNode }> = ({
   label,
@@ -37,10 +46,41 @@ const Stat: React.FC<{ label: string; children: React.ReactNode }> = ({
 
 const Divider: React.FC = () => <div className="bg-border h-3 w-px flex-shrink-0" />
 
+const Dot: React.FC = () => (
+  <span className="text-muted-foreground/60" aria-hidden="true">
+    ·
+  </span>
+)
+
+/**
+ * "6 need attention". With a handler it is a link that filters the project
+ * list down to exactly those projects.
+ */
+const AttentionCount: React.FC<{ count: number; onShow?: () => void }> = ({
+  count,
+  onShow
+}) => {
+  const text = `${count} ${count === 1 ? 'needs' : 'need'} attention`
+  if (!onShow) {
+    return <span className="text-warning-text font-medium whitespace-nowrap">{text}</span>
+  }
+  return (
+    <button
+      type="button"
+      onClick={onShow}
+      title="Show only the projects that need attention"
+      className="text-warning-text font-medium whitespace-nowrap underline decoration-dotted underline-offset-2 hover:decoration-solid"
+    >
+      {text}
+    </button>
+  )
+}
+
 export const ScanResults: React.FC<ScanResultsProps> = ({
   scanResult,
   isScanning,
-  scanStartTime
+  scanStartTime,
+  onShowAttention
 }) => {
   const [elapsed, setElapsed] = useState(0)
 
@@ -86,14 +126,9 @@ export const ScanResults: React.FC<ScanResultsProps> = ({
     )
   }
 
-  // Stats after scan completes
-  const validBreadcrumbs = scanResult.projects.filter(
-    p => p.hasBreadcrumbs && !p.invalidBreadcrumbs
-  ).length
-  const invalidBreadcrumbs = scanResult.projects.filter(p => p.invalidBreadcrumbs).length
-  const missingBreadcrumbs = scanResult.projects.filter(
-    p => !p.hasBreadcrumbs && !p.invalidBreadcrumbs
-  ).length
+  // Summary after the scan completes
+  const projectCount = scanResult.projects.length
+  const attentionCount = scanResult.projects.filter(needsAttention).length
 
   const elapsedSeconds = scanResult.endTime
     ? Math.round(
@@ -104,54 +139,36 @@ export const ScanResults: React.FC<ScanResultsProps> = ({
     : null
 
   return (
-    <div className="flex flex-wrap items-center gap-3 text-xs">
-      <Stat label="Scanned:">
-        <span className="text-foreground font-semibold">{scanResult.totalFolders}</span>
-      </Stat>
-      {elapsedSeconds !== null && (
-        <>
-          <Divider />
-          <Stat label="in">
-            <span className="text-foreground font-semibold">
-              {formatElapsed(elapsedSeconds)}
-            </span>
-          </Stat>
-        </>
+    <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+      <span className="whitespace-nowrap">
+        <span className="text-foreground font-semibold">{projectCount}</span>{' '}
+        {plural(projectCount, 'project')}
+      </span>
+      <Dot />
+      {attentionCount > 0 ? (
+        <AttentionCount count={attentionCount} onShow={onShowAttention} />
+      ) : (
+        <span className="text-success font-medium whitespace-nowrap">All up to date</span>
       )}
-      <Divider />
-      <Stat label="Projects:">
-        <span className="text-success font-semibold">{scanResult.validProjects}</span>
-      </Stat>
-      <Divider />
-      <Stat label="Breadcrumbs:">
-        <span className="text-success font-semibold">{validBreadcrumbs}</span>
-        {invalidBreadcrumbs > 0 && (
-          <>
-            <span className="text-muted-foreground">/</span>
-            <span className="text-destructive font-semibold">{invalidBreadcrumbs}</span>
-          </>
-        )}
-        {missingBreadcrumbs > 0 && (
-          <>
-            <span className="text-muted-foreground">/</span>
-            <span className="text-warning font-semibold">{missingBreadcrumbs}</span>
-          </>
-        )}
-      </Stat>
-      <Divider />
-      <Stat label="Size:">
+      <Dot />
+      <span className="whitespace-nowrap">
         <span className="text-foreground font-semibold">
           {formatFileSize(scanResult.totalFolderSize)}
-        </span>
-      </Stat>
+        </span>{' '}
+        in total
+      </span>
+      <Dot />
+      <span className="whitespace-nowrap">
+        {scanResult.totalFolders.toLocaleString()}{' '}
+        {plural(scanResult.totalFolders, 'folder')} scanned
+        {elapsedSeconds !== null && ` in ${formatElapsed(elapsedSeconds)}`}
+      </span>
       {scanResult.errors.length > 0 && (
         <>
-          <Divider />
-          <Stat label="Errors:">
-            <span className="text-destructive font-semibold">
-              {scanResult.errors.length}
-            </span>
-          </Stat>
+          <Dot />
+          <span className="text-destructive font-medium whitespace-nowrap">
+            {scanResult.errors.length} scan {plural(scanResult.errors.length, 'error')}
+          </span>
         </>
       )}
     </div>

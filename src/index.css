@@ -36,6 +36,16 @@
 
   --color-warning: hsl(var(--warning));
   --color-warning-foreground: hsl(var(--warning-foreground));
+  /* Warning and info as text. The plain tokens are tuned as fills and fall
+     below 4.5:1 as text on a light theme (amber on white is about 2:1). Mixing
+     toward the foreground darkens them on light themes and lightens them on
+     dark ones, so the same class reads on every theme. */
+  --color-warning-text: color-mix(
+    in oklab,
+    hsl(var(--warning)) 58%,
+    hsl(var(--foreground))
+  );
+  --color-info-text: color-mix(in oklab, hsl(var(--info)) 62%, hsl(var(--foreground)));
 
   --color-info: hsl(var(--info));
   --color-info-foreground: hsl(var(--info-foreground));

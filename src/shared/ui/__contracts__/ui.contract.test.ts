@@ -180,10 +180,10 @@ describe('Layout sub-module (nested direct paths)', () => {
     expect(mod.QueryErrorBoundary).toBeDefined()
   })
 
-  test('TitleBar exports TitleBar component', async () => {
-    const mod = await import('@shared/ui/layout/TitleBar')
-    expect(mod.TitleBar).toBeDefined()
-    expect(typeof mod.TitleBar).toBe('function')
+  test('PageHeader exports PageHeader component', async () => {
+    const mod = await import('@shared/ui/layout/PageHeader')
+    expect(mod.PageHeader).toBeDefined()
+    expect(typeof mod.PageHeader).toBe('function')
   })
 })
 

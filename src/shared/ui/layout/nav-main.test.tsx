@@ -101,10 +101,11 @@ describe('NavMain', () => {
   // Basic Rendering Tests
   // ==========================================
   describe('Basic Rendering', () => {
-    it('should render the Dashboard group label', () => {
+    it('should render the Tools group label', () => {
       renderNavMain([])
 
-      expect(screen.getByText('Dashboard')).toBeInTheDocument()
+      expect(screen.getByText('Tools')).toBeInTheDocument()
+      expect(screen.queryByText('Dashboard')).not.toBeInTheDocument()
     })
 
     it('should render an empty menu when items array is empty', () => {

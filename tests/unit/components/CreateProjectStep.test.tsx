@@ -57,17 +57,17 @@ describe('CreateProjectStep', () => {
     expect(button).toHaveAttribute('title', 'Project creation in progress...')
   })
 
-  it('shows "Creating Project..." text when loading', () => {
+  it('shows "Creating project..." text when loading', () => {
     render(<CreateProjectStep {...defaultProps} isLoading={true} />)
 
-    expect(screen.getByText('Creating Project...')).toBeInTheDocument()
+    expect(screen.getByText('Creating project...')).toBeInTheDocument()
   })
 
-  it('shows "Create Project" text when not loading', () => {
+  it('shows "Create project" text when not loading', () => {
     render(<CreateProjectStep {...defaultProps} isLoading={false} />)
 
     const button = screen.getByRole('button', { name: /create project/i })
-    expect(button).toHaveTextContent('Create Project')
+    expect(button).toHaveTextContent('Create project')
   })
 
   it('enables the button when title and folder are provided and not loading', () => {

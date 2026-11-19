@@ -38,6 +38,8 @@ function confirmLabel(isLoading: boolean, changedCount: number): string {
 
 interface ProjectChangeBlockProps {
   projectName: string
+  /** Project folder; file rows are listed relative to it. */
+  projectPath: string
   changes: ProjectChangeRows
   isExpanded: boolean
   isRebuild: boolean
@@ -47,6 +49,7 @@ interface ProjectChangeBlockProps {
 
 const ProjectChangeBlock: React.FC<ProjectChangeBlockProps> = ({
   projectName,
+  projectPath,
   changes,
   isExpanded,
   isRebuild,
@@ -82,6 +85,7 @@ const ProjectChangeBlock: React.FC<ProjectChangeBlockProps> = ({
           rows={changes.rows}
           maintenanceFields={changes.maintenanceFields}
           note={note}
+          basePath={projectPath}
         />
       </div>
     )}
@@ -173,7 +177,7 @@ export const BatchUpdateConfirmationDialog: React.FC<
         <DialogHeader>
           <DialogTitle className="flex items-center">
             {hasChanges ? (
-              <AlertTriangle className="text-warning mr-2 h-5 w-5" />
+              <AlertTriangle className="text-warning-text mr-2 h-5 w-5" />
             ) : (
               <CheckCircle className="text-success mr-2 h-5 w-5" />
             )}
@@ -212,7 +216,7 @@ export const BatchUpdateConfirmationDialog: React.FC<
               {/* Warning for large operations */}
               {selectedProjects.length > 20 && (
                 <div className="bg-warning/10 border-warning/20 rounded-lg border p-3">
-                  <div className="text-warning flex items-start">
+                  <div className="text-warning-text flex items-start">
                     <AlertTriangle className="mt-0.5 mr-2 h-4 w-4 flex-shrink-0" />
                     <div className="text-sm">
                       <strong>Large batch operation:</strong> You're updating{' '}
@@ -229,6 +233,7 @@ export const BatchUpdateConfirmationDialog: React.FC<
                   <ProjectChangeBlock
                     key={project.projectPath}
                     projectName={project.projectName}
+                    projectPath={project.projectPath}
                     changes={project.changes}
                     isExpanded={expandedPaths.has(project.projectPath)}
                     isRebuild={invalidBreadcrumbsPaths.includes(project.projectPath)}
