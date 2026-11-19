@@ -759,7 +759,7 @@ shared/
 ### Cross-Feature Edges
 
 ```
-Trello -------> Baker (types: TrelloCard, BreadcrumbsFile; useAppendBreadcrumbs), BuildProject (VideoInfoData)
+Trello -------> Baker (types: TrelloCard, BreadcrumbsFile; useAppendBreadcrumbs), BuildProject (VideoInfoData), Breadcrumbs (applyBreadcrumbsChange)
 Baker --------> Trello (API: addCardComment, fetchTrelloCardById, updateTrelloCard; TrelloCardUpdateDialog, useBreadcrumbsTrelloCards), BuildProject (FootageFile), Upload (Sprout hooks, video helpers, poster frame)
 Upload -------> Baker (VideoLink type), Kavanagh (QC hooks)
 Settings -----> Trello (TrelloBoardSelector), Upload (SproutFolderPicker), Kavanagh (availability)
