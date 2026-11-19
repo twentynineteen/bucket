@@ -76,7 +76,7 @@ jobs:
   # macOS minutes bill ~10x, so this deliberately runs the tests and no bundle.
   # Full DMG bundling stays on release pushes in build-macos below.
   rust-test:
-    runs-on: macos-14 # Apple Silicon, matching the aarch64 target publish.yml ships
+    runs-on: macos-15 # Apple Silicon, matching the aarch64 target publish.yml ships
     timeout-minutes: 30
     needs: [lint, test]
     steps:
