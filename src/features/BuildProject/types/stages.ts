@@ -19,7 +19,7 @@ export type StageName =
 /**
  * Current execution status of a stage
  */
-export type StageStatus = 'idle' | 'running' | 'success' | 'error' | 'cancelled'
+type StageStatus = 'idle' | 'running' | 'success' | 'error' | 'cancelled'
 
 // ============================================================================
 // Stage Result Types (Discriminated Union)
@@ -170,17 +170,6 @@ export interface FileTransferStageData {
   filesTransferred: number
   totalBytes: number
   destinationFolder: string
-}
-
-/**
- * Map of stage names to their result data types
- */
-export interface StageDataMap {
-  validation: ValidationStageData
-  folders: FoldersStageData
-  template: TemplateStageData
-  breadcrumbs: BreadcrumbsStageData
-  'file-transfer': FileTransferStageData
 }
 
 // ============================================================================

@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 
 type Props = {
   apiKey: string
-  setApiKey: React.Dispatch<React.SetStateAction<string>>
+  setApiKey: (apiKey: string) => void
   onSave: () => void // Callback to save the API key
   id?: string // Optional ID for label association
   inputType?: 'text' | 'password' // Allow specifying input type (default: password for API keys)
@@ -24,22 +24,30 @@ const ApiKeyInput: React.FC<Props> = ({
 }) => {
   // State to track whether the API key should be visible
   const [showApiKey, setShowApiKey] = useState(false)
+  const isSecret = inputType === 'password'
 
   return (
     <div style={{ display: 'flex', alignItems: 'center' }}>
       {/* Input field with dynamic type based on showApiKey */}
       <Input
         id={id}
-        type={inputType === 'text' ? 'text' : showApiKey ? 'text' : 'password'}
+        type={isSecret && !showApiKey ? 'password' : 'text'}
         value={apiKey}
         onChange={e => setApiKey(e.target.value)}
         placeholder={placeholder}
         style={{ flex: 1 }}
       />
-      {/* Button to toggle visibility */}
-      <Button onClick={() => setShowApiKey(prev => !prev)} style={{ marginLeft: '8px' }}>
-        {showApiKey ? 'Hide' : 'Show'}
-      </Button>
+      {/* Visibility toggle: only for secrets, and never the filled button. A
+          plain-text value (a URL) has nothing to reveal. */}
+      {isSecret && (
+        <Button
+          variant="outline"
+          onClick={() => setShowApiKey(prev => !prev)}
+          style={{ marginLeft: '8px' }}
+        >
+          {showApiKey ? 'Hide' : 'Show'}
+        </Button>
+      )}
       {/* Button to save the API key */}
       <Button onClick={onSave} disabled={saveDisabled} style={{ marginLeft: '8px' }}>
         Save

@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@shared/ui/alert'
 import { Info } from 'lucide-react'
 import React from 'react'
 
-export interface MissingFontBannerProps {
+interface MissingFontBannerProps {
   visible: boolean
 }
 

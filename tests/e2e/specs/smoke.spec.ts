@@ -33,10 +33,6 @@ test.describe('Smoke Tests', () => {
     // Filter out expected errors when running outside Tauri context
     const unexpectedErrors = errors.filter(
       error =>
-        !error.includes('__TAURI__') &&
-        !error.includes('TAURI_INTERNALS') &&
-        !error.includes('invoke') &&
-        !error.includes('transformCallback') &&
         !error.includes('Failed to fetch') &&
         !error.includes('Failed to load resource') &&
         !error.includes('net::ERR') &&
@@ -95,7 +91,7 @@ test.describe('Smoke Tests', () => {
     })
 
     await page.goto('/ingest/build')
-    await expect(page.getByRole('heading', { name: 'Build a Project' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Build a project' })).toBeVisible()
 
     const readLog = () =>
       page.evaluate(

@@ -52,11 +52,13 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
         value={selectedFolder}
         readOnly
         title={selectedFolder || undefined}
-        className="h-8 min-w-0 flex-1 text-xs"
+        className="h-8 min-w-32 flex-1 text-xs"
       />
       <Button
         onClick={handleSelectFolder}
-        variant="outline"
+        // Once results exist, Rescan is the one outlined action in the row
+        // and choosing another folder steps back to a plain button.
+        variant={hasResults ? 'ghost' : 'outline'}
         size="sm"
         disabled={disabled || isScanning}
         className="gap-1.5"
@@ -68,7 +70,10 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
         onClick={onStartScan}
         disabled={!selectedFolder || isScanning || disabled}
         size="sm"
-        className="gap-1.5 shadow-sm hover:shadow"
+        // Filled only for the first scan. Once results exist the filled button
+        // on screen belongs to whatever the results call for.
+        variant={hasResults ? 'outline' : 'default'}
+        className="gap-1.5"
       >
         {isScanning ? (
           <>
@@ -96,8 +101,8 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
       )}
 
       {hasResults && (
-        <Button onClick={onClearResults} variant="outline" size="sm" className="gap-1.5">
-          Clear
+        <Button onClick={onClearResults} variant="ghost" size="sm" className="gap-1.5">
+          Clear results
         </Button>
       )}
     </div>

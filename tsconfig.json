@@ -13,19 +13,26 @@
     // the form that did not work, and around 35 of the errors #178 cleared came
     // from that one trap (issue #210).
     "strictNullChecks": true,
-    "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
+    // TypeScript 6 makes strict the default; stated here so it is explicit
+    "strict": true,
+    "types": [
+      "vite/client",
+      "node",
+      "vitest/globals",
+      "@testing-library/jest-dom/vitest"
+    ],
     "noEmit": true,
     // Third-party declarations are not ours to fix; monaco-editor's own .d.ts
     // files do not typecheck cleanly and would otherwise fail the gate.
     "skipLibCheck": true,
     "isolatedModules": true,
-    "baseUrl": ".",
+    // Relative to this file; baseUrl is deprecated from TypeScript 6
     "paths": {
       // Feature module aliases
-      "@features/*": ["src/features/*"],
-      "@shared/*": ["src/shared/*"],
+      "@features/*": ["./src/features/*"],
+      "@shared/*": ["./src/shared/*"],
       // Test aliases
-      "@tests/*": ["tests/*"]
+      "@tests/*": ["./tests/*"]
     }
   },
   "include": ["src", "vite.config.ts", "**/*.ts", "**/*.tsx"],

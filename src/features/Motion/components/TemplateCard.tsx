@@ -26,7 +26,7 @@ import type { CatalogueEntry, MotionFormat, MotionTarget, ParamValues } from '..
 import MotionPreview from './MotionPreview'
 import PreviewStage from './PreviewStage'
 
-export interface TemplateCardProps {
+interface TemplateCardProps {
   entry: CatalogueEntry
   format: MotionFormat
   values: ParamValues

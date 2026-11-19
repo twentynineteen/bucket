@@ -13,7 +13,7 @@
 import { useAIProvider } from '@features/Settings'
 import type { ProcessedOutput, ProviderConfiguration } from '@shared/types'
 import { createNamespacedLogger } from '@shared/utils'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useExampleManagement } from '../../ExampleEmbeddings/hooks/useExampleManagement'
 import { useAIModels } from './useAIModels'
 import { useScriptProcessor } from './useScriptProcessor'
@@ -64,20 +64,17 @@ export function useAIProcessing(options?: UseAIProcessingOptions) {
   // Derived state
   const isProcessing = progress > 0 && progress < 100 && !processingError
 
-  // Initialize enabled examples when examples are loaded
-  useEffect(() => {
-    if (allExamples.length > 0 && enabledExampleIds.size === 0) {
-      setEnabledExampleIds(new Set(allExamples.map(ex => ex.id)))
-    }
-  }, [allExamples, enabledExampleIds.size])
+  // Enable every example once they load. Adjusted during render rather than
+  // in an effect, so the first committed render already has them enabled.
+  if (allExamples.length > 0 && enabledExampleIds.size === 0) {
+    setEnabledExampleIds(new Set(allExamples.map(ex => ex.id)))
+  }
 
-  // Auto-select first model when models become available
-  useEffect(() => {
-    if (models.length > 0 && !selectedModelId) {
-      log.debug('Auto-selecting first model:', models[0].id)
-      setSelectedModelId(models[0].id)
-    }
-  }, [models, selectedModelId])
+  // Auto-select the first model when models become available
+  if (models.length > 0 && !selectedModelId) {
+    log.debug('Auto-selecting first model:', models[0].id)
+    setSelectedModelId(models[0].id)
+  }
 
   const handleProviderValidate = useCallback(
     async (providerId: string, config: ProviderConfiguration) => {

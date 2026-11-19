@@ -40,7 +40,7 @@ export type CSSVariableName =
 /**
  * HSL color value (e.g., "220 13% 91%")
  */
-export type HSLValue = string
+type HSLValue = string
 
 /**
  * Custom theme definition structure

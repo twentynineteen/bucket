@@ -18,7 +18,7 @@ export const REFERENCE_POOLS = ['watermarks', 'stings'] as const
 export type ReferencePool = (typeof REFERENCE_POOLS)[number]
 
 /** Extensions accepted as reference images. Stings are supplied as JPGs. */
-export const REFERENCE_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png'])
+const REFERENCE_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png'])
 
 /** Why a pool cannot be used, or `ready` when it can. */
 export type ReferencePoolStatus =

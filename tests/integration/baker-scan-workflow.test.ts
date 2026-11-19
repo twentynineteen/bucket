@@ -103,12 +103,11 @@ describe('Baker Scan Workflow Integration', () => {
     vi.mocked(listen).mockClear()
 
     // Set up listen mock to capture event handlers
-    vi.mocked(listen).mockImplementation(
-      (eventName: string, handler: (event: { payload: unknown }) => void) => {
-        eventHandlers.set(eventName, handler)
-        return Promise.resolve(mockUnlisten)
-      }
-    )
+    vi.mocked(listen).mockImplementation((eventName, handler) => {
+      // The tests emit payload-only events; the handlers read nothing else
+      eventHandlers.set(eventName, handler as (event: { payload: unknown }) => void)
+      return Promise.resolve(mockUnlisten)
+    })
   })
 
   afterEach(() => {

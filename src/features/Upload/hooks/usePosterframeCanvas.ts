@@ -120,7 +120,7 @@ export function usePosterframeCanvas() {
           path.stroke = null
           path.draw(ctx)
           // advance x
-          const adv = glyph.advanceWidth * (layout.fontSize / font.unitsPerEm)
+          const adv = (glyph.advanceWidth ?? 0) * (layout.fontSize / font.unitsPerEm)
           x += adv + layout.letterSpacing
         }
         y += layout.lineHeight

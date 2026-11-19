@@ -103,7 +103,7 @@ describe('BatchUpdateConfirmationDialog', () => {
 
     expect(screen.getByText('Footage/Camera 2/b.wav')).toBeInTheDocument()
     expect(screen.getByText('new file')).toBeInTheDocument()
-    expect(screen.getByText('routine update')).toBeInTheDocument()
+    expect(screen.getByText('updated on every write')).toBeInTheDocument()
   })
 
   it('collapses to headers with counts for large batches', () => {

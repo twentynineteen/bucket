@@ -1,9 +1,6 @@
 import type { VideoInfoData } from '@features/BuildProject'
 import { useMemo } from 'react'
 
-// Re-export the type for backward compatibility
-export type { VideoInfoData }
-
 export function useVideoInfoBlock(description: string) {
   return useMemo(() => {
     // Match everything between <!-- VIDEO_INFO --> and the next ---

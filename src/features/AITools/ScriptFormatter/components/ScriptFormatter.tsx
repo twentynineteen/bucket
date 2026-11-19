@@ -8,6 +8,7 @@
 import { useBreadcrumb } from '@shared/hooks'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import React from 'react'
 import { useScriptFormatterState } from '../hooks/useScriptFormatterState'
@@ -79,24 +80,17 @@ const ScriptFormatterContent: React.FC = () => {
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
       <div className="w-full max-w-full pb-4">
         {/* Header */}
-        <div className="border-border bg-card/50 border-b px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-foreground text-2xl font-bold">
-                Autocue Script Formatter
-              </h1>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                AI-powered formatting for autocue scripts with intelligent example
-                matching
-              </p>
-            </div>
-            {currentStep !== 'upload' && (
+        <PageHeader
+          title="Autocue Script Formatter"
+          description="AI-powered formatting for autocue scripts with intelligent example matching"
+          actions={
+            currentStep !== 'upload' && (
               <Button onClick={handleStartOver} variant="outline" size="sm">
                 Start Over
               </Button>
-            )}
-          </div>
-        </div>
+            )
+          }
+        />
 
         <div className="max-w-full space-y-4 px-6 py-4">
           {/* Workflow Progress Indicator */}

@@ -18,6 +18,7 @@ import {
 } from '@shared/ui/alert-dialog'
 import { Button } from '@shared/ui/button'
 import ErrorBoundary from '@shared/ui/layout/ErrorBoundary'
+import { PageHeader } from '@shared/ui/layout/PageHeader'
 import { logger } from '@shared/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -127,13 +128,10 @@ const PremierePluginManagerContent: React.FC = () => {
     <div className="h-full w-full overflow-x-hidden overflow-y-auto">
       <div className="w-full max-w-full pb-4">
         {/* Header */}
-        <div className="border-border bg-card/50 border-b px-6 py-4">
-          <h1 className="text-foreground text-2xl font-bold">Premiere Plugin Manager</h1>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            Install and manage Premiere Pro CEP extensions directly from the app.
-            Automatically deploys plugin updates to your Premiere Pro installation.
-          </p>
-        </div>
+        <PageHeader
+          title="Premiere Plugin Manager"
+          description="Install and manage Premiere Pro CEP extensions directly from the app. Automatically deploys plugin updates to your Premiere Pro installation."
+        />
 
         <div className="max-w-full space-y-4 px-6 py-4">
           {/* Step 1: Available Plugins */}

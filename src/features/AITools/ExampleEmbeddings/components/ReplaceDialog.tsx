@@ -254,10 +254,10 @@ export function ReplaceDialog({ open, example, onClose, onReplace }: ReplaceDial
       try {
         embedding = await embed(beforeContent)
       } catch (embedError) {
-        setIsGeneratingEmbedding(false)
         throw new Error(
           'Failed to generate embedding. ' +
-            (embedError instanceof Error ? embedError.message : String(embedError))
+            (embedError instanceof Error ? embedError.message : String(embedError)),
+          { cause: embedError }
         )
       } finally {
         setIsGeneratingEmbedding(false)
@@ -285,7 +285,8 @@ export function ReplaceDialog({ open, example, onClose, onReplace }: ReplaceDial
       } catch (replaceError) {
         throw new Error(
           'Failed to replace example. ' +
-            (replaceError instanceof Error ? replaceError.message : String(replaceError))
+            (replaceError instanceof Error ? replaceError.message : String(replaceError)),
+          { cause: replaceError }
         )
       }
     } catch (error) {

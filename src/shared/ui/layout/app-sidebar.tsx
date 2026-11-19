@@ -100,7 +100,7 @@ const data = {
       ]
     },
     {
-      title: 'Premiere Plugins',
+      title: 'Premiere plugins',
       url: '/premiere/premiere-plugins',
       icon: Puzzle,
       items: [
@@ -116,11 +116,7 @@ const data = {
       icon: Settings,
       items: [
         {
-          title: 'General',
-          url: '/settings/general'
-        },
-        {
-          title: 'AI Models',
+          title: 'AI models',
           url: '/settings/general#ai-models'
         },
         {
@@ -132,7 +128,7 @@ const data = {
           url: '/settings/general#backgrounds'
         },
         {
-          title: 'SproutVideo',
+          title: 'Sprout Video',
           url: '/settings/general#sproutvideo'
         },
         {

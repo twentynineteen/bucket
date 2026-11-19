@@ -16,15 +16,3 @@ export interface InstallResult {
   pluginName: string
   installedPath: string
 }
-
-export interface PremiereParams {
-  projectFolder: string
-  projectTitle: string
-  setLoading: (value: boolean) => void
-  setMessage: (value: string) => void
-}
-
-export interface DialogParams {
-  projectFolder: string
-  projectTitle: string
-}

@@ -30,7 +30,7 @@ import type {
   ParticlesLayerState
 } from '../types'
 
-export interface MotionPreviewProps {
+interface MotionPreviewProps {
   template: MotionTemplate
   values: ParamValues
   format: MotionFormat

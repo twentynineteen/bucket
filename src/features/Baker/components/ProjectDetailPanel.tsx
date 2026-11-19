@@ -28,20 +28,20 @@ import {
   FileAudio,
   FileVideo,
   FolderOpen,
-  HardDrive,
+  Info,
   Loader2,
   RefreshCw,
   Search,
   User,
   UserCheck,
   UserPlus,
-  Video,
-  Wrench
+  Video
 } from 'lucide-react'
 import React, { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { openInShell } from '../api'
 import { useVerifiedPaths } from '../hooks/useVerifiedPaths'
+import { breadcrumbsStatus, STATUS_PRESENTATION } from '../internal/projectStatus'
 import type {
   BreadcrumbsFile,
   BreadcrumbsPreview,
@@ -64,6 +64,8 @@ interface ProjectDetailPanelProps {
   isGeneratingPreview: boolean
   onGeneratePreview: () => void | Promise<void>
   onRepairProject?: (projectPath: string) => void
+  /** Review and apply the pending breadcrumbs update for this one project. */
+  onUpdateProject?: (projectPath: string) => void
   trelloApiKey?: string
   trelloApiToken?: string
 }
@@ -78,6 +80,7 @@ export const ProjectDetailPanel: React.FC<ProjectDetailPanelProps> = ({
   isGeneratingPreview,
   onGeneratePreview,
   onRepairProject,
+  onUpdateProject,
   trelloApiKey,
   trelloApiToken
 }) => {
@@ -113,6 +116,7 @@ export const ProjectDetailPanel: React.FC<ProjectDetailPanelProps> = ({
       isGeneratingPreview={isGeneratingPreview}
       onGeneratePreview={onGeneratePreview}
       onRepairProject={onRepairProject}
+      onUpdateProject={onUpdateProject}
       trelloApiKey={trelloApiKey}
       trelloApiToken={trelloApiToken}
     />
@@ -128,6 +132,8 @@ interface ProjectDetailContentProps {
   isGeneratingPreview: boolean
   onGeneratePreview: () => void | Promise<void>
   onRepairProject?: (projectPath: string) => void
+  /** Review and apply the pending breadcrumbs update for this one project. */
+  onUpdateProject?: (projectPath: string) => void
   trelloApiKey?: string
   trelloApiToken?: string
 }
@@ -141,9 +147,17 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
   isGeneratingPreview,
   onGeneratePreview,
   onRepairProject,
+  onUpdateProject,
   trelloApiKey,
   trelloApiToken
 }) => {
+  // Breadcrumbs shown for a missing or unparseable file are rebuilt from the
+  // folder, so anything only the file could know (author, dates, links) is
+  // not stated as fact.
+  const reconstructed = project
+    ? project.invalidBreadcrumbs || !project.hasBreadcrumbs
+    : false
+
   return (
     <div className="flex h-full flex-col">
       <DetailHeader
@@ -161,14 +175,18 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
                 Files
                 <CountPill count={breadcrumbs.files?.length ?? 0} />
               </TabsTrigger>
-              <TabsTrigger value="videos">
-                Videos
-                <CountPill count={breadcrumbs.videoLinks?.length ?? 0} />
-              </TabsTrigger>
-              <TabsTrigger value="trello">
-                Trello
-                <CountPill count={breadcrumbs.trelloCards?.length ?? 0} />
-              </TabsTrigger>
+              <LinksTab
+                value="videos"
+                label="Videos"
+                count={breadcrumbs.videoLinks?.length}
+                unknown={reconstructed}
+              />
+              <LinksTab
+                value="trello"
+                label="Trello"
+                count={breadcrumbs.trelloCards?.length}
+                unknown={reconstructed}
+              />
             </TabsList>
           </div>
 
@@ -180,11 +198,14 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
                 isGeneratingPreview={isGeneratingPreview}
                 onGeneratePreview={onGeneratePreview}
                 onRepairProject={onRepairProject}
+                onUpdateProject={onUpdateProject}
               />
-              <OverviewStats breadcrumbs={breadcrumbs} />
+              <OverviewStats breadcrumbs={breadcrumbs} reconstructed={reconstructed} />
+              <FootageSummary files={breadcrumbs.files} />
               <LinkedResources
                 projectPath={projectPath}
                 breadcrumbs={breadcrumbs}
+                unavailableReason={linksUnavailableReason(project)}
                 trelloApiKey={trelloApiKey}
                 trelloApiToken={trelloApiToken}
               />
@@ -215,6 +236,7 @@ const ProjectDetailContent: React.FC<ProjectDetailContentProps> = ({
             isGeneratingPreview={isGeneratingPreview}
             onGeneratePreview={onGeneratePreview}
             onRepairProject={onRepairProject}
+            onUpdateProject={onUpdateProject}
           />
           {breadcrumbsError ? (
             <div className="text-destructive flex items-center gap-2 text-sm">
@@ -267,12 +289,12 @@ const DetailHeaderPills: React.FC<{
   project: ProjectFolder
   parentPresent: boolean | undefined
   cameraCount: number | undefined
-}> = ({ project, parentPresent, cameraCount }) => (
-  <div className="flex flex-wrap gap-1.5">
-    <HeaderPill tone={project.isValid ? 'success' : 'destructive'}>
-      {project.isValid ? 'Valid structure' : 'Invalid structure'}
-    </HeaderPill>
+  sizeBytes: number | undefined
+}> = ({ project, parentPresent, cameraCount, sizeBytes }) => (
+  <div className="flex flex-wrap items-center gap-1.5">
+    {/* One status chip. Folder structure is only worth a chip when it is wrong. */}
     <BreadcrumbsStatusPill project={project} />
+    {!project.isValid && <HeaderPill tone="destructive">Invalid structure</HeaderPill>}
     {/*
       Only ever rendered on a definite `false`. While the probe is in
       flight `parentPresent` is undefined and nothing is claimed, so the
@@ -281,9 +303,15 @@ const DetailHeaderPills: React.FC<{
     {parentPresent === false && (
       <HeaderPill tone="warning">Location not found</HeaderPill>
     )}
-    {cameraCount !== undefined && (
-      <HeaderPill tone="muted">{cameraCountLabel(cameraCount)}</HeaderPill>
-    )}
+    {/* The two facts every state has, on the status line: cameras and size */}
+    <span className="text-muted-foreground text-xs tabular-nums">
+      {[
+        cameraCount !== undefined ? cameraCountLabel(cameraCount) : null,
+        sizeBytes ? formatFileSize(sizeBytes) : null
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+    </span>
   </div>
 )
 
@@ -347,6 +375,9 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({
           project={project}
           parentPresent={parentPresent}
           cameraCount={cameraCount}
+          // The size the scan measured, as shown in the list row and storage
+          // map, falling back to the one recorded in the breadcrumbs.
+          sizeBytes={project.folderSizeBytes ?? breadcrumbs?.folderSizeBytes}
         />
       )}
     </div>
@@ -354,39 +385,78 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({
 }
 
 const BreadcrumbsStatusPill: React.FC<{ project: ProjectFolder }> = ({ project }) => {
-  if (project.invalidBreadcrumbs) {
-    return <HeaderPill tone="destructive">Breadcrumbs unparseable</HeaderPill>
-  }
-  if (!project.hasBreadcrumbs) {
-    return <HeaderPill tone="muted">No breadcrumbs</HeaderPill>
-  }
+  // Same four words as the list rows, filter chips and storage legend.
+  const status = breadcrumbsStatus(project)
   return (
-    <HeaderPill tone={project.staleBreadcrumbs ? 'warning' : 'success'}>
-      {project.staleBreadcrumbs ? 'Breadcrumbs stale' : 'Breadcrumbs current'}
+    <HeaderPill
+      tone={STATUS_PILL_TONE[status]}
+      marker={STATUS_PRESENTATION[status].marker}
+    >
+      {STATUS_PRESENTATION[status].label}
     </HeaderPill>
   )
 }
 
+const STATUS_PILL_TONE = {
+  current: 'success',
+  stale: 'warning',
+  missing: 'info',
+  unparseable: 'destructive'
+} as const
+
 const HEADER_PILL_TONES = {
   success: 'bg-success/20 text-success',
-  warning: 'bg-warning/20 text-warning',
+  warning: 'bg-warning/20 text-warning-text',
+  info: 'bg-info/15 text-info-text',
   destructive: 'bg-destructive/20 text-destructive',
   muted: 'bg-muted text-muted-foreground'
 } as const
 
 const HeaderPill: React.FC<{
   tone: keyof typeof HEADER_PILL_TONES
+  /** Marker classes; defaults to a solid dot in the pill's text colour. */
+  marker?: string
   children: React.ReactNode
-}> = ({ tone, children }) => (
+}> = ({ tone, marker = 'bg-current', children }) => (
   <span
     className={cn(
       'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
       HEADER_PILL_TONES[tone]
     )}
   >
-    <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />
+    <span className={cn('h-2 w-2 flex-shrink-0 rounded-full', marker)} />
     {children}
   </span>
+)
+
+/** Banner colours per state, matching the status chip above it. */
+const CALLOUT_TONE = {
+  current: { box: 'border-border bg-muted/30', text: 'text-foreground' },
+  stale: { box: 'border-warning/30 bg-warning/5', text: 'text-warning-text' },
+  missing: { box: 'border-info/30 bg-info/5', text: 'text-info-text' },
+  unparseable: { box: 'border-destructive/20 bg-destructive/5', text: 'text-destructive' }
+} as const
+
+/**
+ * Tab for links kept in the breadcrumbs file (videos, Trello cards).
+ *
+ * When the file could not be read the links are unknown, so the tab is dimmed
+ * and shows no count: "0" would claim there are none.
+ */
+const LinksTab: React.FC<{
+  value: string
+  label: string
+  count: number | undefined
+  unknown: boolean
+}> = ({ value, label, count, unknown }) => (
+  <TabsTrigger
+    value={value}
+    className={cn(unknown && 'text-muted-foreground/70')}
+    title={unknown ? 'Needs a readable breadcrumbs file' : undefined}
+  >
+    {label}
+    {!unknown && <CountPill count={count ?? 0} />}
+  </TabsTrigger>
 )
 
 const CountPill: React.FC<{ count: number }> = ({ count }) => (
@@ -401,25 +471,29 @@ interface BreadcrumbsCalloutProps {
   isGeneratingPreview: boolean
   onGeneratePreview: () => void | Promise<void>
   onRepairProject?: (projectPath: string) => void
+  /** Review and apply the pending breadcrumbs update for this one project. */
+  onUpdateProject?: (projectPath: string) => void
 }
 
 function calloutHeadline(project: ProjectFolder): string {
   if (project.invalidBreadcrumbs) return 'Breadcrumbs file is unparseable'
-  if (!project.hasBreadcrumbs) return 'No breadcrumbs file'
-  return 'Breadcrumbs are out of date'
+  if (!project.hasBreadcrumbs) return 'Breadcrumbs file is missing'
+  return 'Breadcrumbs are stale'
 }
 
 function calloutSubline(project: ProjectFolder, pendingCount: number | null): string {
   if (pendingCount !== null) {
-    return `${pendingCount} pending change${pendingCount !== 1 ? 's' : ''} will be written on apply`
+    // Counts the changes listed below. The fields stamped on every write are
+    // shown under them with their own label and are not part of the count.
+    return `${pendingCount} change${pendingCount !== 1 ? 's' : ''} will be written when you update`
   }
   if (project.invalidBreadcrumbs) {
-    return 'It will be rebuilt on the next apply (a backup will be saved)'
+    return 'Repair rebuilds it and keeps a backup'
   }
   if (!project.hasBreadcrumbs) {
-    return 'Applying changes will create one for this project'
+    return 'This folder has no breadcrumbs.json yet'
   }
-  return 'Folder contents have changed since the last bake'
+  return 'Folder contents changed since the last update'
 }
 
 function calloutNote(
@@ -441,20 +515,38 @@ const CalloutActions: React.FC<{
   isGeneratingPreview: boolean
   onGeneratePreview: () => void | Promise<void>
   onRepairProject?: (projectPath: string) => void
-}> = ({ project, preview, isGeneratingPreview, onGeneratePreview, onRepairProject }) => (
-  <>
-    {project.invalidBreadcrumbs && onRepairProject && (
+  /** Review and apply the pending breadcrumbs update for this one project. */
+  onUpdateProject?: (projectPath: string) => void
+  /** Whether the previewed changes are listed, and the switch for it. */
+  showChanges: boolean
+  onToggleChanges: () => void
+}> = ({
+  project,
+  preview,
+  isGeneratingPreview,
+  onGeneratePreview,
+  onRepairProject,
+  onUpdateProject,
+  showChanges,
+  onToggleChanges
+}) => (
+  // One group, so in a narrow panel the buttons drop below the text together
+  // and stay side by side.
+  <div className="flex flex-wrap items-center gap-2">
+    {/* Preview is the secondary action; each state has exactly one primary:
+        repair an unparseable file, otherwise review and write the update. */}
+    {preview ? (
+      // Once the changes are listed the same button folds them away again.
       <Button
         variant="outline"
         size="sm"
-        onClick={() => onRepairProject(project.path)}
-        className="border-destructive/30 text-destructive hover:bg-destructive/10 flex-shrink-0 gap-1.5"
+        onClick={onToggleChanges}
+        aria-expanded={showChanges}
+        className="flex-shrink-0"
       >
-        <Wrench className="h-3.5 w-3.5" />
-        Repair breadcrumbs
+        {showChanges ? 'Hide changes' : 'Show changes'}
       </Button>
-    )}
-    {!preview && (
+    ) : (
       <Button
         variant="outline"
         size="sm"
@@ -468,14 +560,31 @@ const CalloutActions: React.FC<{
             Checking…
           </>
         ) : (
-          <>
-            <Search className="h-3.5 w-3.5" />
-            Preview changes
-          </>
+          'Preview changes'
         )}
       </Button>
     )}
-  </>
+    {project.invalidBreadcrumbs && onRepairProject && (
+      <Button
+        size="sm"
+        // The same primary button as the other states: repair rebuilds the
+        // file and keeps a backup, so it is not styled as a destructive act.
+        onClick={() => onRepairProject(project.path)}
+        className="flex-shrink-0 gap-1.5"
+      >
+        Repair breadcrumbs
+      </Button>
+    )}
+    {!project.invalidBreadcrumbs && onUpdateProject && (
+      <Button
+        size="sm"
+        onClick={() => onUpdateProject(project.path)}
+        className="flex-shrink-0 gap-1.5"
+      >
+        {project.hasBreadcrumbs ? 'Update this project' : 'Create breadcrumbs'}
+      </Button>
+    )}
+  </div>
 )
 
 const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
@@ -483,46 +592,38 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
   preview,
   isGeneratingPreview,
   onGeneratePreview,
-  onRepairProject
+  onRepairProject,
+  onUpdateProject
 }) => {
+  // The previewed changes open listed; "Hide changes" folds them away.
+  const [showChanges, setShowChanges] = useState(true)
+
   if (!project) return null
 
   const needsAttention =
     project.invalidBreadcrumbs || !project.hasBreadcrumbs || project.staleBreadcrumbs
   if (!needsAttention) return null
 
-  const isDestructive = project.invalidBreadcrumbs
+  const tone = CALLOUT_TONE[breadcrumbsStatus(project)]
   const changes = preview ? buildProjectChangeRows(preview) : null
 
   const headline = calloutHeadline(project)
   const subline = calloutSubline(project, changes ? changes.rows.length : null)
+  // A missing file is something to create, not something that went wrong.
+  const CalloutIcon = project.hasBreadcrumbs ? AlertTriangle : Info
   const note = calloutNote(project, changes?.isNewBreadcrumbs ?? false)
 
   return (
-    <div className="space-y-2">
+    <div className="@container space-y-2">
       <div
         className={cn(
-          'flex items-center gap-3 rounded-lg border p-3',
-          isDestructive
-            ? 'border-destructive/20 bg-destructive/5'
-            : 'border-warning/20 bg-warning/5'
+          'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border p-3',
+          tone.box
         )}
       >
-        <AlertTriangle
-          className={cn(
-            'h-4 w-4 flex-shrink-0',
-            isDestructive ? 'text-destructive' : 'text-warning'
-          )}
-        />
-        <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              'text-sm font-semibold',
-              isDestructive ? 'text-destructive' : 'text-warning'
-            )}
-          >
-            {headline}
-          </p>
+        <CalloutIcon className={cn('h-4 w-4 flex-shrink-0', tone.text)} />
+        <div className="min-w-48 flex-1">
+          <p className={cn('text-sm font-semibold', tone.text)}>{headline}</p>
           <p className="text-muted-foreground text-xs">{subline}</p>
         </div>
         <CalloutActions
@@ -531,15 +632,19 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
           isGeneratingPreview={isGeneratingPreview}
           onGeneratePreview={onGeneratePreview}
           onRepairProject={onRepairProject}
+          onUpdateProject={onUpdateProject}
+          showChanges={showChanges}
+          onToggleChanges={() => setShowChanges(shown => !shown)}
         />
       </div>
 
-      {changes && (
+      {changes && showChanges && (
         <div className="border-border rounded-lg border py-1.5">
           <ChangeDiffList
             rows={changes.rows}
             maintenanceFields={changes.maintenanceFields}
             note={note}
+            basePath={project.path}
           />
         </div>
       )}
@@ -547,69 +652,154 @@ const BreadcrumbsCallout: React.FC<BreadcrumbsCalloutProps> = ({
   )
 }
 
-const OverviewStats: React.FC<{ breadcrumbs: BreadcrumbsFile }> = ({ breadcrumbs }) => {
-  const formatDate = formatBreadcrumbDateSimple
+const OVERVIEW_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short'
+})
 
-  const stats: Array<{ icon: React.ReactNode; label: string; value: string }> = [
-    {
-      icon: <Camera className="h-3 w-3" />,
-      label: 'Cameras',
-      value: String(breadcrumbs.numberOfCameras)
-    },
-    {
-      icon: <HardDrive className="h-3 w-3" />,
-      label: 'Folder Size',
-      value: breadcrumbs.folderSizeBytes
-        ? formatFileSize(breadcrumbs.folderSizeBytes)
-        : 'Unknown'
-    },
-    {
-      icon: <User className="h-3 w-3" />,
-      label: 'Created By',
-      value: breadcrumbs.createdBy
-    },
-    {
-      icon: <Calendar className="h-3 w-3" />,
-      label: 'Created',
-      value: formatDate(breadcrumbs.creationDateTime)
-    }
-  ]
+/** Date and time to the minute, in the machine's own locale. */
+function formatOverviewDate(value: string): string {
+  const date = new Date(value)
+  // Missing and malformed values keep the shared formatter's wording.
+  return isNaN(date.getTime())
+    ? formatBreadcrumbDateSimple(value)
+    : OVERVIEW_DATE_FORMAT.format(date)
+}
+
+/**
+ * The project's recorded facts as a plain label/value list.
+ *
+ * `reconstructed` marks breadcrumbs rebuilt from the folder because the file on
+ * disk could not be parsed. Those have no real author or creation date (the
+ * reader fills in the current time), so neither is shown as though recorded.
+ */
+const OverviewStats: React.FC<{
+  breadcrumbs: BreadcrumbsFile
+  reconstructed?: boolean
+}> = ({ breadcrumbs, reconstructed = false }) => {
+  const formatDate = formatOverviewDate
+
+  // Who and when, in pairs: created / created by, last modified / scanned by.
+  // Camera count and folder size are in the header, beside the status.
+  const stats: Array<{ icon: React.ReactNode; label: string; value: string }> = []
+
+  if (!reconstructed) {
+    stats.push(
+      {
+        icon: <Calendar className="h-3 w-3" />,
+        label: 'Created',
+        value: formatDate(breadcrumbs.creationDateTime)
+      },
+      {
+        icon: <User className="h-3 w-3" />,
+        label: 'Created by',
+        value: breadcrumbs.createdBy
+      }
+    )
+  }
 
   if (breadcrumbs.lastModified) {
     stats.push({
       icon: <Calendar className="h-3 w-3" />,
-      label: 'Last Modified',
+      label: 'Last modified',
       value: formatDate(breadcrumbs.lastModified)
     })
   }
   if (breadcrumbs.scannedBy) {
     stats.push({
       icon: <Search className="h-3 w-3" />,
-      label: 'Scanned By',
+      label: 'Scanned by',
       value: breadcrumbs.scannedBy
     })
   }
 
+  if (stats.length === 0) return null
+
   return (
-    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
-      {stats.map(stat => (
-        <div key={stat.label} className="bg-muted/40 border-border rounded-lg border p-3">
-          <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium">
-            {stat.icon}
-            {stat.label}
+    // Columns follow the panel's own width, not the window's: the four fields
+    // sit in one row when there is room, otherwise as two pairs.
+    <div className="@container">
+      <dl className="grid grid-cols-2 gap-x-8 gap-y-3 @2xl:grid-cols-4">
+        {stats.map(stat => (
+          <div key={stat.label} className="min-w-0">
+            <dt className="text-muted-foreground mb-0.5 flex items-center gap-1.5 text-xs">
+              {stat.icon}
+              {stat.label}
+            </dt>
+            <dd className="text-foreground text-sm font-medium [overflow-wrap:anywhere]">
+              {stat.value}
+            </dd>
           </div>
-          <p className="text-foreground text-sm font-medium [overflow-wrap:anywhere]">
-            {stat.value}
-          </p>
-        </div>
-      ))}
+        ))}
+      </dl>
     </div>
   )
+}
+
+/**
+ * Footage recorded in the breadcrumbs, counted per camera. The full file list
+ * stays on the Files tab; this answers "is every camera there" at a glance.
+ */
+const FootageSummary: React.FC<{ files?: FileInfo[] }> = ({ files }) => {
+  if (!files || files.length === 0) return null
+
+  const perCamera = new Map<number, number>()
+  for (const file of files) {
+    perCamera.set(file.camera, (perCamera.get(file.camera) ?? 0) + 1)
+  }
+  const cameras = [...perCamera.entries()].sort((a, b) => a[0] - b[0])
+
+  return (
+    <section>
+      <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+        Footage
+      </h4>
+      <ul className="border-border divide-border divide-y rounded-lg border text-sm">
+        {cameras.map(([camera, count]) => (
+          <li key={camera} className="flex items-center justify-between px-3 py-1.5">
+            <span>Camera {camera}</span>
+            <span className="text-muted-foreground tabular-nums">
+              {count} file{count !== 1 ? 's' : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/**
+ * A video title without the project's own name in front of it. Renders are
+ * usually named "<project> - Final v3"; inside the project's panel only
+ * "Final v3" tells the videos apart.
+ */
+function withoutProjectPrefix(title: string, projectTitle: string): string {
+  if (!projectTitle || !title.startsWith(projectTitle)) return title
+  const rest = title.slice(projectTitle.length).replace(/^[\s\-–:·]+/, '')
+  return rest || title
+}
+
+/**
+ * Why linked videos and cards cannot be shown, or undefined when they can.
+ * Links live in breadcrumbs.json, so without a readable file "none" is not
+ * something the panel knows.
+ */
+function linksUnavailableReason(project: ProjectFolder | null): string | undefined {
+  if (!project) return undefined
+  if (project.invalidBreadcrumbs) {
+    return 'Links are stored in the breadcrumbs file. Repair it to see them.'
+  }
+  if (!project.hasBreadcrumbs) {
+    return 'Links are stored in the breadcrumbs file. Create it to add videos or Trello cards.'
+  }
+  return undefined
 }
 
 interface LinkedResourcesProps {
   projectPath: string
   breadcrumbs: BreadcrumbsFile
+  /** Shown in place of the empty state when links cannot be known. */
+  unavailableReason?: string
   trelloApiKey?: string
   trelloApiToken?: string
 }
@@ -622,6 +812,7 @@ const extractCardId = (url: string): string | null => {
 const LinkedResources: React.FC<LinkedResourcesProps> = ({
   projectPath,
   breadcrumbs,
+  unavailableReason,
   trelloApiKey,
   trelloApiToken
 }) => {
@@ -674,7 +865,8 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
 
       {isEmpty ? (
         <p className="text-muted-foreground text-sm">
-          No linked resources yet — add videos or link Trello cards from their tabs.
+          {unavailableReason ??
+            'No linked resources yet. Add videos or link Trello cards from their tabs.'}
         </p>
       ) : (
         <div className="space-y-2">
@@ -699,10 +891,10 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
               key={video.url}
               icon={<Video className="h-4 w-4" />}
               iconClass="bg-muted text-muted-foreground"
-              title={video.title}
+              title={withoutProjectPrefix(video.title, breadcrumbs.projectTitle)}
               subtitle={`Sprout Video${
                 video.uploadDate
-                  ? ` · uploaded ${formatBreadcrumbDateSimple(video.uploadDate)}`
+                  ? ` · uploaded ${formatOverviewDate(video.uploadDate)}`
                   : ''
               }`}
               onOpen={() => openInShell(video.url)}
@@ -711,13 +903,13 @@ const LinkedResources: React.FC<LinkedResourcesProps> = ({
 
           {showLegacy && legacyUrl && (
             <div className="border-warning/30 flex items-center gap-3 rounded-lg border border-dashed p-3">
-              <div className="bg-warning/15 text-warning flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">
+              <div className="bg-warning/15 text-warning-text flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">
                 <CreditCard className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
                   Legacy Trello card
-                  <span className="bg-warning/20 text-warning rounded-full px-2 py-0.5 text-xs font-medium">
+                  <span className="bg-warning/20 text-warning-text rounded-full px-2 py-0.5 text-xs font-medium">
                     Legacy
                   </span>
                 </p>
@@ -798,10 +990,14 @@ const ResourceRow: React.FC<ResourceRowProps> = ({
       {icon}
     </div>
     <div className="min-w-0 flex-1">
-      <p className="text-foreground text-sm font-medium [overflow-wrap:anywhere]">
+      {/* One line each; the full title is in the tooltip */}
+      <p
+        className="text-foreground truncate text-sm font-medium"
+        title={typeof title === 'string' ? title : undefined}
+      >
         {title}
       </p>
-      <p className="text-muted-foreground text-xs">{subtitle}</p>
+      <p className="text-muted-foreground truncate text-xs">{subtitle}</p>
     </div>
     {canAssign && onToggleAssign && (
       <Button
@@ -990,7 +1186,7 @@ const FilesTab: React.FC<{ files?: FileInfo[] }> = ({ files }) => {
                         <AlertTriangle
                           role="img"
                           aria-label="Not found on this machine"
-                          className="text-warning h-4 w-4 flex-shrink-0"
+                          className="text-warning-text h-4 w-4 flex-shrink-0"
                         />
                       )}
                     </div>

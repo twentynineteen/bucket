@@ -12,17 +12,11 @@ export type {
   ReplaceRequest,
   ExampleMetadata,
   ExampleSource,
-  UploadError,
-  DeleteError,
-  ReplaceError,
-  FileValidation,
   ProviderConfiguration,
   ProcessedOutput,
   AIProvider,
   AIModel,
-  ScriptDocument,
-  FormattingMetadata,
-  WorkflowStep
+  ScriptDocument
 } from '@shared/types'
 export { ExampleCategory } from '@shared/types'
 
@@ -43,7 +37,7 @@ export interface SimilarExample {
 /**
  * Ollama API response for /api/tags endpoint
  */
-export interface OllamaModel {
+interface OllamaModel {
   name: string
   modified_at: string
   size: number

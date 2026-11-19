@@ -7,7 +7,6 @@
 import type { TrelloBoard } from '@shared/types'
 import { logger } from '@shared/utils'
 import { invoke } from '@tauri-apps/api/core'
-import { ask, confirm, open as openDialog } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import type { TrelloCard, TrelloList, TrelloMember } from './types'
@@ -249,41 +248,6 @@ export async function bakerFetchTrelloCardDetails(
     apiKey,
     apiToken
   })
-}
-
-// --- Dialog Wrappers ---
-
-export async function askDialog(
-  message: string,
-  options: {
-    title: string
-    okLabel: string
-    cancelLabel: string
-  }
-): Promise<boolean> {
-  return ask(message, options)
-}
-
-export async function confirmDialog(
-  message: string,
-  options: {
-    title: string
-    okLabel: string
-    cancelLabel: string
-  }
-): Promise<boolean> {
-  return confirm(message, options)
-}
-
-export async function openFileDialog(options: {
-  multiple: boolean
-  filters: Array<{ name: string; extensions: string[] }>
-}): Promise<string | null> {
-  const selectedFile = await openDialog(options)
-  if (typeof selectedFile === 'string') {
-    return selectedFile
-  }
-  return null
 }
 
 // --- URL Opening ---

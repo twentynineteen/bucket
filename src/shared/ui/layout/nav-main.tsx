@@ -87,7 +87,7 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
+      <SidebarGroupLabel>Tools</SidebarGroupLabel>
       <SidebarMenu>
         {items.map(item => {
           const groupIsActive = groupMatchesPathname(item.items, location.pathname)
@@ -132,10 +132,16 @@ export function NavMain({
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub>
-                    {item.items?.map(subItem => {
+                    {item.items?.map((subItem, subIndex) => {
                       const { pathname, hash } = splitUrl(subItem.url)
+                      // A page whose sub-items are all sections of it (Settings)
+                      // has no item for "no section chosen". Opened without a
+                      // hash it shows its first section, so that one is active.
+                      const isFirstSectionAtTop =
+                        subIndex === 0 && hash !== '' && location.hash === ''
                       const isSubActive =
-                        location.pathname === pathname && location.hash === hash
+                        location.pathname === pathname &&
+                        (location.hash === hash || isFirstSectionAtTop)
 
                       return (
                         <SidebarMenuSubItem key={subItem.title}>

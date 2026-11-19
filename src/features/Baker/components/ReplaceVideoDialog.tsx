@@ -83,7 +83,7 @@ export function ReplaceVideoDialog({
                 <span className="text-muted-foreground text-sm">No file chosen</span>
               )}
             </div>
-            <p className="text-warning flex items-start gap-2 text-xs">
+            <p className="text-warning-text flex items-start gap-2 text-xs">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
                 The current file on Sprout Video will be permanently replaced. Embed and
@@ -176,7 +176,9 @@ export function ReplaceVideoDialog({
                   </div>
 
                   {trello.validationMessage && (
-                    <p className="text-warning text-xs">{trello.validationMessage}</p>
+                    <p className="text-warning-text text-xs">
+                      {trello.validationMessage}
+                    </p>
                   )}
                 </div>
               )}
