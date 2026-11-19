@@ -332,14 +332,17 @@ describe('UPLOAD-05: starting an upload clears the previous message', () => {
 })
 
 describe('#371: renaming a linked Trello card records the new name in breadcrumbs', () => {
-  it('writes the new title over the linked card once Trello has accepted the rename', async () => {
-    const linked = {
-      url: 'https://trello.com/c/5f1e2d3c4b5a69788796a5b4',
-      cardId: '5f1e2d3c4b5a69788796a5b4',
-      title: 'TLE Filming filmed on Wed 30 Sep 2026',
-      boardName: 'Small Projects'
-    }
-    const updateTrelloCardAsync = vi.fn().mockResolvedValue(undefined)
+  const linked = {
+    url: 'https://trello.com/c/5f1e2d3c4b5a69788796a5b4',
+    cardId: '5f1e2d3c4b5a69788796a5b4',
+    title: 'TLE Filming filmed on Wed 30 Sep 2026',
+    boardName: 'Small Projects'
+  }
+  const newName = 'MOD101 - A Lecturer - Module overview (5:05mins)'
+  const updateTrelloCardAsync = vi.fn()
+
+  /** One linked card, and an upload that finished with a title and a duration. */
+  const renderAfterUpload = async () => {
     vi.mocked(bakerApi.bakerReadBreadcrumbs).mockResolvedValue({
       projectTitle: 'Demo'
     } as Awaited<ReturnType<typeof bakerApi.bakerReadBreadcrumbs>>)
@@ -361,12 +364,21 @@ describe('#371: renaming a linked Trello card records the new name in breadcrumb
       resetUploadState: vi.fn()
     } as unknown as ReturnType<typeof uploadModule.useFileUpload>)
 
-    const { result } = await renderManager()
+    return renderManager()
+  }
+
+  beforeEach(() => {
+    updateTrelloCardAsync.mockReset()
+    updateTrelloCardAsync.mockResolvedValue(undefined)
+  })
+
+  it('writes the new title over the linked card once Trello has accepted the rename', async () => {
+    const { result } = await renderAfterUpload()
+
     await act(async () => {
       await result.current.handleTrelloCardUpdate([0], { renameToVideoTitle: true })
     })
 
-    const newName = 'MOD101 - A Lecturer - Module overview (5:05mins)'
     expect(trelloModule.updateTrelloCard).toHaveBeenCalledWith(
       linked.cardId,
       { name: newName },
@@ -376,6 +388,17 @@ describe('#371: renaming a linked Trello card records the new name in breadcrumb
     expect(updateTrelloCardAsync).toHaveBeenCalledTimes(1)
     expect(updateTrelloCardAsync).toHaveBeenCalledWith(
       expect.objectContaining({ ...linked, title: newName })
+    )
+  })
+
+  it('says the card was renamed when only the breadcrumbs write fails', async () => {
+    updateTrelloCardAsync.mockRejectedValue(new Error('Permission denied'))
+    const { result } = await renderAfterUpload()
+
+    await expect(
+      result.current.handleTrelloCardUpdate([0], { renameToVideoTitle: true })
+    ).rejects.toThrow(
+      'The card was renamed on Trello, but the new title could not be saved to breadcrumbs (Permission denied). Refresh the card on the Trello tab to try again.'
     )
   })
 })

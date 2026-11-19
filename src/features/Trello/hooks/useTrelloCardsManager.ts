@@ -338,7 +338,7 @@ export function useTrelloCardsManager({
         ...card,
         title: fetched.title,
         boardName: fetched.boardName ?? card.boardName,
-        lastFetched: fetched.lastFetched
+        lastFetched: fetched.lastFetched ?? new Date().toISOString()
       })
     } catch (err) {
       toast.error(
