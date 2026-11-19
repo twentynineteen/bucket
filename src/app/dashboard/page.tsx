@@ -34,6 +34,12 @@ const HEADER_HEIGHT = '2.5rem'
  *
  * The background is solid on purpose: a blurred, translucent bar makes window
  * dragging stutter.
+ *
+ * The traffic lights end 81px from the window edge (`trafficLightPosition` in
+ * tauri.conf.json puts them at x=20, and current macOS draws each in a 16px
+ * box). The left padding of 100px leaves the toggle's 28px hit area 15px
+ * clear of them and its icon about 20px clear, as a native toolbar does. At
+ * the previous 80px the toggle overlapped the green light (#372).
  */
 const AppHeader: React.FC = () => {
   const { breadcrumbs } = useBreadcrumbStore()
@@ -44,7 +50,7 @@ const AppHeader: React.FC = () => {
       data-tauri-drag-region
       className={cn(
         'bg-background border-border z-20 flex h-(--header-height) w-full shrink-0 items-center gap-2 border-b pr-4',
-        isMacOS ? 'pl-20' : 'pl-3'
+        isMacOS ? 'pl-25' : 'pl-3'
       )}
     >
       <SidebarTrigger className="-ml-1" />
