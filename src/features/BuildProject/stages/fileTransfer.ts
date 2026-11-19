@@ -30,13 +30,6 @@ import {
 // Types
 // =============================================================================
 
-/**
- * Transfer payload shapes live with the other event types, next to the
- * `FileTransferProgress` payload they arrive with. Re-exported here because
- * this module's public surface has always included them.
- */
-export type { FileTransferItem, TransferCompleteEvent, TransferRequest } from '../types'
-
 /** An unlisten handle, as returned by the api.ts event wrappers. */
 type UnlistenFn = () => void
 
@@ -52,18 +45,6 @@ export interface TransferFilesOptions {
   signal?: AbortSignal
   /** Optional stage configuration override */
   config?: Partial<StageConfig>
-}
-
-/**
- * Result from initiating a transfer operation
- */
-export interface TransferOperationHandle {
-  /** Operation ID for tracking */
-  operationId: string
-  /** Promise that resolves when transfer completes */
-  completion: Promise<StageResult<FileTransferStageData>>
-  /** Function to cancel the transfer */
-  cancel: () => Promise<boolean>
 }
 
 // =============================================================================
@@ -382,203 +363,6 @@ export async function transferFiles(
 }
 
 // =============================================================================
-// Advanced Transfer Handle API
-// =============================================================================
-
-/**
- * Initiates a file transfer and returns a handle for tracking and cancellation.
- *
- * This function provides more control over the transfer operation compared to
- * the simple `transferFiles` function. It returns immediately with an operation
- * handle that can be used to cancel the transfer or await its completion.
- *
- * @param options - Transfer options
- * @returns Transfer operation handle with operationId, completion promise, and cancel function
- *
- * @example
- * ```ts
- * const handle = await startTransfer({
- *   files: [{ source: '/src/video.mp4', destination: '/dest/video.mp4' }],
- *   onProgress: (p) => updateUI(p.percentage)
- * })
- *
- * console.log(`Started transfer: ${handle.operationId}`)
- *
- * // Later, if user clicks cancel:
- * await handle.cancel()
- *
- * // Or wait for completion:
- * const result = await handle.completion
- * ```
- */
-export async function startTransfer(
-  options: TransferFilesOptions
-): Promise<TransferOperationHandle> {
-  const { files, onProgress, config } = options
-  const mergedConfig = { ...DEFAULT_STAGE_CONFIGS['file-transfer'], ...config }
-  const startTime = performance.now()
-
-  // Validate input
-  if (!files || files.length === 0) {
-    throw new BuildProjectError(
-      ErrorKind.Validation,
-      'file-transfer',
-      'No files provided for transfer',
-      false
-    )
-  }
-
-  // Initiate the transfer
-  const operationId = await transferFilesWithProgress({ files })
-
-  let progressUnlisten: UnlistenFn | null = null
-  let completeUnlisten: UnlistenFn | null = null
-  let stallTimeoutId: ReturnType<typeof setTimeout> | null = null
-  let lastProgressTime = Date.now()
-  let resolved = false
-
-  // Create completion promise
-  const completion = new Promise<StageResult<FileTransferStageData>>(resolve => {
-    const cleanup = () => {
-      if (stallTimeoutId) clearTimeout(stallTimeoutId)
-      progressUnlisten?.()
-      completeUnlisten?.()
-    }
-
-    const resolveOnce = (result: StageResult<FileTransferStageData>) => {
-      if (!resolved) {
-        resolved = true
-        cleanup()
-        resolve(result)
-      }
-    }
-
-    // Stall detection
-    const checkStall = () => {
-      if (resolved) return
-      const timeSinceLastProgress = Date.now() - lastProgressTime
-      if (timeSinceLastProgress > DEFAULT_STALL_TIMEOUT_MS) {
-        cancelFileTransfer(operationId).catch(() => {})
-        resolveOnce(
-          createStageFailure(
-            ErrorKind.Timeout,
-            'File transfer stalled - no progress for 30 seconds',
-            true,
-            performance.now() - startTime
-          )
-        )
-      } else {
-        stallTimeoutId = setTimeout(checkStall, 5000)
-      }
-    }
-    stallTimeoutId = setTimeout(checkStall, 5000)
-
-    // Progress listener
-    listenFileTransferProgress(event => {
-      if (event.payload.operationId === operationId) {
-        lastProgressTime = Date.now()
-        onProgress?.(event.payload)
-      }
-    })
-      .then(unlisten => {
-        progressUnlisten = unlisten
-      })
-      .catch(err => {
-        resolveOnce(
-          createStageFailure(
-            ErrorKind.Unknown,
-            `Failed to listen for progress: ${err}`,
-            false,
-            performance.now() - startTime
-          )
-        )
-      })
-
-    // Completion listener
-    listenFileTransferComplete(event => {
-      if (event.payload.operationId === operationId) {
-        const duration = performance.now() - startTime
-
-        if (event.payload.success) {
-          resolveOnce(
-            createStageSuccess<FileTransferStageData>(
-              {
-                filesTransferred: event.payload.filesTransferred,
-                totalBytes: 0,
-                destinationFolder: ''
-              },
-              duration
-            )
-          )
-        } else {
-          const error = mapTransferError(event.payload.error || 'Unknown transfer error')
-          resolveOnce(
-            createStageFailure(error.kind, error.message, error.recoverable, duration)
-          )
-        }
-      }
-    })
-      .then(unlisten => {
-        completeUnlisten = unlisten
-      })
-      .catch(err => {
-        resolveOnce(
-          createStageFailure(
-            ErrorKind.Unknown,
-            `Failed to listen for completion: ${err}`,
-            false,
-            performance.now() - startTime
-          )
-        )
-      })
-
-    // Timeout handling
-    if (mergedConfig.timeout > 0) {
-      setTimeout(() => {
-        cancelFileTransfer(operationId).catch(() => {})
-        resolveOnce(
-          createStageFailure(
-            ErrorKind.Timeout,
-            `Transfer timed out after ${mergedConfig.timeout}ms`,
-            true,
-            performance.now() - startTime
-          )
-        )
-      }, mergedConfig.timeout)
-    }
-  })
-
-  // Cancel function
-  const cancel = async (): Promise<boolean> => {
-    try {
-      return await cancelFileTransfer(operationId)
-    } catch {
-      return false
-    }
-  }
-
-  return {
-    operationId,
-    completion,
-    cancel
-  }
-}
-
-/**
- * Cancels an in-progress file transfer operation.
- *
- * @param operationId - The operation ID to cancel
- * @returns true if cancellation was signalled, false if operation not found
- */
-export async function cancelTransfer(operationId: string): Promise<boolean> {
-  try {
-    return await cancelFileTransfer(operationId)
-  } catch {
-    return false
-  }
-}
-
-// =============================================================================
 // XState v5 Actor
 // =============================================================================
 
@@ -689,19 +473,6 @@ export function createTransferItems(
     source: file.path,
     destination: `${projectFolder}/Footage/Camera ${camera}/${file.name}`
   }))
-}
-
-/**
- * Estimates total transfer size from file items.
- * Note: This requires filesystem access and may not be accurate for all cases.
- *
- * @param files - Array of file transfer items
- * @returns Estimated total bytes (0 if cannot be determined)
- */
-export function estimateTransferSize(files: FileTransferItem[]): number {
-  // This would need filesystem access to get actual sizes
-  // For now, return 0 as estimation requires Tauri backend
-  return files.length > 0 ? 0 : 0
 }
 
 /**

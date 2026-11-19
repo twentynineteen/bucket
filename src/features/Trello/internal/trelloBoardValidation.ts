@@ -48,16 +48,6 @@ export function categorizeBoardStatus(
 }
 
 /**
- * Finds a board by ID in the available boards list
- */
-export function findBoardById(
-  boardId: string,
-  boards: TrelloBoard[]
-): TrelloBoard | undefined {
-  return boards.find(board => board.id === boardId)
-}
-
-/**
  * Groups boards by organization name
  */
 export function groupBoardsByOrganization(
@@ -95,7 +85,7 @@ export function formatBoardDisplayName(board: TrelloBoard): string {
 /**
  * Gets the appropriate icon for a board's visibility level
  */
-export function getVisibilityIcon(permissionLevel: string): string {
+function getVisibilityIcon(permissionLevel: string): string {
   switch (permissionLevel) {
     case 'private':
       return '\uD83D\uDD12'

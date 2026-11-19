@@ -243,5 +243,3 @@ export const getCacheService = (): CacheInvalidationService => {
 export const useCacheInvalidation = () => {
   return getCacheService()
 }
-
-export default CacheInvalidationService

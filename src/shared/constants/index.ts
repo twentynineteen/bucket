@@ -46,12 +46,6 @@ export { PROJECT_LIMITS } from './project'
 export {
   /** Calibrated watermark match confidence default and override bounds */
   KAVANAGH_THRESHOLDS,
-  /** Turns an override field into the value a run should use, or undefined for the default */
-  resolveMatchConfidenceOverride,
   /** Why a match confidence override was refused, or null when it is usable */
   validateMatchConfidence
-} from './kavanagh'
-export type {
-  /** Rejection reason for a match confidence override, or null */
-  KavanaghThresholdProblem
 } from './kavanagh'

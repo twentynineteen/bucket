@@ -152,8 +152,5 @@ export {
   SelectTrigger,
   SelectContent,
   SelectLabel,
-  SelectItem,
-  SelectSeparator,
-  SelectScrollUpButton,
-  SelectScrollDownButton
+  SelectItem
 }

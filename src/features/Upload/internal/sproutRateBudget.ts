@@ -22,7 +22,7 @@
 export const RESERVE = 20
 
 /** Assumed wait when Sprout 429s without telling us when the window resets. */
-export const DEFAULT_COOLOFF_MS = 60_000
+const DEFAULT_COOLOFF_MS = 60_000
 
 /** Why a folder request was refused before reaching the network. */
 export type BudgetRefusal =

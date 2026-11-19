@@ -7,12 +7,10 @@
  * Compatible with XState v5 fromPromise actors.
  */
 
-import { fromPromise } from 'xstate'
 import { pathExists } from '../api'
 import {
   createStageFailure,
   createStageSuccess,
-  createValidationError,
   type StageConfig,
   type StageResult,
   type ValidationStageData
@@ -57,7 +55,7 @@ export interface ValidationInput {
 /**
  * Represents a single validation error
  */
-export interface ValidationError {
+interface ValidationError {
   /** Field or area that failed validation */
   field: 'files' | 'projectName' | 'outputPath' | 'cameraAssignments'
 
@@ -409,22 +407,6 @@ export async function validateInputs(
  * })
  * ```
  */
-export const validationActor = fromPromise<
-  StageResult<ValidationResultData>,
-  ValidationInput
->(async ({ input }) => {
-  const result = await validateInputs(input)
-
-  // If validation failed, throw to trigger onError in XState.
-  if (!result.ok) {
-    throw createValidationError('validation', result.error.message, {
-      errors: result.error
-    })
-  }
-
-  return result
-})
-
 // =============================================================================
 // Default Stage Configuration
 // =============================================================================

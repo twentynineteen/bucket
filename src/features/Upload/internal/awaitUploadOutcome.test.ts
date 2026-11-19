@@ -61,7 +61,8 @@ beforeEach(() => {
     ['cancelled', listenUploadCancelled]
   ] as const) {
     vi.mocked(listener).mockImplementation(async cb => {
-      handlers[channel] = cb as Handler
+      // Each channel's callback takes its own payload type; emit() sends that shape
+      handlers[channel] = cb as unknown as Handler
       return unlisten
     })
   }

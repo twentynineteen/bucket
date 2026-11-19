@@ -41,7 +41,7 @@ describe('cross-feature import boundary (#352)', () => {
   // ------------------------------------------------------------------
 
   it('relative ../Other/internal/x: error', async () => {
-    const code = `// eslint-disable-next-line @typescript-eslint/no-unused-vars\nimport { formatField } from '../Baker/internal/fieldUtils'\n`
+    const code = `// eslint-disable-next-line @typescript-eslint/no-unused-vars\nimport { computeTreemapLayout } from '../Baker/internal/treemapLayout'\n`
     // The boundaries rule itself must catch it, not an unrelated no-unknown
     expect(await lintRules(code, 'src/features/Upload/probe.ts')).toContain(
       'boundaries/dependencies'
@@ -57,7 +57,7 @@ describe('cross-feature import boundary (#352)', () => {
   })
 
   it('alias @features/Other/internal/x: error', async () => {
-    const code = `// eslint-disable-next-line @typescript-eslint/no-unused-vars\nimport { formatField } from '@features/Baker/internal/fieldUtils'\n`
+    const code = `// eslint-disable-next-line @typescript-eslint/no-unused-vars\nimport { computeTreemapLayout } from '@features/Baker/internal/treemapLayout'\n`
     expect(await boundaryError(code, 'src/features/Upload/probe.ts')).toBe(true)
   })
 

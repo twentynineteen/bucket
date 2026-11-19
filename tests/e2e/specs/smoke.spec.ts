@@ -33,10 +33,6 @@ test.describe('Smoke Tests', () => {
     // Filter out expected errors when running outside Tauri context
     const unexpectedErrors = errors.filter(
       error =>
-        !error.includes('__TAURI__') &&
-        !error.includes('TAURI_INTERNALS') &&
-        !error.includes('invoke') &&
-        !error.includes('transformCallback') &&
         !error.includes('Failed to fetch') &&
         !error.includes('Failed to load resource') &&
         !error.includes('net::ERR') &&

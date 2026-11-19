@@ -69,7 +69,7 @@ const AppHeader: React.FC = () => {
   )
 }
 
-export const Page: React.FC = () => {
+const Page: React.FC = () => {
   return (
     <SidebarProvider
       className="h-svh flex-col overflow-hidden"

@@ -196,11 +196,11 @@ describe('useFileUpload stall handling', () => {
     errorHandlers = []
 
     vi.mocked(listenUploadProgress).mockImplementation(callback => {
-      progressHandlers.push(callback)
+      progressHandlers.push(callback as (event: { payload: UploadProgressEvent }) => void)
       return Promise.resolve(() => undefined)
     })
     vi.mocked(listenUploadError).mockImplementation(callback => {
-      errorHandlers.push(callback)
+      errorHandlers.push(callback as (event: { payload: UploadErrorEvent }) => void)
       return Promise.resolve(() => undefined)
     })
   })
@@ -372,7 +372,9 @@ describe('useFileUpload cancellation', () => {
   beforeEach(() => {
     cancelledHandlers = []
     vi.mocked(listenUploadCancelled).mockImplementation(callback => {
-      cancelledHandlers.push(callback)
+      cancelledHandlers.push(
+        callback as (event: { payload: UploadCancelledEvent }) => void
+      )
       return Promise.resolve(() => undefined)
     })
   })

@@ -25,7 +25,7 @@ import { arcPath, matrixStr } from './svgGeometry'
  * Never put `style` in attrs - React throws when it receives a style
  * string instead of an object.
  */
-export type SvgAttrs = Record<string, string | number>
+type SvgAttrs = Record<string, string | number>
 
 export interface SvgElement {
   tag: string

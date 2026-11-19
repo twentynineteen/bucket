@@ -42,6 +42,9 @@ jobs:
       - name: Run Prettier check
         run: bun run prettier
 
+      - name: Run knip
+        run: bun run knip
+
       # The gate that was missing (issue #178). Nothing in CI ran tsc, and
       # tsconfig named an uninstalled `jest` type library, so tsc exited before
       # checking a single file and 487 type errors accumulated unseen. Neither
@@ -203,7 +206,7 @@ jobs:
     # one environment. Updating @playwright/test in package.json updates this
     # tag in the same PR. The container ships Chromium, so the separate
     # `playwright install --with-deps` step is no longer needed (issue #338).
-    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    container: mcr.microsoft.com/playwright:v1.65.0-noble
     timeout-minutes: 25
     needs: [lint, test]
     steps:

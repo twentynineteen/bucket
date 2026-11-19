@@ -104,19 +104,19 @@ export type ParamValues = Record<string, string | number | NumberListItem[] | Im
 // Layers
 // ---------------------------------------------------------------------------
 
-export interface Stagger {
+interface Stagger {
   /** Seconds of delay per grapheme cluster. */
   delay: number
 }
 
-export interface FontSpec {
+interface FontSpec {
   family: string
   style: string
   size: number
 }
 
 /** Counter on a text layer - animates a number bound to a `number` param. */
-export interface Counter {
+interface Counter {
   param: string
   decimals: number
   prefix: string
@@ -247,9 +247,6 @@ export type Layer =
 
 /** A layer after macro expansion - no series remain. Groups are preserved for transform composition. */
 export type PrimitiveLayer = Exclude<Layer, SeriesLayer>
-
-/** A leaf layer (no groups, no series). */
-export type LeafLayer = Exclude<Layer, GroupLayer | SeriesLayer>
 
 // ---------------------------------------------------------------------------
 // Template

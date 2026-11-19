@@ -12,7 +12,7 @@
 
 import type { Ease } from '../../../types'
 
-export interface AEKeyframeEase {
+interface AEKeyframeEase {
   speed: number
   influence: number
 }
