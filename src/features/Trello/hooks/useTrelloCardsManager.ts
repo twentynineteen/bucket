@@ -52,6 +52,7 @@ export function useTrelloCardsManager({
     refetch: refetchTrelloCards,
     addTrelloCard,
     addTrelloCardAsync,
+    updateTrelloCardAsync,
     removeTrelloCard,
     fetchCardDetailsAsync,
     isUpdating,
@@ -314,6 +315,11 @@ export function useTrelloCardsManager({
   }
 
   // Handler: Refresh card details
+  //
+  // Fetches the card's current name and board from Trello and writes them over
+  // the linked card in one change. The stored `url` and `cardId` are kept: the
+  // fetch derives its ID from the URL, which for some cards is the short link
+  // and not the ID the card was linked under.
   const handleRefresh = async (index: number) => {
     if (!trelloApiKey || !trelloApiToken) {
       toast.error('Trello API credentials not configured')
@@ -322,16 +328,18 @@ export function useTrelloCardsManager({
 
     const card = trelloCards[index]
     try {
-      const updatedCard = await fetchCardDetailsAsync({
+      const fetched = await fetchCardDetailsAsync({
         cardUrl: card.url,
         apiKey: trelloApiKey,
         apiToken: trelloApiToken
       })
 
-      removeTrelloCard(index)
-      setTimeout(() => {
-        addTrelloCard(updatedCard)
-      }, 100)
+      await updateTrelloCardAsync({
+        ...card,
+        title: fetched.title,
+        boardName: fetched.boardName ?? card.boardName,
+        lastFetched: fetched.lastFetched ?? new Date().toISOString()
+      })
     } catch (err) {
       toast.error(
         `Failed to refresh card: ${err instanceof Error ? err.message : String(err)}`

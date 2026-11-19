@@ -68,7 +68,7 @@ parentFolder: string, createdBy: string, creationDateTime: string, folderSizeByt
 
 export type Fix = { "kind": "createdByNotAString" } | { "kind": "migratedTrelloCardUrl" } | { "kind": "parentFolderWasProjectFolder" };
 
-export type Change = { "kind": "create", title: string, createdBy: string, } | { "kind": "rescan" } | { "kind": "refreshSizes" } | { "kind": "addVideoLink", link: VideoLink, } | { "kind": "updateVideoLink", index: number, expectedUrl: string, link: VideoLink, } | { "kind": "removeVideoLink", index: number, } | { "kind": "reorderVideoLinks", from: number, to: number, } | { "kind": "addTrelloCard", card: TrelloCard, } | { "kind": "removeTrelloCard", cardId: string, };
+export type Change = { "kind": "create", title: string, createdBy: string, } | { "kind": "rescan" } | { "kind": "refreshSizes" } | { "kind": "addVideoLink", link: VideoLink, } | { "kind": "updateVideoLink", index: number, expectedUrl: string, link: VideoLink, } | { "kind": "removeVideoLink", index: number, } | { "kind": "reorderVideoLinks", from: number, to: number, } | { "kind": "addTrelloCard", card: TrelloCard, } | { "kind": "updateTrelloCard", card: TrelloCard, } | { "kind": "removeTrelloCard", cardId: string, };
 
 export type ChangeError = { "kind": "projectNotFound" } | { "kind": "noBreadcrumbs" } | { "kind": "alreadyExists" } | { "kind": "unreadable", reason: string, } | { "kind": "nothingToDescribe" } | { "kind": "limitReached", limit: number, } | { "kind": "indexOutOfRange", index: number, } | { "kind": "linkChanged", expectedUrl: string, actualUrl: string, } | { "kind": "cardNotLinked", cardId: string, } | { "kind": "io", message: string, };
 

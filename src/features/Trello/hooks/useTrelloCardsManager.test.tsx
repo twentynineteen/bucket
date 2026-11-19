@@ -5,6 +5,9 @@
  * (autoSyncToTrello=true) and the two regressions:
  *  1. Only the most-recently-added card was synced (others were left stale).
  *  2. The breadcrumbs file was read before the new card finished persisting.
+ *
+ * Also covers refreshing a linked card (#371), which used to remove the card
+ * and add it back 100 ms later without waiting for either write.
  */
 
 import {
@@ -65,7 +68,31 @@ const THREE_CARD_FILE = JSON.stringify({
 
 let addTrelloCard: Mock
 let addTrelloCardAsync: Mock
+let updateTrelloCardAsync: Mock
+let removeTrelloCard: Mock
 let fetchCardDetailsAsync: Mock
+
+/** What `useBreadcrumbsTrelloCards` returns, with `trelloCards` set per test. */
+function cardsHook(trelloCards: unknown[] = []) {
+  return {
+    trelloCards,
+    isLoading: false,
+    error: null,
+    addTrelloCard,
+    addTrelloCardAsync,
+    updateTrelloCardAsync,
+    removeTrelloCard,
+    removeTrelloCardAsync: vi.fn(),
+    fetchCardDetails: vi.fn(),
+    fetchCardDetailsAsync,
+    isUpdating: false,
+    isFetchingDetails: false,
+    addError: null,
+    removeError: null,
+    fetchError: null,
+    fetchedCardData: undefined
+  } as unknown as ReturnType<typeof useBreadcrumbsTrelloCards>
+}
 
 function setup(autoSyncToTrello = true) {
   return renderHook(() =>
@@ -83,29 +110,15 @@ beforeEach(() => {
 
   addTrelloCard = vi.fn()
   addTrelloCardAsync = vi.fn().mockResolvedValue(undefined)
+  updateTrelloCardAsync = vi.fn().mockResolvedValue(undefined)
+  removeTrelloCard = vi.fn()
   fetchCardDetailsAsync = vi.fn().mockResolvedValue({
     cardId: 'ccc',
     url: 'https://trello.com/c/ccc',
     title: 'Card CCC'
   })
 
-  mockUseBreadcrumbsTrelloCards.mockReturnValue({
-    trelloCards: [],
-    isLoading: false,
-    error: null,
-    addTrelloCard,
-    addTrelloCardAsync,
-    removeTrelloCard: vi.fn(),
-    removeTrelloCardAsync: vi.fn(),
-    fetchCardDetails: vi.fn(),
-    fetchCardDetailsAsync,
-    isUpdating: false,
-    isFetchingDetails: false,
-    addError: null,
-    removeError: null,
-    fetchError: null,
-    fetchedCardData: undefined
-  } as unknown as ReturnType<typeof useBreadcrumbsTrelloCards>)
+  mockUseBreadcrumbsTrelloCards.mockReturnValue(cardsHook())
 
   mockUseTrelloBoard.mockReturnValue({
     grouped: {},
@@ -208,6 +221,66 @@ describe('useTrelloCardsManager auto-sync', () => {
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
         expect.stringContaining('1 of 3')
       )
+    )
+  })
+})
+
+describe('useTrelloCardsManager refresh (#371)', () => {
+  // Linked under its full ID, as a card picked from the board list is.
+  const LINKED = {
+    url: 'https://trello.com/c/5f1e2d3c4b5a69788796a5b4',
+    cardId: '5f1e2d3c4b5a69788796a5b4',
+    title: 'TLE Filming filmed on Wed 30 Sep 2026',
+    boardName: 'Small Projects',
+    lastFetched: '2026-10-07T10:00:00Z'
+  }
+
+  beforeEach(() => {
+    mockUseBreadcrumbsTrelloCards.mockReturnValue(cardsHook([LINKED]))
+    fetchCardDetailsAsync.mockResolvedValue({
+      url: LINKED.url,
+      cardId: LINKED.cardId,
+      title: 'MOD101 - A Lecturer - Module overview (5:05mins)',
+      boardName: 'Small Projects',
+      lastFetched: '2026-11-19T14:00:00Z'
+    })
+  })
+
+  test('writes the title Trello now has over the linked card, in one change', async () => {
+    const { result } = setup(false)
+
+    await act(async () => {
+      await result.current.handleRefresh(0)
+    })
+
+    expect(updateTrelloCardAsync).toHaveBeenCalledTimes(1)
+    expect(updateTrelloCardAsync).toHaveBeenCalledWith({
+      url: LINKED.url,
+      cardId: LINKED.cardId,
+      title: 'MOD101 - A Lecturer - Module overview (5:05mins)',
+      boardName: 'Small Projects',
+      lastFetched: '2026-11-19T14:00:00Z'
+    })
+    // The card is never taken out of the file to be put back: on a slow
+    // volume those two writes landed out of order and the card was lost.
+    expect(removeTrelloCard).not.toHaveBeenCalled()
+    expect(addTrelloCard).not.toHaveBeenCalled()
+    expect(addTrelloCardAsync).not.toHaveBeenCalled()
+  })
+
+  test('tells the user when the refreshed card could not be saved', async () => {
+    updateTrelloCardAsync.mockRejectedValue(
+      new Error('Could not write the breadcrumbs file: Permission denied')
+    )
+    const { toast } = await import('sonner')
+    const { result } = setup(false)
+
+    await act(async () => {
+      await result.current.handleRefresh(0)
+    })
+
+    expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+      'Failed to refresh card: Could not write the breadcrumbs file: Permission denied'
     )
   })
 })
