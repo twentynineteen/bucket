@@ -233,12 +233,12 @@ mod tests {
         let (operation_id, receiver) = registry.register().await;
 
         // Initial borrow should be false
-        assert_eq!(*receiver.borrow(), false);
+        assert!(!*receiver.borrow());
         assert!(!OperationRegistry::is_cancelled(&receiver));
 
         // After cancellation, borrow should be true
         registry.cancel(&operation_id).await;
-        assert_eq!(*receiver.borrow(), true);
+        assert!(*receiver.borrow());
         assert!(OperationRegistry::is_cancelled(&receiver));
     }
 

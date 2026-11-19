@@ -105,6 +105,10 @@ pub enum Fix {
 /// What [`read`] found.
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "returned once per call, never collected, so boxing buys nothing"
+)]
 pub enum Read {
     /// The project has no `breadcrumbs.json`.
     Missing,
@@ -267,7 +271,8 @@ pub enum ApplyOutcome {
 pub enum PreviewOutcome {
     Previewed {
         project: String,
-        preview: Preview,
+        // Boxed because a batch preview returns one outcome per project.
+        preview: Box<Preview>,
     },
     Failed {
         project: String,
@@ -303,7 +308,7 @@ pub fn preview_outcomes(projects: &[String], change: &Change) -> Vec<PreviewOutc
         .map(|(project, result)| match result {
             Ok(preview) => PreviewOutcome::Previewed {
                 project: project.clone(),
-                preview,
+                preview: Box::new(preview),
             },
             Err(error) => PreviewOutcome::Failed {
                 project: project.clone(),
@@ -332,6 +337,10 @@ pub fn read(project: &Path) -> Read {
 }
 
 /// [`Read`], plus the original bytes a backup would need.
+#[expect(
+    clippy::large_enum_variant,
+    reason = "returned once per call, never collected, so boxing buys nothing"
+)]
 enum OnDisk {
     Missing,
     Found {

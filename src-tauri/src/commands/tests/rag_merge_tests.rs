@@ -69,16 +69,28 @@ fn test_db(name: &str) -> (TempDir, PathBuf) {
     (temp_dir, db_path)
 }
 
-fn seed_example(
-    conn: &Connection,
-    id: &str,
-    title: &str,
-    source: &str,
-    before: &str,
-    after: &str,
-    tags: Option<&str>,
+/// One `example_scripts` row. Named fields, because six positional strings let
+/// `before` and `after` swap without a compile error.
+struct Example<'a> {
+    id: &'a str,
+    title: &'a str,
+    source: &'a str,
+    before: &'a str,
+    after: &'a str,
+    tags: Option<&'a str>,
     quality_score: Option<i32>,
-) {
+}
+
+fn seed_example(conn: &Connection, example: Example) {
+    let Example {
+        id,
+        title,
+        source,
+        before,
+        after,
+        tags,
+        quality_score,
+    } = example;
     conn.execute(
         "INSERT INTO example_scripts
          (id, title, category, before_text, after_text, tags, word_count, quality_score, source)
@@ -178,13 +190,15 @@ fn merge_updates_bundled_example_from_shipped_copy() {
         let conn = Connection::open(&active_path).unwrap();
         seed_example(
             &conn,
-            "ex-1",
-            "Old Title",
-            "bundled",
-            "old before",
-            "old after",
-            Some("old-tag"),
-            Some(3),
+            Example {
+                id: "ex-1",
+                title: "Old Title",
+                source: "bundled",
+                before: "old before",
+                after: "old after",
+                tags: Some("old-tag"),
+                quality_score: Some(3),
+            },
         );
         seed_embedding(&conn, "ex-1", &[0.1, 0.2, 0.3]);
     }
@@ -194,26 +208,30 @@ fn merge_updates_bundled_example_from_shipped_copy() {
         let conn = Connection::open(&bundled_path).unwrap();
         seed_example(
             &conn,
-            "ex-1",
-            "New Title",
-            "bundled",
-            "new before",
-            "new after",
-            Some("new-tag"),
-            Some(5),
+            Example {
+                id: "ex-1",
+                title: "New Title",
+                source: "bundled",
+                before: "new before",
+                after: "new after",
+                tags: Some("new-tag"),
+                quality_score: Some(5),
+            },
         );
         seed_embedding(&conn, "ex-1", &[0.9, 0.8, 0.7]);
         seed_version(&conn, "2.0");
     }
 
-    db_merge_bundled_examples(&active_path, &bundled_path)
-        .expect("merge should succeed");
+    db_merge_bundled_examples(&active_path, &bundled_path).expect("merge should succeed");
 
     let conn = Connection::open(&active_path).unwrap();
     let (title, before, after, source) =
         read_example(&conn, "ex-1").expect("example should exist after merge");
 
-    assert_eq!(title, "New Title", "title should be updated from bundled copy");
+    assert_eq!(
+        title, "New Title",
+        "title should be updated from bundled copy"
+    );
     assert_eq!(before, "new before", "before_text should be updated");
     assert_eq!(after, "new after", "after_text should be updated");
     assert_eq!(source, "bundled", "source should remain bundled");
@@ -244,13 +262,15 @@ fn merge_skips_user_uploaded_example_even_when_id_collides() {
         let conn = Connection::open(&active_path).unwrap();
         seed_example(
             &conn,
-            "colliding-id",
-            "User Title",
-            "user-uploaded",
-            "user before",
-            "user after",
-            Some("user-tag"),
-            Some(4),
+            Example {
+                id: "colliding-id",
+                title: "User Title",
+                source: "user-uploaded",
+                before: "user before",
+                after: "user after",
+                tags: Some("user-tag"),
+                quality_score: Some(4),
+            },
         );
         seed_embedding(&conn, "colliding-id", &[1.0, 2.0, 3.0]);
     }
@@ -260,20 +280,21 @@ fn merge_skips_user_uploaded_example_even_when_id_collides() {
         let conn = Connection::open(&bundled_path).unwrap();
         seed_example(
             &conn,
-            "colliding-id",
-            "Bundled Title",
-            "bundled",
-            "bundled before",
-            "bundled after",
-            Some("bundled-tag"),
-            Some(5),
+            Example {
+                id: "colliding-id",
+                title: "Bundled Title",
+                source: "bundled",
+                before: "bundled before",
+                after: "bundled after",
+                tags: Some("bundled-tag"),
+                quality_score: Some(5),
+            },
         );
         seed_embedding(&conn, "colliding-id", &[9.0, 8.0, 7.0]);
         seed_version(&conn, "2.0");
     }
 
-    db_merge_bundled_examples(&active_path, &bundled_path)
-        .expect("merge should succeed");
+    db_merge_bundled_examples(&active_path, &bundled_path).expect("merge should succeed");
 
     let conn = Connection::open(&active_path).unwrap();
     let (title, before, after, source) =
@@ -322,24 +343,24 @@ fn merge_inserts_new_bundled_example_with_its_embedding() {
         let conn = Connection::open(&bundled_path).unwrap();
         seed_example(
             &conn,
-            "new-ex",
-            "Brand New",
-            "bundled",
-            "new before",
-            "new after",
-            Some("intro"),
-            Some(5),
+            Example {
+                id: "new-ex",
+                title: "Brand New",
+                source: "bundled",
+                before: "new before",
+                after: "new after",
+                tags: Some("intro"),
+                quality_score: Some(5),
+            },
         );
         seed_embedding(&conn, "new-ex", &[0.5, 0.5, 0.5, 0.5]);
         seed_version(&conn, "1.0");
     }
 
-    db_merge_bundled_examples(&active_path, &bundled_path)
-        .expect("merge should succeed");
+    db_merge_bundled_examples(&active_path, &bundled_path).expect("merge should succeed");
 
     let conn = Connection::open(&active_path).unwrap();
-    let (title, _, _, source) =
-        read_example(&conn, "new-ex").expect("example should be inserted");
+    let (title, _, _, source) = read_example(&conn, "new-ex").expect("example should be inserted");
     assert_eq!(title, "Brand New");
     assert_eq!(source, "bundled");
 
@@ -371,24 +392,28 @@ fn merge_leaves_retired_bundled_example_in_active_db() {
         let conn = Connection::open(&active_path).unwrap();
         seed_example(
             &conn,
-            "kept",
-            "Kept Example",
-            "bundled",
-            "kept before",
-            "kept after",
-            None,
-            Some(4),
+            Example {
+                id: "kept",
+                title: "Kept Example",
+                source: "bundled",
+                before: "kept before",
+                after: "kept after",
+                tags: None,
+                quality_score: Some(4),
+            },
         );
         seed_embedding(&conn, "kept", &[0.1, 0.2]);
         seed_example(
             &conn,
-            "retired",
-            "Retired Example",
-            "bundled",
-            "retired before",
-            "retired after",
-            None,
-            Some(3),
+            Example {
+                id: "retired",
+                title: "Retired Example",
+                source: "bundled",
+                before: "retired before",
+                after: "retired after",
+                tags: None,
+                quality_score: Some(3),
+            },
         );
         seed_embedding(&conn, "retired", &[0.3, 0.4]);
     }
@@ -398,35 +423,47 @@ fn merge_leaves_retired_bundled_example_in_active_db() {
         let conn = Connection::open(&bundled_path).unwrap();
         seed_example(
             &conn,
-            "kept",
-            "Kept Example v2",
-            "bundled",
-            "kept before v2",
-            "kept after v2",
-            None,
-            Some(5),
+            Example {
+                id: "kept",
+                title: "Kept Example v2",
+                source: "bundled",
+                before: "kept before v2",
+                after: "kept after v2",
+                tags: None,
+                quality_score: Some(5),
+            },
         );
         seed_embedding(&conn, "kept", &[0.5, 0.6]);
         seed_version(&conn, "2.0");
     }
 
-    db_merge_bundled_examples(&active_path, &bundled_path)
-        .expect("merge should succeed");
+    db_merge_bundled_examples(&active_path, &bundled_path).expect("merge should succeed");
 
     let conn = Connection::open(&active_path).unwrap();
 
     // The kept example should be updated
-    let (title, _, _, _) =
-        read_example(&conn, "kept").expect("kept example should still exist");
+    let (title, _, _, _) = read_example(&conn, "kept").expect("kept example should still exist");
     assert_eq!(title, "Kept Example v2", "kept example should be updated");
 
     // The retired example should still be there, untouched
     let (title, before, after, source) =
         read_example(&conn, "retired").expect("retired example must not be deleted");
-    assert_eq!(title, "Retired Example", "retired example title must be untouched");
-    assert_eq!(before, "retired before", "retired example before_text must be untouched");
-    assert_eq!(after, "retired after", "retired example after_text must be untouched");
-    assert_eq!(source, "bundled", "retired example source must be untouched");
+    assert_eq!(
+        title, "Retired Example",
+        "retired example title must be untouched"
+    );
+    assert_eq!(
+        before, "retired before",
+        "retired example before_text must be untouched"
+    );
+    assert_eq!(
+        after, "retired after",
+        "retired example after_text must be untouched"
+    );
+    assert_eq!(
+        source, "bundled",
+        "retired example source must be untouched"
+    );
 
     let (embedding, _) =
         read_embedding(&conn, "retired").expect("retired example embedding must survive");
@@ -455,13 +492,15 @@ fn merge_skips_when_versions_match() {
         let conn = Connection::open(&active_path).unwrap();
         seed_example(
             &conn,
-            "ex-1",
-            "Active Title",
-            "bundled",
-            "active before",
-            "active after",
-            None,
-            Some(3),
+            Example {
+                id: "ex-1",
+                title: "Active Title",
+                source: "bundled",
+                before: "active before",
+                after: "active after",
+                tags: None,
+                quality_score: Some(3),
+            },
         );
         seed_embedding(&conn, "ex-1", &[0.1, 0.2]);
         seed_version(&conn, "1.0");
@@ -470,25 +509,25 @@ fn merge_skips_when_versions_match() {
         let conn = Connection::open(&bundled_path).unwrap();
         seed_example(
             &conn,
-            "ex-1",
-            "Bundled Title",
-            "bundled",
-            "bundled before",
-            "bundled after",
-            None,
-            Some(5),
+            Example {
+                id: "ex-1",
+                title: "Bundled Title",
+                source: "bundled",
+                before: "bundled before",
+                after: "bundled after",
+                tags: None,
+                quality_score: Some(5),
+            },
         );
         seed_embedding(&conn, "ex-1", &[0.9, 0.8]);
         seed_version(&conn, "1.0");
     }
 
-    db_merge_bundled_examples(&active_path, &bundled_path)
-        .expect("merge should succeed");
+    db_merge_bundled_examples(&active_path, &bundled_path).expect("merge should succeed");
 
     // The active example should NOT have been updated because versions match
     let conn = Connection::open(&active_path).unwrap();
-    let (title, _, _, _) =
-        read_example(&conn, "ex-1").expect("example should exist");
+    let (title, _, _, _) = read_example(&conn, "ex-1").expect("example should exist");
     assert_eq!(
         title, "Active Title",
         "when versions match, examples should not be updated"
@@ -511,24 +550,28 @@ fn merge_handles_mixed_new_updated_and_skipped_examples() {
         let conn = Connection::open(&active_path).unwrap();
         seed_example(
             &conn,
-            "to-update",
-            "Old Bundled",
-            "bundled",
-            "old before",
-            "old after",
-            None,
-            Some(3),
+            Example {
+                id: "to-update",
+                title: "Old Bundled",
+                source: "bundled",
+                before: "old before",
+                after: "old after",
+                tags: None,
+                quality_score: Some(3),
+            },
         );
         seed_embedding(&conn, "to-update", &[0.1, 0.2]);
         seed_example(
             &conn,
-            "to-skip",
-            "User Example",
-            "user-uploaded",
-            "user before",
-            "user after",
-            None,
-            Some(4),
+            Example {
+                id: "to-skip",
+                title: "User Example",
+                source: "user-uploaded",
+                before: "user before",
+                after: "user after",
+                tags: None,
+                quality_score: Some(4),
+            },
         );
         seed_embedding(&conn, "to-skip", &[1.0, 2.0]);
     }
@@ -538,42 +581,47 @@ fn merge_handles_mixed_new_updated_and_skipped_examples() {
         let conn = Connection::open(&bundled_path).unwrap();
         seed_example(
             &conn,
-            "to-update",
-            "New Bundled",
-            "bundled",
-            "new before",
-            "new after",
-            None,
-            Some(5),
+            Example {
+                id: "to-update",
+                title: "New Bundled",
+                source: "bundled",
+                before: "new before",
+                after: "new after",
+                tags: None,
+                quality_score: Some(5),
+            },
         );
         seed_embedding(&conn, "to-update", &[0.9, 0.8]);
         seed_example(
             &conn,
-            "to-skip",
-            "Bundled Collision",
-            "bundled",
-            "bundled before",
-            "bundled after",
-            None,
-            Some(5),
+            Example {
+                id: "to-skip",
+                title: "Bundled Collision",
+                source: "bundled",
+                before: "bundled before",
+                after: "bundled after",
+                tags: None,
+                quality_score: Some(5),
+            },
         );
         seed_embedding(&conn, "to-skip", &[9.0, 8.0]);
         seed_example(
             &conn,
-            "brand-new",
-            "Brand New",
-            "bundled",
-            "brand before",
-            "brand after",
-            None,
-            Some(5),
+            Example {
+                id: "brand-new",
+                title: "Brand New",
+                source: "bundled",
+                before: "brand before",
+                after: "brand after",
+                tags: None,
+                quality_score: Some(5),
+            },
         );
         seed_embedding(&conn, "brand-new", &[0.5, 0.5]);
         seed_version(&conn, "3.0");
     }
 
-    db_merge_bundled_examples(&active_path, &bundled_path)
-        .expect("merge should succeed");
+    db_merge_bundled_examples(&active_path, &bundled_path).expect("merge should succeed");
 
     let conn = Connection::open(&active_path).unwrap();
 
@@ -589,11 +637,18 @@ fn merge_handles_mixed_new_updated_and_skipped_examples() {
     // Skipped (user-uploaded)
     let (title, before, _, source) =
         read_example(&conn, "to-skip").expect("skipped example should exist");
-    assert_eq!(title, "User Example", "user example must not be overwritten");
+    assert_eq!(
+        title, "User Example",
+        "user example must not be overwritten"
+    );
     assert_eq!(before, "user before");
     assert_eq!(source, "user-uploaded");
     let (emb, _) = read_embedding(&conn, "to-skip").unwrap();
-    assert_eq!(emb, vec![1.0, 2.0], "user embedding must not be overwritten");
+    assert_eq!(
+        emb,
+        vec![1.0, 2.0],
+        "user embedding must not be overwritten"
+    );
 
     // New
     let (title, before, _, source) =

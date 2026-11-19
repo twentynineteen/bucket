@@ -14,20 +14,25 @@ mod supervisor;
 mod target;
 mod transfer;
 
-// Re-export everything the rest of the crate (and the tests) import under
+// Re-export what the rest of the crate imports under
 // `crate::commands::sprout_upload::`.
-pub use response::{
-    classify_folders_page, classify_response, folders_url, SproutFolder, SproutFoldersPage,
-    SproutFoldersWirePage,
-};
+pub use response::{classify_folders_page, folders_url, SproutFoldersPage};
+pub use target::UploadTarget;
+
+// Only `commands/tests/sprout_upload_tests.rs` uses these. Re-exporting them
+// outside test builds leaves them unused there (#358).
+#[cfg(test)]
+pub use response::classify_response;
+#[cfg(test)]
 pub use supervisor::{
     StallCheck, StallMonitor, STALL_MIN_PROGRESS_BYTES, STALL_WARNING_AFTER, STALL_WINDOW,
 };
-pub use target::{endpoint, text_fields, UploadTarget};
+#[cfg(test)]
+pub use target::{endpoint, text_fields};
+#[cfg(test)]
 pub use transfer::{
     check_upload_size, is_progress_emit_due, stall_message, stall_warning_message,
-    warning_transition, CheckedUploadSize, TerminalOnce, UploadProgress, WarningTransition,
-    PROGRESS_EMIT_INTERVAL,
+    warning_transition, TerminalOnce, UploadProgress, WarningTransition, PROGRESS_EMIT_INTERVAL,
 };
 
 use std::sync::Arc;

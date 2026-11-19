@@ -126,8 +126,8 @@ impl Spawner for RealSpawner {
         let stderr = child.stderr.take();
         let stderr_tail = std::sync::Arc::new(std::sync::Mutex::new(VecDeque::<String>::new()));
         let tail_clone = std::sync::Arc::clone(&stderr_tail);
-        let stderr_thread = if let Some(pipe) = stderr {
-            Some(std::thread::spawn(move || {
+        let stderr_thread = stderr.map(|pipe| {
+            std::thread::spawn(move || {
                 use std::io::BufRead;
                 let reader = std::io::BufReader::new(pipe);
                 for line in reader.lines() {
@@ -142,10 +142,8 @@ impl Spawner for RealSpawner {
                         Err(_) => break,
                     }
                 }
-            }))
-        } else {
-            None
-        };
+            })
+        });
 
         Ok(RealChild {
             child,

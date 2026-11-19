@@ -42,7 +42,7 @@ use super::error::KavanaghError;
 use super::evidence::cap_evidence;
 use super::ffmpeg::{run_capture, run_frames, RunError};
 use super::geometry::{Corner, CropRegion};
-use super::matching::{evaluate_sample, WatermarkTemplate};
+use super::matching::evaluate_sample;
 use super::parsing::{parse_probe_output, VideoProbe};
 use super::sampling::{
     coalesce_gaps, corner_changes, establish_corner, refinement_windows, sample_times,

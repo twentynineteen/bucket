@@ -46,7 +46,7 @@ use super::geometry::{Corner, CropRegion};
 /// A reference watermark prepared for correlation against a video frame.
 ///
 /// Both planes are already cropped to this reference's **own scoring subwindow**
-/// - the intersection of its scaled alpha bbox with the corner's decoded crop -
+/// (the intersection of its scaled alpha bbox with the corner's decoded crop)
 /// and scaled to the video's dimensions, so a template is only valid for the
 /// video it was prepared for. One reference's mark never dilutes another's
 /// score, which is what a full-frame banner in the pool used to do (issue #266).
@@ -461,7 +461,7 @@ mod tests {
         let a = vec![1.0, 5.0, 2.0, 9.0, 3.0];
         let scaled: Vec<f32> = a.iter().map(|v| v * 0.17).collect();
 
-        assert!((weighted_ncc(&a, &scaled, &vec![1.0; 5]) - 1.0).abs() < 1e-6);
+        assert!((weighted_ncc(&a, &scaled, &[1.0; 5]) - 1.0).abs() < 1e-6);
     }
 
     #[test]
@@ -471,7 +471,7 @@ mod tests {
         let flat = vec![3.0; 8];
         let varied = vec![1.0, 4.0, 2.0, 8.0, 3.0, 7.0, 5.0, 6.0];
 
-        assert_eq!(weighted_ncc(&flat, &varied, &vec![1.0; 8]), 0.0);
+        assert_eq!(weighted_ncc(&flat, &varied, &[1.0; 8]), 0.0);
     }
 
     #[test]

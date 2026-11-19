@@ -22,6 +22,7 @@ struct RenderSlot {
 }
 
 /// Result of a successful frame write.
+#[derive(Debug)]
 pub struct WriteFrameResult {
     pub frames_written: u32,
     pub total_frames: u32,
@@ -117,11 +118,7 @@ impl RenderRegistry {
     /// Takes the render out under the lock, performs the write outside the
     /// lock, then returns the render. If cancel was requested while the write
     /// was in flight, cancels the render and returns a cancelled error.
-    pub fn write_frame(
-        &self,
-        id: &str,
-        png_data: &[u8],
-    ) -> Result<WriteFrameResult, MotionError> {
+    pub fn write_frame(&self, id: &str, png_data: &[u8]) -> Result<WriteFrameResult, MotionError> {
         // 1. Take the render out under the lock
         let mut render = {
             let mut map = self.active.lock().unwrap();
@@ -170,43 +167,6 @@ impl RenderRegistry {
             }
         }
     }
-
-    /// Access a render mutably by ID without holding the lock during the
-    /// closure. The render is taken out under the lock, the closure runs
-    /// without the lock, and the render is returned under the lock.
-    pub fn with_render_mut<F, R>(&self, id: &str, f: F) -> Result<R, MotionError>
-    where
-        F: FnOnce(&mut (dyn ActiveRenderDyn + Send)) -> Result<R, MotionError>,
-    {
-        // Take render out
-        let mut render = {
-            let mut map = self.active.lock().unwrap();
-            let slot = map.get_mut(id).ok_or_else(|| MotionError {
-                kind: "unknownRender".to_string(),
-                message: format!("no active render with id: {}", id),
-            })?;
-            slot.render.take().ok_or_else(|| MotionError {
-                kind: "busy".to_string(),
-                message: "render in use".to_string(),
-            })?
-        };
-
-        // Run closure without lock
-        let result = f(render.as_mut());
-
-        // Put render back (or handle cancel)
-        let mut map = self.active.lock().unwrap();
-        if let Some(slot) = map.get_mut(id) {
-            if slot.cancel_requested {
-                map.remove(id);
-                let _ = render.cancel();
-            } else {
-                slot.render = Some(render);
-            }
-        }
-
-        result
-    }
 }
 
 /// Type-erased trait for an active render, so the state doesn't carry generics.
@@ -244,6 +204,8 @@ impl<P: ChildProcess> ActiveRenderDyn for ActiveRender<P> {
 mod tests {
     use super::*;
     use crate::motion::encoder::tests::FakeChild;
+    use std::sync::{Arc, Condvar};
+    use std::time::Duration;
 
     fn make_render() -> ActiveRender<FakeChild> {
         let fake = FakeChild::new();
@@ -266,9 +228,7 @@ mod tests {
             Ok(_) => panic!("expected unknownRender error"),
         }
 
-        let err = registry
-            .with_render_mut("nonexistent", |_r| Ok(()))
-            .unwrap_err();
+        let err = registry.write_frame("nonexistent", &[0x89]).unwrap_err();
         assert_eq!(err.kind, "unknownRender");
     }
 
@@ -298,55 +258,65 @@ mod tests {
     // S9 - cancel must complete while a write is in flight (the
     // registry lock must NOT be held across the blocking stdin write)
     // ---------------------------------------------------------------
+    /// A render whose `write_frame` signals `entered`, then blocks until
+    /// `unblock` is set - a stand-in for a slow stdin write to ffmpeg.
+    struct BlockingRender {
+        entered: Arc<(Mutex<bool>, Condvar)>,
+        unblock: Arc<(Mutex<bool>, Condvar)>,
+    }
+
+    impl ActiveRenderDyn for BlockingRender {
+        fn write_frame(&mut self, _png_data: &[u8]) -> Result<(), MotionError> {
+            set_and_notify(&self.entered);
+            let (lock, cvar) = &*self.unblock;
+            let mut unblocked = lock.lock().unwrap();
+            while !*unblocked {
+                unblocked = cvar.wait(unblocked).unwrap();
+            }
+            Ok(())
+        }
+        fn finish(self: Box<Self>) -> Result<String, MotionError> {
+            Ok(String::new())
+        }
+        fn cancel(self: Box<Self>) -> Result<(), MotionError> {
+            Ok(())
+        }
+        fn frames_written(&self) -> u32 {
+            0
+        }
+        fn total_frames(&self) -> u32 {
+            10
+        }
+    }
+
+    fn set_and_notify(pair: &(Mutex<bool>, Condvar)) {
+        let (lock, cvar) = pair;
+        *lock.lock().unwrap() = true;
+        cvar.notify_one();
+    }
+
     #[test]
     fn s9_cancel_during_write_does_not_deadlock() {
-        use std::sync::{Arc, Condvar, Mutex as StdMutex};
-        use std::time::Duration;
-
-        // Blocking fake: write_stdin blocks until `unblock` is signalled.
-        let pair = Arc::new((StdMutex::new(false), Condvar::new()));
-        let pair_write = Arc::clone(&pair);
-        // Signal that the write thread is inside the closure.
-        let entered = Arc::new((StdMutex::new(false), Condvar::new()));
-        let entered_write = Arc::clone(&entered);
-
-        let fake = FakeChild::new();
+        let entered = Arc::new((Mutex::new(false), Condvar::new()));
+        let unblock = Arc::new((Mutex::new(false), Condvar::new()));
 
         let registry = Arc::new(RenderRegistry::new());
-        let render: ActiveRender<FakeChild> = ActiveRender {
-            process: fake,
-            output_path: std::path::PathBuf::from("/tmp/s9-test.mov"),
-            total_frames: 10,
-            frames_written: 0,
-        };
         registry
-            .insert("s9-render".to_string(), Box::new(render))
+            .insert(
+                "s9-render".to_string(),
+                Box::new(BlockingRender {
+                    entered: Arc::clone(&entered),
+                    unblock: Arc::clone(&unblock),
+                }),
+            )
             .unwrap();
 
-        // Write thread: uses with_render_mut, blocks inside the closure.
+        // Write thread: goes through the production write_frame, which
+        // blocks inside the render's write.
         let reg_write = Arc::clone(&registry);
-        let write_thread = std::thread::spawn(move || {
-            reg_write.with_render_mut("s9-render", |r| {
-                // Signal that we're inside the closure (lock is released)
-                {
-                    let (lock, cvar) = &*entered_write;
-                    let mut started = lock.lock().unwrap();
-                    *started = true;
-                    cvar.notify_one();
-                }
-                // Block until unblocked (simulates a slow stdin write)
-                {
-                    let (lock, cvar) = &*pair_write;
-                    let mut unblocked = lock.lock().unwrap();
-                    while !*unblocked {
-                        unblocked = cvar.wait(unblocked).unwrap();
-                    }
-                }
-                r.write_frame(&[0x89])
-            })
-        });
+        let write_thread = std::thread::spawn(move || reg_write.write_frame("s9-render", &[0x89]));
 
-        // Wait until the write thread is inside the closure
+        // Wait until the write thread is inside the render's write
         {
             let (lock, cvar) = &*entered;
             let mut started = lock.lock().unwrap();
@@ -354,27 +324,20 @@ mod tests {
                 started = cvar.wait(started).unwrap();
             }
         }
-        std::thread::sleep(Duration::from_millis(10));
 
-        // Cancel from the main thread. With the lock not held during
-        // the closure, cancel_render acquires the lock immediately,
-        // sets cancel_requested, and returns.
+        // Cancel from another thread. With the lock not held during the
+        // write, cancel_render acquires the lock immediately, sets
+        // cancel_requested, and returns.
         let reg_cancel = Arc::clone(&registry);
-        let cancel_thread =
-            std::thread::spawn(move || reg_cancel.cancel_render("s9-render"));
+        let cancel_thread = std::thread::spawn(move || reg_cancel.cancel_render("s9-render"));
 
         // Give cancel 200ms. With the fix it returns in microseconds.
         std::thread::sleep(Duration::from_millis(200));
         let finished = cancel_thread.is_finished();
 
-        // Unblock the write thread so the test cleans up
-        {
-            let (lock, cvar) = &*pair;
-            let mut unblocked = lock.lock().unwrap();
-            *unblocked = true;
-            cvar.notify_one();
-        }
-        let _ = write_thread.join();
+        // Unblock the write so the test cleans up
+        set_and_notify(&unblock);
+        let write_result = write_thread.join().unwrap();
         let _ = cancel_thread.join();
 
         assert!(
@@ -382,6 +345,8 @@ mod tests {
             "cancel_render must complete while a write is in flight, \
              but it was blocked on the registry mutex for >200ms"
         );
+        // The cancel requested mid-write is honoured once the write returns.
+        assert_eq!(write_result.unwrap_err().kind, "cancelled");
     }
 
     // ---------------------------------------------------------------
@@ -400,9 +365,7 @@ mod tests {
         removed.cancel().unwrap();
 
         // Late frame should get unknownRender
-        let err = registry
-            .with_render_mut("render-1", |r| r.write_frame(&[0x89]))
-            .unwrap_err();
+        let err = registry.write_frame("render-1", &[0x89]).unwrap_err();
         assert_eq!(err.kind, "unknownRender");
     }
 }
