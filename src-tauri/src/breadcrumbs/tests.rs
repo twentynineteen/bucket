@@ -1145,3 +1145,43 @@ fn b11_2_committed_typescript_bindings_are_current() {
     assert!(generated.contains(&format!("MAX_VIDEO_LINKS = {MAX_VIDEO_LINKS}")));
     assert!(generated.contains(&format!("MAX_TRELLO_CARDS = {MAX_TRELLO_CARDS}")));
 }
+
+// ---------------------------------------------------------------------------
+// Volumes that cannot flush on request
+// ---------------------------------------------------------------------------
+
+/// What an SMB share answers when macOS asks its drive to flush.
+fn share_refuses_to_flush(_file: &fs::File) -> std::io::Result<()> {
+    Err(std::io::Error::from_raw_os_error(45))
+}
+
+#[test]
+fn a_volume_that_cannot_flush_on_request_is_still_written() {
+    let dir = TempDir::new().unwrap();
+    let target = dir.path().join(FILE_NAME);
+    fs::write(&target, b"old").unwrap();
+
+    store::write_atomically_with(&target, b"new", share_refuses_to_flush)
+        .expect("ENOTSUP must not fail the write");
+
+    assert_eq!(fs::read(&target).unwrap(), b"new");
+}
+
+#[test]
+fn a_real_flush_failure_fails_the_write_and_leaves_the_original() {
+    let dir = TempDir::new().unwrap();
+    let target = dir.path().join(FILE_NAME);
+    fs::write(&target, b"old").unwrap();
+    let disk_full = |_: &fs::File| Err(std::io::Error::from_raw_os_error(28));
+
+    let error = store::write_atomically_with(&target, b"new", disk_full)
+        .expect_err("ENOSPC must surface");
+
+    assert_eq!(error.raw_os_error(), Some(28));
+    assert_eq!(fs::read(&target).unwrap(), b"old");
+    let left_behind: Vec<_> = fs::read_dir(dir.path())
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    assert_eq!(left_behind, [FILE_NAME], "the temp file must be removed");
+}
