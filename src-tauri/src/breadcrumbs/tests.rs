@@ -1145,3 +1145,31 @@ fn b11_2_committed_typescript_bindings_are_current() {
     assert!(generated.contains(&format!("MAX_VIDEO_LINKS = {MAX_VIDEO_LINKS}")));
     assert!(generated.contains(&format!("MAX_TRELLO_CARDS = {MAX_TRELLO_CARDS}")));
 }
+
+// ---------------------------------------------------------------------------
+// Volumes that cannot flush on request
+// ---------------------------------------------------------------------------
+
+/// What an SMB share answers when macOS asks its drive to flush.
+fn share_refuses_to_flush(_file: &fs::File) -> std::io::Result<()> {
+    Err(std::io::Error::from_raw_os_error(45))
+}
+
+#[test]
+fn a_volume_that_cannot_flush_on_request_is_still_written() {
+    let dir = TempDir::new().unwrap();
+    let file = fs::File::create(dir.path().join("f")).unwrap();
+
+    store::flush(&file, share_refuses_to_flush).expect("ENOTSUP must not fail the write");
+}
+
+#[test]
+fn a_real_flush_failure_still_fails_the_write() {
+    let dir = TempDir::new().unwrap();
+    let file = fs::File::create(dir.path().join("f")).unwrap();
+    let disk_full = |_: &fs::File| Err(std::io::Error::from_raw_os_error(28));
+
+    let error = store::flush(&file, disk_full).expect_err("ENOSPC must surface");
+
+    assert_eq!(error.raw_os_error(), Some(28));
+}

@@ -39,7 +39,7 @@ pub fn write_atomically(target: &Path, contents: &[u8]) -> io::Result<()> {
     let result = (|| {
         let mut file = fs::File::create(&temp)?;
         file.write_all(contents)?;
-        file.sync_all()?;
+        flush(&file, fs::File::sync_all)?;
         fs::rename(&temp, target)
     })();
 
@@ -47,4 +47,51 @@ pub fn write_atomically(target: &Path, contents: &[u8]) -> io::Result<()> {
         let _ = fs::remove_file(&temp);
     }
     result
+}
+
+/// Puts the file's bytes on disk before it is renamed into place.
+///
+/// On macOS `sync_all` asks the drive itself to flush (`F_FULLFSYNC`), and
+/// network shares refuse that with ENOTSUP. A plain `fsync` hands the bytes
+/// to the server, which is the most such a volume offers, so it is used
+/// there instead. A volume that refuses both is still written to: the bytes
+/// are in the file, and failing would make every project on it read-only.
+///
+/// `full_sync` is a parameter so a test can stand in for a share.
+pub(super) fn flush(
+    file: &fs::File,
+    full_sync: impl FnOnce(&fs::File) -> io::Result<()>,
+) -> io::Result<()> {
+    match full_sync(file) {
+        Err(e) if flush_unsupported(&e) => match plain_fsync(file) {
+            Err(e) if flush_unsupported(&e) => Ok(()),
+            result => result,
+        },
+        result => result,
+    }
+}
+
+/// ENOTSUP is 45 on macOS and 95 on Linux; EOPNOTSUPP is 102 on macOS. Rust
+/// maps only the last to `Unsupported`, so the raw codes are checked too.
+fn flush_unsupported(error: &io::Error) -> bool {
+    error.kind() == io::ErrorKind::Unsupported
+        || matches!(error.raw_os_error(), Some(45 | 95 | 102))
+}
+
+#[cfg(target_os = "macos")]
+fn plain_fsync(file: &fs::File) -> io::Result<()> {
+    use std::os::fd::AsRawFd;
+    // SAFETY: the descriptor belongs to `file`, which stays open for the call.
+    if unsafe { libc::fsync(file.as_raw_fd()) } == 0 {
+        Ok(())
+    } else {
+        Err(io::Error::last_os_error())
+    }
+}
+
+/// Only macOS has a stronger flush than `fsync`, so elsewhere `sync_all` was
+/// already the plain one and there is nothing weaker to try.
+#[cfg(not(target_os = "macos"))]
+fn plain_fsync(_file: &fs::File) -> io::Result<()> {
+    Err(io::Error::from(io::ErrorKind::Unsupported))
 }
